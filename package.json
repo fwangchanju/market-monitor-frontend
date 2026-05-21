@@ -1,5 +1,6 @@
 {
-  "name": "frontend",
+  "name": "market-monitor-frontend",
+  "description": "market-monitor",
   "private": true,
   "version": "0.0.0",
   "type": "module",
