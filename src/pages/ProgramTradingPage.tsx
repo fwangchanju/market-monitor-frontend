@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { getProgramTradingRankings } from '../api/dashboard'
 import type { ProgramTradingRankingItem, ProgramRankingType } from '../types/api'
-import { toEokSigned, signClass, toDateTimeLabel } from '../utils/format'
+import { toEokSignedFromMln, toEokFromMln, signClass, toDateTimeLabel } from '../utils/format'
 
 const RANKINGS: ProgramRankingType[] = ['NET_BUY', 'NET_SELL']
 
@@ -94,13 +94,13 @@ export default function ProgramTradingPage() {
                       </span>
                     </td>
                     <td className={signClass(item.programNetBuyAmount)}>
-                      {toEokSigned(item.programNetBuyAmount)}
+                      {toEokSignedFromMln(item.programNetBuyAmount)}
                     </td>
                     <td style={{ color: 'var(--text-muted)' }}>
-                      {toEokSigned(item.programBuyAmount)}
+                      {toEokFromMln(item.programBuyAmount)}
                     </td>
                     <td style={{ color: 'var(--text-muted)' }}>
-                      {toEokSigned(item.programSellAmount)}
+                      {toEokFromMln(item.programSellAmount)}
                     </td>
                   </tr>
                 ))}

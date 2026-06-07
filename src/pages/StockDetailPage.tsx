@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getProgramTradingHistory, getShortSellingHistory } from '../api/dashboard'
-import type { ProgramTradingHistoryItem, ShortSellingHistoryItem } from '../types/api'
-import { toEokSigned, toVolume, toEok, toPct, signClass, toDateTimeLabel, toDateLabel } from '../utils/format'
+import { getProgramTradingDailyHistory, getShortSellingHistory } from '../api/dashboard'
+import type { ProgramTradingDailyItem, ShortSellingHistoryItem } from '../types/api'
+import {
+  toEokSignedFromMln, toEokFromMln, toEokFromThousand,
+  toVolume, toPct, toPctSigned, signClass, toDateLabel,
+} from '../utils/format'
 
 export default function StockDetailPage() {
   const { stockCode } = useParams<{ stockCode: string }>()
 
-  const [programHistory, setProgramHistory] = useState<ProgramTradingHistoryItem[]>([])
+  const [programHistory, setProgramHistory] = useState<ProgramTradingDailyItem[]>([])
   const [shortHistory, setShortHistory] = useState<ShortSellingHistoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -20,14 +23,12 @@ export default function StockDetailPage() {
     const past30 = new Date(now)
     past30.setDate(past30.getDate() - 30)
 
-    const toDateTime = now.toISOString().slice(0, 19)
-    const fromDateTime = past30.toISOString().slice(0, 19)
     const toDate = now.toISOString().slice(0, 10)
     const fromDate = past30.toISOString().slice(0, 10)
 
     Promise.all([
-      getProgramTradingHistory(stockCode, fromDateTime, toDateTime),
-      getShortSellingHistory(stockCode, fromDate, toDate),
+      getProgramTradingDailyHistory(stockCode, fromDate, toDate),
+      getShortSellingHistory(stockCode),
     ])
       .then(([prog, short]) => {
         setProgramHistory(prog.items)
@@ -55,6 +56,7 @@ export default function StockDetailPage() {
             <section className="section">
               <div className="section-header">
                 <h2>프로그램 매매 추이</h2>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>최근 30일</span>
               </div>
               {programHistory.length === 0 ? (
                 <div className="empty-state">수집된 데이터가 없습니다</div>
@@ -62,7 +64,7 @@ export default function StockDetailPage() {
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th className="left">시각</th>
+                      <th className="left">일자</th>
                       <th>프로그램순매수(억)</th>
                       <th>매수(억)</th>
                       <th>매도(억)</th>
@@ -70,18 +72,18 @@ export default function StockDetailPage() {
                   </thead>
                   <tbody>
                     {programHistory.map(item => (
-                      <tr key={item.snapshotTime}>
+                      <tr key={item.tradeDate}>
                         <td className="left" style={{ color: 'var(--text-muted)' }}>
-                          {toDateTimeLabel(item.snapshotTime)}
+                          {toDateLabel(item.tradeDate)}
                         </td>
                         <td className={signClass(item.programNetBuyAmount)}>
-                          {toEokSigned(item.programNetBuyAmount)}
+                          {toEokSignedFromMln(item.programNetBuyAmount)}
                         </td>
                         <td style={{ color: 'var(--text-muted)' }}>
-                          {toEok(item.programBuyAmount)}
+                          {toEokFromMln(item.programBuyAmount)}
                         </td>
                         <td style={{ color: 'var(--text-muted)' }}>
-                          {toEok(item.programSellAmount)}
+                          {toEokFromMln(item.programSellAmount)}
                         </td>
                       </tr>
                     ))}
@@ -93,6 +95,7 @@ export default function StockDetailPage() {
             <section className="section">
               <div className="section-header">
                 <h2>공매도 내역</h2>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>최근 10 거래일</span>
               </div>
               {shortHistory.length === 0 ? (
                 <div className="empty-state">수집된 데이터가 없습니다</div>
@@ -101,9 +104,11 @@ export default function StockDetailPage() {
                   <thead>
                     <tr>
                       <th className="left">일자</th>
+                      <th>종가</th>
+                      <th>등락</th>
                       <th>공매도량</th>
-                      <th>공매도금액(억)</th>
                       <th>비중</th>
+                      <th>공매도금액(억)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -112,14 +117,18 @@ export default function StockDetailPage() {
                         <td className="left" style={{ color: 'var(--text-muted)' }}>
                           {toDateLabel(item.tradeDate)}
                         </td>
+                        <td>{item.closePrice.toLocaleString('ko-KR')}</td>
+                        <td className={signClass(item.priceChange)}>
+                          {toPctSigned(item.changeRate)}
+                        </td>
                         <td style={{ color: 'var(--text-muted)' }}>
                           {toVolume(item.shortVolume)}
                         </td>
                         <td style={{ color: 'var(--text-muted)' }}>
-                          {toEok(item.shortAmount)}
+                          {toPct(item.shortRatio)}
                         </td>
                         <td style={{ color: 'var(--text-muted)' }}>
-                          {toPct(item.shortRatio)}
+                          {toEokFromThousand(item.shortAmount)}
                         </td>
                       </tr>
                     ))}

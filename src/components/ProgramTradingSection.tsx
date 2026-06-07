@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ProgramTradingRankingItem, ProgramRankingType } from '../types/api'
-import { toEokSigned, signClass } from '../utils/format'
+import { toEokSignedFromMln, toEokFromMln, signClass } from '../utils/format'
 
 interface Props {
   items: ProgramTradingRankingItem[]
@@ -74,13 +74,13 @@ export default function ProgramTradingSection({ items }: Props) {
                   </span>
                 </td>
                 <td className={signClass(item.programNetBuyAmount)}>
-                  {toEokSigned(item.programNetBuyAmount)}
+                  {toEokSignedFromMln(item.programNetBuyAmount)}
                 </td>
                 <td style={{ color: 'var(--text-muted)' }}>
-                  {toEokSigned(item.programBuyAmount)}
+                  {toEokFromMln(item.programBuyAmount)}
                 </td>
                 <td style={{ color: 'var(--text-muted)' }}>
-                  {toEokSigned(item.programSellAmount)}
+                  {toEokFromMln(item.programSellAmount)}
                 </td>
               </tr>
             ))}

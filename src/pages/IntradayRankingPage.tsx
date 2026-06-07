@@ -3,20 +3,23 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { getIntradayRankings } from '../api/dashboard'
 import type {
   IntradayInvestorRankingItem,
-  MarketType,
-  InvestorType,
+  Exchange,
+  IntradayInvestorType,
   IntradayRankingType,
 } from '../types/api'
-import { toEokSigned, toVolume, signClass, toDateTimeLabel, investorLabel } from '../utils/format'
+import { toEokSignedFromMln, toVolume, signClass, toDateTimeLabel, investorLabel, marketLabel } from '../utils/format'
 
-const MARKETS: MarketType[] = ['KOSPI', 'KOSDAQ']
-const INVESTORS: InvestorType[] = ['PERSONAL', 'FOREIGNER', 'INSTITUTION']
+const MARKETS: Exchange[] = ['KOSPI', 'KOSDAQ', 'ALL']
+const INVESTORS: IntradayInvestorType[] = [
+  'FOREIGN_TOTAL', 'FOREIGNER', 'FOREIGN_COMPANY',
+  'INSTITUTION', 'PENSION_FUND', 'TRUST',
+]
 const RANKINGS: IntradayRankingType[] = ['NET_BUY', 'NET_SELL']
 
 export default function IntradayRankingPage() {
   const [params, setParams] = useSearchParams()
-  const market = (params.get('market') as MarketType) || 'KOSPI'
-  const investor = (params.get('investor') as InvestorType) || 'FOREIGNER'
+  const market = (params.get('market') as Exchange) || 'KOSPI'
+  const investor = (params.get('investor') as IntradayInvestorType) || 'FOREIGNER'
   const ranking = (params.get('ranking') as IntradayRankingType) || 'NET_BUY'
 
   const [items, setItems] = useState<IntradayInvestorRankingItem[]>([])
@@ -66,7 +69,7 @@ export default function IntradayRankingPage() {
                     className={`tab-btn ${market === m ? 'active' : ''}`}
                     onClick={() => set('market', m)}
                   >
-                    {m}
+                    {marketLabel(m)}
                   </button>
                 ))}
               </div>
@@ -124,7 +127,7 @@ export default function IntradayRankingPage() {
                       </span>
                     </td>
                     <td className={signClass(item.netBuyAmount)}>
-                      {toEokSigned(item.netBuyAmount)}
+                      {toEokSignedFromMln(item.netBuyAmount)}
                     </td>
                     <td style={{ color: 'var(--text-muted)' }}>
                       {toVolume(item.tradedVolume)}

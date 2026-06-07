@@ -1,5 +1,5 @@
 import type { MarketOverviewItem } from '../types/api'
-import { toIndex, toEok, toPctSigned, signClass } from '../utils/format'
+import { toIndex, toEokFromMln, toPctSigned, signClass } from '../utils/format'
 
 interface Props {
   items: MarketOverviewItem[]
@@ -31,7 +31,7 @@ export default function MarketOverviewSection({ items }: Props) {
               {toPctSigned(item.changeRate)} &nbsp; {item.changeValue > 0 ? '+' : ''}{toIndex(item.changeValue)}
             </div>
             <div className="stats-row">
-              <span>거래대금 {toEok(item.tradingValue)}억</span>
+              <span>거래대금 {toEokFromMln(item.tradingValue)}억</span>
               <span className="positive">▲{item.advancers}</span>
               <span className="negative">▼{item.decliners}</span>
               <span>—{item.unchangedCount}</span>

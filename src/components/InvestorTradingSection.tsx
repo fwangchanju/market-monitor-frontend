@@ -6,7 +6,10 @@ interface Props {
 }
 
 const MARKETS: MarketType[] = ['KOSPI', 'KOSDAQ']
-const INVESTORS: InvestorType[] = ['PERSONAL', 'FOREIGNER', 'INSTITUTION']
+const INVESTORS: InvestorType[] = [
+  'PERSONAL', 'FOREIGNER', 'INSTITUTION',
+  'FINANCIAL_INVESTMENT', 'PENSION_FUND', 'FOREIGN_COMPANY',
+]
 
 export default function InvestorTradingSection({ items }: Props) {
   const get = (market: MarketType, investor: InvestorType) =>
@@ -25,39 +28,29 @@ export default function InvestorTradingSection({ items }: Props) {
     <section className="section">
       <div className="section-header">
         <h2>투자자별 매매종합</h2>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>단위: 억원</span>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>단위: 억원 · 순매수</span>
       </div>
       <table className="data-table">
         <thead>
           <tr>
             <th className="left">시장</th>
             {INVESTORS.map(inv => (
-              <th key={inv} colSpan={2}>{investorLabel(inv)}</th>
+              <th key={inv}>{investorLabel(inv)}</th>
             ))}
-          </tr>
-          <tr>
-            <th className="left"></th>
-            {INVESTORS.flatMap(inv => [
-              <th key={`${inv}-net`}>순매수</th>,
-              <th key={`${inv}-buy`}>매수</th>,
-            ])}
           </tr>
         </thead>
         <tbody>
           {MARKETS.map(market => (
             <tr key={market}>
               <td className="left">{market}</td>
-              {INVESTORS.flatMap(investor => {
+              {INVESTORS.map(investor => {
                 const d = get(market, investor)
                 const net = d?.netBuyAmount ?? 0
-                return [
-                  <td key={`${investor}-net`} className={signClass(net)}>
+                return (
+                  <td key={investor} className={signClass(net)}>
                     {toEokSigned(net)}
-                  </td>,
-                  <td key={`${investor}-buy`} style={{ color: 'var(--text-muted)' }}>
-                    {d ? toEokSigned(d.buyAmount) : '-'}
-                  </td>,
-                ]
+                  </td>
+                )
               })}
             </tr>
           ))}

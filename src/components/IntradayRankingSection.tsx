@@ -1,70 +1,20 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import type {
-  IntradayInvestorRankingItem,
-  InvestorType,
-  MarketType,
-  IntradayRankingType,
-} from '../types/api'
-import { toEokSigned, toVolume, signClass, investorLabel, marketLabel } from '../utils/format'
+import type { IntradayInvestorRankingItem } from '../types/api'
+import { toEokSignedFromMln, toVolume, signClass } from '../utils/format'
 
 interface Props {
   items: IntradayInvestorRankingItem[]
 }
 
-const INVESTORS: InvestorType[] = ['PERSONAL', 'FOREIGNER', 'INSTITUTION']
-const MARKETS: MarketType[] = ['KOSPI', 'KOSDAQ']
-const RANKINGS: IntradayRankingType[] = ['NET_BUY', 'NET_SELL']
-
 export default function IntradayRankingSection({ items }: Props) {
-  const [market, setMarket] = useState<MarketType>('KOSPI')
-  const [investor, setInvestor] = useState<InvestorType>('FOREIGNER')
-  const [ranking, setRanking] = useState<IntradayRankingType>('NET_BUY')
-
-  const filtered = items.filter(
-    i => i.marketType === market && i.investorType === investor && i.rank <= 10,
-  )
-
   return (
     <section className="section">
       <div className="section-header">
         <h2>장중 투자자별 매매 상위</h2>
         <div className="actions">
-          <div className="tab-bar">
-            {MARKETS.map(m => (
-              <button
-                key={m}
-                className={`tab-btn ${market === m ? 'active' : ''}`}
-                onClick={() => setMarket(m)}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-          <div className="tab-bar">
-            {INVESTORS.map(inv => (
-              <button
-                key={inv}
-                className={`tab-btn ${investor === inv ? 'active' : ''}`}
-                onClick={() => setInvestor(inv)}
-              >
-                {investorLabel(inv)}
-              </button>
-            ))}
-          </div>
-          <div className="tab-bar">
-            {RANKINGS.map(r => (
-              <button
-                key={r}
-                className={`tab-btn ${ranking === r ? 'active' : ''}`}
-                onClick={() => setRanking(r)}
-              >
-                {r === 'NET_BUY' ? '순매수' : '순매도'}
-              </button>
-            ))}
-          </div>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>KOSPI · 외국인 · 순매수</span>
           <Link
-            to={`/intraday-rankings?market=${market}&investor=${investor}&ranking=${ranking}`}
+            to="/intraday-rankings?market=KOSPI&investor=FOREIGNER&ranking=NET_BUY"
             style={{ fontSize: 12, color: 'var(--text-muted)' }}
           >
             전체 보기 →
@@ -72,12 +22,8 @@ export default function IntradayRankingSection({ items }: Props) {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="empty-state">
-          {items.length === 0
-            ? '수집된 데이터가 없습니다'
-            : `${marketLabel(market)} ${investorLabel(investor)} 데이터 없음`}
-        </div>
+      {items.length === 0 ? (
+        <div className="empty-state">수집된 데이터가 없습니다</div>
       ) : (
         <table className="data-table">
           <thead>
@@ -89,7 +35,7 @@ export default function IntradayRankingSection({ items }: Props) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(item => (
+            {items.map(item => (
               <tr key={`${item.rank}-${item.stockCode}`}>
                 <td className="left" style={{ color: 'var(--text-muted)', fontSize: 11 }}>
                   {item.rank}
@@ -101,7 +47,7 @@ export default function IntradayRankingSection({ items }: Props) {
                   </span>
                 </td>
                 <td className={signClass(item.netBuyAmount)}>
-                  {toEokSigned(item.netBuyAmount)}
+                  {toEokSignedFromMln(item.netBuyAmount)}
                 </td>
                 <td style={{ color: 'var(--text-muted)' }}>
                   {toVolume(item.tradedVolume)}
