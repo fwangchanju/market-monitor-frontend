@@ -1,51 +1,81 @@
 import { useEffect, useState } from 'react'
 import 'nes.css/css/nes.min.css'
-import { getDashboard } from '../api/dashboard'
+import { getDashboard, getIntradayTop, getShortSellingHistory } from '../api/dashboard'
 import type {
   DashboardResponse,
+  Exchange,
+  IntradayTopItem,
+  IntradayInvestorType,
+  IntradayRankingType,
   InvestorType,
   MarketType,
-  IntradayRankingType,
   ProgramRankingType,
+  ShortSellingHistoryItem,
 } from '../types/api'
-import { toEok, toEokSigned, toIndex, toPctSigned, toVolume } from '../utils/format'
+import {
+  toEokSigned, toEokSignedFromMln, toEokFromMln, toEokFromThousand,
+  toMlnSigned, toIndex, toPctSigned, toPct, toVolume, toDateLabel, investorLabel,
+} from '../utils/format'
 
 const MARKETS: MarketType[] = ['KOSPI', 'KOSDAQ']
-const INVESTORS: InvestorType[] = ['PERSONAL', 'FOREIGNER', 'INSTITUTION']
-const INVESTOR_LABEL: Record<string, string> = { PERSONAL: '개인', FOREIGNER: '외국인', INSTITUTION: '기관' }
+const EXCHANGES: Exchange[] = ['KOSPI', 'KOSDAQ', 'ALL']
+const INVESTORS: InvestorType[] = [
+  'PERSONAL', 'FOREIGNER', 'INSTITUTION',
+  'FINANCIAL_INVESTMENT', 'PENSION_FUND', 'FOREIGN_COMPANY',
+]
+const ID_INVESTORS: IntradayInvestorType[] = [
+  'FOREIGN_TOTAL', 'FOREIGNER', 'INSTITUTION', 'PENSION_FUND', 'TRUST',
+]
 
-const colorClass = (v: number) => v > 0 ? 'nes-text is-success' : v < 0 ? 'nes-text is-error' : ''
+const pos = (v: number): React.CSSProperties => ({
+  color: v > 0 ? '#209cee' : v < 0 ? '#e76e55' : undefined,
+})
+
+const nesBtn = (active: boolean) =>
+  `nes-btn${active ? ' is-primary' : ''}` as string
 
 export default function PrototypeNesPage() {
   const [data, setData] = useState<DashboardResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [mktA, setMktA] = useState<MarketType>('KOSPI')
-  const [invA, setInvA] = useState<InvestorType>('FOREIGNER')
-  const [rankA, setRankA] = useState<IntradayRankingType>('NET_BUY')
+
   const [rankP, setRankP] = useState<ProgramRankingType>('NET_BUY')
   const [mktC, setMktC] = useState<MarketType>('KOSPI')
 
+  const [idMarket, setIdMarket] = useState<Exchange>('KOSPI')
+  const [idInvestor, setIdInvestor] = useState<IntradayInvestorType>('FOREIGNER')
+  const [idRanking, setIdRanking] = useState<IntradayRankingType>('NET_BUY')
+  const [idItems, setIdItems] = useState<IntradayTopItem[]>([])
+  const [idLoading, setIdLoading] = useState(true)
+
+  const [shortItems, setShortItems] = useState<ShortSellingHistoryItem[]>([])
+  const [shortCode, setShortCode] = useState<string | null>(null)
+  const [shortLoading, setShortLoading] = useState(false)
+
   useEffect(() => {
-    getDashboard().then(setData).catch(() => setError('데이터를 불러오지 못했습니다'))
-    // Press Start 2P 폰트 로드
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = 'https://fonts.googleapis.com/css?family=Press+Start+2P'
-    link.id = 'nes-font'
-    document.head.appendChild(link)
-    return () => document.getElementById('nes-font')?.remove()
+    getDashboard()
+      .then(d => {
+        setData(d)
+        const primary = d.watchStocks.find(s => s.isPrimary) ?? d.watchStocks[0]
+        if (primary) {
+          setShortCode(primary.stockCode)
+          setShortLoading(true)
+          getShortSellingHistory(primary.stockCode)
+            .then(r => setShortItems(r.items))
+            .finally(() => setShortLoading(false))
+        }
+      })
+      .catch(() => setError('데이터를 불러오지 못했습니다'))
   }, [])
 
-  if (error) return <div style={{ padding: 16 }}>{error}</div>
-  if (!data) return (
-    <div style={{ background: '#212529', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <span className="nes-text is-primary" style={{ fontFamily: '"Press Start 2P"' }}>LOADING...</span>
-    </div>
-  )
+  useEffect(() => {
+    setIdLoading(true)
+    getIntradayTop(idMarket, idInvestor, idRanking)
+      .then(r => setIdItems(r.items))
+      .finally(() => setIdLoading(false))
+  }, [idMarket, idInvestor, idRanking])
 
-  const intradayFiltered = data.intradayTopRankings
-    .filter(i => i.marketType === mktA && i.investorType === invA)
-    .slice(0, 10)
+  if (error) return <div style={{ padding: 16 }}>{error}</div>
+  if (!data) return <div style={{ padding: 16 }}>불러오는 중...</div>
 
   const programSorted = [...data.programTradingHighlights]
     .filter(i => rankP === 'NET_BUY' ? i.programNetBuyAmount >= 0 : i.programNetBuyAmount < 0)
@@ -59,101 +89,113 @@ export default function PrototypeNesPage() {
     .sort((a, b) => a.rank - b.rank)
     .slice(0, 10)
 
+  const fs = { fontSize: 11 }
+
   return (
-    <div style={{ background: '#212529', minHeight: '100vh', padding: 16, fontFamily: '"Press Start 2P", monospace', color: '#fff' }}>
-      {/* 헤더 */}
-      <div style={{ marginBottom: 16, borderBottom: '4px solid #92cc41', paddingBottom: 8 }}>
-        <span className="nes-text is-primary" style={{ fontSize: 14 }}>PSMS DASHBOARD</span>
-        <span style={{ fontSize: 9, color: '#aaa', marginLeft: 16 }}>
-          {data.snapshotTime?.slice(0, 16).replace('T', ' ')} | {data.marketStatus ?? 'N/A'}
-        </span>
+    <div style={{ background: '#fff', minHeight: '100vh', padding: 16 }}>
+
+      <div className="nes-container" style={{ marginBottom: 16 }}>
+        <p style={fs}>장 중 모니터링 — {data.snapshotTime?.slice(0, 16).replace('T', ' ')} | {data.marketStatus ?? 'N/A'}</p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
 
         {/* 시장종합 */}
         <div className="nes-container with-title" style={{ gridColumn: '1 / -1' }}>
-          <p className="title">시장종합</p>
-          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-            {data.marketOverviews.map(item => (
-              <div key={item.marketType} className="nes-container is-rounded" style={{ flex: 1, minWidth: 200, background: '#111' }}>
-                <p style={{ fontSize: 11, marginBottom: 4, color: '#92cc41' }}>{item.marketType}</p>
-                <p className={colorClass(item.changeValue)} style={{ fontSize: 16, margin: '4px 0' }}>
-                  {toIndex(item.indexValue)}
-                </p>
-                <p className={colorClass(item.changeValue)} style={{ fontSize: 9, margin: '2px 0' }}>
-                  {item.changeValue > 0 ? '+' : ''}{toIndex(item.changeValue)} ({toPctSigned(item.changeRate)})
-                </p>
-                <p style={{ fontSize: 9, color: '#888', margin: '4px 0' }}>
-                  거래대금 {toEok(item.tradingValue)}억
-                </p>
-                <p style={{ fontSize: 9, margin: '2px 0' }}>
-                  <span className="nes-text is-success">▲{item.advancers}</span>
-                  {' '}<span className="nes-text is-error">▼{item.decliners}</span>
-                  {' '}<span style={{ color: '#888' }}>—{item.unchangedCount}</span>
-                </p>
-              </div>
-            ))}
-          </div>
+          <p className="title">[0200]시장종합</p>
+          <table style={{ width: '100%', borderCollapse: 'collapse', ...fs }}>
+            <thead><tr>
+              <th style={{ textAlign: 'left', padding: '2px 4px' }}>시장</th>
+              <th style={{ textAlign: 'right', padding: '2px 4px' }}>지수</th>
+              <th style={{ textAlign: 'right', padding: '2px 4px' }}>등락률</th>
+              <th style={{ textAlign: 'right', padding: '2px 4px' }}>거래대금(억)</th>
+              <th style={{ textAlign: 'right', padding: '2px 4px' }}>상한</th>
+              <th style={{ textAlign: 'right', padding: '2px 4px' }}>상승</th>
+              <th style={{ textAlign: 'right', padding: '2px 4px' }}>보합</th>
+              <th style={{ textAlign: 'right', padding: '2px 4px' }}>하락</th>
+              <th style={{ textAlign: 'right', padding: '2px 4px' }}>하한</th>
+            </tr></thead>
+            <tbody>
+              {MARKETS.map(mkt => {
+                const item = data.marketOverviews.find(i => i.marketType === mkt)
+                if (!item) return null
+                return (
+                  <tr key={item.marketType} style={{ borderTop: '1px solid #ccc' }}>
+                    <td style={{ padding: '3px 4px', fontWeight: 'bold', ...fs }}>{item.marketType}</td>
+                    <td style={{ textAlign: 'right', padding: '3px 4px', ...fs, ...pos(item.changeValue) }}>{toIndex(item.indexValue)}</td>
+                    <td style={{ textAlign: 'right', padding: '3px 4px', ...fs, ...pos(item.changeValue) }}>{toPctSigned(item.changeRate)}</td>
+                    <td style={{ textAlign: 'right', padding: '3px 4px', ...fs, color: '#666' }}>{toEokFromMln(item.tradingValue)}</td>
+                    <td style={{ textAlign: 'right', padding: '3px 4px', fontSize: 10, color: '#666' }}>{item.upperLimitCount}</td>
+                    <td style={{ textAlign: 'right', padding: '3px 4px', fontSize: 10, color: '#666' }}>{item.advancers}</td>
+                    <td style={{ textAlign: 'right', padding: '3px 4px', fontSize: 10, color: '#666' }}>{item.unchangedCount}</td>
+                    <td style={{ textAlign: 'right', padding: '3px 4px', fontSize: 10, color: '#666' }}>{item.decliners}</td>
+                    <td style={{ textAlign: 'right', padding: '3px 4px', fontSize: 10, color: '#666' }}>{item.lowerLimitCount}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
 
         {/* 투자자별 매매종합 */}
         <div className="nes-container with-title" style={{ gridColumn: '1 / -1' }}>
-          <p className="title">투자자별 매매종합</p>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="nes-table is-bordered" style={{ width: '100%', fontSize: 9 }}>
-              <thead>
-                <tr>
-                  <th>시장</th>
-                  {INVESTORS.flatMap(inv => [
-                    <th key={`${inv}-net`}>{INVESTOR_LABEL[inv]} 순매수</th>,
-                    <th key={`${inv}-buy`} style={{ color: '#aaa' }}>매수</th>,
-                  ])}
+          <p className="title">[0780]투자자별매매동향-투자자별매매종합</p>
+          <p style={{ fontSize: 10, color: '#666', margin: '0 0 6px' }}>순매수 (단위: 억원)</p>
+          <table style={{ width: '100%', borderCollapse: 'collapse', ...fs }}>
+            <thead><tr>
+              <th style={{ textAlign: 'left', padding: '2px 6px' }}>시장</th>
+              {INVESTORS.map(inv => (
+                <th key={inv} style={{ textAlign: 'right', padding: '2px 6px' }}>{investorLabel(inv)}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {MARKETS.map(mkt => (
+                <tr key={mkt} style={{ borderTop: '1px solid #ccc' }}>
+                  <td style={{ padding: '3px 6px', fontWeight: 'bold', ...fs }}>{mkt}</td>
+                  {INVESTORS.map(inv => {
+                    const d = data.investorTradingSummaries.find(i => i.marketType === mkt && i.investorType === inv)
+                    const net = d?.netBuyAmount ?? 0
+                    return (
+                      <td key={inv} style={{ textAlign: 'right', padding: '3px 6px', ...fs, ...pos(net) }}>
+                        {toEokSigned(net)}
+                      </td>
+                    )
+                  })}
                 </tr>
-              </thead>
-              <tbody>
-                {MARKETS.map(mkt => (
-                  <tr key={mkt}>
-                    <td>{mkt}</td>
-                    {INVESTORS.flatMap(inv => {
-                      const d = data.investorTradingSummaries.find(i => i.marketType === mkt && i.investorType === inv)
-                      const net = d?.netBuyAmount ?? 0
-                      return [
-                        <td key={`${inv}-net`}><span className={colorClass(net)}>{toEokSigned(net)}</span></td>,
-                        <td key={`${inv}-buy`} style={{ color: '#aaa' }}>{d ? toEokSigned(d.buyAmount) : '-'}</td>,
-                      ]
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
 
-        {/* 장중 투자자별 매매 상위 */}
-        <div className="nes-container with-title">
-          <p className="title">장중 투자자 상위</p>
-          <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap' }}>
-            {MARKETS.map(m => (
-              <button key={m} className={`nes-btn ${mktA === m ? 'is-primary' : ''}`} style={{ fontSize: 8, padding: '4px 8px' }} onClick={() => setMktA(m)}>{m}</button>
+        {/* 장중 투자자별 매매 */}
+        <div className="nes-container with-title" style={{ gridColumn: '1 / -1' }}>
+          <p className="title">장중 투자자별 매매</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+            {EXCHANGES.map(m => (
+              <button key={m} type="button" className={nesBtn(idMarket === m)} style={{ fontSize: 10, padding: '4px 6px' }} onClick={() => setIdMarket(m)}>{m}</button>
             ))}
-            {INVESTORS.map(inv => (
-              <button key={inv} className={`nes-btn ${invA === inv ? 'is-success' : ''}`} style={{ fontSize: 8, padding: '4px 8px' }} onClick={() => setInvA(inv)}>{INVESTOR_LABEL[inv]}</button>
+            <span style={{ margin: '0 4px' }}>|</span>
+            {ID_INVESTORS.map(inv => (
+              <button key={inv} type="button" className={nesBtn(idInvestor === inv)} style={{ fontSize: 10, padding: '4px 6px' }} onClick={() => setIdInvestor(inv)}>{investorLabel(inv)}</button>
             ))}
+            <span style={{ margin: '0 4px' }}>|</span>
             {(['NET_BUY', 'NET_SELL'] as IntradayRankingType[]).map(r => (
-              <button key={r} className={`nes-btn ${rankA === r ? 'is-warning' : ''}`} style={{ fontSize: 8, padding: '4px 8px' }} onClick={() => setRankA(r)}>{r === 'NET_BUY' ? '순매수' : '순매도'}</button>
+              <button key={r} type="button" className={nesBtn(idRanking === r)} style={{ fontSize: 10, padding: '4px 6px' }} onClick={() => setIdRanking(r)}>{r === 'NET_BUY' ? '순매수' : '순매도'}</button>
             ))}
           </div>
-          {intradayFiltered.length === 0 ? <p style={{ fontSize: 9, color: '#888' }}>데이터 없음</p> : (
-            <table className="nes-table is-bordered" style={{ width: '100%', fontSize: 9 }}>
-              <thead><tr><th>#</th><th>종목</th><th>순매수(억)</th><th>거래량</th></tr></thead>
+          {idLoading ? <p style={fs}>불러오는 중...</p> : idItems.length === 0 ? <p style={fs}>데이터 없음</p> : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', ...fs }}>
+              <thead><tr>
+                <th style={{ textAlign: 'left', padding: '2px 4px' }}>#</th>
+                <th style={{ textAlign: 'left', padding: '2px 4px' }}>종목</th>
+                <th style={{ textAlign: 'right', padding: '2px 4px' }}>순매수(백만)</th>
+              </tr></thead>
               <tbody>
-                {intradayFiltered.map(item => (
-                  <tr key={item.rank}>
-                    <td style={{ color: '#888' }}>{item.rank}</td>
-                    <td>{item.stockName}<br /><span style={{ color: '#666', fontSize: 8 }}>{item.stockCode}</span></td>
-                    <td><span className={colorClass(item.netBuyAmount)}>{toEokSigned(item.netBuyAmount)}</span></td>
-                    <td style={{ color: '#888' }}>{toVolume(item.tradedVolume)}</td>
+                {idItems.map((item, idx) => (
+                  <tr key={item.stockCode} style={{ borderTop: '1px solid #ccc' }}>
+                    <td style={{ padding: '2px 4px', color: '#666', fontSize: 10 }}>{idx + 1}</td>
+                    <td style={{ padding: '2px 4px', ...fs }}>{item.stockName} <span style={{ color: '#888', fontSize: 10 }}>{item.stockCode}</span></td>
+                    <td style={{ textAlign: 'right', padding: '2px 4px', ...fs, ...pos(item.netBuyAmount) }}>{toMlnSigned(item.netBuyAmount)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -163,23 +205,29 @@ export default function PrototypeNesPage() {
 
         {/* 프로그램 매매 상위 */}
         <div className="nes-container with-title">
-          <p className="title">프로그램 매매 상위</p>
-          <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+          <p className="title">프로그램 매매</p>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
             {(['NET_BUY', 'NET_SELL'] as ProgramRankingType[]).map(r => (
-              <button key={r} className={`nes-btn ${rankP === r ? 'is-primary' : ''}`} style={{ fontSize: 8, padding: '4px 8px' }} onClick={() => setRankP(r)}>{r === 'NET_BUY' ? '순매수' : '순매도'}</button>
+              <button key={r} type="button" className={nesBtn(rankP === r)} style={{ fontSize: 10, padding: '4px 8px' }} onClick={() => setRankP(r)}>{r === 'NET_BUY' ? '순매수' : '순매도'}</button>
             ))}
           </div>
-          {programSorted.length === 0 ? <p style={{ fontSize: 9, color: '#888' }}>데이터 없음</p> : (
-            <table className="nes-table is-bordered" style={{ width: '100%', fontSize: 9 }}>
-              <thead><tr><th>#</th><th>종목</th><th>순매수(억)</th><th>매수</th><th>매도</th></tr></thead>
+          {programSorted.length === 0 ? <p style={fs}>데이터 없음</p> : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', ...fs }}>
+              <thead><tr>
+                <th style={{ textAlign: 'left', padding: '2px 4px' }}>#</th>
+                <th style={{ textAlign: 'left', padding: '2px 4px' }}>종목</th>
+                <th style={{ textAlign: 'right', padding: '2px 4px' }}>순매수(억)</th>
+                <th style={{ textAlign: 'right', padding: '2px 4px' }}>매수</th>
+                <th style={{ textAlign: 'right', padding: '2px 4px' }}>매도</th>
+              </tr></thead>
               <tbody>
                 {programSorted.map((item, idx) => (
-                  <tr key={item.stockCode}>
-                    <td style={{ color: '#888' }}>{idx + 1}</td>
-                    <td>{item.stockName}<br /><span style={{ color: '#666', fontSize: 8 }}>{item.stockCode}</span></td>
-                    <td><span className={colorClass(item.programNetBuyAmount)}>{toEokSigned(item.programNetBuyAmount)}</span></td>
-                    <td style={{ color: '#aaa' }}>{toEokSigned(item.programBuyAmount)}</td>
-                    <td style={{ color: '#aaa' }}>{toEokSigned(item.programSellAmount)}</td>
+                  <tr key={item.stockCode} style={{ borderTop: '1px solid #ccc' }}>
+                    <td style={{ padding: '2px 4px', color: '#666', fontSize: 10 }}>{idx + 1}</td>
+                    <td style={{ padding: '2px 4px', ...fs }}>{item.stockName}</td>
+                    <td style={{ textAlign: 'right', padding: '2px 4px', ...fs, ...pos(item.programNetBuyAmount) }}>{toEokSignedFromMln(item.programNetBuyAmount)}</td>
+                    <td style={{ textAlign: 'right', padding: '2px 4px', fontSize: 10, color: '#666' }}>{toEokFromMln(item.programBuyAmount)}</td>
+                    <td style={{ textAlign: 'right', padding: '2px 4px', fontSize: 10, color: '#666' }}>{toEokFromMln(item.programSellAmount)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -189,22 +237,27 @@ export default function PrototypeNesPage() {
 
         {/* 지수 기여도 상위 */}
         <div className="nes-container with-title">
-          <p className="title">지수 기여도 상위</p>
-          <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+          <p className="title">지수 기여도</p>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
             {MARKETS.map(m => (
-              <button key={m} className={`nes-btn ${mktC === m ? 'is-primary' : ''}`} style={{ fontSize: 8, padding: '4px 8px' }} onClick={() => setMktC(m)}>{m}</button>
+              <button key={m} type="button" className={nesBtn(mktC === m)} style={{ fontSize: 10, padding: '4px 8px' }} onClick={() => setMktC(m)}>{m}</button>
             ))}
           </div>
-          {contribFiltered.length === 0 ? <p style={{ fontSize: 9, color: '#888' }}>데이터 없음</p> : (
-            <table className="nes-table is-bordered" style={{ width: '100%', fontSize: 9 }}>
-              <thead><tr><th>#</th><th>종목</th><th>기여도</th><th>등락률</th></tr></thead>
+          {contribFiltered.length === 0 ? <p style={fs}>데이터 없음</p> : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', ...fs }}>
+              <thead><tr>
+                <th style={{ textAlign: 'left', padding: '2px 6px' }}>#</th>
+                <th style={{ textAlign: 'left', padding: '2px 6px' }}>종목</th>
+                <th style={{ textAlign: 'right', padding: '2px 6px' }}>기여도</th>
+                <th style={{ textAlign: 'right', padding: '2px 6px' }}>등락률</th>
+              </tr></thead>
               <tbody>
                 {contribFiltered.map(item => (
-                  <tr key={item.rank}>
-                    <td style={{ color: '#888' }}>{item.rank}</td>
-                    <td>{item.stockName}<br /><span style={{ color: '#666', fontSize: 8 }}>{item.stockCode}</span></td>
-                    <td><span className={colorClass(item.contributionScore)}>{item.contributionScore.toFixed(2)}</span></td>
-                    <td><span className={colorClass(item.priceChangeRate)}>{toPctSigned(item.priceChangeRate)}</span></td>
+                  <tr key={item.rank} style={{ borderTop: '1px solid #ccc' }}>
+                    <td style={{ padding: '2px 6px', color: '#666', fontSize: 10 }}>{item.rank}</td>
+                    <td style={{ padding: '2px 6px', ...fs }}>{item.stockName}</td>
+                    <td style={{ textAlign: 'right', padding: '2px 6px', ...fs, ...pos(item.contributionScore) }}>{item.contributionScore.toFixed(2)}</td>
+                    <td style={{ textAlign: 'right', padding: '2px 6px', ...fs, ...pos(item.priceChangeRate) }}>{toPctSigned(item.priceChangeRate)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -212,19 +265,38 @@ export default function PrototypeNesPage() {
           )}
         </div>
 
-        {/* 관심 종목 */}
-        <div className="nes-container with-title">
-          <p className="title">관심 종목</p>
-          {data.watchStocks.length === 0 ? (
-            <p style={{ fontSize: 9, color: '#888' }}>등록된 관심 종목이 없습니다</p>
+        {/* 종목별 공매도 추이 */}
+        <div className="nes-container with-title" style={{ gridColumn: '1 / -1' }}>
+          <p className="title">종목별 공매도 추이{shortCode ? ` — ${shortCode}` : ''}</p>
+          {!shortCode ? (
+            <p style={fs}>관심종목 없음</p>
+          ) : shortLoading ? (
+            <p style={fs}>불러오는 중...</p>
+          ) : shortItems.length === 0 ? (
+            <p style={fs}>데이터 없음</p>
           ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {data.watchStocks.map(s => (
-                <span key={s.stockCode} className="nes-badge" style={{ fontSize: 8 }}>
-                  <span className="is-primary">{s.stockName}</span>
-                </span>
-              ))}
-            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', ...fs }}>
+              <thead><tr>
+                <th style={{ textAlign: 'left', padding: '2px 6px' }}>일자</th>
+                <th style={{ textAlign: 'right', padding: '2px 6px' }}>종가</th>
+                <th style={{ textAlign: 'right', padding: '2px 6px' }}>등락률</th>
+                <th style={{ textAlign: 'right', padding: '2px 6px' }}>공매도량</th>
+                <th style={{ textAlign: 'right', padding: '2px 6px' }}>비중</th>
+                <th style={{ textAlign: 'right', padding: '2px 6px' }}>공매도금액(억)</th>
+              </tr></thead>
+              <tbody>
+                {shortItems.map(item => (
+                  <tr key={item.tradeDate} style={{ borderTop: '1px solid #ccc' }}>
+                    <td style={{ padding: '2px 6px', color: '#666' }}>{toDateLabel(item.tradeDate)}</td>
+                    <td style={{ textAlign: 'right', padding: '2px 6px' }}>{item.closePrice.toLocaleString('ko-KR')}</td>
+                    <td style={{ textAlign: 'right', padding: '2px 6px', ...pos(item.priceChange) }}>{toPctSigned(item.changeRate)}</td>
+                    <td style={{ textAlign: 'right', padding: '2px 6px', color: '#666' }}>{toVolume(item.shortVolume)}</td>
+                    <td style={{ textAlign: 'right', padding: '2px 6px', color: '#666' }}>{toPct(item.shortRatio)}</td>
+                    <td style={{ textAlign: 'right', padding: '2px 6px', color: '#666' }}>{toEokFromThousand(item.shortAmount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
 
