@@ -3,24 +3,24 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { getIntradayRankings } from '../api/dashboard'
 import type {
   IntradayInvestorRankingItem,
-  Exchange,
-  IntradayInvestorType,
-  IntradayRankingType,
+  MarketQuery,
+  IntradayInvestor,
+  IntradayRanking,
 } from '../types/api'
 import { toEokSignedFromMln, toVolume, signClass, toDateTimeLabel, investorLabel, marketLabel } from '../utils/format'
 
-const MARKETS: Exchange[] = ['KOSPI', 'KOSDAQ', 'ALL']
-const INVESTORS: IntradayInvestorType[] = [
+const MARKETS: MarketQuery[] = ['KOSPI', 'KOSDAQ', 'ALL']
+const INVESTORS: IntradayInvestor[] = [
   'FOREIGN_TOTAL', 'FOREIGNER', 'FOREIGN_COMPANY',
   'INSTITUTION', 'PENSION_FUND', 'TRUST',
 ]
-const RANKINGS: IntradayRankingType[] = ['NET_BUY', 'NET_SELL']
+const RANKINGS: IntradayRanking[] = ['NET_BUY', 'NET_SELL']
 
 export default function IntradayRankingPage() {
   const [params, setParams] = useSearchParams()
-  const market = (params.get('market') as Exchange) || 'KOSPI'
-  const investor = (params.get('investor') as IntradayInvestorType) || 'FOREIGNER'
-  const ranking = (params.get('ranking') as IntradayRankingType) || 'NET_BUY'
+  const market = (params.get('market') as MarketQuery) || 'KOSPI'
+  const investor = (params.get('investor') as IntradayInvestor) || 'FOREIGNER'
+  const ranking = (params.get('ranking') as IntradayRanking) || 'NET_BUY'
 
   const [items, setItems] = useState<IntradayInvestorRankingItem[]>([])
   const [snapshotTime, setSnapshotTime] = useState<string | null>(null)

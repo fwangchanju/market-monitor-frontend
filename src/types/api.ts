@@ -1,22 +1,23 @@
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
-export type Exchange = 'KOSPI' | 'KOSDAQ' | 'ALL'
-export type MarketType = 'KOSPI' | 'KOSDAQ'
-export type IntradayInvestorType =
+export type MarketQuery = 'KOSPI' | 'KOSDAQ' | 'COMBINED'
+export type Market = 'KOSPI' | 'KOSDAQ'
+export type IntradayInvestor =
   | 'FOREIGNER' | 'FOREIGN_COMPANY' | 'INSTITUTION'
   | 'PENSION_FUND' | 'TRUST' | 'FOREIGN_TOTAL'
-export type InvestorType =
+export type Investor =
   | 'PERSONAL' | 'FOREIGNER' | 'INSTITUTION'
   | 'FINANCIAL_INVESTMENT' | 'TRUST' | 'PENSION_FUND'
   | 'PRIVATE_FUND' | 'INSURANCE' | 'BANK'
   | 'OTHER_CORP' | 'GOVERNMENT' | 'OTHER_FINANCE' | 'FOREIGN_COMPANY'
-export type IntradayRankingType = 'NET_BUY' | 'NET_SELL'
-export type ProgramRankingType = 'NET_BUY' | 'NET_SELL'
+export type IntradayRanking = 'NET_BUY' | 'NET_SELL'
+export type ProgramRanking = 'NET_BUY' | 'NET_SELL'
+export type AmtQty = 'AMOUNT' | 'QUANTITY'
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export interface MarketOverviewItem {
-  marketType: MarketType
+  market: Market
   marketStatus: string
   indexValue: number
   changeValue: number
@@ -30,16 +31,16 @@ export interface MarketOverviewItem {
 }
 
 export interface InvestorTradingSummaryItem {
-  marketType: MarketType
-  investorType: InvestorType
+  market: Market
+  investor: Investor
   buyAmount: number          // 억 원, 항상 0
   sellAmount: number         // 억 원, 항상 0
   netBuyAmount: number       // 억 원
 }
 
 export interface IntradayInvestorRankingItem {
-  marketType: MarketType
-  investorType: IntradayInvestorType
+  market: Market
+  investor: IntradayInvestor
   rank: number
   stockCode: string
   stockName: string
@@ -57,7 +58,7 @@ export interface ProgramTradingRankingItem {
 }
 
 export interface IndexContributionItem {
-  marketType: MarketType
+  market: Market
   rank: number
   stockCode: string
   stockName: string
@@ -68,28 +69,18 @@ export interface IndexContributionItem {
 export interface WatchStockItem {
   stockCode: string
   stockName: string
-  marketType: MarketType
-  isPrimary: boolean
+  market: Market
+  isMain: boolean
 }
 
-export interface NotificationSettingResponse {
-  userKey: string
-  reminderEnabled: boolean
-  reminderTime: string
-  timezone: string
-}
+// ─── Market summary (/market-summary) ─────────────────────────────────────────
 
-export interface DashboardResponse {
-  snapshotTime: string | null
-  lastCollectedAt: string | null
-  marketStatus: string | null
-  marketOverviews: MarketOverviewItem[]
-  investorTradingSummaries: InvestorTradingSummaryItem[]
-  intradayTopRankings: IntradayInvestorRankingItem[]
-  programTradingHighlights: ProgramTradingRankingItem[]
-  indexContributionHighlights: IndexContributionItem[]
-  watchStocks: WatchStockItem[]
-  notificationSetting: NotificationSettingResponse | null
+export interface MarketSummaryResponse {
+  marketOverviews: SnapshotResponse<MarketOverviewItem>
+  investorTradingSummaries: SnapshotResponse<InvestorTradingSummaryItem>
+  intradayTopRankings: SnapshotResponse<IntradayInvestorRankingItem>
+  programTradingHighlights: SnapshotResponse<ProgramTradingRankingItem>
+  indexContributionHighlights: SnapshotResponse<IndexContributionItem>
 }
 
 // ─── Stock ───────────────────────────────────────────────────────────────────
@@ -97,7 +88,7 @@ export interface DashboardResponse {
 export interface StockItem {
   stockCode: string
   stockName: string
-  marketType: MarketType
+  market: Market
 }
 
 // ─── Detail ──────────────────────────────────────────────────────────────────

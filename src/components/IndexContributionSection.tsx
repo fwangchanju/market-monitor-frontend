@@ -1,38 +1,49 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { IndexContributionItem, MarketType } from '../types/api'
+import type { IndexContributionItem, Market } from '../types/api'
 import { toPctSigned, signClass } from '../utils/format'
+import { useIndexContribution } from '../hooks/useIndexContribution'
+import DataTable, { type DataTableColumn } from './DataTable'
+import TabSelector from './TabSelector'
 
-interface Props {
-  items: IndexContributionItem[]
-}
+const MARKETS: Market[] = ['KOSPI', 'KOSDAQ']
 
-const MARKETS: MarketType[] = ['KOSPI', 'KOSDAQ']
+const columns: DataTableColumn<IndexContributionItem>[] = [
+  { header: '#', width: 32, render: item => item.rank },
+  {
+    header: '종목',
+    align: 'left',
+    render: item => (
+      <>
+        <Link to={`/stocks/${item.stockCode}`}>{item.stockName}</Link>
+        <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+          {item.stockCode}
+        </span>
+      </>
+    ),
+  },
+  {
+    header: '기여도',
+    render: item => item.contributionScore.toFixed(2),
+    cellClassName: item => signClass(item.contributionScore),
+  },
+  {
+    header: '등락률',
+    render: item => toPctSigned(item.priceChangeRate),
+    cellClassName: item => signClass(item.priceChangeRate),
+  },
+]
 
-export default function IndexContributionSection({ items }: Props) {
-  const [market, setMarket] = useState<MarketType>('KOSPI')
-
-  const filtered = items
-    .filter(i => i.marketType === market)
-    .sort((a, b) => a.rank - b.rank)
-    .slice(0, 10)
+export default function IndexContributionSection() {
+  const [market, setMarket] = useState<Market>('KOSPI')
+  const { items, isLoading, isError } = useIndexContribution(market)
 
   return (
     <section className="section">
       <div className="section-header">
         <h2>지수 기여도 상위</h2>
         <div className="actions">
-          <div className="tab-bar">
-            {MARKETS.map(m => (
-              <button
-                key={m}
-                className={`tab-btn ${market === m ? 'active' : ''}`}
-                onClick={() => setMarket(m)}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
+          <TabSelector options={MARKETS} value={market} onChange={setMarket} />
           <Link
             to={`/index-contribution?market=${market}`}
             style={{ fontSize: 12, color: 'var(--text-muted)' }}
@@ -42,42 +53,12 @@ export default function IndexContributionSection({ items }: Props) {
         </div>
       </div>
 
-      {items.length === 0 ? (
-        <div className="empty-state">수집된 데이터가 없습니다</div>
-      ) : filtered.length === 0 ? (
+      {!items ? (
+        <div className="empty-state">{isError ? '데이터를 불러오지 못했습니다' : isLoading ? '불러오는 중...' : '데이터가 없습니다'}</div>
+      ) : items.length === 0 ? (
         <div className="empty-state">{market} 데이터 없음</div>
       ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th className="left" style={{ width: 32 }}>#</th>
-              <th className="left">종목</th>
-              <th>기여도</th>
-              <th>등락률</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(item => (
-              <tr key={`${item.rank}-${item.stockCode}`}>
-                <td className="left" style={{ color: 'var(--text-muted)', fontSize: 11 }}>
-                  {item.rank}
-                </td>
-                <td className="left">
-                  <Link to={`/stocks/${item.stockCode}`}>{item.stockName}</Link>
-                  <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)' }}>
-                    {item.stockCode}
-                  </span>
-                </td>
-                <td className={signClass(item.contributionScore)}>
-                  {item.contributionScore.toFixed(2)}
-                </td>
-                <td className={signClass(item.priceChangeRate)}>
-                  {toPctSigned(item.priceChangeRate)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable items={items} columns={columns} rowKey={item => `${item.rank}-${item.stockCode}`} />
       )}
     </section>
   )

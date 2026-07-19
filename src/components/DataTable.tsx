@@ -5,6 +5,7 @@ export interface DataTableColumn<T> {
   align?: 'left' | 'right'
   width?: number
   render: (item: T, index: number) => ReactNode
+  cellClassName?: (item: T, index: number) => string | undefined
 }
 
 interface Props<T> {
@@ -32,11 +33,15 @@ export default function DataTable<T>({ items, columns, rowKey }: Props<T>) {
       <tbody>
         {items.map((item, index) => (
           <tr key={rowKey(item, index)}>
-            {columns.map(c => (
-              <td key={c.header} className={c.align === 'left' ? 'left' : undefined}>
-                {c.render(item, index)}
-              </td>
-            ))}
+            {columns.map(c => {
+              const alignClass = c.align === 'left' ? 'left' : undefined
+              const cellClass = c.cellClassName?.(item, index)
+              return (
+                <td key={c.header} className={[alignClass, cellClass].filter(Boolean).join(' ') || undefined}>
+                  {c.render(item, index)}
+                </td>
+              )
+            })}
           </tr>
         ))}
       </tbody>

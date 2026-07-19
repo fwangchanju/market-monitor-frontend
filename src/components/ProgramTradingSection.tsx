@@ -1,42 +1,52 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { ProgramTradingRankingItem, ProgramRankingType } from '../types/api'
+import type { ProgramTradingRankingItem, ProgramRanking } from '../types/api'
 import { toEokSignedFromMln, toEokFromMln, signClass } from '../utils/format'
+import { useProgramTradingRankings } from '../hooks/useProgramTradingRankings'
+import DataTable, { type DataTableColumn } from './DataTable'
+import TabSelector from './TabSelector'
 
-interface Props {
-  items: ProgramTradingRankingItem[]
-}
+const RANKINGS: ProgramRanking[] = ['NET_BUY', 'NET_SELL']
+const rankingLabel = (r: ProgramRanking) => (r === 'NET_BUY' ? '순매수' : '순매도')
 
-const RANKINGS: ProgramRankingType[] = ['NET_BUY', 'NET_SELL']
+const columns: DataTableColumn<ProgramTradingRankingItem>[] = [
+  { header: '#', width: 32, render: (_, idx) => idx + 1 },
+  {
+    header: '종목',
+    align: 'left',
+    render: item => (
+      <>
+        <Link to={`/stocks/${item.stockCode}`}>{item.stockName}</Link>
+        <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+          {item.stockCode}
+        </span>
+      </>
+    ),
+  },
+  {
+    header: '프로그램순매수(억)',
+    render: item => toEokSignedFromMln(item.programNetBuyAmount),
+    cellClassName: item => signClass(item.programNetBuyAmount),
+  },
+  { header: '매수(억)', render: item => toEokFromMln(item.programBuyAmount) },
+  { header: '매도(억)', render: item => toEokFromMln(item.programSellAmount) },
+]
 
-export default function ProgramTradingSection({ items }: Props) {
-  const [ranking, setRanking] = useState<ProgramRankingType>('NET_BUY')
+// 홈 위젯엔 ranking 탭만 있고 market/amtQty 선택 UI가 없어 대시보드 기본값으로 고정.
+// (전체보기 페이지에서는 이 두 값도 선택 가능하게 함)
+const FIXED_MARKET = 'KOSPI' as const
+const FIXED_AMT_QTY = 'AMOUNT' as const
 
-  const sorted = [...items]
-    .filter(i => ranking === 'NET_BUY' ? i.programNetBuyAmount >= 0 : i.programNetBuyAmount < 0)
-    .sort((a, b) =>
-      ranking === 'NET_BUY'
-        ? b.programNetBuyAmount - a.programNetBuyAmount
-        : a.programNetBuyAmount - b.programNetBuyAmount,
-    )
-    .slice(0, 10)
+export default function ProgramTradingSection() {
+  const [ranking, setRanking] = useState<ProgramRanking>('NET_BUY')
+  const { items, isLoading, isError } = useProgramTradingRankings(ranking, FIXED_MARKET, FIXED_AMT_QTY)
 
   return (
     <section className="section">
       <div className="section-header">
         <h2>프로그램 매매 상위</h2>
         <div className="actions">
-          <div className="tab-bar">
-            {RANKINGS.map(r => (
-              <button
-                key={r}
-                className={`tab-btn ${ranking === r ? 'active' : ''}`}
-                onClick={() => setRanking(r)}
-              >
-                {r === 'NET_BUY' ? '순매수' : '순매도'}
-              </button>
-            ))}
-          </div>
+          <TabSelector options={RANKINGS} value={ranking} onChange={setRanking} labelFor={rankingLabel} />
           <Link
             to={`/program-trading?ranking=${ranking}`}
             style={{ fontSize: 12, color: 'var(--text-muted)' }}
@@ -46,46 +56,12 @@ export default function ProgramTradingSection({ items }: Props) {
         </div>
       </div>
 
-      {items.length === 0 ? (
+      {!items ? (
+        <div className="empty-state">{isError ? '데이터를 불러오지 못했습니다' : isLoading ? '불러오는 중...' : '데이터가 없습니다'}</div>
+      ) : items.length === 0 ? (
         <div className="empty-state">수집된 데이터가 없습니다</div>
-      ) : sorted.length === 0 ? (
-        <div className="empty-state">해당 조건의 데이터 없음</div>
       ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th className="left" style={{ width: 32 }}>#</th>
-              <th className="left">종목</th>
-              <th>프로그램순매수(억)</th>
-              <th>매수(억)</th>
-              <th>매도(억)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((item, idx) => (
-              <tr key={item.stockCode}>
-                <td className="left" style={{ color: 'var(--text-muted)', fontSize: 11 }}>
-                  {idx + 1}
-                </td>
-                <td className="left">
-                  <Link to={`/stocks/${item.stockCode}`}>{item.stockName}</Link>
-                  <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)' }}>
-                    {item.stockCode}
-                  </span>
-                </td>
-                <td className={signClass(item.programNetBuyAmount)}>
-                  {toEokSignedFromMln(item.programNetBuyAmount)}
-                </td>
-                <td style={{ color: 'var(--text-muted)' }}>
-                  {toEokFromMln(item.programBuyAmount)}
-                </td>
-                <td style={{ color: 'var(--text-muted)' }}>
-                  {toEokFromMln(item.programSellAmount)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable items={items} columns={columns} rowKey={item => item.stockCode} />
       )}
     </section>
   )

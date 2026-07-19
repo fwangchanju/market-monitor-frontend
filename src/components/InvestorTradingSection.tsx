@@ -1,19 +1,28 @@
-import type { InvestorTradingSummaryItem, MarketType, InvestorType } from '../types/api'
+import { useMarketSummary } from '../hooks/useMarketSummary'
+import type { Market, Investor } from '../types/api'
 import { toEokSigned, signClass, investorLabel } from '../utils/format'
 
-interface Props {
-  items: InvestorTradingSummaryItem[]
-}
-
-const MARKETS: MarketType[] = ['KOSPI', 'KOSDAQ']
-const INVESTORS: InvestorType[] = [
+const MARKETS: Market[] = ['KOSPI', 'KOSDAQ']
+const INVESTORS: Investor[] = [
   'PERSONAL', 'FOREIGNER', 'INSTITUTION',
   'FINANCIAL_INVESTMENT', 'PENSION_FUND', 'FOREIGN_COMPANY',
 ]
 
-export default function InvestorTradingSection({ items }: Props) {
-  const get = (market: MarketType, investor: InvestorType) =>
-    items.find(i => i.marketType === market && i.investorType === investor)
+export default function InvestorTradingSection() {
+  const { data, isError } = useMarketSummary()
+
+  if (!data) {
+    return (
+      <section className="section">
+        <div className="section-header"><h2>투자자별 매매종합</h2></div>
+        <div className="empty-state">{isError ? '데이터를 불러오지 못했습니다' : '불러오는 중...'}</div>
+      </section>
+    )
+  }
+
+  const items = data.investorTradingSummaries.items
+  const get = (market: Market, investor: Investor) =>
+    items.find(i => i.market === market && i.investor === investor)
 
   if (items.length === 0) {
     return (
