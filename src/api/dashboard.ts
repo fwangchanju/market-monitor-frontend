@@ -1,14 +1,15 @@
 import client from './client'
 import type {
-  DashboardResponse,
-  Exchange,
+  AmtQty,
+  MarketQuery,
   IndexContributionItem,
   IntradayInvestorRankingItem,
-  IntradayInvestorType,
-  IntradayRankingType,
+  IntradayInvestor,
+  IntradayRanking,
   IntradayTopItem,
-  MarketType,
-  ProgramRankingType,
+  MarketSummaryResponse,
+  Market,
+  ProgramRanking,
   ProgramTradingDailyItem,
   ProgramTradingHistoryItem,
   ProgramTradingRankingItem,
@@ -19,8 +20,8 @@ import type {
   WatchStockItem,
 } from '../types/api'
 
-export const getDashboard = () =>
-  client.get<DashboardResponse>('/dashboard').then(r => r.data)
+export const getMarketSummary = () =>
+  client.get<MarketSummaryResponse>('/market-summary').then(r => r.data)
 
 export const getWatchStocks = () =>
   client.get<WatchStockItem[]>('/watch-stocks').then(r => r.data)
@@ -32,9 +33,9 @@ export const getPrimaryStock = () =>
   client.get<string>('/primary-stock').then(r => r.data)
 
 export const getIntradayTop = (
-  market: Exchange,
-  investor: IntradayInvestorType,
-  ranking: IntradayRankingType,
+  market: MarketQuery,
+  investor: IntradayInvestor,
+  ranking: IntradayRanking,
 ) =>
   client
     .get<SnapshotResponse<IntradayTopItem>>('/intraday-top', {
@@ -43,9 +44,9 @@ export const getIntradayTop = (
     .then(r => r.data)
 
 export const getIntradayRankings = (
-  market: Exchange,
-  investor: IntradayInvestorType,
-  ranking: IntradayRankingType,
+  market: MarketQuery,
+  investor: IntradayInvestor,
+  ranking: IntradayRanking,
 ) =>
   client
     .get<SnapshotResponse<IntradayInvestorRankingItem>>('/intraday-rankings', {
@@ -54,16 +55,17 @@ export const getIntradayRankings = (
     .then(r => r.data)
 
 export const getProgramTradingRankings = (
-  ranking: ProgramRankingType,
-  market?: Exchange,
+  ranking: ProgramRanking,
+  market: MarketQuery,
+  amtQty: AmtQty,
 ) =>
   client
     .get<SnapshotResponse<ProgramTradingRankingItem>>('/program-trading-rankings', {
-      params: { ranking, ...(market ? { market } : {}) },
+      params: { ranking, market, amtQty },
     })
     .then(r => r.data)
 
-export const getIndexContribution = (market: MarketType) =>
+export const getIndexContribution = (market: Market) =>
   client
     .get<SnapshotResponse<IndexContributionItem>>('/index-contribution', {
       params: { market },
