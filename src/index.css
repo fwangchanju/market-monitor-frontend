@@ -1,3 +1,11 @@
+@layer theme, nes, app, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "nes.css/css/nes.min.css" layer(nes);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@layer app {
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -293,4 +301,6 @@ button:hover { background: var(--border); }
   font-size: 14px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
 }

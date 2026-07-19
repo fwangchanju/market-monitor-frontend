@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import 'nes.css/css/nes.min.css'
 import {
   getDashboard, getIntradayTop, getShortSellingHistory,
   getProgramTradingRankings, getIndexContribution,
