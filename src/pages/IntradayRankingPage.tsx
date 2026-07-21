@@ -1,20 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { getIntradayRankings } from '../api/dashboard'
-import type {
-  IntradayInvestorRankingItem,
-  MarketQuery,
-  IntradayInvestor,
-  IntradayRanking,
+import {
+  MarketQuerySchema, IntradayRankingSchema,
+  type IntradayInvestorRankingItem, type MarketQuery, type IntradayInvestor, type IntradayRanking,
 } from '../types/api'
 import { toEokSignedFromMln, toVolume, signClass, toDateTimeLabel, investorLabel, marketLabel } from '../utils/format'
 
-const MARKETS: MarketQuery[] = ['KOSPI', 'KOSDAQ', 'ALL']
+const MARKETS = MarketQuerySchema.options
 const INVESTORS: IntradayInvestor[] = [
   'FOREIGN_TOTAL', 'FOREIGNER', 'FOREIGN_COMPANY',
   'INSTITUTION', 'PENSION_FUND', 'TRUST',
 ]
-const RANKINGS: IntradayRanking[] = ['NET_BUY', 'NET_SELL']
+const RANKINGS = IntradayRankingSchema.options
 
 export default function IntradayRankingPage() {
   const [params, setParams] = useSearchParams()

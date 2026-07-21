@@ -2,11 +2,10 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useIndexContribution } from '../hooks/useIndexContribution'
 import DataTable, { type DataTableColumn } from '../components/DataTable'
 import TabSelector from '../components/TabSelector'
-import { parseEnumParam } from '../utils/searchParams'
-import type { IndexContributionItem, Market } from '../types/api'
+import { MarketSchema, type IndexContributionItem } from '../types/api'
 import { toPctSigned, signClass } from '../utils/format'
 
-const MARKETS: Market[] = ['KOSPI', 'KOSDAQ']
+const MARKETS = MarketSchema.options
 
 const columns: DataTableColumn<IndexContributionItem>[] = [
   { header: '#', width: 32, render: item => item.rank },
@@ -36,7 +35,7 @@ const columns: DataTableColumn<IndexContributionItem>[] = [
 
 export default function IndexContributionPage() {
   const [params, setParams] = useSearchParams()
-  const market = parseEnumParam(params.get('market'), MARKETS, 'KOSPI')
+  const market = MarketSchema.catch('KOSPI').parse(params.get('market'))
 
   const { items, isLoading, isError } = useIndexContribution(market)
 

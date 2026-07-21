@@ -1,36 +1,48 @@
+import { z } from 'zod'
 import client from './client'
-import type {
-  AmtQty,
-  MarketQuery,
-  IndexContributionItem,
-  IntradayInvestorRankingItem,
-  IntradayInvestor,
-  IntradayRanking,
-  IntradayTopItem,
-  MarketSummaryResponse,
-  Market,
-  ProgramRanking,
-  ProgramTradingDailyItem,
-  ProgramTradingHistoryItem,
-  ProgramTradingRankingItem,
-  ShortSellingHistoryItem,
-  SnapshotResponse,
-  StockHistoryResponse,
-  StockItem,
-  WatchStockItem,
+import {
+  IndexContributionItemSchema,
+  IntradayInvestorRankingItemSchema,
+  IntradayTopItemSchema,
+  MarketSummaryResponseSchema,
+  ProgramTradingDailyItemSchema,
+  ProgramTradingHistoryItemSchema,
+  ProgramTradingRankingItemSchema,
+  ShortSellingHistoryItemSchema,
+  snapshotResponseSchema,
+  stockHistoryResponseSchema,
+  StockItemSchema,
+  WatchStockItemSchema,
+  type AmtQty,
+  type MarketQuery,
+  type IntradayInvestor,
+  type IntradayRanking,
+  type Market,
+  type ProgramRanking,
 } from '../types/api'
 
+const watchStocksResponseSchema = z.array(WatchStockItemSchema)
+const stocksResponseSchema = z.array(StockItemSchema)
+const intradayTopResponseSchema = snapshotResponseSchema(IntradayTopItemSchema)
+const intradayRankingsResponseSchema = snapshotResponseSchema(IntradayInvestorRankingItemSchema)
+const programTradingRankingsResponseSchema = snapshotResponseSchema(ProgramTradingRankingItemSchema)
+const indexContributionResponseSchema = snapshotResponseSchema(IndexContributionItemSchema)
+const programTradingHistoryResponseSchema = stockHistoryResponseSchema(ProgramTradingHistoryItemSchema)
+const programTradingDailyHistoryResponseSchema = stockHistoryResponseSchema(ProgramTradingDailyItemSchema)
+const shortSellingHistoryResponseSchema = stockHistoryResponseSchema(ShortSellingHistoryItemSchema)
+const sendDashboardResponseSchema = z.object({ sent: z.number() })
+
 export const getMarketSummary = () =>
-  client.get<MarketSummaryResponse>('/market-summary').then(r => r.data)
+  client.get('/market-summary').then(r => MarketSummaryResponseSchema.parse(r.data))
 
 export const getWatchStocks = () =>
-  client.get<WatchStockItem[]>('/watch-stocks').then(r => r.data)
+  client.get('/watch-stocks').then(r => watchStocksResponseSchema.parse(r.data))
 
 export const getStocks = () =>
-  client.get<StockItem[]>('/stocks').then(r => r.data)
+  client.get('/stocks').then(r => stocksResponseSchema.parse(r.data))
 
 export const getPrimaryStock = () =>
-  client.get<string>('/primary-stock').then(r => r.data)
+  client.get('/primary-stock').then(r => z.string().parse(r.data))
 
 export const getIntradayTop = (
   market: MarketQuery,
@@ -38,10 +50,10 @@ export const getIntradayTop = (
   ranking: IntradayRanking,
 ) =>
   client
-    .get<SnapshotResponse<IntradayTopItem>>('/intraday-top', {
+    .get('/intraday-top', {
       params: { market, investor, ranking },
     })
-    .then(r => r.data)
+    .then(r => intradayTopResponseSchema.parse(r.data))
 
 export const getIntradayRankings = (
   market: MarketQuery,
@@ -49,10 +61,10 @@ export const getIntradayRankings = (
   ranking: IntradayRanking,
 ) =>
   client
-    .get<SnapshotResponse<IntradayInvestorRankingItem>>('/intraday-rankings', {
+    .get('/intraday-rankings', {
       params: { market, investor, ranking },
     })
-    .then(r => r.data)
+    .then(r => intradayRankingsResponseSchema.parse(r.data))
 
 export const getProgramTradingRankings = (
   ranking: ProgramRanking,
@@ -60,17 +72,17 @@ export const getProgramTradingRankings = (
   amtQty: AmtQty,
 ) =>
   client
-    .get<SnapshotResponse<ProgramTradingRankingItem>>('/program-trading-rankings', {
+    .get('/program-trading-rankings', {
       params: { ranking, market, amtQty },
     })
-    .then(r => r.data)
+    .then(r => programTradingRankingsResponseSchema.parse(r.data))
 
 export const getIndexContribution = (market: Market) =>
   client
-    .get<SnapshotResponse<IndexContributionItem>>('/index-contribution', {
+    .get('/index-contribution', {
       params: { market },
     })
-    .then(r => r.data)
+    .then(r => indexContributionResponseSchema.parse(r.data))
 
 export const getProgramTradingHistory = (
   stockCode: string,
@@ -78,11 +90,11 @@ export const getProgramTradingHistory = (
   to: string,
 ) =>
   client
-    .get<StockHistoryResponse<ProgramTradingHistoryItem>>(
+    .get(
       `/stocks/${stockCode}/program-trading`,
       { params: { from, to } },
     )
-    .then(r => r.data)
+    .then(r => programTradingHistoryResponseSchema.parse(r.data))
 
 export const getProgramTradingDailyHistory = (
   stockCode: string,
@@ -90,18 +102,18 @@ export const getProgramTradingDailyHistory = (
   to: string,
 ) =>
   client
-    .get<StockHistoryResponse<ProgramTradingDailyItem>>(
+    .get(
       `/stocks/${stockCode}/program-trading/daily`,
       { params: { from, to } },
     )
-    .then(r => r.data)
+    .then(r => programTradingDailyHistoryResponseSchema.parse(r.data))
 
 export const getShortSellingHistory = (stockCode: string) =>
   client
-    .get<StockHistoryResponse<ShortSellingHistoryItem>>(
+    .get(
       `/stocks/${stockCode}/short-selling`,
     )
-    .then(r => r.data)
+    .then(r => shortSellingHistoryResponseSchema.parse(r.data))
 
 export const sendDashboard = () =>
-  client.post<{ sent: number }>('/send-dashboard').then(r => r.data)
+  client.post('/send-dashboard').then(r => sendDashboardResponseSchema.parse(r.data))

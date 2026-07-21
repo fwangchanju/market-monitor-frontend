@@ -1,8 +1,8 @@
 import { useMarketSummary } from '../hooks/useMarketSummary'
-import type { Market, Investor } from '../types/api'
+import { MarketSchema, type Market, type Investor } from '../types/api'
 import { toEokSigned, signClass, investorLabel } from '../utils/format'
 
-const MARKETS: Market[] = ['KOSPI', 'KOSDAQ']
+const MARKETS = MarketSchema.options
 const INVESTORS: Investor[] = [
   'PERSONAL', 'FOREIGNER', 'INSTITUTION',
   'FINANCIAL_INVESTMENT', 'PENSION_FUND', 'FOREIGN_COMPANY',

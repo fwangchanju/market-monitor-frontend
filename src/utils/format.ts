@@ -83,7 +83,7 @@ export const toVolume = (value: number): string =>
 
 /** 시장명 한글 */
 export const marketLabel = (market: string): string => {
-  if (market === 'ALL') return '전체'
+  if (market === 'COMBINED') return '통합'
   return market
 }
 

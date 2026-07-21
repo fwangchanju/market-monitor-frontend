@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { ProgramTradingRankingItem, ProgramRanking } from '../types/api'
+import { ProgramRankingSchema, type ProgramTradingRankingItem, type ProgramRanking } from '../types/api'
 import { toEokSignedFromMln, toEokFromMln, signClass } from '../utils/format'
 import { useProgramTradingRankings } from '../hooks/useProgramTradingRankings'
 import DataTable, { type DataTableColumn } from './DataTable'
 import TabSelector from './TabSelector'
 
-const RANKINGS: ProgramRanking[] = ['NET_BUY', 'NET_SELL']
+const RANKINGS = ProgramRankingSchema.options
 const rankingLabel = (r: ProgramRanking) => (r === 'NET_BUY' ? '순매수' : '순매도')
 
 const columns: DataTableColumn<ProgramTradingRankingItem>[] = [

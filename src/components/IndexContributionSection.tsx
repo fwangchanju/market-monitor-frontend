@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { IndexContributionItem, Market } from '../types/api'
+import { MarketSchema, type IndexContributionItem, type Market } from '../types/api'
 import { toPctSigned, signClass } from '../utils/format'
 import { useIndexContribution } from '../hooks/useIndexContribution'
 import DataTable, { type DataTableColumn } from './DataTable'
 import TabSelector from './TabSelector'
 
-const MARKETS: Market[] = ['KOSPI', 'KOSDAQ']
+const MARKETS = MarketSchema.options
 
 const columns: DataTableColumn<IndexContributionItem>[] = [
   { header: '#', width: 32, render: item => item.rank },
