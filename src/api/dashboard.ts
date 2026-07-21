@@ -91,7 +91,7 @@ export const getProgramTradingHistory = (
 ) =>
   client
     .get(
-      `/stocks/${stockCode}/program-trading`,
+      `/stocks/${stockCode}/program-trading/range`,
       { params: { from, to } },
     )
     .then(r => programTradingHistoryResponseSchema.parse(r.data))
