@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getShortSellingHistory } from '../api/dashboard'
+import { getShortSellingHistory } from '../api/marketSummary'
 import { stockHistoryKeys } from './queryKeys'
 import { INFREQUENT_DATA_CACHE } from './cacheConfig'
 

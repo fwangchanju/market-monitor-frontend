@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getIndexContribution } from '../api/dashboard'
+import { getIndexContribution } from '../api/marketSummary'
 import { useMarketSummary } from './useMarketSummary'
 import { marketSummaryKeys } from './queryKeys'
 import { MARKET_DATA_CACHE } from './cacheConfig'

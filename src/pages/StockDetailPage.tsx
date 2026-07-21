@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getProgramTradingDailyHistory, getShortSellingHistory } from '../api/dashboard'
+import { getProgramTradingDailyHistory, getShortSellingHistory } from '../api/marketSummary'
 import type { ProgramTradingDailyItem, ShortSellingHistoryItem } from '../types/api'
 import {
   toEokSignedFromMln, toEokFromMln, toEokFromThousand,

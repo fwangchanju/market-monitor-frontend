@@ -31,6 +31,9 @@ export type ProgramRanking = z.infer<typeof ProgramRankingSchema>
 export const AmtQtySchema = z.enum(['AMOUNT', 'QUANTITY'])
 export type AmtQty = z.infer<typeof AmtQtySchema>
 
+export const RegisterBySchema = z.enum(['USER', 'HOLDINGS'])
+export type RegisterBy = z.infer<typeof RegisterBySchema>
+
 // ─── Generic wrappers ─────────────────────────────────────────────────────────
 
 export const snapshotResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
@@ -115,15 +118,23 @@ export const WatchStockItemSchema = z.object({
   stockName: z.string(),
   market: MarketSchema,
   isMain: z.boolean(),
+  registerBy: RegisterBySchema,
 })
 export type WatchStockItem = z.infer<typeof WatchStockItemSchema>
+
+export const IntradayTopItemSchema = z.object({
+  stockCode: z.string(),
+  stockName: z.string(),
+  netBuyAmount: z.number(),   // 백만 원
+})
+export type IntradayTopItem = z.infer<typeof IntradayTopItemSchema>
 
 // ─── Market summary (/market-summary) ─────────────────────────────────────────
 
 export const MarketSummaryResponseSchema = z.object({
   marketOverviews: snapshotResponseSchema(MarketOverviewItemSchema),
   investorTradingSummaries: snapshotResponseSchema(InvestorTradingSummaryItemSchema),
-  intradayTopRankings: snapshotResponseSchema(IntradayInvestorRankingItemSchema),
+  intradayTopRankings: snapshotResponseSchema(IntradayTopItemSchema),
   programTradingHighlights: snapshotResponseSchema(ProgramTradingRankingItemSchema),
   indexContributionHighlights: snapshotResponseSchema(IndexContributionItemSchema),
 })
@@ -139,13 +150,6 @@ export const StockItemSchema = z.object({
 export type StockItem = z.infer<typeof StockItemSchema>
 
 // ─── Detail ──────────────────────────────────────────────────────────────────
-
-export const IntradayTopItemSchema = z.object({
-  stockCode: z.string(),
-  stockName: z.string(),
-  netBuyAmount: z.number(),   // 백만 원
-})
-export type IntradayTopItem = z.infer<typeof IntradayTopItemSchema>
 
 export const ProgramTradingHistoryItemSchema = z.object({
   snapshotTime: z.string(),

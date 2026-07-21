@@ -30,7 +30,7 @@ const indexContributionResponseSchema = snapshotResponseSchema(IndexContribution
 const programTradingHistoryResponseSchema = stockHistoryResponseSchema(ProgramTradingHistoryItemSchema)
 const programTradingDailyHistoryResponseSchema = stockHistoryResponseSchema(ProgramTradingDailyItemSchema)
 const shortSellingHistoryResponseSchema = stockHistoryResponseSchema(ShortSellingHistoryItemSchema)
-const sendDashboardResponseSchema = z.object({ sent: z.number() })
+const renderMarketSummaryResponseSchema = z.object({ sent: z.number() })
 
 export const getMarketSummary = () =>
   client.get('/market-summary').then(r => MarketSummaryResponseSchema.parse(r.data))
@@ -48,10 +48,11 @@ export const getIntradayTop = (
   market: MarketQuery,
   investor: IntradayInvestor,
   ranking: IntradayRanking,
+  amtQty: AmtQty,
 ) =>
   client
     .get('/intraday-top', {
-      params: { market, investor, ranking },
+      params: { market, investor, ranking, amtQty },
     })
     .then(r => intradayTopResponseSchema.parse(r.data))
 
@@ -115,5 +116,5 @@ export const getShortSellingHistory = (stockCode: string) =>
     )
     .then(r => shortSellingHistoryResponseSchema.parse(r.data))
 
-export const sendDashboard = () =>
-  client.post('/send-dashboard').then(r => sendDashboardResponseSchema.parse(r.data))
+export const renderMarketSummary = () =>
+  client.post('/render-market-summary').then(r => renderMarketSummaryResponseSchema.parse(r.data))

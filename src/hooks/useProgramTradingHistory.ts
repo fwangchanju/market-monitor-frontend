@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getProgramTradingHistory } from '../api/dashboard'
+import { getProgramTradingHistory } from '../api/marketSummary'
 import { stockHistoryKeys } from './queryKeys'
 import { MARKET_DATA_CACHE } from './cacheConfig'
 

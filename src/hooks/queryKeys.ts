@@ -10,8 +10,8 @@ import type {
 export const marketSummaryKeys = {
   all: ['market-summary'] as const,
   summary: () => [...marketSummaryKeys.all, 'summary'] as const,
-  intradayTop: (market: MarketQuery, investor: IntradayInvestor, ranking: IntradayRanking) =>
-    [...marketSummaryKeys.all, 'intraday-top', market, investor, ranking] as const,
+  intradayTop: (market: MarketQuery, investor: IntradayInvestor, ranking: IntradayRanking, amtQty: AmtQty) =>
+    [...marketSummaryKeys.all, 'intraday-top', market, investor, ranking, amtQty] as const,
   intradayRankings: (market: MarketQuery, investor: IntradayInvestor, ranking: IntradayRanking) =>
     [...marketSummaryKeys.all, 'intraday-rankings', market, investor, ranking] as const,
   programTradingRankings: (ranking: ProgramRanking, market: MarketQuery, amtQty: AmtQty) =>

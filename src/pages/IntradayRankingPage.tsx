@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { getIntradayRankings } from '../api/dashboard'
+import { getIntradayRankings } from '../api/marketSummary'
 import {
   MarketQuerySchema, IntradayRankingSchema,
   type IntradayInvestorRankingItem, type MarketQuery, type IntradayInvestor, type IntradayRanking,
