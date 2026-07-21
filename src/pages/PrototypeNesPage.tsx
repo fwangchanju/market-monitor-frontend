@@ -9,19 +9,20 @@ import InvestorTradingSection from '../components/InvestorTradingSection'
 import WatchStockSection from '../components/WatchStockSection'
 import ProgramTradingSection from '../components/ProgramTradingSection'
 import IndexContributionSection from '../components/IndexContributionSection'
-import type {
-  MarketQuery,
-  IntradayTopItem,
-  IntradayInvestor,
-  IntradayRanking,
-  ProgramTradingHistoryItem,
-  ShortSellingHistoryItem,
+import {
+  MarketQuerySchema,
+  type MarketQuery,
+  type IntradayTopItem,
+  type IntradayInvestor,
+  type IntradayRanking,
+  type ProgramTradingHistoryItem,
+  type ShortSellingHistoryItem,
 } from '../types/api'
 import {
   toMlnSigned, toPctSigned, toPct, toVolume, toTimeLabel, toYyMmDd, investorLabel,
 } from '../utils/format'
 
-const EXCHANGES: MarketQuery[] = ['KOSPI', 'KOSDAQ', 'ALL']
+const MARKETS = MarketQuerySchema.options
 const ID_INVESTORS: IntradayInvestor[] = [
   'FOREIGN_TOTAL', 'FOREIGNER', 'INSTITUTION', 'PENSION_FUND', 'TRUST',
 ]
@@ -107,7 +108,7 @@ export default function PrototypeNesPage() {
           <div className="nes-container with-title" style={{ gridColumn: '1 / -1', minWidth: 0 }}>
             <p className="title" style={titleStyle}>[1053]장중투자별매매상위</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-              {EXCHANGES.map(m => (
+              {MARKETS.map(m => (
                 <button key={m} type="button" className={nesBtn(idMarket === m)} style={{ fontSize: 13, padding: '4px 6px' }} onClick={() => setIdMarket(m)}>{m}</button>
               ))}
               <span style={{ margin: '0 4px' }}>|</span>

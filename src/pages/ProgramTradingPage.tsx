@@ -2,16 +2,18 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useProgramTradingRankings } from '../hooks/useProgramTradingRankings'
 import DataTable, { type DataTableColumn } from '../components/DataTable'
 import TabSelector from '../components/TabSelector'
-import { parseEnumParam } from '../utils/searchParams'
-import type { AmtQty, MarketQuery, ProgramTradingRankingItem, ProgramRanking } from '../types/api'
+import {
+  AmtQtySchema, MarketQuerySchema, ProgramRankingSchema,
+  type AmtQty, type MarketQuery, type ProgramTradingRankingItem, type ProgramRanking,
+} from '../types/api'
 import { toEokSignedFromMln, toEokFromMln, signClass } from '../utils/format'
 
-const RANKINGS: ProgramRanking[] = ['NET_BUY', 'NET_SELL']
-const MARKETS: MarketQuery[] = ['KOSPI', 'KOSDAQ', 'COMBINED']
-const AMT_QTYS: AmtQty[] = ['AMOUNT', 'QUANTITY']
+const RANKINGS = ProgramRankingSchema.options
+const MARKETS = MarketQuerySchema.options
+const AMT_QTYS = AmtQtySchema.options
 
 const rankingLabel = (r: ProgramRanking) => (r === 'NET_BUY' ? '순매수' : '순매도')
-const marketLabel = (m: MarketQuery) => (m === 'COMBINED' ? '전체' : m)
+const marketLabel = (m: MarketQuery) => (m === 'COMBINED' ? '통합' : m)
 const amtQtyLabel = (a: AmtQty) => (a === 'AMOUNT' ? '금액' : '수량')
 
 const columns: DataTableColumn<ProgramTradingRankingItem>[] = [
@@ -39,9 +41,9 @@ const columns: DataTableColumn<ProgramTradingRankingItem>[] = [
 
 export default function ProgramTradingPage() {
   const [params, setParams] = useSearchParams()
-  const ranking = parseEnumParam(params.get('ranking'), RANKINGS, 'NET_BUY')
-  const market = parseEnumParam(params.get('market'), MARKETS, 'KOSPI')
-  const amtQty = parseEnumParam(params.get('amtQty'), AMT_QTYS, 'AMOUNT')
+  const ranking = ProgramRankingSchema.catch('NET_BUY').parse(params.get('ranking'))
+  const market = MarketQuerySchema.catch('KOSPI').parse(params.get('market'))
+  const amtQty = AmtQtySchema.catch('AMOUNT').parse(params.get('amtQty'))
 
   const { items, isLoading, isError } = useProgramTradingRankings(ranking, market, amtQty)
 
