@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ProgramRankingSchema, type ProgramTradingRankingItem, type ProgramRanking } from '../types/api'
-import { toEokSignedFromMln, toEokFromMln, signClass } from '../utils/format'
-import { useProgramTradingRankings } from '../hooks/useProgramTradingRankings'
+import { ProgramRankingSchema, type ProgramTradingRankingItem, type ProgramRanking } from '@/types/api'
+import { toEokSignedFromMln, toEokFromMln, signClass } from '@/utils/format'
+import { useProgramTradingRankings } from '@/hooks/useProgramTradingRankings'
 import DataTable, { type DataTableColumn } from './DataTable'
 import TabSelector from './TabSelector'
 

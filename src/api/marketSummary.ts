@@ -19,7 +19,7 @@ import {
   type IntradayRanking,
   type Market,
   type ProgramRanking,
-} from '../types/api'
+} from '@/types/api'
 
 const watchStocksResponseSchema = z.array(WatchStockItemSchema)
 const stocksResponseSchema = z.array(StockItemSchema)
@@ -85,7 +85,7 @@ export const getIndexContribution = (market: Market) =>
     })
     .then(r => indexContributionResponseSchema.parse(r.data))
 
-export const getProgramTradingHistory = (
+export const getProgramTradingHistoryByRange = (
   stockCode: string,
   from: string,
   to: string,
@@ -97,15 +97,29 @@ export const getProgramTradingHistory = (
     )
     .then(r => programTradingHistoryResponseSchema.parse(r.data))
 
-export const getProgramTradingDailyHistory = (
+export const getProgramTradingHistory = (stockCode: string) =>
+  client
+    .get(
+      `/stocks/${stockCode}/program-trading`,
+    )
+    .then(r => programTradingHistoryResponseSchema.parse(r.data))
+
+export const getProgramTradingDailyHistoryByRange = (
   stockCode: string,
   from: string,
   to: string,
 ) =>
   client
     .get(
-      `/stocks/${stockCode}/program-trading/daily`,
+      `/stocks/${stockCode}/program-trading/daily/range`,
       { params: { from, to } },
+    )
+    .then(r => programTradingDailyHistoryResponseSchema.parse(r.data))
+
+export const getProgramTradingDailyHistory = (stockCode: string) =>
+  client
+    .get(
+      `/stocks/${stockCode}/program-trading/daily`,
     )
     .then(r => programTradingDailyHistoryResponseSchema.parse(r.data))
 

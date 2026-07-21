@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { IntradayTopItem, MarketQuery, IntradayInvestor, IntradayRanking } from '../types/api'
-import { toMlnSigned, signClass, investorLabel, marketLabel, rankingLabel } from '../utils/format'
-import { useIntradayTop } from '../hooks/useIntradayTop'
+import type { IntradayTopItem, MarketQuery, IntradayInvestor, IntradayRanking } from '@/types/api'
+import { toMlnSigned, signClass, investorLabel, marketLabel, rankingLabel } from '@/utils/format'
+import { useIntradayTop } from '@/hooks/useIntradayTop'
 import DataTable, { type DataTableColumn } from './DataTable'
 import TabSelector from './TabSelector'
 

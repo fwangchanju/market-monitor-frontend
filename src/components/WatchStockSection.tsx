@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useWatchStocks } from '../hooks/useWatchStocks'
+import { useWatchStocks } from '@/hooks/useWatchStocks'
 
 export default function WatchStockSection() {
   const { data, isError } = useWatchStocks()

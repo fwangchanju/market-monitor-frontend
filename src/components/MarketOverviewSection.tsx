@@ -1,5 +1,5 @@
-import { useMarketSummary } from '../hooks/useMarketSummary'
-import { toIndex, toEokFromMln, toPctSigned, signClass } from '../utils/format'
+import { useMarketSummary } from '@/hooks/useMarketSummary'
+import { toIndex, toEokFromMln, toPctSigned, signClass } from '@/utils/format'
 
 export default function MarketOverviewSection() {
   const { data, isError } = useMarketSummary()

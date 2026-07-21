@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { getIntradayTop } from '../api/marketSummary'
+import { getIntradayTop } from '@/api/marketSummary'
 import { useMarketSummary } from './useMarketSummary'
 import { marketSummaryKeys } from './queryKeys'
 import { MARKET_DATA_CACHE } from './cacheConfig'
-import type { AmtQty, MarketQuery, IntradayInvestor, IntradayRanking } from '../types/api'
+import type { AmtQty, MarketQuery, IntradayInvestor, IntradayRanking } from '@/types/api'
 
 const DEFAULT_MARKET: MarketQuery = 'KOSPI'
 const DEFAULT_INVESTOR: IntradayInvestor = 'FOREIGNER'

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { MarketSchema, type IndexContributionItem, type Market } from '../types/api'
-import { toPctSigned, signClass } from '../utils/format'
-import { useIndexContribution } from '../hooks/useIndexContribution'
+import { MarketSchema, type IndexContributionItem, type Market } from '@/types/api'
+import { toPctSigned, signClass } from '@/utils/format'
+import { useIndexContribution } from '@/hooks/useIndexContribution'
 import DataTable, { type DataTableColumn } from './DataTable'
 import TabSelector from './TabSelector'
 

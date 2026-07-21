@@ -1,12 +1,12 @@
 import { Link, useSearchParams } from 'react-router-dom'
-import { useProgramTradingRankings } from '../hooks/useProgramTradingRankings'
-import DataTable, { type DataTableColumn } from '../components/DataTable'
-import TabSelector from '../components/TabSelector'
+import { useProgramTradingRankings } from '@/hooks/useProgramTradingRankings'
+import DataTable, { type DataTableColumn } from '@/components/DataTable'
+import TabSelector from '@/components/TabSelector'
 import {
   AmtQtySchema, MarketQuerySchema, ProgramRankingSchema,
   type AmtQty, type MarketQuery, type ProgramTradingRankingItem, type ProgramRanking,
-} from '../types/api'
-import { toEokSignedFromMln, toEokFromMln, signClass } from '../utils/format'
+} from '@/types/api'
+import { toEokSignedFromMln, toEokFromMln, signClass } from '@/utils/format'
 
 const RANKINGS = ProgramRankingSchema.options
 const MARKETS = MarketQuerySchema.options

@@ -5,7 +5,7 @@ import type {
   IntradayRanking,
   Market,
   ProgramRanking,
-} from '../types/api'
+} from '@/types/api'
 
 export const marketSummaryKeys = {
   all: ['market-summary'] as const,
@@ -29,9 +29,13 @@ export const stockHistoryKeys = {
   all: ['stock-history'] as const,
   shortSellingHistory: (stockCode: string) =>
     [...stockHistoryKeys.all, stockCode, 'short-selling'] as const,
-  programTradingHistory: (stockCode: string, from: string, to: string) =>
+  programTradingHistory: (stockCode: string) =>
+    [...stockHistoryKeys.all, stockCode, 'program-trading'] as const,
+  programTradingHistoryRange: (stockCode: string, from: string, to: string) =>
     [...stockHistoryKeys.all, stockCode, 'program-trading', from, to] as const,
-  programTradingDailyHistory: (stockCode: string, from: string, to: string) =>
+  programTradingDailyHistory: (stockCode: string) =>
+    [...stockHistoryKeys.all, stockCode, 'program-trading-daily'] as const,
+  programTradingDailyHistoryRange: (stockCode: string, from: string, to: string) =>
     [...stockHistoryKeys.all, stockCode, 'program-trading-daily', from, to] as const,
 }
 
