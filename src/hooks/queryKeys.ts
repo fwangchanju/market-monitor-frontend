@@ -5,13 +5,13 @@ import type {
   IntradayRanking,
   Market,
   ProgramRanking,
-} from '../types/api'
+} from '@/types/api'
 
 export const marketSummaryKeys = {
   all: ['market-summary'] as const,
   summary: () => [...marketSummaryKeys.all, 'summary'] as const,
-  intradayTop: (market: MarketQuery, investor: IntradayInvestor, ranking: IntradayRanking) =>
-    [...marketSummaryKeys.all, 'intraday-top', market, investor, ranking] as const,
+  intradayTop: (market: MarketQuery, investor: IntradayInvestor, ranking: IntradayRanking, amtQty: AmtQty) =>
+    [...marketSummaryKeys.all, 'intraday-top', market, investor, ranking, amtQty] as const,
   intradayRankings: (market: MarketQuery, investor: IntradayInvestor, ranking: IntradayRanking) =>
     [...marketSummaryKeys.all, 'intraday-rankings', market, investor, ranking] as const,
   programTradingRankings: (ranking: ProgramRanking, market: MarketQuery, amtQty: AmtQty) =>
@@ -29,9 +29,13 @@ export const stockHistoryKeys = {
   all: ['stock-history'] as const,
   shortSellingHistory: (stockCode: string) =>
     [...stockHistoryKeys.all, stockCode, 'short-selling'] as const,
-  programTradingHistory: (stockCode: string, from: string, to: string) =>
+  programTradingHistory: (stockCode: string) =>
+    [...stockHistoryKeys.all, stockCode, 'program-trading'] as const,
+  programTradingHistoryRange: (stockCode: string, from: string, to: string) =>
     [...stockHistoryKeys.all, stockCode, 'program-trading', from, to] as const,
-  programTradingDailyHistory: (stockCode: string, from: string, to: string) =>
+  programTradingDailyHistory: (stockCode: string) =>
+    [...stockHistoryKeys.all, stockCode, 'program-trading-daily'] as const,
+  programTradingDailyHistoryRange: (stockCode: string, from: string, to: string) =>
     [...stockHistoryKeys.all, stockCode, 'program-trading-daily', from, to] as const,
 }
 

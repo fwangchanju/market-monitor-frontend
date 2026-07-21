@@ -31,6 +31,9 @@ export type ProgramRanking = z.infer<typeof ProgramRankingSchema>
 export const AmtQtySchema = z.enum(['AMOUNT', 'QUANTITY'])
 export type AmtQty = z.infer<typeof AmtQtySchema>
 
+export const RegisterBySchema = z.enum(['USER', 'HOLDINGS'])
+export type RegisterBy = z.infer<typeof RegisterBySchema>
+
 // ─── Generic wrappers ─────────────────────────────────────────────────────────
 
 export const snapshotResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
@@ -115,30 +118,9 @@ export const WatchStockItemSchema = z.object({
   stockName: z.string(),
   market: MarketSchema,
   isMain: z.boolean(),
+  registerBy: RegisterBySchema,
 })
 export type WatchStockItem = z.infer<typeof WatchStockItemSchema>
-
-// ─── Market summary (/market-summary) ─────────────────────────────────────────
-
-export const MarketSummaryResponseSchema = z.object({
-  marketOverviews: snapshotResponseSchema(MarketOverviewItemSchema),
-  investorTradingSummaries: snapshotResponseSchema(InvestorTradingSummaryItemSchema),
-  intradayTopRankings: snapshotResponseSchema(IntradayInvestorRankingItemSchema),
-  programTradingHighlights: snapshotResponseSchema(ProgramTradingRankingItemSchema),
-  indexContributionHighlights: snapshotResponseSchema(IndexContributionItemSchema),
-})
-export type MarketSummaryResponse = z.infer<typeof MarketSummaryResponseSchema>
-
-// ─── Stock ───────────────────────────────────────────────────────────────────
-
-export const StockItemSchema = z.object({
-  stockCode: z.string(),
-  stockName: z.string(),
-  market: MarketSchema,
-})
-export type StockItem = z.infer<typeof StockItemSchema>
-
-// ─── Detail ──────────────────────────────────────────────────────────────────
 
 export const IntradayTopItemSchema = z.object({
   stockCode: z.string(),
@@ -155,14 +137,6 @@ export const ProgramTradingHistoryItemSchema = z.object({
 })
 export type ProgramTradingHistoryItem = z.infer<typeof ProgramTradingHistoryItemSchema>
 
-export const ProgramTradingDailyItemSchema = z.object({
-  tradeDate: z.string(),
-  programBuyAmount: z.number(),    // 백만 원
-  programSellAmount: z.number(),   // 백만 원
-  programNetBuyAmount: z.number(), // 백만 원
-})
-export type ProgramTradingDailyItem = z.infer<typeof ProgramTradingDailyItemSchema>
-
 export const ShortSellingHistoryItemSchema = z.object({
   tradeDate: z.string(),
   snapshotTime: z.string().nullable(),
@@ -177,3 +151,35 @@ export const ShortSellingHistoryItemSchema = z.object({
   shortAvgPrice: z.number(),
 })
 export type ShortSellingHistoryItem = z.infer<typeof ShortSellingHistoryItemSchema>
+
+// ─── Market summary (/market-summary) ─────────────────────────────────────────
+
+export const MarketSummaryResponseSchema = z.object({
+  marketOverviews: snapshotResponseSchema(MarketOverviewItemSchema),
+  investorTradingSummaries: snapshotResponseSchema(InvestorTradingSummaryItemSchema),
+  intradayTopRankings: snapshotResponseSchema(IntradayTopItemSchema),
+  programTradingHighlights: snapshotResponseSchema(ProgramTradingRankingItemSchema),
+  indexContributionHighlights: snapshotResponseSchema(IndexContributionItemSchema),
+  mainShortSellingHistory: stockHistoryResponseSchema(ShortSellingHistoryItemSchema),
+  mainProgramTradingHistory: stockHistoryResponseSchema(ProgramTradingHistoryItemSchema),
+})
+export type MarketSummaryResponse = z.infer<typeof MarketSummaryResponseSchema>
+
+// ─── Stock ───────────────────────────────────────────────────────────────────
+
+export const StockItemSchema = z.object({
+  stockCode: z.string(),
+  stockName: z.string(),
+  market: MarketSchema,
+})
+export type StockItem = z.infer<typeof StockItemSchema>
+
+// ─── Detail ──────────────────────────────────────────────────────────────────
+
+export const ProgramTradingDailyItemSchema = z.object({
+  tradeDate: z.string(),
+  programBuyAmount: z.number(),    // 백만 원
+  programSellAmount: z.number(),   // 백만 원
+  programNetBuyAmount: z.number(), // 백만 원
+})
+export type ProgramTradingDailyItem = z.infer<typeof ProgramTradingDailyItemSchema>

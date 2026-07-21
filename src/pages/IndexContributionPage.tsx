@@ -1,9 +1,9 @@
 import { Link, useSearchParams } from 'react-router-dom'
-import { useIndexContribution } from '../hooks/useIndexContribution'
-import DataTable, { type DataTableColumn } from '../components/DataTable'
-import TabSelector from '../components/TabSelector'
-import { MarketSchema, type IndexContributionItem } from '../types/api'
-import { toPctSigned, signClass } from '../utils/format'
+import { useIndexContribution } from '@/hooks/useIndexContribution'
+import DataTable, { type DataTableColumn } from '@/components/DataTable'
+import TabSelector from '@/components/TabSelector'
+import { MarketSchema, type IndexContributionItem } from '@/types/api'
+import { toPctSigned, signClass } from '@/utils/format'
 
 const MARKETS = MarketSchema.options
 

@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { getProgramTradingRankings } from '../api/dashboard'
+import { getProgramTradingRankings } from '@/api/marketSummary'
 import { useMarketSummary } from './useMarketSummary'
 import { marketSummaryKeys } from './queryKeys'
 import { MARKET_DATA_CACHE } from './cacheConfig'
-import type { AmtQty, MarketQuery, ProgramRanking } from '../types/api'
+import type { AmtQty, MarketQuery, ProgramRanking } from '@/types/api'
 
 const DEFAULT_RANKING: ProgramRanking = 'NET_BUY'
 const DEFAULT_MARKET: MarketQuery = 'KOSPI'

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
-import type { IntradayInvestorRankingItem } from '../types/api'
-import { toEokSignedFromMln, toVolume, signClass } from '../utils/format'
+import type { IntradayInvestorRankingItem } from '@/types/api'
+import { toEokSignedFromMln, toVolume, signClass } from '@/utils/format'
 
 interface Props {
   items: IntradayInvestorRankingItem[]

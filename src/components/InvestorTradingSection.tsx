@@ -1,6 +1,6 @@
-import { useMarketSummary } from '../hooks/useMarketSummary'
-import { MarketSchema, type Market, type Investor } from '../types/api'
-import { toEokSigned, signClass, investorLabel } from '../utils/format'
+import { useMarketSummary } from '@/hooks/useMarketSummary'
+import { MarketSchema, type Market, type Investor } from '@/types/api'
+import { toEokSigned, signClass, investorLabel } from '@/utils/format'
 
 const MARKETS = MarketSchema.options
 const INVESTORS: Investor[] = [

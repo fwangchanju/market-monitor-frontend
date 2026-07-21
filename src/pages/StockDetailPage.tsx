@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getProgramTradingDailyHistory, getShortSellingHistory } from '../api/dashboard'
-import type { ProgramTradingDailyItem, ShortSellingHistoryItem } from '../types/api'
+import { getProgramTradingDailyHistoryByRange, getShortSellingHistory } from '@/api/marketSummary'
+import type { ProgramTradingDailyItem, ShortSellingHistoryItem } from '@/types/api'
 import {
   toEokSignedFromMln, toEokFromMln, toEokFromThousand,
   toVolume, toPct, toPctSigned, signClass, toDateLabel,
-} from '../utils/format'
+} from '@/utils/format'
 
 export default function StockDetailPage() {
   const { stockCode } = useParams<{ stockCode: string }>()
@@ -27,7 +27,7 @@ export default function StockDetailPage() {
     const fromDate = past30.toISOString().slice(0, 10)
 
     Promise.all([
-      getProgramTradingDailyHistory(stockCode, fromDate, toDate),
+      getProgramTradingDailyHistoryByRange(stockCode, fromDate, toDate),
       getShortSellingHistory(stockCode),
     ])
       .then(([prog, short]) => {
