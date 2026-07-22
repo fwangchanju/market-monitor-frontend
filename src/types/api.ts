@@ -86,17 +86,6 @@ export const InvestorTradingSummaryItemSchema = z.object({
 })
 export type InvestorTradingSummaryItem = z.infer<typeof InvestorTradingSummaryItemSchema>
 
-export const IntradayInvestorRankingItemSchema = z.object({
-  market: MarketSchema,
-  investor: IntradayInvestorSchema,
-  rank: z.number(),
-  stockCode: z.string(),
-  stockName: z.string(),
-  netBuyAmount: z.number(),       // 백만 원
-  tradedVolume: z.number(),
-})
-export type IntradayInvestorRankingItem = z.infer<typeof IntradayInvestorRankingItemSchema>
-
 export const ProgramTradingRankingItemSchema = z.object({
   rank: z.number(),
   stockCode: z.string(),
@@ -181,7 +170,7 @@ export const StockItemSchema = z.object({
 })
 export type StockItem = z.infer<typeof StockItemSchema>
 
-// ─── Detail ──────────────────────────────────────────────────────────────────
+// ─── Program trading (daily) ──────────────────────────────────────────────────
 
 export const ProgramTradingDailyItemSchema = z.object({
   tradeDate: z.string(),

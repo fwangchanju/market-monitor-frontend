@@ -16,35 +16,37 @@ interface Props<T> {
 
 export default function DataTable<T>({ items, columns, rowKey }: Props<T>) {
   return (
-    <table className="data-table">
-      <thead>
-        <tr>
-          {columns.map(c => (
-            <th
-              key={c.header}
-              className={c.align === 'left' ? 'left' : undefined}
-              style={c.width ? { width: c.width } : undefined}
-            >
-              {c.header}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {items.map((item, index) => (
-          <tr key={rowKey(item, index)}>
-            {columns.map(c => {
-              const alignClass = c.align === 'left' ? 'left' : undefined
-              const cellClass = c.cellClassName?.(item, index)
-              return (
-                <td key={c.header} className={[alignClass, cellClass].filter(Boolean).join(' ') || undefined}>
-                  {c.render(item, index)}
-                </td>
-              )
-            })}
+    <div className="overflow-x-auto">
+      <table className="nes-table is-dark is-bordered w-full text-xs">
+        <thead>
+          <tr>
+            {columns.map(c => (
+              <th
+                key={c.header}
+                className={`whitespace-nowrap ${c.align === 'left' ? 'text-left' : 'text-right'}`}
+                style={c.width ? { width: c.width } : undefined}
+              >
+                {c.header}
+              </th>
+            ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {items.map((item, index) => (
+            <tr key={rowKey(item, index)}>
+              {columns.map(c => {
+                const alignClass = c.align === 'left' ? 'text-left' : 'text-right'
+                const cellClass = c.cellClassName?.(item, index)
+                return (
+                  <td key={c.header} className={['whitespace-nowrap', alignClass, cellClass].filter(Boolean).join(' ')}>
+                    {c.render(item, index)}
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }

@@ -8,11 +8,11 @@ export default function MainStockSection() {
   const { setNodeRef, isOver } = useDroppable({ id: 'main-stock-zone' })
 
   return (
-    <div className="nes-container with-title">
+    <div className="nes-container with-title is-dark">
       <p className="title">대표 종목</p>
       <div
         ref={setNodeRef}
-        className={`flex h-56 items-center justify-center ${isOver ? 'bg-gray-200' : ''}`}
+        className={`flex h-56 items-center justify-center ${isOver ? 'bg-gray-700' : ''}`}
       >
         {mainStock ? (
           <DraggableStockChip source="main" stockCode={mainStock.stockCode} stockName={mainStock.stockName} />

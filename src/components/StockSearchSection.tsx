@@ -19,11 +19,11 @@ export default function StockSearchSection() {
     : []
 
   return (
-    <div className="nes-container with-title">
+    <div className="nes-container with-title is-dark">
       <p className="title">종목 검색</p>
       <input
         type="text"
-        className="nes-input mb-2"
+        className="nes-input is-dark mb-2"
         value={query}
         onChange={e => setQuery(e.target.value)}
         placeholder="종목명 또는 코드"

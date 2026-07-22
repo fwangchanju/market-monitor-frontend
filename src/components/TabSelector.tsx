@@ -9,14 +9,14 @@ export default function TabSelector<T extends string>({
   options, value, onChange, labelFor = (o: T) => o,
 }: Props<T>) {
   return (
-    <div className="tab-bar" role="radiogroup">
+    <div className="flex gap-1" role="radiogroup">
       {options.map(option => (
         <button
           key={option}
           type="button"
           role="radio"
           aria-checked={option === value}
-          className={`tab-btn ${option === value ? 'active' : ''}`}
+          className={`nes-btn m-0 text-xs ${option === value ? 'is-primary' : ''}`}
           onClick={() => onChange(option)}
         >
           {labelFor(option)}

@@ -2,7 +2,6 @@ import { z } from 'zod'
 import client from './client'
 import {
   IndexContributionItemSchema,
-  IntradayInvestorRankingItemSchema,
   IntradayTopItemSchema,
   MarketSummaryResponseSchema,
   ProgramTradingDailyItemSchema,
@@ -24,7 +23,6 @@ import {
 const watchStocksResponseSchema = z.array(WatchStockItemSchema)
 const stocksResponseSchema = z.array(StockItemSchema)
 const intradayTopResponseSchema = snapshotResponseSchema(IntradayTopItemSchema)
-const intradayRankingsResponseSchema = snapshotResponseSchema(IntradayInvestorRankingItemSchema)
 const programTradingRankingsResponseSchema = snapshotResponseSchema(ProgramTradingRankingItemSchema)
 const indexContributionResponseSchema = snapshotResponseSchema(IndexContributionItemSchema)
 const programTradingHistoryResponseSchema = stockHistoryResponseSchema(ProgramTradingHistoryItemSchema)
@@ -65,17 +63,6 @@ export const getIntradayTop = (
       params: { market, investor, ranking, amtQty },
     })
     .then(r => intradayTopResponseSchema.parse(r.data))
-
-export const getIntradayRankings = (
-  market: MarketQuery,
-  investor: IntradayInvestor,
-  ranking: IntradayRanking,
-) =>
-  client
-    .get('/intraday-rankings', {
-      params: { market, investor, ranking },
-    })
-    .then(r => intradayRankingsResponseSchema.parse(r.data))
 
 export const getProgramTradingRankings = (
   ranking: ProgramRanking,

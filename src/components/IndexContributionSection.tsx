@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { MarketSchema, type IndexContributionItem, type Market } from '@/types/api'
 import { toPctSigned, signClass, isStale } from '@/utils/format'
 import { useIndexContribution } from '@/hooks/useIndexContribution'
 import DataTable, { type DataTableColumn } from './DataTable'
 import TabSelector from './TabSelector'
+import WidgetSection from './WidgetSection'
 
 const MARKETS = MarketSchema.options
 
@@ -16,9 +16,7 @@ const columns: DataTableColumn<IndexContributionItem>[] = [
     render: item => (
       <>
         <span>{item.stockName}</span>
-        <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)' }}>
-          {item.stockCode}
-        </span>
+        <span className="ml-1.5 text-[11px] text-gray-500">{item.stockCode}</span>
       </>
     ),
   },
@@ -40,27 +38,20 @@ export default function IndexContributionSection() {
   const stale = isStale(snapshotTime, items?.[0]?.snapshotTime)
 
   return (
-    <section className={`section ${stale ? 'stale' : ''}`}>
-      <div className="section-header">
-        <h2>지수 기여도 상위</h2>
-        <div className="actions">
-          <TabSelector options={MARKETS} value={market} onChange={setMarket} />
-          <Link
-            to={`/index-contribution?market=${market}`}
-            style={{ fontSize: 12, color: 'var(--text-muted)' }}
-          >
-            전체 보기 →
-          </Link>
-        </div>
-      </div>
-
+    <WidgetSection
+      title="지수 기여도 상위"
+      stale={stale}
+      actions={<TabSelector options={MARKETS} value={market} onChange={setMarket} />}
+    >
       {!items ? (
-        <div className="empty-state">{isError ? '데이터를 불러오지 못했습니다' : isLoading ? '불러오는 중...' : '데이터가 없습니다'}</div>
+        <div className="p-8 text-center text-xs text-gray-500">
+          {isError ? '데이터를 불러오지 못했습니다' : isLoading ? '불러오는 중...' : '데이터가 없습니다'}
+        </div>
       ) : items.length === 0 ? (
-        <div className="empty-state">{market} 데이터 없음</div>
+        <div className="p-8 text-center text-xs text-gray-500">{market} 데이터 없음</div>
       ) : (
         <DataTable items={items} columns={columns} rowKey={item => `${item.rank}-${item.stockCode}`} />
       )}
-    </section>
+    </WidgetSection>
   )
 }
