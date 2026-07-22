@@ -4,6 +4,7 @@ import { toYyMmDd, toVolume, toPct, toPctSigned, signClass } from '@/utils/forma
 import { useShortSellingHistory } from '@/hooks/useShortSellingHistory'
 import { useWatchStocks } from '@/hooks/useWatchStocks'
 import DataTable, { type DataTableColumn } from './DataTable'
+import WidgetSection from './WidgetSection'
 
 const columns: DataTableColumn<ShortSellingHistoryItem>[] = [
   { header: '일자', align: 'left', render: item => toYyMmDd(item.tradeDate) },
@@ -24,10 +25,10 @@ export default function ShortSellingHistorySection() {
   const { stockCode, items, isLoading, isError } = useShortSellingHistory(selectedCode)
 
   return (
-    <section className="section">
-      <div className="section-header">
-        <h2>종목별 공매도 추이</h2>
-        <div className="actions">
+    <WidgetSection
+      title="종목별 공매도 추이"
+      actions={
+        <div className="nes-select is-dark w-40">
           <select value={selectedCode ?? ''} onChange={e => setSelectedCode(e.target.value || null)}>
             <option value="">기본 종목</option>
             {watchStocks?.map(s => (
@@ -37,17 +38,17 @@ export default function ShortSellingHistorySection() {
             ))}
           </select>
         </div>
-      </div>
-
+      }
+    >
       {!items ? (
-        <div className="empty-state">
+        <div className="p-8 text-center text-xs text-gray-500">
           {isError ? '데이터를 불러오지 못했습니다' : isLoading ? '불러오는 중...' : !stockCode ? '관심종목 없음' : '데이터가 없습니다'}
         </div>
       ) : items.length === 0 ? (
-        <div className="empty-state">수집된 데이터가 없습니다</div>
+        <div className="p-8 text-center text-xs text-gray-500">수집된 데이터가 없습니다</div>
       ) : (
         <DataTable items={items} columns={columns} rowKey={item => item.tradeDate} />
       )}
-    </section>
+    </WidgetSection>
   )
 }

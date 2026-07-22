@@ -12,8 +12,6 @@ export const marketSummaryKeys = {
   summary: () => [...marketSummaryKeys.all, 'summary'] as const,
   intradayTop: (market: MarketQuery, investor: IntradayInvestor, ranking: IntradayRanking, amtQty: AmtQty) =>
     [...marketSummaryKeys.all, 'intraday-top', market, investor, ranking, amtQty] as const,
-  intradayRankings: (market: MarketQuery, investor: IntradayInvestor, ranking: IntradayRanking) =>
-    [...marketSummaryKeys.all, 'intraday-rankings', market, investor, ranking] as const,
   programTradingRankings: (ranking: ProgramRanking, market: MarketQuery, amtQty: AmtQty) =>
     [...marketSummaryKeys.all, 'program-trading-rankings', ranking, market, amtQty] as const,
   indexContribution: (market: Market) =>

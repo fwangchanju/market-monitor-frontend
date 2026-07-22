@@ -1,6 +1,7 @@
 import { useMarketSummary } from '@/hooks/useMarketSummary'
 import { MarketSchema, type Market, type Investor } from '@/types/api'
 import { toEokSigned, signClass, investorLabel, isStale } from '@/utils/format'
+import WidgetSection from './WidgetSection'
 
 const MARKETS = MarketSchema.options
 const INVESTORS: Investor[] = [
@@ -13,10 +14,11 @@ export default function InvestorTradingSection() {
 
   if (!data) {
     return (
-      <section className="section">
-        <div className="section-header"><h2>투자자별 매매종합</h2></div>
-        <div className="empty-state">{isError ? '데이터를 불러오지 못했습니다' : '불러오는 중...'}</div>
-      </section>
+      <WidgetSection title="투자자별 매매종합">
+        <div className="p-8 text-center text-xs text-gray-500">
+          {isError ? '데이터를 불러오지 못했습니다' : '불러오는 중...'}
+        </div>
+      </WidgetSection>
     )
   }
 
@@ -26,47 +28,48 @@ export default function InvestorTradingSection() {
 
   if (items.length === 0) {
     return (
-      <section className="section">
-        <div className="section-header"><h2>투자자별 매매종합</h2></div>
-        <div className="empty-state">수집된 데이터가 없습니다</div>
-      </section>
+      <WidgetSection title="투자자별 매매종합">
+        <div className="p-8 text-center text-xs text-gray-500">수집된 데이터가 없습니다</div>
+      </WidgetSection>
     )
   }
 
   const stale = isStale(data.investorTradingSummaries.snapshotTime, items[0]?.snapshotTime)
 
   return (
-    <section className={`section ${stale ? 'stale' : ''}`}>
-      <div className="section-header">
-        <h2>투자자별 매매종합</h2>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>단위: 억원 · 순매수</span>
-      </div>
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th className="left">시장</th>
-            {INVESTORS.map(inv => (
-              <th key={inv}>{investorLabel(inv)}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {MARKETS.map(market => (
-            <tr key={market}>
-              <td className="left">{market}</td>
-              {INVESTORS.map(investor => {
-                const d = get(market, investor)
-                const net = d?.netBuyAmount ?? 0
-                return (
-                  <td key={investor} className={signClass(net)}>
-                    {toEokSigned(net)}
-                  </td>
-                )
-              })}
+    <WidgetSection
+      title="투자자별 매매종합"
+      stale={stale}
+      actions={<span className="text-xs text-gray-500">단위: 억원 · 순매수</span>}
+    >
+      <div className="overflow-x-auto">
+        <table className="nes-table is-dark is-bordered w-full text-xs">
+          <thead>
+            <tr>
+              <th className="whitespace-nowrap text-left">시장</th>
+              {INVESTORS.map(inv => (
+                <th key={inv} className="whitespace-nowrap">{investorLabel(inv)}</th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
+          </thead>
+          <tbody>
+            {MARKETS.map(market => (
+              <tr key={market}>
+                <td className="whitespace-nowrap text-left">{market}</td>
+                {INVESTORS.map(investor => {
+                  const d = get(market, investor)
+                  const net = d?.netBuyAmount ?? 0
+                  return (
+                    <td key={investor} className={`whitespace-nowrap ${signClass(net)}`}>
+                      {toEokSigned(net)}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </WidgetSection>
   )
 }

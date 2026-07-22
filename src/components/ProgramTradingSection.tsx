@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { ProgramRankingSchema, type ProgramTradingRankingItem, type ProgramRanking } from '@/types/api'
 import { toEokSignedFromMln, toEokFromMln, signClass, isStale } from '@/utils/format'
 import { useProgramTradingRankings } from '@/hooks/useProgramTradingRankings'
 import DataTable, { type DataTableColumn } from './DataTable'
 import TabSelector from './TabSelector'
+import WidgetSection from './WidgetSection'
 
 const RANKINGS = ProgramRankingSchema.options
 const rankingLabel = (r: ProgramRanking) => (r === 'NET_BUY' ? '순매수' : '순매도')
@@ -17,9 +17,7 @@ const columns: DataTableColumn<ProgramTradingRankingItem>[] = [
     render: item => (
       <>
         <span>{item.stockName}</span>
-        <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)' }}>
-          {item.stockCode}
-        </span>
+        <span className="ml-1.5 text-[11px] text-gray-500">{item.stockCode}</span>
       </>
     ),
   },
@@ -43,27 +41,20 @@ export default function ProgramTradingSection() {
   const stale = isStale(snapshotTime, items?.[0]?.snapshotTime)
 
   return (
-    <section className={`section ${stale ? 'stale' : ''}`}>
-      <div className="section-header">
-        <h2>프로그램 매매 상위</h2>
-        <div className="actions">
-          <TabSelector options={RANKINGS} value={ranking} onChange={setRanking} labelFor={rankingLabel} />
-          <Link
-            to={`/program-trading?ranking=${ranking}`}
-            style={{ fontSize: 12, color: 'var(--text-muted)' }}
-          >
-            전체 보기 →
-          </Link>
-        </div>
-      </div>
-
+    <WidgetSection
+      title="프로그램 매매 상위"
+      stale={stale}
+      actions={<TabSelector options={RANKINGS} value={ranking} onChange={setRanking} labelFor={rankingLabel} />}
+    >
       {!items ? (
-        <div className="empty-state">{isError ? '데이터를 불러오지 못했습니다' : isLoading ? '불러오는 중...' : '데이터가 없습니다'}</div>
+        <div className="p-8 text-center text-xs text-gray-500">
+          {isError ? '데이터를 불러오지 못했습니다' : isLoading ? '불러오는 중...' : '데이터가 없습니다'}
+        </div>
       ) : items.length === 0 ? (
-        <div className="empty-state">수집된 데이터가 없습니다</div>
+        <div className="p-8 text-center text-xs text-gray-500">수집된 데이터가 없습니다</div>
       ) : (
         <DataTable items={items} columns={columns} rowKey={item => item.stockCode} />
       )}
-    </section>
+    </WidgetSection>
   )
 }

@@ -6,6 +6,7 @@ import { useProgramTradingDailyHistory } from '@/hooks/useProgramTradingDailyHis
 import { useWatchStocks } from '@/hooks/useWatchStocks'
 import DataTable, { type DataTableColumn } from './DataTable'
 import TabSelector from './TabSelector'
+import WidgetSection from './WidgetSection'
 
 type Granularity = 'INTRADAY' | 'DAILY'
 const GRANULARITIES: Granularity[] = ['INTRADAY', 'DAILY']
@@ -48,33 +49,36 @@ export default function ProgramTradingHistorySection() {
   const stale = granularity === 'INTRADAY' && isStale(intraday.snapshotTime, intraday.items?.[0]?.snapshotTime)
 
   return (
-    <section className={`section ${stale ? 'stale' : ''}`}>
-      <div className="section-header">
-        <h2>프로그램매매 추이 — 종목별</h2>
-        <div className="actions">
-          <select value={selectedCode ?? ''} onChange={e => setSelectedCode(e.target.value || null)}>
-            <option value="">기본 종목</option>
-            {watchStocks?.map(s => (
-              <option key={s.stockCode} value={s.stockCode}>
-                {s.stockName}({s.stockCode})
-              </option>
-            ))}
-          </select>
+    <WidgetSection
+      title="프로그램매매 추이 — 종목별"
+      stale={stale}
+      actions={
+        <>
+          <div className="nes-select is-dark w-40">
+            <select value={selectedCode ?? ''} onChange={e => setSelectedCode(e.target.value || null)}>
+              <option value="">기본 종목</option>
+              {watchStocks?.map(s => (
+                <option key={s.stockCode} value={s.stockCode}>
+                  {s.stockName}({s.stockCode})
+                </option>
+              ))}
+            </select>
+          </div>
           <TabSelector options={GRANULARITIES} value={granularity} onChange={setGranularity} labelFor={granularityLabel} />
-        </div>
-      </div>
-
+        </>
+      }
+    >
       {!items ? (
-        <div className="empty-state">
+        <div className="p-8 text-center text-xs text-gray-500">
           {isError ? '데이터를 불러오지 못했습니다' : isLoading ? '불러오는 중...' : !stockCode ? '관심종목 없음' : '데이터가 없습니다'}
         </div>
       ) : items.length === 0 ? (
-        <div className="empty-state">수집된 데이터가 없습니다</div>
+        <div className="p-8 text-center text-xs text-gray-500">수집된 데이터가 없습니다</div>
       ) : granularity === 'INTRADAY' ? (
         <DataTable items={items as ProgramTradingHistoryItem[]} columns={intradayColumns} rowKey={item => item.snapshotTime} />
       ) : (
         <DataTable items={items as ProgramTradingDailyItem[]} columns={dailyColumns} rowKey={item => item.tradeDate} />
       )}
-    </section>
+    </WidgetSection>
   )
 }

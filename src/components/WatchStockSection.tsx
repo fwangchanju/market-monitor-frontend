@@ -8,11 +8,11 @@ export default function WatchStockSection() {
   const { setNodeRef, isOver } = useDroppable({ id: 'watch-stock-zone' })
 
   return (
-    <div className="nes-container with-title">
+    <div className="nes-container with-title is-dark">
       <p className="title">관심 종목{items ? ` (${items.length})` : ''}</p>
       <div
         ref={setNodeRef}
-        className={`flex h-56 flex-col gap-2 overflow-y-auto ${isOver ? 'bg-gray-200' : ''}`}
+        className={`flex h-56 flex-col gap-2 overflow-y-auto ${isOver ? 'bg-gray-700' : ''}`}
       >
         {!items ? (
           <p className="nes-text is-disabled text-xs">
