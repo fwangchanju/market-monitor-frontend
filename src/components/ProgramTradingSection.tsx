@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ProgramRankingSchema, type ProgramTradingRankingItem, type ProgramRanking } from '@/types/api'
-import { toEokSignedFromMln, toEokFromMln, signClass } from '@/utils/format'
+import { toEokSignedFromMln, toEokFromMln, signClass, isStale } from '@/utils/format'
 import { useProgramTradingRankings } from '@/hooks/useProgramTradingRankings'
 import DataTable, { type DataTableColumn } from './DataTable'
 import TabSelector from './TabSelector'
@@ -16,7 +16,7 @@ const columns: DataTableColumn<ProgramTradingRankingItem>[] = [
     align: 'left',
     render: item => (
       <>
-        <Link to={`/stocks/${item.stockCode}`}>{item.stockName}</Link>
+        <span>{item.stockName}</span>
         <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)' }}>
           {item.stockCode}
         </span>
@@ -39,10 +39,11 @@ const FIXED_AMT_QTY = 'AMOUNT' as const
 
 export default function ProgramTradingSection() {
   const [ranking, setRanking] = useState<ProgramRanking>('NET_BUY')
-  const { items, isLoading, isError } = useProgramTradingRankings(ranking, FIXED_MARKET, FIXED_AMT_QTY)
+  const { items, snapshotTime, isLoading, isError } = useProgramTradingRankings(ranking, FIXED_MARKET, FIXED_AMT_QTY)
+  const stale = isStale(snapshotTime, items?.[0]?.snapshotTime)
 
   return (
-    <section className="section">
+    <section className={`section ${stale ? 'stale' : ''}`}>
       <div className="section-header">
         <h2>프로그램 매매 상위</h2>
         <div className="actions">

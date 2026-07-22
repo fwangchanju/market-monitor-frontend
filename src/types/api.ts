@@ -48,11 +48,13 @@ export type SnapshotResponse<T> = {
 
 export const stockHistoryResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
   z.object({
-    stockCode: z.string(),
+    stockCode: z.string().nullable(),
+    snapshotTime: z.string().nullable(),
     items: z.array(itemSchema),
   })
 export type StockHistoryResponse<T> = {
-  stockCode: string
+  stockCode: string | null
+  snapshotTime: string | null
   items: T[]
 }
 
@@ -70,6 +72,7 @@ export const MarketOverviewItemSchema = z.object({
   advancers: z.number(),
   decliners: z.number(),
   unchangedCount: z.number(),
+  snapshotTime: z.string(),
 })
 export type MarketOverviewItem = z.infer<typeof MarketOverviewItemSchema>
 
@@ -79,6 +82,7 @@ export const InvestorTradingSummaryItemSchema = z.object({
   buyAmount: z.number(),          // 억 원, 항상 0
   sellAmount: z.number(),         // 억 원, 항상 0
   netBuyAmount: z.number(),       // 억 원
+  snapshotTime: z.string(),
 })
 export type InvestorTradingSummaryItem = z.infer<typeof InvestorTradingSummaryItemSchema>
 
@@ -100,6 +104,7 @@ export const ProgramTradingRankingItemSchema = z.object({
   programBuyAmount: z.number(),    // 백만 원
   programSellAmount: z.number(),   // 백만 원
   programNetBuyAmount: z.number(), // 백만 원
+  snapshotTime: z.string(),
 })
 export type ProgramTradingRankingItem = z.infer<typeof ProgramTradingRankingItemSchema>
 
@@ -110,6 +115,7 @@ export const IndexContributionItemSchema = z.object({
   stockName: z.string(),
   contributionScore: z.number(),
   priceChangeRate: z.number(),
+  snapshotTime: z.string(),
 })
 export type IndexContributionItem = z.infer<typeof IndexContributionItemSchema>
 
@@ -126,6 +132,7 @@ export const IntradayTopItemSchema = z.object({
   stockCode: z.string(),
   stockName: z.string(),
   netBuyAmount: z.number(),   // 백만 원
+  snapshotTime: z.string(),
 })
 export type IntradayTopItem = z.infer<typeof IntradayTopItemSchema>
 

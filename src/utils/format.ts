@@ -111,3 +111,9 @@ export const investorLabel = (type: string): string => {
 /** 랭킹 구분 한글 */
 export const rankingLabel = (type: string): string =>
   type === 'NET_BUY' ? '순매수' : '순매도'
+
+/** 예상 수집 시각이 실제 데이터 시각보다 미래면 stale(수집 실패 의심) */
+export const isStale = (expected: string | null | undefined, actual: string | null | undefined): boolean => {
+  if (!expected || !actual) return false
+  return new Date(expected).getTime() > new Date(actual).getTime()
+}

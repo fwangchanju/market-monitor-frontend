@@ -1,42 +1,36 @@
-import { Link } from 'react-router-dom'
+import { useDroppable } from '@dnd-kit/core'
 import { useWatchStocks } from '@/hooks/useWatchStocks'
+import DraggableStockChip from './DraggableStockChip'
 
 export default function WatchStockSection() {
   const { data, isError } = useWatchStocks()
-
-  if (!data) {
-    return (
-      <section className="section">
-        <div className="section-header"><h2>관심 종목</h2></div>
-        <div className="empty-state">{isError ? '데이터를 불러오지 못했습니다' : '불러오는 중...'}</div>
-      </section>
-    )
-  }
+  const items = data?.filter(s => !s.isMain)
+  const { setNodeRef, isOver } = useDroppable({ id: 'watch-stock-zone' })
 
   return (
-    <section className="section">
-      <div className="section-header">
-        <h2>관심 종목</h2>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{data.length}개</span>
-      </div>
-      {data.length === 0 ? (
-        <div className="empty-state">등록된 관심 종목이 없습니다</div>
-      ) : (
-        <div className="watch-stock-list">
-          {data.map(item => (
-            <Link
+    <div className="nes-container with-title">
+      <p className="title">관심 종목{items ? ` (${items.length})` : ''}</p>
+      <div
+        ref={setNodeRef}
+        className={`flex h-56 flex-col gap-2 overflow-y-auto ${isOver ? 'bg-gray-200' : ''}`}
+      >
+        {!items ? (
+          <p className="nes-text is-disabled text-xs">
+            {isError ? '데이터를 불러오지 못했습니다' : '불러오는 중...'}
+          </p>
+        ) : items.length === 0 ? (
+          <p className="nes-text is-disabled text-xs">등록된 관심 종목이 없습니다</p>
+        ) : (
+          items.map(item => (
+            <DraggableStockChip
               key={item.stockCode}
-              to={`/stocks/${item.stockCode}`}
-              className="watch-stock-chip"
-              style={{ textDecoration: 'none', color: 'inherit' }}
-            >
-              <span>{item.stockName}</span>
-              <span className="code">{item.stockCode}</span>
-              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{item.market}</span>
-            </Link>
-          ))}
-        </div>
-      )}
-    </section>
+              source="watch"
+              stockCode={item.stockCode}
+              stockName={item.stockName}
+            />
+          ))
+        )}
+      </div>
+    </div>
   )
 }

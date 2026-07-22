@@ -3,7 +3,6 @@ import MarketSummaryPage from './pages/MarketSummaryPage'
 import IntradayRankingPage from './pages/IntradayRankingPage'
 import ProgramTradingPage from './pages/ProgramTradingPage'
 import IndexContributionPage from './pages/IndexContributionPage'
-import StockDetailPage from './pages/StockDetailPage'
 
 export default function App() {
   return (
@@ -13,7 +12,6 @@ export default function App() {
         <Route path="/intraday-rankings" element={<IntradayRankingPage />} />
         <Route path="/program-trading" element={<ProgramTradingPage />} />
         <Route path="/index-contribution" element={<IndexContributionPage />} />
-        <Route path="/stocks/:stockCode" element={<StockDetailPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

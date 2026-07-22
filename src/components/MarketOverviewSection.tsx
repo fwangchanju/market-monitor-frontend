@@ -1,5 +1,5 @@
 import { useMarketSummary } from '@/hooks/useMarketSummary'
-import { toIndex, toEokFromMln, toPctSigned, signClass } from '@/utils/format'
+import { toIndex, toEokFromMln, toPctSigned, signClass, isStale } from '@/utils/format'
 
 export default function MarketOverviewSection() {
   const { data, isError } = useMarketSummary()
@@ -24,8 +24,10 @@ export default function MarketOverviewSection() {
     )
   }
 
+  const stale = isStale(data.marketOverviews.snapshotTime, items[0]?.snapshotTime)
+
   return (
-    <section className="section">
+    <section className={`section ${stale ? 'stale' : ''}`}>
       <div className="section-header">
         <h2>시장종합</h2>
       </div>

@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import type { IntradayTopItem, MarketQuery, IntradayInvestor, IntradayRanking } from '@/types/api'
-import { toMlnSigned, signClass, investorLabel, marketLabel, rankingLabel } from '@/utils/format'
+import { toMlnSigned, signClass, investorLabel, marketLabel, rankingLabel, isStale } from '@/utils/format'
 import { useIntradayTop } from '@/hooks/useIntradayTop'
 import DataTable, { type DataTableColumn } from './DataTable'
 import TabSelector from './TabSelector'
@@ -20,7 +19,7 @@ const columns: DataTableColumn<IntradayTopItem>[] = [
     align: 'left',
     render: item => (
       <>
-        <Link to={`/stocks/${item.stockCode}`}>{item.stockName}</Link>
+        <span>{item.stockName}</span>
         <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)' }}>
           {item.stockCode}
         </span>
@@ -38,10 +37,11 @@ export default function IntradayTopSection() {
   const [market, setMarket] = useState<MarketQuery>('KOSPI')
   const [investor, setInvestor] = useState<IntradayInvestor>('FOREIGNER')
   const [ranking, setRanking] = useState<IntradayRanking>('NET_BUY')
-  const { items, isLoading, isError } = useIntradayTop(market, investor, ranking, FIXED_AMT_QTY)
+  const { items, snapshotTime, isLoading, isError } = useIntradayTop(market, investor, ranking, FIXED_AMT_QTY)
+  const stale = isStale(snapshotTime, items?.[0]?.snapshotTime)
 
   return (
-    <section className="section">
+    <section className={`section ${stale ? 'stale' : ''}`}>
       <div className="section-header">
         <h2>장중 투자자별 매매 상위</h2>
         <div className="actions">

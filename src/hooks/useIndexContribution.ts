@@ -20,11 +20,13 @@ export function useIndexContribution(market: Market) {
   return isDefault
     ? {
         items: marketSummary.data?.indexContributionHighlights.items,
+        snapshotTime: marketSummary.data?.indexContributionHighlights.snapshotTime,
         isLoading: marketSummary.isLoading,
         isError: marketSummary.isError,
       }
     : {
         items: dedicated.data?.items,
+        snapshotTime: dedicated.data?.snapshotTime,
         isLoading: dedicated.isLoading,
         isError: dedicated.isError,
       }

@@ -25,12 +25,14 @@ export function useProgramTradingHistory(stockCode: string | null) {
   return isDefault
     ? {
         stockCode: marketSummary.data?.mainProgramTradingHistory.stockCode,
+        snapshotTime: marketSummary.data?.mainProgramTradingHistory.snapshotTime,
         items: marketSummary.data?.mainProgramTradingHistory.items,
         isLoading: marketSummary.isLoading,
         isError: marketSummary.isError,
       }
     : {
         stockCode: dedicated.data?.stockCode,
+        snapshotTime: dedicated.data?.snapshotTime,
         items: dedicated.data?.items,
         isLoading: dedicated.isLoading,
         isError: dedicated.isError,

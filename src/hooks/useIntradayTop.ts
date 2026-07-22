@@ -32,11 +32,13 @@ export function useIntradayTop(
   return isDefault
     ? {
         items: marketSummary.data?.intradayTopRankings.items,
+        snapshotTime: marketSummary.data?.intradayTopRankings.snapshotTime,
         isLoading: marketSummary.isLoading,
         isError: marketSummary.isError,
       }
     : {
         items: dedicated.data?.items,
+        snapshotTime: dedicated.data?.snapshotTime,
         isLoading: dedicated.isLoading,
         isError: dedicated.isError,
       }

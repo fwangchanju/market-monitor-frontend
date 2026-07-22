@@ -22,11 +22,13 @@ export function useProgramTradingRankings(ranking: ProgramRanking, market: Marke
   return isDefault
     ? {
         items: marketSummary.data?.programTradingHighlights.items,
+        snapshotTime: marketSummary.data?.programTradingHighlights.snapshotTime,
         isLoading: marketSummary.isLoading,
         isError: marketSummary.isError,
       }
     : {
         items: dedicated.data?.items,
+        snapshotTime: dedicated.data?.snapshotTime,
         isLoading: dedicated.isLoading,
         isError: dedicated.isError,
       }

@@ -14,7 +14,7 @@ const columns: DataTableColumn<IndexContributionItem>[] = [
     align: 'left',
     render: item => (
       <>
-        <Link to={`/stocks/${item.stockCode}`}>{item.stockName}</Link>
+        <span>{item.stockName}</span>
         <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)' }}>
           {item.stockCode}
         </span>
