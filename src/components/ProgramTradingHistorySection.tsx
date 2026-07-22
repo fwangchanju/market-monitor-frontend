@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ProgramTradingDailyItem, ProgramTradingHistoryItem } from '@/types/api'
-import { toMlnSigned, toVolume, toTimeLabel, toDateLabel, signClass } from '@/utils/format'
+import { toMlnSigned, toVolume, toTimeLabel, toDateLabel, signClass, isStale } from '@/utils/format'
 import { useProgramTradingHistory } from '@/hooks/useProgramTradingHistory'
 import { useProgramTradingDailyHistory } from '@/hooks/useProgramTradingDailyHistory'
 import { useWatchStocks } from '@/hooks/useWatchStocks'
@@ -45,9 +45,10 @@ export default function ProgramTradingHistorySection() {
   const daily = useProgramTradingDailyHistory(dailyStockCode)
 
   const { stockCode, items, isLoading, isError } = granularity === 'INTRADAY' ? intraday : daily
+  const stale = granularity === 'INTRADAY' && isStale(intraday.snapshotTime, intraday.items?.[0]?.snapshotTime)
 
   return (
-    <section className="section">
+    <section className={`section ${stale ? 'stale' : ''}`}>
       <div className="section-header">
         <h2>프로그램매매 추이 — 종목별</h2>
         <div className="actions">

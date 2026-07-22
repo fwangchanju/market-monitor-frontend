@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { MarketSchema, type IndexContributionItem, type Market } from '@/types/api'
-import { toPctSigned, signClass } from '@/utils/format'
+import { toPctSigned, signClass, isStale } from '@/utils/format'
 import { useIndexContribution } from '@/hooks/useIndexContribution'
 import DataTable, { type DataTableColumn } from './DataTable'
 import TabSelector from './TabSelector'
@@ -15,7 +15,7 @@ const columns: DataTableColumn<IndexContributionItem>[] = [
     align: 'left',
     render: item => (
       <>
-        <Link to={`/stocks/${item.stockCode}`}>{item.stockName}</Link>
+        <span>{item.stockName}</span>
         <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)' }}>
           {item.stockCode}
         </span>
@@ -36,10 +36,11 @@ const columns: DataTableColumn<IndexContributionItem>[] = [
 
 export default function IndexContributionSection() {
   const [market, setMarket] = useState<Market>('KOSPI')
-  const { items, isLoading, isError } = useIndexContribution(market)
+  const { items, snapshotTime, isLoading, isError } = useIndexContribution(market)
+  const stale = isStale(snapshotTime, items?.[0]?.snapshotTime)
 
   return (
-    <section className="section">
+    <section className={`section ${stale ? 'stale' : ''}`}>
       <div className="section-header">
         <h2>지수 기여도 상위</h2>
         <div className="actions">

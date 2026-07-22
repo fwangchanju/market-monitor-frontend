@@ -1,6 +1,6 @@
 import { useMarketSummary } from '@/hooks/useMarketSummary'
 import { MarketSchema, type Market, type Investor } from '@/types/api'
-import { toEokSigned, signClass, investorLabel } from '@/utils/format'
+import { toEokSigned, signClass, investorLabel, isStale } from '@/utils/format'
 
 const MARKETS = MarketSchema.options
 const INVESTORS: Investor[] = [
@@ -33,8 +33,10 @@ export default function InvestorTradingSection() {
     )
   }
 
+  const stale = isStale(data.investorTradingSummaries.snapshotTime, items[0]?.snapshotTime)
+
   return (
-    <section className="section">
+    <section className={`section ${stale ? 'stale' : ''}`}>
       <div className="section-header">
         <h2>투자자별 매매종합</h2>
         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>단위: 억원 · 순매수</span>

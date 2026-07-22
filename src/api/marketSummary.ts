@@ -38,11 +38,21 @@ export const getMarketSummary = () =>
 export const getWatchStocks = () =>
   client.get('/watch-stocks').then(r => watchStocksResponseSchema.parse(r.data))
 
+export const registerWatchStock = (stockCode: string) => client.post(`/watch-stocks/${stockCode}`)
+
+export const unregisterWatchStock = (stockCode: string) => client.delete(`/watch-stocks/${stockCode}`)
+
+export const designateAsPrimaryWatchStock = (stockCode: string) =>
+  client.patch(`/watch-stocks/${stockCode}/primary`)
+
+export const clearPrimaryWatchStock = (stockCode: string) =>
+  client.delete(`/watch-stocks/${stockCode}/primary`)
+
+export const registerAsPrimaryWatchStock = (stockCode: string) =>
+  client.put(`/watch-stocks/${stockCode}/primary`)
+
 export const getStocks = () =>
   client.get('/stocks').then(r => stocksResponseSchema.parse(r.data))
-
-export const getPrimaryStock = () =>
-  client.get('/primary-stock').then(r => z.string().parse(r.data))
 
 export const getIntradayTop = (
   market: MarketQuery,
