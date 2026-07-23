@@ -41,3 +41,10 @@ export const watchStockKeys = {
   all: ['watch-stock'] as const,
   list: () => [...watchStockKeys.all, 'list'] as const,
 }
+
+export const marketMapKeys = {
+  all: ['market-map'] as const,
+  map: (market: Market, isExclude: boolean) => [...marketMapKeys.all, 'map', market, isExclude] as const,
+  excludedStocks: () => [...marketMapKeys.all, 'excluded-stocks'] as const,
+  categories: () => [...marketMapKeys.all, 'categories'] as const,
+}

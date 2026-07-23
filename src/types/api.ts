@@ -179,3 +179,37 @@ export const ProgramTradingDailyItemSchema = z.object({
   programNetBuyAmount: z.number(), // 백만 원
 })
 export type ProgramTradingDailyItem = z.infer<typeof ProgramTradingDailyItemSchema>
+
+// ─── Market map ────────────────────────────────────────────────────────────────
+
+export const MarketMapItemSchema = z.object({
+  stockCode: z.string(),
+  stockName: z.string(),
+  lastPrice: z.number(),        // 전일종가, 원
+  totalMarketValue: z.number(), // 원
+  changeRate: z.number(),
+  snapshotTime: z.string(),
+})
+export type MarketMapItem = z.infer<typeof MarketMapItemSchema>
+
+export const MarketMapCategoryGroupSchema = z.object({
+  categoryName: z.string(),
+  items: z.array(MarketMapItemSchema),
+})
+export type MarketMapCategoryGroup = z.infer<typeof MarketMapCategoryGroupSchema>
+
+export const MarketMapResponseSchema = snapshotResponseSchema(MarketMapCategoryGroupSchema)
+export type MarketMapResponse = z.infer<typeof MarketMapResponseSchema>
+
+export const ExcludedStockItemSchema = z.object({
+  stockCode: z.string(),
+  stockName: z.string(),
+})
+export type ExcludedStockItem = z.infer<typeof ExcludedStockItemSchema>
+
+export const StockCategoryItemSchema = z.object({
+  stockCode: z.string(),
+  stockName: z.string(),
+  categoryName: z.string(),
+})
+export type StockCategoryItem = z.infer<typeof StockCategoryItemSchema>
