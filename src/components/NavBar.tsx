@@ -4,6 +4,7 @@ const LINKS = [
   { to: '/', label: '홈' },
   { to: '/market-summary', label: '시장 요약' },
   { to: '/market-map', label: '마켓맵' },
+  { to: '/admin', label: '관리' },
 ]
 
 export default function NavBar() {

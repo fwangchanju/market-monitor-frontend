@@ -213,3 +213,9 @@ export const StockCategoryItemSchema = z.object({
   categoryName: z.string(),
 })
 export type StockCategoryItem = z.infer<typeof StockCategoryItemSchema>
+
+export const AllowedIpItemSchema = z.object({
+  ip: z.string(),
+  createdAt: z.string(),
+})
+export type AllowedIpItem = z.infer<typeof AllowedIpItemSchema>
