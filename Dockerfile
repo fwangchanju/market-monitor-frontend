@@ -1,0 +1,10 @@
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM scratch
+LABEL org.opencontainers.image.source=https://github.com/fwangchanju/market-monitor-frontend
+COPY --from=build /app/dist /dist

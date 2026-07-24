@@ -48,3 +48,8 @@ export const marketMapKeys = {
   excludedStocks: () => [...marketMapKeys.all, 'excluded-stocks'] as const,
   categories: () => [...marketMapKeys.all, 'categories'] as const,
 }
+
+export const allowedIpKeys = {
+  all: ['allowed-ip'] as const,
+  list: () => [...allowedIpKeys.all, 'list'] as const,
+}
