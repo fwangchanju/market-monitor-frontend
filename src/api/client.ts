@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const client = axios.create({
-  baseURL: '/market-monitor/api',
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json',
   },

@@ -17,6 +17,7 @@ export default function IpSegmentInput({ onSubmit }: Props) {
 
   const handleChange = (index: number, value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 3)
+    if (digits !== '' && Number(digits) > 255) return
     const next = [...segments]
     next[index] = digits
     setSegments(next)
