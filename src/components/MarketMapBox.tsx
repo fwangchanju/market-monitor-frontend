@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useDraggable } from '@dnd-kit/core'
 import type { MarketMapItem } from '@/types/api'
-import { toPctSigned, toVolume } from '@/utils/format'
+import { toJoEok, toPctSigned, toVolume } from '@/utils/format'
 
 interface Props {
   item: MarketMapItem
@@ -87,8 +87,8 @@ export default function MarketMapBox({ item, x, y, width, height, categoryName }
           >
             <div className="font-bold">{item.stockName}</div>
             <div>전일종가: {toVolume(item.lastPrice)}원</div>
-            <div>시가총액: {toVolume(Math.round(item.totalMarketValue / 100_000_000))}억</div>
-            <div>기준: {item.snapshotTime.slice(0, 16).replace('T', ' ')}</div>
+            <div>시가총액: {toJoEok(item.totalMarketValue / 100_000_000)}</div>
+            <div>수집시간: {item.snapshotTime.slice(0, 16).replace('T', ' ')}</div>
           </div>,
           document.body,
         )}
