@@ -135,7 +135,6 @@ export type ProgramTradingHistoryItem = z.infer<typeof ProgramTradingHistoryItem
 
 export const ShortSellingHistoryItemSchema = z.object({
   tradeDate: z.string(),
-  snapshotTime: z.string().nullable(),
   closePrice: z.number(),
   priceChange: z.number(),
   changeRate: z.number(),

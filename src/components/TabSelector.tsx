@@ -16,7 +16,7 @@ export default function TabSelector<T extends string>({
           type="button"
           role="radio"
           aria-checked={option === value}
-          className={`nes-btn m-0 text-xs ${option === value ? 'is-primary' : ''}`}
+          className={`nes-btn m-0 text-base ${option === value ? 'is-primary' : ''}`}
           onClick={() => onChange(option)}
         >
           {labelFor(option)}

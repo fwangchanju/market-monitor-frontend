@@ -8,7 +8,6 @@ export interface LaidOutStockBox {
   y: number
   width: number
   height: number
-  share: number
 }
 
 export interface LaidOutCategory {
@@ -81,7 +80,6 @@ export function useMarketMapLayout(
           y: (leaf.y0 ?? 0) - cy0,
           width: (leaf.x1 ?? 0) - (leaf.x0 ?? 0),
           height: (leaf.y1 ?? 0) - (leaf.y0 ?? 0),
-          share: (leaf.value ?? 0) / totalValue,
         })),
       }
     })
