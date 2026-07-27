@@ -16,7 +16,7 @@ interface Props<T> {
 
 export default function DataTable<T>({ items, columns, rowKey }: Props<T>) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto scrollbar-hide">
       <table className="nes-table is-dark is-bordered w-full text-xs">
         <thead>
           <tr>

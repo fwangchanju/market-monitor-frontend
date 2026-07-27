@@ -10,7 +10,6 @@ const RANKINGS = ProgramRankingSchema.options
 const rankingLabel = (r: ProgramRanking) => (r === 'NET_BUY' ? '순매수' : '순매도')
 
 const columns: DataTableColumn<ProgramTradingRankingItem>[] = [
-  { header: '#', width: 32, render: (_, idx) => idx + 1 },
   {
     header: '종목',
     align: 'left',
@@ -22,12 +21,12 @@ const columns: DataTableColumn<ProgramTradingRankingItem>[] = [
     ),
   },
   {
-    header: '프로그램순매수(억)',
+    header: '프로그램순매수',
     render: item => toEokSignedFromMln(item.programNetBuyAmount),
     cellClassName: item => signClass(item.programNetBuyAmount),
   },
-  { header: '매수(억)', render: item => toEokFromMln(item.programBuyAmount) },
-  { header: '매도(억)', render: item => toEokFromMln(item.programSellAmount) },
+  { header: '매수', render: item => toEokFromMln(item.programBuyAmount) },
+  { header: '매도', render: item => toEokFromMln(item.programSellAmount) },
 ]
 
 // 홈 위젯엔 ranking 탭만 있고 market/amtQty 선택 UI가 없어 대시보드 기본값으로 고정.
@@ -43,6 +42,7 @@ export default function ProgramTradingSection() {
   return (
     <WidgetSection
       title="프로그램 매매 상위"
+      unit="단위: 억"
       stale={stale}
       actions={<TabSelector options={RANKINGS} value={ranking} onChange={setRanking} labelFor={rankingLabel} />}
     >
@@ -53,7 +53,7 @@ export default function ProgramTradingSection() {
       ) : items.length === 0 ? (
         <div className="p-8 text-center text-xs text-gray-500">수집된 데이터가 없습니다</div>
       ) : (
-        <DataTable items={items} columns={columns} rowKey={item => item.stockCode} />
+        <DataTable items={items.slice(0, 10)} columns={columns} rowKey={item => item.stockCode} />
       )}
     </WidgetSection>
   )

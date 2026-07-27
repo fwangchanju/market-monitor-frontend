@@ -15,23 +15,23 @@ const granularityLabel = (g: Granularity) => (g === 'INTRADAY' ? '장중' : '일
 const intradayColumns: DataTableColumn<ProgramTradingHistoryItem>[] = [
   { header: '시간', align: 'left', render: item => toTimeLabel(item.snapshotTime) },
   {
-    header: '순매수(백만)',
+    header: '순매수',
     render: item => toMlnSigned(item.programNetBuyAmount),
     cellClassName: item => signClass(item.programNetBuyAmount),
   },
-  { header: '매수(백만)', render: item => toVolume(item.programBuyAmount) },
-  { header: '매도(백만)', render: item => toVolume(item.programSellAmount) },
+  { header: '매수', render: item => toVolume(item.programBuyAmount) },
+  { header: '매도', render: item => toVolume(item.programSellAmount) },
 ]
 
 const dailyColumns: DataTableColumn<ProgramTradingDailyItem>[] = [
   { header: '일자', align: 'left', render: item => toDateLabel(item.tradeDate) },
   {
-    header: '순매수(백만)',
+    header: '순매수',
     render: item => toMlnSigned(item.programNetBuyAmount),
     cellClassName: item => signClass(item.programNetBuyAmount),
   },
-  { header: '매수(백만)', render: item => toVolume(item.programBuyAmount) },
-  { header: '매도(백만)', render: item => toVolume(item.programSellAmount) },
+  { header: '매수', render: item => toVolume(item.programBuyAmount) },
+  { header: '매도', render: item => toVolume(item.programSellAmount) },
 ]
 
 export default function ProgramTradingHistorySection() {
@@ -47,16 +47,18 @@ export default function ProgramTradingHistorySection() {
 
   const { stockCode, items, isLoading, isError } = granularity === 'INTRADAY' ? intraday : daily
   const stale = granularity === 'INTRADAY' && isStale(intraday.snapshotTime, intraday.items?.[0]?.snapshotTime)
+  const defaultStockName = watchStocks?.find(s => s.stockCode === stockCode)?.stockName
 
   return (
     <WidgetSection
       title="프로그램매매 추이 — 종목별"
+      unit="단위: 백만"
       stale={stale}
       actions={
         <>
           <div className="nes-select is-dark w-40">
             <select value={selectedCode ?? ''} onChange={e => setSelectedCode(e.target.value || null)}>
-              <option value="">기본 종목</option>
+              <option value="">{defaultStockName ?? '종목선택'}</option>
               {watchStocks?.map(s => (
                 <option key={s.stockCode} value={s.stockCode}>
                   {s.stockName}({s.stockCode})
@@ -75,9 +77,9 @@ export default function ProgramTradingHistorySection() {
       ) : items.length === 0 ? (
         <div className="p-8 text-center text-xs text-gray-500">수집된 데이터가 없습니다</div>
       ) : granularity === 'INTRADAY' ? (
-        <DataTable items={items as ProgramTradingHistoryItem[]} columns={intradayColumns} rowKey={item => item.snapshotTime} />
+        <DataTable items={(items as ProgramTradingHistoryItem[]).slice(0, 10)} columns={intradayColumns} rowKey={item => item.snapshotTime} />
       ) : (
-        <DataTable items={items as ProgramTradingDailyItem[]} columns={dailyColumns} rowKey={item => item.tradeDate} />
+        <DataTable items={(items as ProgramTradingDailyItem[]).slice(0, 10)} columns={dailyColumns} rowKey={item => item.tradeDate} />
       )}
     </WidgetSection>
   )

@@ -11,7 +11,7 @@ export default function NavBar() {
   const location = useLocation()
 
   const linkClassName = (to: string) =>
-    `text-[1.75rem] ${location.pathname === to ? 'font-bold text-indigo-700' : 'text-black hover:text-gray-600'}`
+    `whitespace-nowrap text-[1.75rem] ${location.pathname === to ? 'font-bold text-indigo-700' : 'text-black hover:text-gray-600'}`
 
   return (
     <header className="sticky top-0 z-10 flex items-center gap-4 bg-white px-6 py-6 shadow-lg">

@@ -13,25 +13,6 @@ const RANKINGS: IntradayRanking[] = ['NET_BUY', 'NET_SELL']
 // 홈 위젯엔 market/investor/ranking 탭만 있고 amtQty 선택 UI가 없어 대시보드 기본값으로 고정.
 const FIXED_AMT_QTY = 'AMOUNT' as const
 
-const columns: DataTableColumn<IntradayTopItem>[] = [
-  { header: '#', width: 32, render: (_, idx) => idx + 1 },
-  {
-    header: '종목',
-    align: 'left',
-    render: item => (
-      <>
-        <span>{item.stockName}</span>
-        <span className="ml-1.5 text-[11px] text-gray-500">{item.stockCode}</span>
-      </>
-    ),
-  },
-  {
-    header: '순매수(백만)',
-    render: item => toMlnSigned(item.netBuyAmount),
-    cellClassName: item => signClass(item.netBuyAmount),
-  },
-]
-
 export default function IntradayTopSection() {
   const [market, setMarket] = useState<MarketQuery>('KOSPI')
   const [investor, setInvestor] = useState<IntradayInvestor>('FOREIGNER')
@@ -39,9 +20,28 @@ export default function IntradayTopSection() {
   const { items, snapshotTime, isLoading, isError } = useIntradayTop(market, investor, ranking, FIXED_AMT_QTY)
   const stale = isStale(snapshotTime, items?.[0]?.snapshotTime)
 
+  const columns: DataTableColumn<IntradayTopItem>[] = [
+    {
+      header: '종목',
+      align: 'left',
+      render: item => (
+        <>
+          <span>{item.stockName}</span>
+          <span className="ml-1.5 text-[11px] text-gray-500">{item.stockCode}</span>
+        </>
+      ),
+    },
+    {
+      header: rankingLabel(ranking),
+      render: item => toMlnSigned(item.netBuyAmount),
+      cellClassName: item => signClass(item.netBuyAmount),
+    },
+  ]
+
   return (
     <WidgetSection
       title="장중 투자자별 매매 상위"
+      unit="단위: 백만"
       stale={stale}
       actions={
         <>
@@ -58,7 +58,7 @@ export default function IntradayTopSection() {
       ) : items.length === 0 ? (
         <div className="p-8 text-center text-xs text-gray-500">수집된 데이터가 없습니다</div>
       ) : (
-        <DataTable items={items} columns={columns} rowKey={item => item.stockCode} />
+        <DataTable items={items.slice(0, 10)} columns={columns} rowKey={item => item.stockCode} />
       )}
     </WidgetSection>
   )

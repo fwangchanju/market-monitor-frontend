@@ -23,6 +23,7 @@ export default function ShortSellingHistorySection() {
   const [selectedCode, setSelectedCode] = useState<string | null>(null)
   const { data: watchStocks } = useWatchStocks()
   const { stockCode, items, isLoading, isError } = useShortSellingHistory(selectedCode)
+  const defaultStockName = watchStocks?.find(s => s.stockCode === stockCode)?.stockName
 
   return (
     <WidgetSection
@@ -30,7 +31,7 @@ export default function ShortSellingHistorySection() {
       actions={
         <div className="nes-select is-dark w-40">
           <select value={selectedCode ?? ''} onChange={e => setSelectedCode(e.target.value || null)}>
-            <option value="">기본 종목</option>
+            <option value="">{defaultStockName ?? '종목선택'}</option>
             {watchStocks?.map(s => (
               <option key={s.stockCode} value={s.stockCode}>
                 {s.stockName}({s.stockCode})
@@ -47,7 +48,7 @@ export default function ShortSellingHistorySection() {
       ) : items.length === 0 ? (
         <div className="p-8 text-center text-xs text-gray-500">수집된 데이터가 없습니다</div>
       ) : (
-        <DataTable items={items} columns={columns} rowKey={item => item.tradeDate} />
+        <DataTable items={items.slice(0, 10)} columns={columns} rowKey={item => item.tradeDate} />
       )}
     </WidgetSection>
   )
