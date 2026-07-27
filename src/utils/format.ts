@@ -48,6 +48,10 @@ export const toPctSigned = (value: number): string => {
 /** 퍼센트 포맷 (소수점 2자리) */
 export const toPct = (value: number): string => `${value.toFixed(2)}%`
 
+// TODO: 아래 날짜/시간 포맷터들은 백엔드가 항상 고정 자릿수 ISO 문자열(LocalDate/LocalDateTime)을
+// 보낸다는 전제로 slice 기반으로 짜여있음. 요일 표시, 로케일별 포맷 등 더 복잡한 표기가 필요해지면
+// new Date(iso) + Intl.DateTimeFormat 기반으로 전환할 것.
+
 /** LocalDateTime(ISO) → 'HH:mm' */
 export const toTimeLabel = (iso: string | null): string => {
   if (!iso) return '-'

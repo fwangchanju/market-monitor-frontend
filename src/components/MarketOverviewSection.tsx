@@ -1,9 +1,6 @@
 import { useMarketSummary } from '@/hooks/useMarketSummary'
-import { MarketSchema } from '@/types/api'
 import { toIndex, toEokFromMln, toPctSigned, signClass, isStale } from '@/utils/format'
 import WidgetSection from './WidgetSection'
-
-const MARKETS = MarketSchema.options
 
 export default function MarketOverviewSection() {
   const { data, isError } = useMarketSummary()
@@ -29,12 +26,11 @@ export default function MarketOverviewSection() {
   }
 
   const stale = isStale(data.marketOverviews.snapshotTime, items[0]?.snapshotTime)
-  const orderedItems = MARKETS.map(market => items.find(i => i.market === market)).filter(item => item !== undefined)
 
   return (
     <WidgetSection title="시장종합" stale={stale}>
       <div className="flex flex-wrap">
-        {orderedItems.map(item => (
+        {items.map(item => (
           <div
             key={item.market}
             className="w-full border-b border-gray-600 px-4 py-2 last:border-b-0 sm:w-auto sm:flex-1 sm:border-b-0 sm:border-r sm:last:border-r-0"

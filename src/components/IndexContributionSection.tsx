@@ -49,7 +49,7 @@ export default function IndexContributionSection() {
       ) : items.length === 0 ? (
         <div className="p-8 text-center text-xs text-gray-500">{market} 데이터 없음</div>
       ) : (
-        <DataTable items={items.slice(0, 10)} columns={columns} rowKey={item => `${item.rank}-${item.stockCode}`} />
+        <DataTable items={items.slice(0, 10)} columns={columns} rowKey={item => item.stockCode} />
       )}
     </WidgetSection>
   )
