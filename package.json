@@ -16,6 +16,7 @@
     "98.css": "^0.1.21",
     "axios": "^1.13.6",
     "d3-hierarchy": "^3.1.2",
+    "modern-screenshot": "^4.7.0",
     "nes.css": "^2.2.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

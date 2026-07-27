@@ -14,7 +14,7 @@ import MarketMapTreemap from '@/components/MarketMapTreemap'
 import MarketMapManageSidebar from '@/components/MarketMapManageSidebar'
 import { useMarketMap } from '@/hooks/useMarketMap'
 import { useMarketMapDragEnd } from '@/hooks/useMarketMapDragEnd'
-import { toDateTimeLabel } from '@/utils/format'
+import { toHourLabel } from '@/utils/format'
 import { MarketSchema, type Market } from '@/types/api'
 
 const MARKETS = MarketSchema.options
@@ -87,7 +87,7 @@ export default function MarketMapPage() {
               </div>
               <div className="flex items-center gap-2">
                 {data?.snapshotTime && (
-                  <span className="text-xs text-gray-500">기준: {toDateTimeLabel(data.snapshotTime)}</span>
+                  <span className="text-xs text-gray-500">기준: {toHourLabel(data.snapshotTime)}</span>
                 )}
                 <button type="button" className="nes-btn text-base" onClick={() => setSidebarOpen(true)}>
                   제외/재분류 관리

@@ -48,6 +48,10 @@ export const toPctSigned = (value: number): string => {
 /** 퍼센트 포맷 (소수점 2자리) */
 export const toPct = (value: number): string => `${value.toFixed(2)}%`
 
+// TODO: 아래 날짜/시간 포맷터들은 백엔드가 항상 고정 자릿수 ISO 문자열(LocalDate/LocalDateTime)을
+// 보낸다는 전제로 slice 기반으로 짜여있음. 요일 표시, 로케일별 포맷 등 더 복잡한 표기가 필요해지면
+// new Date(iso) + Intl.DateTimeFormat 기반으로 전환할 것.
+
 /** LocalDateTime(ISO) → 'HH:mm' */
 export const toTimeLabel = (iso: string | null): string => {
   if (!iso) return '-'
@@ -58,6 +62,12 @@ export const toTimeLabel = (iso: string | null): string => {
 export const toDateTimeLabel = (iso: string | null): string => {
   if (!iso) return '-'
   return `${iso.slice(5, 10)} ${iso.slice(11, 16)}`
+}
+
+/** LocalDateTime(ISO) → 'yyyy-MM-dd HH:00' (분 단위 절삭) */
+export const toHourLabel = (iso: string | null): string => {
+  if (!iso) return '-'
+  return `${iso.slice(0, 10)} ${iso.slice(11, 13)}:00`
 }
 
 /** LocalDate(ISO) → 'MM/DD' */
@@ -80,6 +90,15 @@ export const toIndex = (value: number): string =>
 /** 거래량 포맷 (천 단위 콤마) */
 export const toVolume = (value: number): string =>
   value.toLocaleString('ko-KR')
+
+/** 억 원 단위 값을 '조 단위 콤마 억' 형태로 포맷 (예: 12942675 → '1,294조 2,675억') */
+export const toJoEok = (eokValue: number): string => {
+  const rounded = Math.round(eokValue)
+  const jo = Math.floor(rounded / 10_000)
+  const eok = rounded % 10_000
+  if (jo === 0) return `${eok.toLocaleString('ko-KR')}억`
+  return `${jo.toLocaleString('ko-KR')}조 ${eok.toLocaleString('ko-KR')}억`
+}
 
 /** 시장명 한글 */
 export const marketLabel = (market: string): string => {

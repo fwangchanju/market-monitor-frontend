@@ -20,11 +20,19 @@
   --bg: #0f1117;
   --surface: #1a1d27;
   --text: #e2e4ef;
-  --positive: #26a69a;
+  --stock-up: #ef5350;
+  --stock-down: #42a5f5;
   --negative: #ef5350;
   --accent-light: #7986cb;
   font-family: 'Noto Sans KR', system-ui, sans-serif;
   line-height: 1.5;
+}
+
+/* 좁은 화면에서는 rem 기반 유틸리티(폰트/여백/간격)가 전부 이 비율로 같이 줄어듦 */
+@media (max-width: 480px) {
+  :root {
+    font-size: 80%;
+  }
 }
 
 html, body, #root {
@@ -38,8 +46,8 @@ a:hover { text-decoration: underline; }
 
 /* ── Value colors ────────────────────────────────────────────────────────── */
 
-.positive { color: var(--positive); }
-.negative { color: var(--negative); }
+.positive { color: var(--stock-up); }
+.negative { color: var(--stock-down); }
 
 /* ── Button (override nes.css's pixel-art bevel look) ───────────────────────── */
 
@@ -110,5 +118,26 @@ a:hover { text-decoration: underline; }
   background-color: transparent;
   border-bottom: 2px solid #4b5563;
 }
+
+/* ── Table (override nes.css's pixel-art bevel look) ─────────────────────────
+   nes.css의 outer border는 SVG border-image 패턴이라 브라우저/테이블 크기에 따라
+   border-image-repeat이 stretch/space로 다르게 렌더링되어 어떤 표는 실선, 어떤 표는
+   점선처럼 보이는 문제가 있었음. 버튼/컨테이너와 동일하게 plain solid border로 대체. */
+.nes-table.is-bordered,
+.nes-table.is-dark.is-bordered {
+  border-image: none;
+  border: 1px solid #fff;
+  margin: 0;
+  padding: 0.375rem;
+}
+.nes-table.is-dark {
+  background-color: var(--surface);
+}
+.nes-table th, .nes-table td {
+  border-width: 0 1px 1px 0;
+}
+
+.scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
 
 }

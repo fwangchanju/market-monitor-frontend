@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import MarketMapBox from './MarketMapBox'
 import type { LaidOutCategory } from '@/hooks/useMarketMapLayout'
@@ -10,7 +9,6 @@ interface Props {
 
 export default function MarketMapCategorySection({ category, onSelectCategory }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: category.categoryName })
-  const [headerHover, setHeaderHover] = useState(false)
 
   return (
     <div
@@ -27,11 +25,7 @@ export default function MarketMapCategorySection({ category, onSelectCategory }:
       <button
         type="button"
         onClick={() => onSelectCategory(category.categoryName)}
-        onMouseEnter={() => setHeaderHover(true)}
-        onMouseLeave={() => setHeaderHover(false)}
-        className={`absolute left-0 top-0 h-7 w-full truncate bg-black/70 px-1 text-left text-sm font-bold text-white ${
-          headerHover ? 'border-2 border-white brightness-125' : 'border-2 border-transparent'
-        }`}
+        className="absolute left-0 top-0 h-7 w-full truncate border-2 border-transparent bg-black/70 px-1 text-left text-sm font-bold text-white hover:border-white hover:brightness-125"
       >
         {category.categoryName}
       </button>
