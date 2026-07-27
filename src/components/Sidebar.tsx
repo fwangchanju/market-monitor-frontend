@@ -16,7 +16,7 @@ export default function Sidebar({ open, onClose, children }: Props) {
         onClick={onClose}
       />
       <aside
-        className={`fixed inset-y-0 right-0 z-30 flex w-80 max-w-[90vw] flex-col gap-4 overflow-y-auto border-l border-gray-700 bg-[var(--surface)] p-4 transition-transform duration-200 ${
+        className={`fixed inset-y-0 right-0 z-30 flex w-80 max-w-[90vw] flex-col gap-8 overflow-y-auto border-l border-gray-700 bg-[var(--surface)] p-4 transition-transform duration-200 ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
       >

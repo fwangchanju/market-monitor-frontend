@@ -7,13 +7,14 @@ export function useMarketMapDragEnd() {
   const queryClient = useQueryClient()
 
   return async (event: DragEndEvent) => {
-    const dragData = event.active.data.current as { stockCode: string } | undefined
+    const dragData = event.active.data.current as { stockCode: string; categoryName: string } | undefined
     if (!dragData) return
 
     const targetCategory = event.over?.id as string | undefined
 
     try {
       if (targetCategory) {
+        if (targetCategory === dragData.categoryName) return
         await reassignCategory(dragData.stockCode, targetCategory)
       } else {
         await registerExcludedStock(dragData.stockCode)

@@ -45,12 +45,14 @@ export default function MarketMapManageSidebar({ open, onClose }: Props) {
   return (
     <Sidebar open={open} onClose={onClose}>
       <div className="nes-container with-title is-dark">
-        <p className="title">제외 종목{excluded ? ` (${excluded.length})` : ''}</p>
-        {excluded && excluded.length > 0 && (
-          <button type="button" className="nes-btn is-error mb-2 text-xs" onClick={handleDeleteAllExcluded}>
-            전체 초기화
-          </button>
-        )}
+        <p className="title flex w-full items-center justify-between gap-2">
+          <span>제외 종목{excluded ? ` (${excluded.length})` : ''}</span>
+          {excluded && excluded.length > 0 && (
+            <button type="button" className="nes-btn is-error text-xs" onClick={handleDeleteAllExcluded}>
+              전체 초기화
+            </button>
+          )}
+        </p>
         <div className="flex h-40 flex-col gap-2 overflow-y-auto">
           {!excluded || excluded.length === 0 ? (
             <p className="nes-text is-disabled text-xs">제외된 종목이 없습니다</p>
@@ -72,12 +74,14 @@ export default function MarketMapManageSidebar({ open, onClose }: Props) {
       </div>
 
       <div className="nes-container with-title is-dark">
-        <p className="title">재분류 종목{categories ? ` (${categories.length})` : ''}</p>
-        {categories && categories.length > 0 && (
-          <button type="button" className="nes-btn is-error mb-2 text-xs" onClick={handleDeleteAllCategories}>
-            전체 초기화
-          </button>
-        )}
+        <p className="title flex w-full items-center justify-between gap-2">
+          <span>재분류 종목{categories ? ` (${categories.length})` : ''}</span>
+          {categories && categories.length > 0 && (
+            <button type="button" className="nes-btn is-error text-xs" onClick={handleDeleteAllCategories}>
+              전체 초기화
+            </button>
+          )}
+        </p>
         <div className="flex h-40 flex-col gap-2 overflow-y-auto">
           {!categories || categories.length === 0 ? (
             <p className="nes-text is-disabled text-xs">재분류된 종목이 없습니다</p>
