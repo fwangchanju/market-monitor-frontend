@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   DndContext,
   PointerSensor,
@@ -9,15 +9,16 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import NavBar from '@/components/NavBar'
-import TabSelector from '@/components/TabSelector'
+import MarketMapFilterSidebar from '@/components/MarketMapFilterSidebar'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
 import MarketMapManageSidebar from '@/components/MarketMapManageSidebar'
 import { useMarketMap } from '@/hooks/useMarketMap'
 import { useMarketMapDragEnd } from '@/hooks/useMarketMapDragEnd'
 import { toHourLabel } from '@/utils/format'
-import { MarketSchema, type Market } from '@/types/api'
+import { captureElementToClipboard } from '@/utils/captureToClipboard'
+import type { Market } from '@/types/api'
 
-const MARKETS = MarketSchema.options
+type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 
 export default function MarketMapPage() {
   const [market, setMarket] = useState<Market>('KOSPI')
@@ -26,6 +27,9 @@ export default function MarketMapPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeItem, setActiveItem] = useState<{ stockCode: string; stockName: string } | null>(null)
   const [isOverMap, setIsOverMap] = useState(true)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
+  const captureRef = useRef<HTMLDivElement>(null)
 
   const { data, isLoading, isError } = useMarketMap(market, isExclude)
   const handleDragEnd = useMarketMapDragEnd()
@@ -62,34 +66,69 @@ export default function MarketMapPage() {
     setActiveItem(null)
   }
 
+  const handleCopy = async () => {
+    if (!captureRef.current) return
+    setCopyStatus('copying')
+    try {
+      await captureElementToClipboard(captureRef.current)
+      setCopyStatus('copied')
+    } catch {
+      setCopyStatus('error')
+    } finally {
+      setTimeout(() => setCopyStatus('idle'), 2000)
+    }
+  }
+
+  const copyLabel =
+    copyStatus === 'copying' ? 'COPYING...' : copyStatus === 'copied' ? 'COPIED' : copyStatus === 'error' ? 'FAILED' : 'COPY'
+
   return (
-    <div className="min-h-screen">
-      <NavBar
-        actions={
-          <>
-            {data?.snapshotTime && (
-              <span className="whitespace-nowrap text-xs text-black">{toHourLabel(data.snapshotTime)}</span>
-            )}
-            <TabSelector options={MARKETS} value={market} onChange={handleMarketChange} bordered={false} className="ml-6" />
-            <button
-              type="button"
-              className={`nes-btn ml-6 ${isExclude ? 'is-primary' : ''}`}
-              onClick={() => setIsExclude(prev => !prev)}
-            >
-              대형주제외
-            </button>
-            <button
-              type="button"
-              className="nes-btn ml-6 border-red-600 bg-red-600 text-white hover:bg-red-700"
-            >
-              FULL
-            </button>
-            <button type="button" className="nes-btn ml-6 mr-6 text-white" onClick={() => setSidebarOpen(true)}>
-              종목관리
-            </button>
-          </>
-        }
-      />
+    <div className="flex min-h-screen flex-col">
+      {isFullscreen ? (
+        <div className="flex items-center justify-end gap-2 bg-white px-2 py-1 shadow-lg">
+          <button
+            type="button"
+            className="nes-btn px-2 py-0.5 text-xs border-red-600 bg-red-600 text-white hover:bg-red-700"
+            onClick={() => setIsFullscreen(false)}
+          >
+            FULL
+          </button>
+          <button
+            type="button"
+            className="nes-btn px-2 py-0.5 text-xs border-red-600 bg-red-600 text-white hover:bg-red-700"
+            onClick={handleCopy}
+          >
+            {copyLabel}
+          </button>
+        </div>
+      ) : (
+        <NavBar
+          actions={
+            <>
+              {data?.snapshotTime && (
+                <span className="whitespace-nowrap text-xs text-black">{toHourLabel(data.snapshotTime)}</span>
+              )}
+              <button
+                type="button"
+                className="nes-btn ml-6 border-red-600 bg-red-600 text-white hover:bg-red-700"
+                onClick={() => setIsFullscreen(true)}
+              >
+                FULL
+              </button>
+              <button
+                type="button"
+                className="nes-btn ml-6 border-red-600 bg-red-600 text-white hover:bg-red-700"
+                onClick={handleCopy}
+              >
+                {copyLabel}
+              </button>
+              <button type="button" className="nes-btn ml-6 text-white" onClick={() => setSidebarOpen(true)}>
+                종목관리
+              </button>
+            </>
+          }
+        />
+      )}
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}
@@ -97,8 +136,15 @@ export default function MarketMapPage() {
         onDragEnd={handleDragEndAndReset}
         onDragCancel={handleDragCancel}
       >
-        <div className="p-4">
-          <div className="mx-auto max-w-[1400px]">
+        <div className="flex flex-1">
+          <MarketMapFilterSidebar
+            market={market}
+            onMarketChange={handleMarketChange}
+            isExclude={isExclude}
+            onToggleExclude={() => setIsExclude(prev => !prev)}
+            compact={isFullscreen}
+          />
+          <div ref={captureRef} className="flex-1 p-4">
             {isLoading ? (
               <div className="p-8 text-center text-xs text-gray-500">불러오는 중...</div>
             ) : isError ? (
@@ -106,7 +152,11 @@ export default function MarketMapPage() {
             ) : groups.length === 0 ? (
               <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
             ) : (
-              <MarketMapTreemap groups={groups} onSelectCategory={handleSelectCategory} />
+              <MarketMapTreemap
+                groups={groups}
+                onSelectCategory={handleSelectCategory}
+                heightClassName={isFullscreen ? 'h-[calc(100vh-30px)]' : 'h-[70vh]'}
+              />
             )}
           </div>
         </div>
