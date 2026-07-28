@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import NavBar from '@/components/NavBar'
 import MarketOverviewSection from '@/components/MarketOverviewSection'
 import InvestorTradingSection from '@/components/InvestorTradingSection'
@@ -8,48 +8,29 @@ import IndexContributionSection from '@/components/IndexContributionSection'
 import ShortSellingHistorySection from '@/components/ShortSellingHistorySection'
 import ProgramTradingHistorySection from '@/components/ProgramTradingHistorySection'
 import WatchStockSidebar from '@/components/WatchStockSidebar'
-import { captureElementToClipboard } from '@/utils/captureToClipboard'
-
-type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 
 export default function MarketSummaryPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
-  const captureRef = useRef<HTMLDivElement>(null)
-
-  const handleCopy = async () => {
-    if (!captureRef.current) return
-    setCopyStatus('copying')
-    try {
-      await captureElementToClipboard(captureRef.current)
-      setCopyStatus('copied')
-    } catch {
-      setCopyStatus('error')
-    } finally {
-      setTimeout(() => setCopyStatus('idle'), 2000)
-    }
-  }
 
   return (
     <div className="min-h-screen">
       <NavBar />
       <div className="p-4">
         <div className="mx-auto max-w-[1400px]">
-          <div className="flex justify-end gap-4">
+          <div className="sticky top-0 z-10 flex justify-end gap-4 py-2">
             <button
               type="button"
               className="nes-btn border-red-600 bg-red-600 text-white hover:bg-red-700"
-              onClick={handleCopy}
-              disabled={copyStatus === 'copying'}
+              onClick={() => window.open('/market-summary/capture', '_blank')}
             >
-              {copyStatus === 'copying' ? 'COPYING...' : copyStatus === 'copied' ? 'COPIED' : copyStatus === 'error' ? 'FAILED' : 'COPY'}
+              COPY
             </button>
-            <button type="button" className="nes-btn" onClick={() => setSidebarOpen(true)}>
+            <button type="button" className="nes-btn text-white" onClick={() => setSidebarOpen(true)}>
               관심종목 관리
             </button>
           </div>
 
-          <div ref={captureRef} className="mt-4 grid grid-cols-1 gap-4">
+          <div className="mt-4 grid grid-cols-1 gap-4">
             <MarketOverviewSection />
             <InvestorTradingSection />
             <IntradayTopSection />
