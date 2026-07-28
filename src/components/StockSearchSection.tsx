@@ -20,7 +20,7 @@ export default function StockSearchSection() {
 
   return (
     <div className="nes-container with-title is-dark">
-      <p className="title">종목 검색</p>
+      <p className="title text-sm">종목검색</p>
       <input
         type="text"
         className="nes-input is-dark mb-2"

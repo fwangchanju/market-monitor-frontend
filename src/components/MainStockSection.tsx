@@ -9,16 +9,12 @@ export default function MainStockSection() {
 
   return (
     <div className="nes-container with-title is-dark">
-      <p className="title">대표 종목</p>
+      <p className="title text-sm">대표종목</p>
       <div
         ref={setNodeRef}
         className={`flex h-28 flex-col gap-2 overflow-y-auto ${isOver ? 'bg-gray-700' : ''}`}
       >
-        {mainStock ? (
-          <DraggableStockChip source="main" stockCode={mainStock.stockCode} stockName={mainStock.stockName} />
-        ) : (
-          <p className="nes-text is-disabled text-xs">드래그해서 대표종목으로 지정하세요</p>
-        )}
+        {mainStock && <DraggableStockChip source="main" stockCode={mainStock.stockCode} stockName={mainStock.stockName} />}
       </div>
     </div>
   )
