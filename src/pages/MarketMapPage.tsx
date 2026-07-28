@@ -80,7 +80,7 @@ export default function MarketMapPage() {
   }
 
   const copyLabel =
-    copyStatus === 'copying' ? 'COPYING...' : copyStatus === 'copied' ? 'COPIED' : copyStatus === 'error' ? 'FAILED' : 'COPY'
+    copyStatus === 'copying' ? 'COPYING..' : copyStatus === 'copied' ? 'COPIED' : copyStatus === 'error' ? 'FAILED' : 'COPY'
 
   return (
     <div className="flex min-h-screen flex-col">
