@@ -16,6 +16,18 @@
 
 @layer app {
 
+/* 라틴/숫자는 Press Start 2P, 한글은 Galmuri11 — 둘 다 나머지는 각자 커버 못하는 문자라 자동으로 나뉘어 적용됨 */
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('/fonts/press-start-2p.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galmuri11';
+  src: url('/fonts/galmuri11.woff2') format('woff2');
+  font-display: swap;
+}
+
 :root {
   --bg: #0f1117;
   --surface: #1a1d27;
@@ -24,8 +36,13 @@
   --stock-down: #42a5f5;
   --negative: #ef5350;
   --accent-light: #7986cb;
-  font-family: 'Noto Sans KR', system-ui, sans-serif;
+  font-family: 'Press Start 2P', 'Galmuri11', 'Noto Sans KR', system-ui, sans-serif;
   line-height: 1.5;
+}
+
+/* nes.css가 body/html 등에 직접 font-family를 지정해서 :root만으로는 안 덮어써짐 — 같은 선택자로 재정의 */
+body, code, html, kbd, pre, samp {
+  font-family: 'Press Start 2P', 'Galmuri11', 'Noto Sans KR', system-ui, sans-serif;
 }
 
 /* 좁은 화면에서는 rem 기반 유틸리티(폰트/여백/간격)가 전부 이 비율로 같이 줄어듦 */
@@ -59,6 +76,7 @@ a:hover { text-decoration: underline; }
   color: #9ca3af;
   box-shadow: none;
   cursor: pointer;
+  margin: 0;
   padding: 10px 18px;
   transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
 }
