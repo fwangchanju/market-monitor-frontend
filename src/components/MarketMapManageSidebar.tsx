@@ -46,10 +46,14 @@ export default function MarketMapManageSidebar({ open, onClose }: Props) {
     <Sidebar open={open} onClose={onClose}>
       <div className="nes-container with-title is-dark">
         <p className="title flex w-full items-center justify-between gap-2">
-          <span>제외 종목{excluded ? ` (${excluded.length})` : ''}</span>
+          <span className="whitespace-nowrap text-sm">제외종목{excluded ? `(${excluded.length})` : ''}</span>
           {excluded && excluded.length > 0 && (
-            <button type="button" className="nes-btn is-error text-xs" onClick={handleDeleteAllExcluded}>
-              전체 초기화
+            <button
+              type="button"
+              className="nes-btn is-error shrink-0 whitespace-nowrap px-2 text-xs"
+              onClick={handleDeleteAllExcluded}
+            >
+              초기화
             </button>
           )}
         </p>
@@ -58,12 +62,12 @@ export default function MarketMapManageSidebar({ open, onClose }: Props) {
             <p className="nes-text is-disabled text-xs">제외된 종목이 없습니다</p>
           ) : (
             excluded.map(stock => (
-              <div key={stock.stockCode} className="flex items-center justify-between gap-2 text-xs">
+              <div key={stock.stockCode} className="flex items-center justify-between gap-2 text-[10.5px]">
                 <span>{stock.stockName}</span>
                 <button
                   type="button"
                   onClick={() => handleUnregisterExcluded(stock.stockCode)}
-                  className="text-gray-400 hover:text-white"
+                  className="border-0 bg-transparent text-red-500 hover:text-red-400"
                 >
                   ✕
                 </button>
@@ -75,10 +79,14 @@ export default function MarketMapManageSidebar({ open, onClose }: Props) {
 
       <div className="nes-container with-title is-dark">
         <p className="title flex w-full items-center justify-between gap-2">
-          <span>재분류 종목{categories ? ` (${categories.length})` : ''}</span>
+          <span className="whitespace-nowrap text-sm">재분류종목{categories ? `(${categories.length})` : ''}</span>
           {categories && categories.length > 0 && (
-            <button type="button" className="nes-btn is-error text-xs" onClick={handleDeleteAllCategories}>
-              전체 초기화
+            <button
+              type="button"
+              className="nes-btn is-error shrink-0 whitespace-nowrap px-2 text-xs"
+              onClick={handleDeleteAllCategories}
+            >
+              초기화
             </button>
           )}
         </p>
@@ -87,14 +95,14 @@ export default function MarketMapManageSidebar({ open, onClose }: Props) {
             <p className="nes-text is-disabled text-xs">재분류된 종목이 없습니다</p>
           ) : (
             categories.map(stock => (
-              <div key={stock.stockCode} className="flex items-center justify-between gap-2 text-xs">
+              <div key={stock.stockCode} className="flex items-center justify-between gap-2 text-[10.5px]">
                 <span>
                   {stock.stockName} → {stock.categoryName}
                 </span>
                 <button
                   type="button"
                   onClick={() => handleDeleteCategory(stock.stockCode)}
-                  className="text-gray-400 hover:text-white"
+                  className="border-0 bg-transparent text-red-500 hover:text-red-400"
                 >
                   ✕
                 </button>
