@@ -1,16 +1,22 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import NavBar from '@/components/NavBar'
 import IpSegmentInput from '@/components/IpSegmentInput'
+import PermissionDenied from '@/components/PermissionDenied'
 import { useAllowedIps } from '@/hooks/useAllowedIps'
 import { allowedIpKeys } from '@/hooks/queryKeys'
 import { registerAllowedIp, deleteAllowedIp } from '@/api/allowedIp'
 import { toDateTimeLabel } from '@/utils/format'
 
 export default function AdminPage() {
-  const { data, isLoading, isError } = useAllowedIps()
+  const { data, isLoading, isError, error } = useAllowedIps()
   const queryClient = useQueryClient()
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: allowedIpKeys.all })
+
+  if (isAxiosError(error) && error.response?.status === 403) {
+    return <PermissionDenied />
+  }
 
   const handleRegister = async (ip: string) => {
     await registerAllowedIp(ip)
