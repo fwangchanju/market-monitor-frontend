@@ -8,9 +8,7 @@ export default function MarketOverviewSection() {
   if (!data) {
     return (
       <WidgetSection title="시장종합">
-        <div className="p-8 text-center text-xs text-gray-500">
-          {isError ? '데이터를 불러오지 못했습니다' : '불러오는 중...'}
-        </div>
+        {isError && <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>}
       </WidgetSection>
     )
   }

@@ -53,7 +53,7 @@ export default function ProgramTradingHistorySection() {
     <WidgetSection
       title="프로그램매매 추이 — 종목별"
       unit={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <span className="text-xs text-white">단위: 백만</span>
           <div className="nes-select is-dark w-40 text-xs">
             <select value={selectedCode ?? ''} onChange={e => setSelectedCode(e.target.value || null)}>
@@ -70,12 +70,10 @@ export default function ProgramTradingHistorySection() {
       stale={stale}
       actions={<TabSelector options={GRANULARITIES} value={granularity} onChange={setGranularity} labelFor={granularityLabel} />}
     >
-      {!items ? (
-        <div className="p-8 text-center text-xs text-gray-500">
-          {isError ? '데이터를 불러오지 못했습니다' : isLoading ? '불러오는 중...' : !stockCode ? '관심종목 없음' : '데이터가 없습니다'}
-        </div>
-      ) : items.length === 0 ? (
-        <div className="p-8 text-center text-xs text-gray-500">수집된 데이터가 없습니다</div>
+      {isLoading ? null : isError ? (
+        <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
+      ) : !items || items.length === 0 ? (
+        <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
       ) : granularity === 'INTRADAY' ? (
         <DataTable items={(items as ProgramTradingHistoryItem[]).slice(0, 10)} columns={intradayColumns} rowKey={item => item.snapshotTime} />
       ) : (

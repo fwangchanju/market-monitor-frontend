@@ -29,7 +29,7 @@ export default function ShortSellingHistorySection() {
     <WidgetSection
       title="종목별 공매도 추이"
       unit={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <span className="text-xs text-white">단위: 천원</span>
           <div className="nes-select is-dark w-40 text-xs">
             <select value={selectedCode ?? ''} onChange={e => setSelectedCode(e.target.value || null)}>
@@ -44,12 +44,10 @@ export default function ShortSellingHistorySection() {
         </div>
       }
     >
-      {!items ? (
-        <div className="p-8 text-center text-xs text-gray-500">
-          {isError ? '데이터를 불러오지 못했습니다' : isLoading ? '불러오는 중...' : !stockCode ? '관심종목 없음' : '데이터가 없습니다'}
-        </div>
-      ) : items.length === 0 ? (
-        <div className="p-8 text-center text-xs text-gray-500">수집된 데이터가 없습니다</div>
+      {isLoading ? null : isError ? (
+        <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
+      ) : !items || items.length === 0 ? (
+        <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
       ) : (
         <DataTable items={items.slice(0, 10)} columns={columns} rowKey={item => item.tradeDate} />
       )}
