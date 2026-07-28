@@ -13,7 +13,7 @@ export default function StockSearchSection() {
   const matches = trimmed
     ? data?.filter(
         s =>
-          (s.stockName.toLowerCase().startsWith(trimmed) || s.stockCode.startsWith(trimmed)) &&
+          (s.stockName.toLowerCase().includes(trimmed) || s.stockCode.includes(trimmed)) &&
           !registeredCodes.includes(s.stockCode),
       )
     : []
@@ -26,12 +26,10 @@ export default function StockSearchSection() {
         className="nes-input is-dark mb-2"
         value={query}
         onChange={e => setQuery(e.target.value)}
-        placeholder="종목명 또는 코드"
+        placeholder="종목명 또는 코드를 입력하세요"
       />
       <div className="flex h-56 flex-col gap-2 overflow-y-auto">
-        {!trimmed ? (
-          <p className="nes-text is-disabled text-xs">종목명 또는 코드를 입력하세요</p>
-        ) : matches && matches.length === 0 ? (
+        {!trimmed ? null : matches && matches.length === 0 ? (
           <p className="nes-text is-disabled text-xs">검색 결과가 없습니다</p>
         ) : (
           matches?.map(item => (
