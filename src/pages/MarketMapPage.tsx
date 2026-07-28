@@ -64,7 +64,32 @@ export default function MarketMapPage() {
 
   return (
     <div className="min-h-screen">
-      <NavBar />
+      <NavBar
+        actions={
+          <>
+            {data?.snapshotTime && (
+              <span className="whitespace-nowrap text-xs text-black">{toHourLabel(data.snapshotTime)}</span>
+            )}
+            <TabSelector options={MARKETS} value={market} onChange={handleMarketChange} bordered={false} className="ml-6" />
+            <button
+              type="button"
+              className={`nes-btn ml-6 ${isExclude ? 'is-primary' : ''}`}
+              onClick={() => setIsExclude(prev => !prev)}
+            >
+              대형주제외
+            </button>
+            <button
+              type="button"
+              className="nes-btn ml-6 border-red-600 bg-red-600 text-white hover:bg-red-700"
+            >
+              FULL
+            </button>
+            <button type="button" className="nes-btn ml-6 mr-6 text-white" onClick={() => setSidebarOpen(true)}>
+              종목관리
+            </button>
+          </>
+        }
+      />
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}
@@ -74,27 +99,6 @@ export default function MarketMapPage() {
       >
         <div className="p-4">
           <div className="mx-auto max-w-[1400px]">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <TabSelector options={MARKETS} value={market} onChange={handleMarketChange} />
-                <button
-                  type="button"
-                  className={`nes-btn ml-6 text-base ${isExclude ? 'is-primary' : ''}`}
-                  onClick={() => setIsExclude(prev => !prev)}
-                >
-                  대형주 제외
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                {data?.snapshotTime && (
-                  <span className="text-xs text-gray-500">기준: {toHourLabel(data.snapshotTime)}</span>
-                )}
-                <button type="button" className="nes-btn text-base text-white" onClick={() => setSidebarOpen(true)}>
-                  종목관리
-                </button>
-              </div>
-            </div>
-
             {isLoading ? (
               <div className="p-8 text-center text-xs text-gray-500">불러오는 중...</div>
             ) : isError ? (

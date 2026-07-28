@@ -14,10 +14,9 @@ export default function MarketSummaryPage() {
 
   return (
     <div className="min-h-screen">
-      <NavBar />
-      <div className="p-4">
-        <div className="mx-auto max-w-[1400px]">
-          <div className="sticky top-0 z-10 flex justify-end gap-4 py-2">
+      <NavBar
+        actions={
+          <>
             <button
               type="button"
               className="nes-btn border-red-600 bg-red-600 text-white hover:bg-red-700"
@@ -26,10 +25,13 @@ export default function MarketSummaryPage() {
               COPY
             </button>
             <button type="button" className="nes-btn text-white" onClick={() => setSidebarOpen(true)}>
-              관심종목 관리
+              관심종목관리
             </button>
-          </div>
-
+          </>
+        }
+      />
+      <div className="p-4">
+        <div className="mx-auto max-w-[1400px]">
           <div className="mt-4 grid grid-cols-1 gap-4">
             <MarketOverviewSection />
             <InvestorTradingSection />
