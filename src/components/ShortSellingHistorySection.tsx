@@ -28,8 +28,8 @@ export default function ShortSellingHistorySection() {
   return (
     <WidgetSection
       title="종목별 공매도 추이"
-      actions={
-        <div className="nes-select is-dark w-40">
+      unit={
+        <div className="nes-select is-dark w-40 text-xs">
           <select value={selectedCode ?? ''} onChange={e => setSelectedCode(e.target.value || null)}>
             <option value="">{defaultStockName ?? '종목선택'}</option>
             {watchStocks?.map(s => (

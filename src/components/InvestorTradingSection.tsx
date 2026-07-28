@@ -40,7 +40,7 @@ export default function InvestorTradingSection() {
     <WidgetSection
       title="투자자별 매매종합"
       stale={stale}
-      unit="단위: 억 · 순매수"
+      unit="순매수 · 단위: 억"
     >
       <div className="overflow-x-auto">
         <table className="nes-table is-dark is-bordered w-full text-xs">

@@ -11,11 +11,15 @@ interface Props {
 export default function WidgetSection({ title, unit, actions, stale, children }: Props) {
   return (
     <section className={`section nes-container is-dark ${stale ? 'border-red-500' : ''}`}>
-      <div className="mb-2 flex flex-col items-start gap-1 border-b border-gray-600 pb-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="relative z-10 mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-gray-600 pb-2">
         <h2 className={`text-sm font-bold ${stale ? 'text-red-400' : ''}`}>{title}</h2>
-        {unit && <span className="text-xs text-gray-500">{unit}</span>}
+        {(unit || actions) && (
+          <div className="flex flex-wrap items-center gap-4">
+            {unit && <div className="text-xs text-white">{unit}</div>}
+            {actions}
+          </div>
+        )}
       </div>
-      {actions && <div className="mb-3 flex flex-wrap items-center gap-4">{actions}</div>}
       {children}
     </section>
   )

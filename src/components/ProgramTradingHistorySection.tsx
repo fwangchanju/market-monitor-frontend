@@ -52,20 +52,22 @@ export default function ProgramTradingHistorySection() {
   return (
     <WidgetSection
       title="프로그램매매 추이 — 종목별"
-      unit="단위: 백만"
+      unit={
+        <div className="nes-select is-dark w-40 text-xs">
+          <select value={selectedCode ?? ''} onChange={e => setSelectedCode(e.target.value || null)}>
+            <option value="">{defaultStockName ?? '종목선택'}</option>
+            {watchStocks?.map(s => (
+              <option key={s.stockCode} value={s.stockCode}>
+                {s.stockName}({s.stockCode})
+              </option>
+            ))}
+          </select>
+        </div>
+      }
       stale={stale}
       actions={
         <>
-          <div className="nes-select is-dark w-40">
-            <select value={selectedCode ?? ''} onChange={e => setSelectedCode(e.target.value || null)}>
-              <option value="">{defaultStockName ?? '종목선택'}</option>
-              {watchStocks?.map(s => (
-                <option key={s.stockCode} value={s.stockCode}>
-                  {s.stockName}({s.stockCode})
-                </option>
-              ))}
-            </select>
-          </div>
+          <span className="text-xs text-white">단위: 백만</span>
           <TabSelector options={GRANULARITIES} value={granularity} onChange={setGranularity} labelFor={granularityLabel} />
         </>
       }
