@@ -89,8 +89,8 @@ export default function MarketMapPage() {
                 {data?.snapshotTime && (
                   <span className="text-xs text-gray-500">기준: {toHourLabel(data.snapshotTime)}</span>
                 )}
-                <button type="button" className="nes-btn text-base" onClick={() => setSidebarOpen(true)}>
-                  제외/재분류 관리
+                <button type="button" className="nes-btn text-base text-white" onClick={() => setSidebarOpen(true)}>
+                  종목관리
                 </button>
               </div>
             </div>

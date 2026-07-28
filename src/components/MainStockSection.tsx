@@ -12,7 +12,7 @@ export default function MainStockSection() {
       <p className="title">대표 종목</p>
       <div
         ref={setNodeRef}
-        className={`flex h-56 items-center justify-center ${isOver ? 'bg-gray-700' : ''}`}
+        className={`flex h-28 flex-col gap-2 overflow-y-auto ${isOver ? 'bg-gray-700' : ''}`}
       >
         {mainStock ? (
           <DraggableStockChip source="main" stockCode={mainStock.stockCode} stockName={mainStock.stockName} />

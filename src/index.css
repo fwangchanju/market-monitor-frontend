@@ -140,4 +140,18 @@ a:hover { text-decoration: underline; }
 .scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 
+/* ── Select (같은 이유로 border-image 대신 solid border) ─────────────────────── */
+.nes-select { margin: 0; }
+.nes-select select {
+  border-image: none;
+  border: 1px solid #374151;
+}
+
+/* ── Input (같은 이유로 border-image 대신 solid border) ──────────────────────── */
+.nes-input {
+  border-image: none;
+  border: 1px solid #374151;
+  margin: 0;
+}
+
 }
