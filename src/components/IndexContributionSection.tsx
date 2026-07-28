@@ -42,11 +42,9 @@ export default function IndexContributionSection() {
       stale={stale}
       actions={<TabSelector options={MARKETS} value={market} onChange={setMarket} />}
     >
-      {!items ? (
-        <div className="p-8 text-center text-xs text-gray-500">
-          {isError ? '데이터를 불러오지 못했습니다' : isLoading ? '불러오는 중...' : '데이터가 없습니다'}
-        </div>
-      ) : items.length === 0 ? (
+      {isLoading ? null : isError ? (
+        <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
+      ) : !items || items.length === 0 ? (
         <div className="p-8 text-center text-xs text-gray-500">{market} 데이터 없음</div>
       ) : (
         <DataTable items={items.slice(0, 10)} columns={columns} rowKey={item => item.stockCode} />

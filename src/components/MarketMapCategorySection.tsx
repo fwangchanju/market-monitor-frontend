@@ -20,7 +20,7 @@ export default function MarketMapCategorySection({ category, onSelectCategory }:
         width: category.width,
         height: category.height,
       }}
-      className={`border ${isOver ? 'border-2 border-white brightness-125' : 'border-gray-700'}`}
+      className={`border ${isOver ? 'border-2 border-yellow-400 brightness-125' : 'border-gray-700'}`}
     >
       <button
         type="button"

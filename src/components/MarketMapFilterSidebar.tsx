@@ -22,7 +22,7 @@ export default function MarketMapFilterSidebar({ market, onMarketChange, isExclu
                 type="button"
                 onClick={() => onMarketChange(m)}
                 className={`w-full rounded border-0 bg-transparent px-2 py-1 text-left font-bold ${
-                  market === m ? 'bg-gray-700 text-white' : 'text-[#4f8fd6] hover:text-[#3a6fb0]'
+                  market === m ? 'bg-gray-700 text-[#4f8fd6]' : 'text-white hover:text-gray-300'
                 }`}
               >
                 {m}
