@@ -33,7 +33,7 @@ export default function MarketOverviewSection() {
             key={item.market}
             className="w-full border-b border-gray-600 px-4 py-2 last:border-b-0 sm:w-auto sm:flex-1 sm:border-b-0 sm:border-r sm:last:border-r-0"
           >
-            <div className="text-xs text-gray-500">{item.market}</div>
+            <div className="text-xs text-white">{item.market}</div>
             <div className="flex items-center justify-between gap-4">
               <div>
                 <div className={`text-2xl font-bold tabular-nums ${signClass(item.changeValue)}`}>
@@ -42,13 +42,13 @@ export default function MarketOverviewSection() {
                 <div className={`mt-1 text-sm ${signClass(item.changeValue)}`}>
                   {toPctSigned(item.changeRate)} &nbsp; {item.changeValue > 0 ? '+' : ''}{toIndex(item.changeValue)}
                 </div>
-                <div className="mt-2 whitespace-nowrap text-xs text-gray-500">거래대금 {toEokFromMln(item.tradingValue)}억</div>
+                <div className="mt-2 whitespace-nowrap text-xs text-white">거래대금 {toEokFromMln(item.tradingValue)}억</div>
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 whitespace-nowrap text-xs text-gray-400">
-                <div>상승 : <span className="positive">{item.advancers}</span></div>
-                <div>상한 : <span className="positive">{item.upperLimitCount}</span></div>
-                <div>하락 : <span className="negative">{item.decliners}</span></div>
-                <div>하한 : <span className="negative">{item.lowerLimitCount}</span></div>
+                <div className="positive">상승 : {item.advancers}</div>
+                <div className="positive">상한 : {item.upperLimitCount}</div>
+                <div className="negative">하락 : {item.decliners}</div>
+                <div className="negative">하한 : {item.lowerLimitCount}</div>
                 <div>보합 : {item.unchangedCount}</div>
               </div>
             </div>
