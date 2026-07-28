@@ -28,7 +28,6 @@ const indexContributionResponseSchema = snapshotResponseSchema(IndexContribution
 const programTradingHistoryResponseSchema = stockHistoryResponseSchema(ProgramTradingHistoryItemSchema)
 const programTradingDailyHistoryResponseSchema = stockHistoryResponseSchema(ProgramTradingDailyItemSchema)
 const shortSellingHistoryResponseSchema = stockHistoryResponseSchema(ShortSellingHistoryItemSchema)
-const renderMarketSummaryResponseSchema = z.object({ sent: z.number() })
 
 export const getMarketSummary = () =>
   client.get('/market-summary').then(r => MarketSummaryResponseSchema.parse(r.data))
@@ -126,6 +125,3 @@ export const getShortSellingHistory = (stockCode: string) =>
       `/stocks/${stockCode}/short-selling`,
     )
     .then(r => shortSellingHistoryResponseSchema.parse(r.data))
-
-export const renderMarketSummary = () =>
-  client.post('/render-market-summary').then(r => renderMarketSummaryResponseSchema.parse(r.data))
