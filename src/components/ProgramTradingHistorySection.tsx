@@ -53,24 +53,22 @@ export default function ProgramTradingHistorySection() {
     <WidgetSection
       title="프로그램매매 추이 — 종목별"
       unit={
-        <div className="nes-select is-dark w-40 text-xs">
-          <select value={selectedCode ?? ''} onChange={e => setSelectedCode(e.target.value || null)}>
-            <option value="">{defaultStockName ?? '종목선택'}</option>
-            {watchStocks?.map(s => (
-              <option key={s.stockCode} value={s.stockCode}>
-                {s.stockName}({s.stockCode})
-              </option>
-            ))}
-          </select>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-white">단위: 백만</span>
+          <div className="nes-select is-dark w-40 text-xs">
+            <select value={selectedCode ?? ''} onChange={e => setSelectedCode(e.target.value || null)}>
+              <option value="">{defaultStockName ?? '종목선택'}</option>
+              {watchStocks?.map(s => (
+                <option key={s.stockCode} value={s.stockCode}>
+                  {s.stockName}({s.stockCode})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       }
       stale={stale}
-      actions={
-        <>
-          <span className="text-xs text-white">단위: 백만</span>
-          <TabSelector options={GRANULARITIES} value={granularity} onChange={setGranularity} labelFor={granularityLabel} />
-        </>
-      }
+      actions={<TabSelector options={GRANULARITIES} value={granularity} onChange={setGranularity} labelFor={granularityLabel} />}
     >
       {!items ? (
         <div className="p-8 text-center text-xs text-gray-500">

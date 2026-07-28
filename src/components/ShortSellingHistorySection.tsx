@@ -16,7 +16,7 @@ const columns: DataTableColumn<ShortSellingHistoryItem>[] = [
   },
   { header: '공매도량', render: item => toVolume(item.shortVolume) },
   { header: '비중', render: item => toPct(item.shortRatio) },
-  { header: '공매도금액(천원)', render: item => toVolume(item.shortAmount) },
+  { header: '공매도금액', render: item => toVolume(item.shortAmount) },
 ]
 
 export default function ShortSellingHistorySection() {
@@ -29,15 +29,18 @@ export default function ShortSellingHistorySection() {
     <WidgetSection
       title="종목별 공매도 추이"
       unit={
-        <div className="nes-select is-dark w-40 text-xs">
-          <select value={selectedCode ?? ''} onChange={e => setSelectedCode(e.target.value || null)}>
-            <option value="">{defaultStockName ?? '종목선택'}</option>
-            {watchStocks?.map(s => (
-              <option key={s.stockCode} value={s.stockCode}>
-                {s.stockName}({s.stockCode})
-              </option>
-            ))}
-          </select>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-white">단위: 천원</span>
+          <div className="nes-select is-dark w-40 text-xs">
+            <select value={selectedCode ?? ''} onChange={e => setSelectedCode(e.target.value || null)}>
+              <option value="">{defaultStockName ?? '종목선택'}</option>
+              {watchStocks?.map(s => (
+                <option key={s.stockCode} value={s.stockCode}>
+                  {s.stockName}({s.stockCode})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       }
     >

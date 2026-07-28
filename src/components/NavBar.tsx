@@ -27,12 +27,7 @@ export default function NavBar({ center, actions }: Props) {
         ))}
       </div>
       {center && <div className="flex flex-1 items-center justify-center gap-2">{center}</div>}
-      <div className={`flex items-center gap-2 ${center ? '' : 'ml-auto'}`}>
-        {actions}
-        <Link to="/admin" className="nes-btn text-white">
-          IP관리
-        </Link>
-      </div>
+      {actions && <div className={`flex items-center gap-2 ${center ? '' : 'ml-auto'}`}>{actions}</div>}
     </header>
   )
 }

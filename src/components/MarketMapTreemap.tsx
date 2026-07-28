@@ -6,9 +6,10 @@ import MarketMapCategorySection from './MarketMapCategorySection'
 interface Props {
   groups: MarketMapCategoryGroup[]
   onSelectCategory: (categoryName: string) => void
+  heightClassName?: string
 }
 
-export default function MarketMapTreemap({ groups, onSelectCategory }: Props) {
+export default function MarketMapTreemap({ groups, onSelectCategory, heightClassName = 'h-[70vh]' }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
 
@@ -27,7 +28,7 @@ export default function MarketMapTreemap({ groups, onSelectCategory }: Props) {
   const categories = useMarketMapLayout(groups, size.width, size.height)
 
   return (
-    <div ref={containerRef} className="relative h-[70vh] w-full">
+    <div ref={containerRef} className={`relative w-full ${heightClassName}`}>
       {categories.map(category => (
         <MarketMapCategorySection key={category.categoryName} category={category} onSelectCategory={onSelectCategory} />
       ))}

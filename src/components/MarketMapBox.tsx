@@ -65,7 +65,7 @@ export default function MarketMapBox({ item, x, y, width, height, categoryName }
       onMouseLeave={() => setHover(false)}
       {...listeners}
       {...attributes}
-      className={`flex cursor-grab flex-col items-center justify-center overflow-hidden border text-white ${hover ? 'border-2 border-white brightness-125' : 'border border-black/40'} ${boxColorClass(item.changeRate)}`}
+      className={`flex cursor-grab flex-col items-center justify-center overflow-hidden border text-white ${hover ? 'border-2 border-yellow-400 brightness-125' : 'border border-black/40'} ${boxColorClass(item.changeRate)}`}
     >
       {showName && (
         <span className="w-full truncate px-1 text-center leading-tight" style={{ fontSize }}>

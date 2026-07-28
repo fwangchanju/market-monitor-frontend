@@ -25,7 +25,7 @@ export default function MarketMapCategorySection({ category, onSelectCategory }:
       <button
         type="button"
         onClick={() => onSelectCategory(category.categoryName)}
-        className="absolute left-0 top-0 h-7 w-full truncate border-2 border-transparent bg-black/70 px-1 text-left text-sm font-bold text-white hover:border-white hover:brightness-125"
+        className="absolute left-0 top-0 h-7 w-full truncate border-2 border-transparent bg-black/70 px-1 text-left text-sm font-bold text-white hover:border-yellow-400 hover:brightness-125"
       >
         {category.categoryName}
       </button>

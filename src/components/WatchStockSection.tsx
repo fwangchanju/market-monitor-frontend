@@ -9,19 +9,17 @@ export default function WatchStockSection() {
 
   return (
     <div className="nes-container with-title is-dark">
-      <p className="title">관심 종목{items ? ` (${items.length})` : ''}</p>
+      <p className="title text-sm">관심종목{items ? `(${items.length})` : ''}</p>
       <div
         ref={setNodeRef}
         className={`flex h-56 flex-col gap-2 overflow-y-auto ${isOver ? 'bg-gray-700' : ''}`}
       >
-        {!items ? (
-          <p className="nes-text is-disabled text-xs">
-            {isError ? '데이터를 불러오지 못했습니다' : '불러오는 중...'}
-          </p>
-        ) : items.length === 0 ? (
+        {isError ? (
+          <p className="nes-text is-disabled text-xs">데이터를 불러오지 못했습니다</p>
+        ) : items && items.length === 0 ? (
           <p className="nes-text is-disabled text-xs">등록된 관심 종목이 없습니다</p>
         ) : (
-          items.map(item => (
+          items?.map(item => (
             <DraggableStockChip
               key={item.stockCode}
               source="watch"
