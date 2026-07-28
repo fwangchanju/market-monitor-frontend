@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ProgramTradingDailyItem, ProgramTradingHistoryItem } from '@/types/api'
-import { toMlnSigned, toVolume, toTimeLabel, toDateLabel, signClass, isStale } from '@/utils/format'
+import { toMlnSigned, toVolume, toDateTimeLabel, toDateLabel, signClass, isStale } from '@/utils/format'
 import { useProgramTradingHistory } from '@/hooks/useProgramTradingHistory'
 import { useProgramTradingDailyHistory } from '@/hooks/useProgramTradingDailyHistory'
 import { useWatchStocks } from '@/hooks/useWatchStocks'
@@ -13,7 +13,7 @@ const GRANULARITIES: Granularity[] = ['INTRADAY', 'DAILY']
 const granularityLabel = (g: Granularity) => (g === 'INTRADAY' ? '장중' : '일별')
 
 const intradayColumns: DataTableColumn<ProgramTradingHistoryItem>[] = [
-  { header: '시간', align: 'left', render: item => toTimeLabel(item.snapshotTime) },
+  { header: '일시', align: 'left', render: item => toDateTimeLabel(item.snapshotTime) },
   {
     header: '순매수',
     render: item => toMlnSigned(item.programNetBuyAmount),
