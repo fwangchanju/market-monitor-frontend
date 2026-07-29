@@ -145,9 +145,7 @@ export default function MarketMapPage() {
             compact={isFullscreen}
           />
           <div ref={captureRef} className="flex-1 p-4">
-            {isLoading ? (
-              <div className="p-8 text-center text-xs text-gray-500">불러오는 중...</div>
-            ) : isError ? (
+            {isLoading ? null : isError ? (
               <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
             ) : groups.length === 0 ? (
               <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
