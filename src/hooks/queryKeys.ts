@@ -29,12 +29,8 @@ export const stockHistoryKeys = {
     [...stockHistoryKeys.all, stockCode, 'short-selling'] as const,
   programTradingHistory: (stockCode: string) =>
     [...stockHistoryKeys.all, stockCode, 'program-trading'] as const,
-  programTradingHistoryRange: (stockCode: string, from: string, to: string) =>
-    [...stockHistoryKeys.all, stockCode, 'program-trading', from, to] as const,
   programTradingDailyHistory: (stockCode: string) =>
     [...stockHistoryKeys.all, stockCode, 'program-trading-daily'] as const,
-  programTradingDailyHistoryRange: (stockCode: string, from: string, to: string) =>
-    [...stockHistoryKeys.all, stockCode, 'program-trading-daily', from, to] as const,
 }
 
 export const watchStockKeys = {
