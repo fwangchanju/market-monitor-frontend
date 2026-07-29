@@ -26,7 +26,7 @@ export default function StockSearchSection() {
         className="nes-input is-dark mb-2 text-xs"
         value={query}
         onChange={e => setQuery(e.target.value)}
-        placeholder="종목명 또는 코드를 입력하세요"
+        placeholder="종목명/코드 검색"
       />
       <div className="flex h-56 flex-col gap-2 overflow-y-auto">
         {!trimmed ? null : matches && matches.length === 0 ? (
