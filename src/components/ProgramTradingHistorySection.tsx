@@ -53,7 +53,7 @@ export default function ProgramTradingHistorySection() {
     <WidgetSection
       title="프로그램매매 추이 — 종목별"
       unit={
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-4">
           <span className="text-xs text-white">단위: 백만</span>
           <div className="nes-select is-dark w-40 text-xs">
             <select value={selectedCode ?? ''} onChange={e => setSelectedCode(e.target.value || null)}>
