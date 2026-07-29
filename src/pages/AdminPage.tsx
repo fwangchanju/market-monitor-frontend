@@ -14,6 +14,10 @@ export default function AdminPage() {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: allowedIpKeys.all })
 
+  if (isLoading) {
+    return null
+  }
+
   if (isAxiosError(error) && error.response?.status === 403) {
     return <PermissionDenied />
   }
@@ -40,9 +44,8 @@ export default function AdminPage() {
 
           <div className="nes-container with-title is-dark md:w-1/2">
             <p className="title">허용된 IP{data ? ` (${data.length})` : ''}</p>
-            {isLoading && <p className="nes-text is-disabled text-xs">불러오는 중...</p>}
             {isError && <p className="nes-text is-error text-xs">목록을 불러오지 못했습니다</p>}
-            {!isLoading && !isError && (!data || data.length === 0) && (
+            {!isError && (!data || data.length === 0) && (
               <p className="nes-text is-disabled text-xs">등록된 IP가 없습니다</p>
             )}
             {data && data.length > 0 && (
