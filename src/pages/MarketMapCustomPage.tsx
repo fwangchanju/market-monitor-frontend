@@ -16,6 +16,7 @@ import { useMarketMap } from '@/hooks/useMarketMap'
 import { useMarketMapDragEnd } from '@/hooks/useMarketMapDragEnd'
 import { toHourLabel } from '@/utils/format'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
+import { halfOverlapCollisionDetection } from '@/utils/dndCollision'
 import type { Market } from '@/types/api'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
@@ -131,6 +132,7 @@ export default function MarketMapCustomPage() {
       )}
       <DndContext
         sensors={sensors}
+        collisionDetection={halfOverlapCollisionDetection}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEndAndReset}
