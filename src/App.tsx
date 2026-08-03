@@ -9,7 +9,6 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/market-map-custom" replace />} />
         <Route path="/market-summary" element={<MarketSummaryPage />} />
-        <Route path="/market-map" element={<Navigate to="/market-map-custom" replace />} />
         <Route path="/market-map-custom" element={<MarketMapCustomPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/market-map-custom" replace />} />
