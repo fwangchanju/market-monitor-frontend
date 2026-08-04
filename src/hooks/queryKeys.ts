@@ -49,3 +49,12 @@ export const allowedIpKeys = {
   all: ['allowed-ip'] as const,
   list: () => [...allowedIpKeys.all, 'list'] as const,
 }
+
+export const marketMapAdminKeys = {
+  all: ['market-map-admin'] as const,
+  categories: () => [...marketMapAdminKeys.all, 'categories'] as const,
+  deletePreview: (id: number) => [...marketMapAdminKeys.all, 'delete-preview', id] as const,
+  versions: () => [...marketMapAdminKeys.all, 'versions'] as const,
+  currentVersion: () => [...marketMapAdminKeys.all, 'current-version'] as const,
+  stockCategories: () => [...marketMapAdminKeys.all, 'stock-categories'] as const,
+}

@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import Sidebar from './Sidebar'
 import { useExcludedStocks } from '@/hooks/useExcludedStocks'
-import { useStockCategories } from '@/hooks/useStockCategories'
+import { useCategoryOverrides } from '@/hooks/useCategoryOverrides'
 import { marketMapKeys } from '@/hooks/queryKeys'
 import {
   unregisterExcludedStock,
@@ -17,7 +17,7 @@ interface Props {
 
 export default function MarketMapManageSidebar({ open, onClose }: Props) {
   const { data: excluded } = useExcludedStocks()
-  const { data: categories } = useStockCategories()
+  const { data: categories } = useCategoryOverrides()
   const queryClient = useQueryClient()
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: marketMapKeys.all })

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   DndContext,
   PointerSensor,
@@ -11,7 +12,6 @@ import {
 import NavBar from '@/components/NavBar'
 import MarketMapFilterSidebar from '@/components/MarketMapFilterSidebar'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
-import MarketMapManageSidebar from '@/components/MarketMapManageSidebar'
 import { useMarketMap } from '@/hooks/useMarketMap'
 import { useMarketMapDragEnd } from '@/hooks/useMarketMapDragEnd'
 import { toHourLabel } from '@/utils/format'
@@ -25,7 +25,6 @@ export default function MarketMapCustomPage() {
   const [market, setMarket] = useState<Market>('KOSPI')
   const [isExclude, setIsExclude] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeItem, setActiveItem] = useState<{ stockCode: string; stockName: string } | null>(null)
   const [isOverMap, setIsOverMap] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -123,9 +122,9 @@ export default function MarketMapCustomPage() {
               >
                 {copyLabel}
               </button>
-              <button type="button" className="nes-btn ml-6 text-white" onClick={() => setSidebarOpen(true)}>
-                종목관리
-              </button>
+              <Link to="/admin/market-map" className="nes-btn ml-6 text-white">
+                관리
+              </Link>
             </>
           }
         />
@@ -170,8 +169,6 @@ export default function MarketMapCustomPage() {
           </div>
         </div>
       )}
-
-      <MarketMapManageSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </div>
   )
 }
