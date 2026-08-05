@@ -51,7 +51,7 @@ export const handlers = [
   ),
 
   // ── 마켓맵 ──────────────────────────────────────────────────────────
-  http.get('/api/market-map', () => HttpResponse.json(snapshot(data.marketMapGroups))),
+  http.get('/api/market-map', () => HttpResponse.json(snapshot(data.marketMapTree))),
   http.get('/api/market-map/excluded-stocks', () => HttpResponse.json(data.excludedStocks)),
   http.post('/api/market-map/excluded-stocks/:stockCode', ok),
   http.delete('/api/market-map/excluded-stocks/:stockCode', ok),

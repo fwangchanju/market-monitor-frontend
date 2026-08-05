@@ -16,13 +16,13 @@ import {
   getStockCategories,
 } from '@/api/marketMapAdmin'
 import { marketMapAdminKeys } from './queryKeys'
-import { STATIC_REFERENCE_CACHE } from './cacheConfig'
+import { STATIC_REFERENCE_CACHE, INFREQUENT_DATA_CACHE } from './cacheConfig'
 
 export function useAdminCategories() {
   return useQuery({
     queryKey: marketMapAdminKeys.categories(),
     queryFn: getCategories,
-    ...STATIC_REFERENCE_CACHE,
+    ...INFREQUENT_DATA_CACHE,
   })
 }
 

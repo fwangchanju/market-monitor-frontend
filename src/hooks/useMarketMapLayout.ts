@@ -1,6 +1,12 @@
 import { useMemo } from 'react'
 import { hierarchy, treemap, type HierarchyRectangularNode } from 'd3-hierarchy'
-import type { MarketMapCategoryGroup, MarketMapItem } from '@/types/api'
+import type { MarketMapItem } from '@/types/api'
+
+export interface DisplayGroup {
+  categoryName: string
+  totalMarketValue: number
+  items: MarketMapItem[]
+}
 
 export interface LaidOutStockBox {
   item: MarketMapItem
@@ -12,6 +18,8 @@ export interface LaidOutStockBox {
 
 export interface LaidOutCategory {
   categoryName: string
+  totalMarketValue: number
+  isSelf: boolean
   x: number
   y: number
   width: number
@@ -22,6 +30,7 @@ export interface LaidOutCategory {
 interface HierarchyDatum {
   name: string
   value?: number
+  totalMarketValue?: number
   item?: MarketMapItem
   children?: HierarchyDatum[]
 }
@@ -30,7 +39,8 @@ const CATEGORY_HEADER_HEIGHT = 28
 const PADDING = 2
 
 export function useMarketMapLayout(
-  groups: MarketMapCategoryGroup[],
+  groups: DisplayGroup[],
+  selfCategoryName: string | null,
   width: number,
   height: number,
 ): LaidOutCategory[] {
@@ -41,6 +51,7 @@ export function useMarketMapLayout(
       name: 'root',
       children: groups.map(group => ({
         name: group.categoryName,
+        totalMarketValue: group.totalMarketValue,
         children: group.items.map(item => ({
           name: item.stockName,
           value: Math.max(item.totalMarketValue, 0),
@@ -70,6 +81,8 @@ export function useMarketMapLayout(
       const cy0 = categoryNode.y0 ?? 0
       return {
         categoryName: categoryNode.data.name,
+        totalMarketValue: categoryNode.data.totalMarketValue ?? 0,
+        isSelf: categoryNode.data.name === selfCategoryName,
         x: cx0,
         y: cy0,
         width: (categoryNode.x1 ?? 0) - cx0,
@@ -83,5 +96,5 @@ export function useMarketMapLayout(
         })),
       }
     })
-  }, [groups, width, height])
+  }, [groups, selfCategoryName, width, height])
 }

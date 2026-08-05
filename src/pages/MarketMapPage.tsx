@@ -31,7 +31,7 @@ export default function MarketMapPage() {
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const captureRef = useRef<HTMLDivElement>(null)
 
-  const { data, isLoading, isError } = useMarketMap(market, isExclude)
+  const { data, isLoading, isError } = useMarketMap(market, isExclude, false)
   const handleDragEnd = useMarketMapDragEnd()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -142,6 +142,8 @@ export default function MarketMapPage() {
             onMarketChange={handleMarketChange}
             isExclude={isExclude}
             onToggleExclude={() => setIsExclude(prev => !prev)}
+            isCustom={false}
+            onToggleCustom={() => {}}
             compact={isFullscreen}
           />
           <div ref={captureRef} className="flex-1 p-4">
@@ -152,6 +154,7 @@ export default function MarketMapPage() {
             ) : (
               <MarketMapTreemap
                 groups={groups}
+                selfCategoryName={null}
                 onSelectCategory={handleSelectCategory}
                 heightClassName={isFullscreen ? 'h-[calc(100vh-30px)]' : 'h-[70vh]'}
               />

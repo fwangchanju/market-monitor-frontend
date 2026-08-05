@@ -120,27 +120,55 @@ export const shortSellingHistoryItems = Array.from({ length: 20 }, (_, i) => ({
   shortAvgPrice: 69500 + i * 100,
 }))
 
-export const marketMapGroups = [
+export const marketMapTree = [
   {
     categoryName: '반도체',
-    items: [
-      { stockCode: '005930', stockName: '삼성전자', lastPrice: 71000, totalMarketValue: 420_000_000_000_000, changeRate: 1.2, snapshotTime: now() },
-      { stockCode: '000660', stockName: 'SK하이닉스', lastPrice: 178000, totalMarketValue: 130_000_000_000_000, changeRate: -0.8, snapshotTime: now() },
+    totalMarketValue: 550_000_000_000_000,
+    items: [],
+    children: [
+      {
+        categoryName: '메모리',
+        totalMarketValue: 420_000_000_000_000,
+        items: [
+          { stockCode: '005930', stockName: '삼성전자', lastPrice: 71000, totalMarketValue: 420_000_000_000_000, changeRate: 1.2 },
+        ],
+        children: [],
+      },
+      {
+        categoryName: '파운드리',
+        totalMarketValue: 130_000_000_000_000,
+        items: [
+          { stockCode: '000660', stockName: 'SK하이닉스', lastPrice: 178000, totalMarketValue: 130_000_000_000_000, changeRate: -0.8 },
+        ],
+        children: [],
+      },
     ],
   },
   {
     categoryName: '2차전지',
+    totalMarketValue: 122_000_000_000_000,
     items: [
-      { stockCode: '051910', stockName: 'LG화학', lastPrice: 412000, totalMarketValue: 29_000_000_000_000, changeRate: 2.1, snapshotTime: now() },
-      { stockCode: '373220', stockName: 'LG에너지솔루션', lastPrice: 398000, totalMarketValue: 93_000_000_000_000, changeRate: -1.5, snapshotTime: now() },
+      { stockCode: '373220', stockName: 'LG에너지솔루션', lastPrice: 398000, totalMarketValue: 93_000_000_000_000, changeRate: -1.5 },
+    ],
+    children: [
+      {
+        categoryName: '양극재',
+        totalMarketValue: 29_000_000_000_000,
+        items: [
+          { stockCode: '051910', stockName: 'LG화학', lastPrice: 412000, totalMarketValue: 29_000_000_000_000, changeRate: 2.1 },
+        ],
+        children: [],
+      },
     ],
   },
   {
     categoryName: '인터넷/플랫폼',
+    totalMarketValue: 50_000_000_000_000,
     items: [
-      { stockCode: '035420', stockName: 'NAVER', lastPrice: 198000, totalMarketValue: 32_000_000_000_000, changeRate: 0.3, snapshotTime: now() },
-      { stockCode: '035720', stockName: '카카오', lastPrice: 41500, totalMarketValue: 18_000_000_000_000, changeRate: 3.4, snapshotTime: now() },
+      { stockCode: '035420', stockName: 'NAVER', lastPrice: 198000, totalMarketValue: 32_000_000_000_000, changeRate: 0.3 },
+      { stockCode: '035720', stockName: '카카오', lastPrice: 41500, totalMarketValue: 18_000_000_000_000, changeRate: 3.4 },
     ],
+    children: [],
   },
 ]
 

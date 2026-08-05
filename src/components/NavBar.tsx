@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 const LINKS = [
-  { to: '/market-map-custom', label: '마켓맵' },
+  { to: '/market-map', label: '마켓맵' },
   { to: '/market-summary', label: '시장요약' },
 ]
 

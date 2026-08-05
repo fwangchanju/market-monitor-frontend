@@ -10,9 +10,9 @@ import { z } from 'zod'
 const excludedStockListResponseSchema = z.array(ExcludedStockItemSchema)
 const stockCategoryListResponseSchema = z.array(CategoryOverrideItemSchema)
 
-export const getMarketMap = (market: Market, isExclude: boolean) =>
+export const getMarketMap = (market: Market, isExclude: boolean, isCustom: boolean) =>
   client
-    .get('/market-map', { params: { market, isExclude } })
+    .get('/market-map', { params: { market, isExclude, isCustom } })
     .then(r => MarketMapResponseSchema.parse(r.data))
 
 export const getExcludedStocks = () =>

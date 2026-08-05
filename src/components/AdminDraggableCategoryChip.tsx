@@ -23,7 +23,7 @@ export default function AdminDraggableCategoryChip({ categoryId, categoryName, p
         listeners?.onPointerDown?.(e)
         e.stopPropagation()
       }}
-      className="nes-container is-rounded is-dark flex cursor-grab flex-col gap-1 border-2 border-transparent px-2 py-1 hover:border-yellow-400 hover:brightness-125"
+      className="nes-container is-rounded is-dark flex cursor-grab flex-col gap-1 px-2 py-1 hover:border-yellow-400 hover:brightness-125"
     >
       <span className="text-[10.5px] text-white">{categoryName}</span>
     </div>

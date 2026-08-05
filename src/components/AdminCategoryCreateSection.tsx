@@ -22,7 +22,7 @@ export default function AdminCategoryCreateSection() {
         onChange={e => setName(e.target.value)}
         placeholder="카테고리명"
       />
-      <button type="button" className="nes-btn is-primary text-xs" onClick={handleSubmit}>
+      <button type="button" className="nes-btn is-primary mt-auto text-xs" onClick={handleSubmit}>
         추가
       </button>
     </AdminSection>

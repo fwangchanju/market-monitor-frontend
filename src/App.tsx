@@ -8,12 +8,12 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/market-map-custom" replace />} />
+        <Route path="/" element={<Navigate to="/market-map" replace />} />
         <Route path="/market-summary" element={<MarketSummaryPage />} />
-        <Route path="/market-map-custom" element={<MarketMapCustomPage />} />
+        <Route path="/market-map" element={<MarketMapCustomPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/market-map" element={<MarketMapAdminPage />} />
-        <Route path="*" element={<Navigate to="/market-map-custom" replace />} />
+        <Route path="*" element={<Navigate to="/market-map" replace />} />
       </Routes>
     </BrowserRouter>
   )

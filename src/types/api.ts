@@ -187,17 +187,26 @@ export const MarketMapItemSchema = z.object({
   lastPrice: z.number(),        // 전일종가, 원
   totalMarketValue: z.number(), // 원
   changeRate: z.number(),
-  snapshotTime: z.string(),
 })
 export type MarketMapItem = z.infer<typeof MarketMapItemSchema>
 
-export const MarketMapCategoryGroupSchema = z.object({
-  categoryName: z.string(),
-  items: z.array(MarketMapItemSchema),
-})
-export type MarketMapCategoryGroup = z.infer<typeof MarketMapCategoryGroupSchema>
+export interface MarketMapCategoryNode {
+  categoryName: string
+  totalMarketValue: number
+  children: MarketMapCategoryNode[]
+  items: MarketMapItem[]
+}
 
-export const MarketMapResponseSchema = snapshotResponseSchema(MarketMapCategoryGroupSchema)
+export const MarketMapCategoryNodeSchema: z.ZodType<MarketMapCategoryNode> = z.lazy(() =>
+  z.object({
+    categoryName: z.string(),
+    totalMarketValue: z.number(),
+    children: z.array(MarketMapCategoryNodeSchema),
+    items: z.array(MarketMapItemSchema),
+  }),
+)
+
+export const MarketMapResponseSchema = snapshotResponseSchema(MarketMapCategoryNodeSchema)
 export type MarketMapResponse = z.infer<typeof MarketMapResponseSchema>
 
 export const ExcludedStockItemSchema = z.object({
