@@ -10,7 +10,7 @@ export default function AdminCategoryDeleteSection() {
   const { remove } = useCategoryDeleteFlow()
 
   const trimmed = query.trim().toLowerCase()
-  const deletableCategories = categories?.filter(c => !c.isSynced) ?? []
+  const deletableCategories = categories?.filter(c => !c.isLocked) ?? []
   const visibleCategories = trimmed
     ? deletableCategories.filter(c => c.name.toLowerCase().includes(trimmed))
     : deletableCategories

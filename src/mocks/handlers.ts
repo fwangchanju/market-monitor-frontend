@@ -78,7 +78,7 @@ export const handlers = [
       parentId: body.parentId,
       depth: parent ? parent.depth + 1 : 0,
       displayOrder: 1,
-      isSynced: false,
+      isLocked: false,
     })
   }),
   http.patch('/api/admin/market-map/categories/:id/order', ok),
@@ -87,7 +87,7 @@ export const handlers = [
     const category = data.adminCategories.find(c => c.id === Number(params.id))
     if (!category) return new HttpResponse(null, { status: 404 })
     return HttpResponse.json(
-      category.isSynced
+      category.isLocked
         ? { categoryName: category.name, deletable: false, blockingStocks: [], deletableCategories: [] }
         : { categoryName: category.name, deletable: true, blockingStocks: [], deletableCategories: [] },
     )
