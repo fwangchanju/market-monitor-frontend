@@ -51,7 +51,7 @@ export const handlers = [
   ),
 
   // ── 마켓맵 ──────────────────────────────────────────────────────────
-  http.get('/api/market-map', () => HttpResponse.json(snapshot(data.marketMapGroups))),
+  http.get('/api/market-map', () => HttpResponse.json(snapshot(data.marketMapTree))),
   http.get('/api/market-map/excluded-stocks', () => HttpResponse.json(data.excludedStocks)),
   http.post('/api/market-map/excluded-stocks/:stockCode', ok),
   http.delete('/api/market-map/excluded-stocks/:stockCode', ok),
@@ -66,4 +66,52 @@ export const handlers = [
   http.get('/api/admin/allowed-ips', () => HttpResponse.json(data.allowedIps)),
   http.post('/api/admin/allowed-ips/:ip', ok),
   http.delete('/api/admin/allowed-ips/:ip', ok),
+
+  // ── 마켓맵 어드민(신규 커스텀 시스템) ───────────────────────────────
+  http.get('/api/admin/market-map/categories', () => HttpResponse.json(data.adminCategories)),
+  http.post('/api/admin/market-map/categories', async ({ request }) => {
+    const body = (await request.json()) as { name: string; parentId: number | null }
+    const parent = body.parentId != null ? data.adminCategories.find(c => c.id === body.parentId) : null
+    return HttpResponse.json({
+      id: Math.floor(Math.random() * 1_000_000),
+      name: body.name,
+      parentId: body.parentId,
+      depth: parent ? parent.depth + 1 : 0,
+      displayOrder: 1,
+      isSynced: false,
+    })
+  }),
+  http.patch('/api/admin/market-map/categories/:id/order', ok),
+  http.patch('/api/admin/market-map/categories/:id/parent', ok),
+  http.get('/api/admin/market-map/categories/:id/delete-preview', ({ params }) => {
+    const category = data.adminCategories.find(c => c.id === Number(params.id))
+    if (!category) return new HttpResponse(null, { status: 404 })
+    return HttpResponse.json(
+      category.isSynced
+        ? { categoryName: category.name, deletable: false, blockingStocks: [], deletableCategories: [] }
+        : { categoryName: category.name, deletable: true, blockingStocks: [], deletableCategories: [] },
+    )
+  }),
+  http.delete('/api/admin/market-map/categories/:id', ok),
+  http.get('/api/admin/market-map/versions', () => HttpResponse.json(data.adminVersions)),
+  http.get('/api/admin/market-map/versions/current', () => HttpResponse.json(data.adminVersions[0] ?? null)),
+  http.post('/api/admin/market-map/versions', async ({ request }) => {
+    const body = (await request.json()) as { label: string }
+    const now = new Date().toISOString().slice(0, 19)
+    return HttpResponse.json({ id: Math.floor(Math.random() * 1_000_000), label: body.label, createdAt: now, updatedAt: now })
+  }),
+  http.patch('/api/admin/market-map/versions/:id', async ({ request, params }) => {
+    const body = (await request.json()) as { label: string }
+    const existing = data.adminVersions.find(v => v.id === Number(params.id))
+    return HttpResponse.json({
+      id: Number(params.id),
+      label: body.label,
+      createdAt: existing?.createdAt ?? new Date().toISOString().slice(0, 19),
+      updatedAt: new Date().toISOString().slice(0, 19),
+    })
+  }),
+  http.post('/api/admin/market-map/versions/:id/restore', ok),
+  http.delete('/api/admin/market-map/versions/:id', ok),
+  http.get('/api/admin/market-map/stock-categories', () => HttpResponse.json(data.adminStockCategories)),
+  http.put('/api/admin/market-map/stock-categories/:stockCode', ok),
 ]

@@ -187,17 +187,26 @@ export const MarketMapItemSchema = z.object({
   lastPrice: z.number(),        // 전일종가, 원
   totalMarketValue: z.number(), // 원
   changeRate: z.number(),
-  snapshotTime: z.string(),
 })
 export type MarketMapItem = z.infer<typeof MarketMapItemSchema>
 
-export const MarketMapCategoryGroupSchema = z.object({
-  categoryName: z.string(),
-  items: z.array(MarketMapItemSchema),
-})
-export type MarketMapCategoryGroup = z.infer<typeof MarketMapCategoryGroupSchema>
+export interface MarketMapCategoryNode {
+  categoryName: string
+  totalMarketValue: number
+  children: MarketMapCategoryNode[]
+  items: MarketMapItem[]
+}
 
-export const MarketMapResponseSchema = snapshotResponseSchema(MarketMapCategoryGroupSchema)
+export const MarketMapCategoryNodeSchema: z.ZodType<MarketMapCategoryNode> = z.lazy(() =>
+  z.object({
+    categoryName: z.string(),
+    totalMarketValue: z.number(),
+    children: z.array(MarketMapCategoryNodeSchema),
+    items: z.array(MarketMapItemSchema),
+  }),
+)
+
+export const MarketMapResponseSchema = snapshotResponseSchema(MarketMapCategoryNodeSchema)
 export type MarketMapResponse = z.infer<typeof MarketMapResponseSchema>
 
 export const ExcludedStockItemSchema = z.object({
@@ -206,6 +215,29 @@ export const ExcludedStockItemSchema = z.object({
 })
 export type ExcludedStockItem = z.infer<typeof ExcludedStockItemSchema>
 
+export const CategoryOverrideItemSchema = z.object({
+  stockCode: z.string(),
+  stockName: z.string(),
+  categoryName: z.string(),
+})
+export type CategoryOverrideItem = z.infer<typeof CategoryOverrideItemSchema>
+
+export const AllowedIpItemSchema = z.object({
+  ip: z.string(),
+  createdAt: z.string(),
+})
+export type AllowedIpItem = z.infer<typeof AllowedIpItemSchema>
+
+export const CategoryItemSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  parentId: z.number().nullable(),
+  depth: z.number(),
+  displayOrder: z.number(),
+  isSynced: z.boolean(),
+})
+export type CategoryItem = z.infer<typeof CategoryItemSchema>
+
 export const StockCategoryItemSchema = z.object({
   stockCode: z.string(),
   stockName: z.string(),
@@ -213,8 +245,18 @@ export const StockCategoryItemSchema = z.object({
 })
 export type StockCategoryItem = z.infer<typeof StockCategoryItemSchema>
 
-export const AllowedIpItemSchema = z.object({
-  ip: z.string(),
-  createdAt: z.string(),
+export const CategoryDeletePreviewSchema = z.object({
+  categoryName: z.string(),
+  deletable: z.boolean(),
+  blockingStocks: z.array(StockCategoryItemSchema),
+  deletableCategories: z.array(z.string()),
 })
-export type AllowedIpItem = z.infer<typeof AllowedIpItemSchema>
+export type CategoryDeletePreview = z.infer<typeof CategoryDeletePreviewSchema>
+
+export const VersionItemSchema = z.object({
+  id: z.number(),
+  label: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+export type VersionItem = z.infer<typeof VersionItemSchema>

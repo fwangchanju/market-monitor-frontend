@@ -10,7 +10,6 @@ interface Props {
   y: number
   width: number
   height: number
-  categoryName: string
 }
 
 const MIN_NAME_WIDTH = 16
@@ -27,10 +26,10 @@ function fontSizePx(width: number, height: number): number {
   return Math.max(12, Math.min(22, Math.min(width, height) / 5))
 }
 
-export default function MarketMapBox({ item, x, y, width, height, categoryName }: Props) {
+export default function MarketMapBox({ item, x, y, width, height }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: item.stockCode,
-    data: { stockCode: item.stockCode, stockName: item.stockName, categoryName },
+    data: { stockCode: item.stockCode, stockName: item.stockName },
   })
   const [hover, setHover] = useState(false)
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null)
@@ -88,7 +87,6 @@ export default function MarketMapBox({ item, x, y, width, height, categoryName }
             <div className="font-bold">{item.stockName}</div>
             <div>전일종가: {toVolume(item.lastPrice)}원</div>
             <div>시가총액: {toJoEok(item.totalMarketValue / 100_000_000)}</div>
-            <div>수집시간: {item.snapshotTime.slice(0, 16).replace('T', ' ')}</div>
           </div>,
           document.body,
         )}

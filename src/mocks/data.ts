@@ -120,32 +120,84 @@ export const shortSellingHistoryItems = Array.from({ length: 20 }, (_, i) => ({
   shortAvgPrice: 69500 + i * 100,
 }))
 
-export const marketMapGroups = [
+export const marketMapTree = [
   {
     categoryName: '반도체',
-    items: [
-      { stockCode: '005930', stockName: '삼성전자', lastPrice: 71000, totalMarketValue: 420_000_000_000_000, changeRate: 1.2, snapshotTime: now() },
-      { stockCode: '000660', stockName: 'SK하이닉스', lastPrice: 178000, totalMarketValue: 130_000_000_000_000, changeRate: -0.8, snapshotTime: now() },
+    totalMarketValue: 550_000_000_000_000,
+    items: [],
+    children: [
+      {
+        categoryName: '메모리',
+        totalMarketValue: 420_000_000_000_000,
+        items: [
+          { stockCode: '005930', stockName: '삼성전자', lastPrice: 71000, totalMarketValue: 420_000_000_000_000, changeRate: 1.2 },
+        ],
+        children: [],
+      },
+      {
+        categoryName: '파운드리',
+        totalMarketValue: 130_000_000_000_000,
+        items: [
+          { stockCode: '000660', stockName: 'SK하이닉스', lastPrice: 178000, totalMarketValue: 130_000_000_000_000, changeRate: -0.8 },
+        ],
+        children: [],
+      },
     ],
   },
   {
     categoryName: '2차전지',
+    totalMarketValue: 122_000_000_000_000,
     items: [
-      { stockCode: '051910', stockName: 'LG화학', lastPrice: 412000, totalMarketValue: 29_000_000_000_000, changeRate: 2.1, snapshotTime: now() },
-      { stockCode: '373220', stockName: 'LG에너지솔루션', lastPrice: 398000, totalMarketValue: 93_000_000_000_000, changeRate: -1.5, snapshotTime: now() },
+      { stockCode: '373220', stockName: 'LG에너지솔루션', lastPrice: 398000, totalMarketValue: 93_000_000_000_000, changeRate: -1.5 },
+    ],
+    children: [
+      {
+        categoryName: '양극재',
+        totalMarketValue: 29_000_000_000_000,
+        items: [
+          { stockCode: '051910', stockName: 'LG화학', lastPrice: 412000, totalMarketValue: 29_000_000_000_000, changeRate: 2.1 },
+        ],
+        children: [],
+      },
     ],
   },
   {
     categoryName: '인터넷/플랫폼',
+    totalMarketValue: 50_000_000_000_000,
     items: [
-      { stockCode: '035420', stockName: 'NAVER', lastPrice: 198000, totalMarketValue: 32_000_000_000_000, changeRate: 0.3, snapshotTime: now() },
-      { stockCode: '035720', stockName: '카카오', lastPrice: 41500, totalMarketValue: 18_000_000_000_000, changeRate: 3.4, snapshotTime: now() },
+      { stockCode: '035420', stockName: 'NAVER', lastPrice: 198000, totalMarketValue: 32_000_000_000_000, changeRate: 0.3 },
+      { stockCode: '035720', stockName: '카카오', lastPrice: 41500, totalMarketValue: 18_000_000_000_000, changeRate: 3.4 },
     ],
+    children: [],
   },
 ]
 
 export const excludedStocks: { stockCode: string; stockName: string }[] = []
 export const stockCategories: { stockCode: string; stockName: string; categoryName: string }[] = []
+
+// ── 마켓맵 어드민(신규 커스텀 시스템) ───────────────────────────────────
+export const adminCategories = [
+  { id: 1, name: '반도체', parentId: null, depth: 0, displayOrder: 1, isSynced: true },
+  { id: 2, name: '2차전지', parentId: null, depth: 0, displayOrder: 2, isSynced: true },
+  { id: 3, name: '인터넷/플랫폼', parentId: null, depth: 0, displayOrder: 3, isSynced: true },
+  { id: 4, name: '메모리', parentId: 1, depth: 1, displayOrder: 1, isSynced: false },
+  { id: 5, name: '파운드리', parentId: 1, depth: 1, displayOrder: 2, isSynced: false },
+  { id: 6, name: '양극재', parentId: 2, depth: 1, displayOrder: 1, isSynced: false },
+]
+
+export const adminStockCategories: { stockCode: string; stockName: string; categoryName: string }[] = [
+  { stockCode: '005930', stockName: '삼성전자', categoryName: '메모리' },
+  { stockCode: '000660', stockName: 'SK하이닉스', categoryName: '파운드리' },
+  { stockCode: '051910', stockName: 'LG화학', categoryName: '양극재' },
+  { stockCode: '373220', stockName: 'LG에너지솔루션', categoryName: '2차전지' },
+  { stockCode: '035420', stockName: 'NAVER', categoryName: '인터넷/플랫폼' },
+  { stockCode: '035720', stockName: '카카오', categoryName: '인터넷/플랫폼' },
+]
+
+export const adminVersions = [
+  { id: 1, label: '2026-07-초안', createdAt: '2026-07-01T09:00:00', updatedAt: '2026-07-01T09:00:00' },
+  { id: 2, label: '분기 정기 저장', createdAt: '2026-08-01T09:00:00', updatedAt: '2026-08-01T09:00:00' },
+]
 
 export const allowedIps = [
   { ip: '127.0.0.1', createdAt: now() },

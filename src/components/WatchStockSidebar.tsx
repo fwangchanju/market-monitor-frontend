@@ -1,5 +1,6 @@
 import { DndContext } from '@dnd-kit/core'
 import { useWatchStockDragEnd } from '@/hooks/useWatchStockDragEnd'
+import { halfOverlapCollisionDetection } from '@/utils/dndCollision'
 import Sidebar from './Sidebar'
 import MainStockSection from './MainStockSection'
 import WatchStockSection from './WatchStockSection'
@@ -15,7 +16,7 @@ export default function WatchStockSidebar({ open, onClose }: Props) {
 
   return (
     <Sidebar open={open} onClose={onClose}>
-      <DndContext onDragEnd={handleDragEnd}>
+      <DndContext collisionDetection={halfOverlapCollisionDetection} onDragEnd={handleDragEnd}>
         <MainStockSection />
         <WatchStockSection />
         <StockSearchSection />

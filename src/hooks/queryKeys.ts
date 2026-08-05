@@ -40,7 +40,8 @@ export const watchStockKeys = {
 
 export const marketMapKeys = {
   all: ['market-map'] as const,
-  map: (market: Market, isExclude: boolean) => [...marketMapKeys.all, 'map', market, isExclude] as const,
+  map: (market: Market, isExclude: boolean, isCustom: boolean) =>
+    [...marketMapKeys.all, 'map', market, isExclude, isCustom] as const,
   excludedStocks: () => [...marketMapKeys.all, 'excluded-stocks'] as const,
   categories: () => [...marketMapKeys.all, 'categories'] as const,
 }
@@ -48,4 +49,13 @@ export const marketMapKeys = {
 export const allowedIpKeys = {
   all: ['allowed-ip'] as const,
   list: () => [...allowedIpKeys.all, 'list'] as const,
+}
+
+export const marketMapAdminKeys = {
+  all: ['market-map-admin'] as const,
+  categories: () => [...marketMapAdminKeys.all, 'categories'] as const,
+  deletePreview: (id: number) => [...marketMapAdminKeys.all, 'delete-preview', id] as const,
+  versions: () => [...marketMapAdminKeys.all, 'versions'] as const,
+  currentVersion: () => [...marketMapAdminKeys.all, 'current-version'] as const,
+  stockCategories: () => [...marketMapAdminKeys.all, 'stock-categories'] as const,
 }

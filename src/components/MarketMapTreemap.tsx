@@ -1,15 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
-import type { MarketMapCategoryGroup } from '@/types/api'
-import { useMarketMapLayout } from '@/hooks/useMarketMapLayout'
+import { useMarketMapLayout, type DisplayGroup } from '@/hooks/useMarketMapLayout'
 import MarketMapCategorySection from './MarketMapCategorySection'
 
 interface Props {
-  groups: MarketMapCategoryGroup[]
+  groups: DisplayGroup[]
+  selfCategoryName: string | null
+  path?: string[]
   onSelectCategory: (categoryName: string) => void
   heightClassName?: string
 }
 
-export default function MarketMapTreemap({ groups, onSelectCategory, heightClassName = 'h-[70vh]' }: Props) {
+export default function MarketMapTreemap({
+  groups,
+  selfCategoryName,
+  path = [],
+  onSelectCategory,
+  heightClassName = 'h-[70vh]',
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
 
@@ -25,12 +32,12 @@ export default function MarketMapTreemap({ groups, onSelectCategory, heightClass
     return () => observer.disconnect()
   }, [])
 
-  const categories = useMarketMapLayout(groups, size.width, size.height)
+  const categories = useMarketMapLayout(groups, selfCategoryName, size.width, size.height)
 
   return (
     <div ref={containerRef} className={`relative w-full ${heightClassName}`}>
       {categories.map(category => (
-        <MarketMapCategorySection key={category.categoryName} category={category} onSelectCategory={onSelectCategory} />
+        <MarketMapCategorySection key={category.categoryName} category={category} path={path} onSelectCategory={onSelectCategory} />
       ))}
     </div>
   )

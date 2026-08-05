@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   DndContext,
   PointerSensor,
@@ -11,40 +12,53 @@ import {
 import NavBar from '@/components/NavBar'
 import MarketMapFilterSidebar from '@/components/MarketMapFilterSidebar'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
-import MarketMapManageSidebar from '@/components/MarketMapManageSidebar'
 import { useMarketMap } from '@/hooks/useMarketMap'
 import { useMarketMapDragEnd } from '@/hooks/useMarketMapDragEnd'
+import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
+import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
 import { toHourLabel } from '@/utils/format'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
+import { halfOverlapCollisionDetection } from '@/utils/dndCollision'
 import type { Market } from '@/types/api'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 
-export default function MarketMapPage() {
+export default function MarketMapCustomPage() {
   const [market, setMarket] = useState<Market>('KOSPI')
   const [isExclude, setIsExclude] = useState(true)
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isCustom, setIsCustom] = useState(true)
   const [activeItem, setActiveItem] = useState<{ stockCode: string; stockName: string } | null>(null)
   const [isOverMap, setIsOverMap] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const captureRef = useRef<HTMLDivElement>(null)
 
-  const { data, isLoading, isError } = useMarketMap(market, isExclude, false)
+  const { data, isLoading, isError } = useMarketMap(market, isExclude, isCustom)
   const handleDragEnd = useMarketMapDragEnd()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
-  const allGroups = data?.items ?? []
-  const groups = selectedCategory ? allGroups.filter(g => g.categoryName === selectedCategory) : allGroups
+  const rootNodes = data?.items ?? []
+  const { path, currentNode, currentSiblings, enterCategory, goToDepth, reset } = useMarketMapDrilldown(rootNodes)
+
+  const groups: DisplayGroup[] = [
+    ...(currentNode
+      ? [{ categoryName: currentNode.categoryName, totalMarketValue: currentNode.totalMarketValue, items: currentNode.items }]
+      : []),
+    ...currentSiblings.map(node => ({
+      categoryName: node.categoryName,
+      totalMarketValue: node.totalMarketValue,
+      items: node.items,
+    })),
+  ]
 
   const handleMarketChange = (next: Market) => {
     setMarket(next)
-    setSelectedCategory(null)
+    reset()
   }
 
-  const handleSelectCategory = (categoryName: string) => {
-    setSelectedCategory(prev => (prev === categoryName ? null : categoryName))
+  const handleToggleCustom = () => {
+    setIsCustom(prev => !prev)
+    reset()
   }
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -106,7 +120,7 @@ export default function MarketMapPage() {
           actions={
             <>
               {data?.snapshotTime && (
-                <span className="whitespace-nowrap text-xs text-black">{toHourLabel(data.snapshotTime)}</span>
+                <span className="whitespace-nowrap text-xs text-black">기준시간: {toHourLabel(data.snapshotTime).slice(11)}</span>
               )}
               <button
                 type="button"
@@ -122,15 +136,16 @@ export default function MarketMapPage() {
               >
                 {copyLabel}
               </button>
-              <button type="button" className="nes-btn ml-6 text-white" onClick={() => setSidebarOpen(true)}>
-                종목관리
-              </button>
+              <Link to="/admin/market-map" className="nes-btn ml-6 text-white">
+                관리
+              </Link>
             </>
           }
         />
       )}
       <DndContext
         sensors={sensors}
+        collisionDetection={halfOverlapCollisionDetection}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEndAndReset}
@@ -142,11 +157,34 @@ export default function MarketMapPage() {
             onMarketChange={handleMarketChange}
             isExclude={isExclude}
             onToggleExclude={() => setIsExclude(prev => !prev)}
-            isCustom={false}
-            onToggleCustom={() => {}}
+            isCustom={isCustom}
+            onToggleCustom={handleToggleCustom}
             compact={isFullscreen}
           />
           <div ref={captureRef} className="flex-1 p-4">
+            {path.length > 0 && (
+              <div className="mb-2 flex h-7 w-full items-center gap-1 truncate border-2 border-white bg-black/70 px-1 text-sm font-bold text-white">
+                <button type="button" onClick={() => goToDepth(0)} className="border-0 bg-transparent p-0 text-white hover:text-yellow-400">
+                  전체
+                </button>
+                {path.map((name, index) => (
+                  <span key={index} className="flex items-center gap-1">
+                    <span>-</span>
+                    {index === path.length - 1 ? (
+                      <span>{name}</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => goToDepth(index + 1)}
+                        className="border-0 bg-transparent p-0 text-white hover:text-yellow-400"
+                      >
+                        {name}
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
             {isLoading ? null : isError ? (
               <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
             ) : groups.length === 0 ? (
@@ -154,8 +192,9 @@ export default function MarketMapPage() {
             ) : (
               <MarketMapTreemap
                 groups={groups}
-                selfCategoryName={null}
-                onSelectCategory={handleSelectCategory}
+                selfCategoryName={currentNode?.categoryName ?? null}
+                path={path}
+                onSelectCategory={enterCategory}
                 heightClassName={isFullscreen ? 'h-[calc(100vh-30px)]' : 'h-[70vh]'}
               />
             )}
@@ -171,8 +210,6 @@ export default function MarketMapPage() {
           </div>
         </div>
       )}
-
-      <MarketMapManageSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </div>
   )
 }

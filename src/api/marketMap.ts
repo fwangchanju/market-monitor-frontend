@@ -2,17 +2,17 @@ import client from './client'
 import {
   ExcludedStockItemSchema,
   MarketMapResponseSchema,
-  StockCategoryItemSchema,
+  CategoryOverrideItemSchema,
   type Market,
 } from '@/types/api'
 import { z } from 'zod'
 
 const excludedStockListResponseSchema = z.array(ExcludedStockItemSchema)
-const stockCategoryListResponseSchema = z.array(StockCategoryItemSchema)
+const stockCategoryListResponseSchema = z.array(CategoryOverrideItemSchema)
 
-export const getMarketMap = (market: Market, isExclude: boolean) =>
+export const getMarketMap = (market: Market, isExclude: boolean, isCustom: boolean) =>
   client
-    .get('/market-map', { params: { market, isExclude } })
+    .get('/market-map', { params: { market, isExclude, isCustom } })
     .then(r => MarketMapResponseSchema.parse(r.data))
 
 export const getExcludedStocks = () =>
@@ -26,7 +26,7 @@ export const unregisterExcludedStock = (stockCode: string) =>
 
 export const deleteAllExcludedStocks = () => client.delete('/market-map/excluded-stocks')
 
-export const getStockCategories = () =>
+export const getCategoryOverrides = () =>
   client.get('/market-map/categories').then(r => stockCategoryListResponseSchema.parse(r.data))
 
 export const reassignCategory = (stockCode: string, categoryName: string) =>
