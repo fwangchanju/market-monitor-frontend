@@ -29,6 +29,7 @@ export function useAdminCategories() {
 export function useCategoryDeletePreview() {
   return useMutation({
     mutationFn: (id: number) => getCategoryDeletePreview(id),
+    meta: { skipGlobalError: true },
   })
 }
 
@@ -63,6 +64,7 @@ export function useDeleteCategory() {
   return useMutation({
     mutationFn: (id: number) => deleteCategory(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.categories() }),
+    meta: { skipGlobalError: true },
   })
 }
 
