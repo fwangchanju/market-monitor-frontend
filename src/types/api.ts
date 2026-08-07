@@ -2,19 +2,21 @@ import { z } from 'zod'
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
-export const MarketQuerySchema = z.enum(['KOSPI', 'KOSDAQ', 'COMBINED'])
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 타입 추출 전용, 실제 파싱엔 안 씀
+const MarketQuerySchema = z.enum(['KOSPI', 'KOSDAQ', 'COMBINED'])
 export type MarketQuery = z.infer<typeof MarketQuerySchema>
 
 export const MarketSchema = z.enum(['KOSPI', 'KOSDAQ'])
 export type Market = z.infer<typeof MarketSchema>
 
-export const IntradayInvestorSchema = z.enum([
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 타입 추출 전용, 실제 파싱엔 안 씀
+const IntradayInvestorSchema = z.enum([
   'FOREIGNER', 'FOREIGN_COMPANY', 'INSTITUTION',
   'PENSION_FUND', 'TRUST', 'FOREIGN_TOTAL',
 ])
 export type IntradayInvestor = z.infer<typeof IntradayInvestorSchema>
 
-export const InvestorSchema = z.enum([
+const InvestorSchema = z.enum([
   'PERSONAL', 'FOREIGNER', 'INSTITUTION',
   'FINANCIAL_INVESTMENT', 'TRUST', 'PENSION_FUND',
   'PRIVATE_FUND', 'INSURANCE', 'BANK',
@@ -22,17 +24,18 @@ export const InvestorSchema = z.enum([
 ])
 export type Investor = z.infer<typeof InvestorSchema>
 
-export const IntradayRankingSchema = z.enum(['NET_BUY', 'NET_SELL'])
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 타입 추출 전용, 실제 파싱엔 안 씀
+const IntradayRankingSchema = z.enum(['NET_BUY', 'NET_SELL'])
 export type IntradayRanking = z.infer<typeof IntradayRankingSchema>
 
 export const ProgramRankingSchema = z.enum(['NET_BUY', 'NET_SELL'])
 export type ProgramRanking = z.infer<typeof ProgramRankingSchema>
 
-export const AmtQtySchema = z.enum(['AMOUNT', 'QUANTITY'])
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 타입 추출 전용, 실제 파싱엔 안 씀
+const AmtQtySchema = z.enum(['AMOUNT', 'QUANTITY'])
 export type AmtQty = z.infer<typeof AmtQtySchema>
 
-export const RegisterBySchema = z.enum(['USER', 'HOLDINGS'])
-export type RegisterBy = z.infer<typeof RegisterBySchema>
+const RegisterBySchema = z.enum(['USER', 'HOLDINGS'])
 
 // ─── Generic wrappers ─────────────────────────────────────────────────────────
 
@@ -41,10 +44,6 @@ export const snapshotResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
     snapshotTime: z.string().nullable(),
     items: z.array(itemSchema),
   })
-export type SnapshotResponse<T> = {
-  snapshotTime: string | null
-  items: T[]
-}
 
 export const stockHistoryResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
   z.object({
@@ -52,15 +51,10 @@ export const stockHistoryResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T
     snapshotTime: z.string().nullable(),
     items: z.array(itemSchema),
   })
-export type StockHistoryResponse<T> = {
-  stockCode: string | null
-  snapshotTime: string | null
-  items: T[]
-}
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
-export const MarketOverviewItemSchema = z.object({
+const MarketOverviewItemSchema = z.object({
   market: MarketSchema,
   marketStatus: z.string(),
   indexValue: z.number(),
@@ -74,9 +68,8 @@ export const MarketOverviewItemSchema = z.object({
   unchangedCount: z.number(),
   snapshotTime: z.string(),
 })
-export type MarketOverviewItem = z.infer<typeof MarketOverviewItemSchema>
 
-export const InvestorTradingSummaryItemSchema = z.object({
+const InvestorTradingSummaryItemSchema = z.object({
   market: MarketSchema,
   investor: InvestorSchema,
   buyAmount: z.number(),          // 억 원, 항상 0
@@ -84,7 +77,6 @@ export const InvestorTradingSummaryItemSchema = z.object({
   netBuyAmount: z.number(),       // 억 원
   snapshotTime: z.string(),
 })
-export type InvestorTradingSummaryItem = z.infer<typeof InvestorTradingSummaryItemSchema>
 
 export const ProgramTradingRankingItemSchema = z.object({
   rank: z.number(),
@@ -115,7 +107,6 @@ export const WatchStockItemSchema = z.object({
   isMain: z.boolean(),
   registerBy: RegisterBySchema,
 })
-export type WatchStockItem = z.infer<typeof WatchStockItemSchema>
 
 export const IntradayTopItemSchema = z.object({
   stockCode: z.string(),
@@ -158,7 +149,6 @@ export const MarketSummaryResponseSchema = z.object({
   mainShortSellingHistory: stockHistoryResponseSchema(ShortSellingHistoryItemSchema),
   mainProgramTradingHistory: stockHistoryResponseSchema(ProgramTradingHistoryItemSchema),
 })
-export type MarketSummaryResponse = z.infer<typeof MarketSummaryResponseSchema>
 
 // ─── Stock ───────────────────────────────────────────────────────────────────
 
@@ -167,7 +157,6 @@ export const StockItemSchema = z.object({
   stockName: z.string(),
   market: MarketSchema,
 })
-export type StockItem = z.infer<typeof StockItemSchema>
 
 // ─── Program trading (daily) ──────────────────────────────────────────────────
 
@@ -181,7 +170,7 @@ export type ProgramTradingDailyItem = z.infer<typeof ProgramTradingDailyItemSche
 
 // ─── Market map ────────────────────────────────────────────────────────────────
 
-export const MarketMapItemSchema = z.object({
+const MarketMapItemSchema = z.object({
   stockCode: z.string(),
   stockName: z.string(),
   lastPrice: z.number(),        // 전일종가, 원
@@ -197,7 +186,7 @@ export interface MarketMapCategoryNode {
   items: MarketMapItem[]
 }
 
-export const MarketMapCategoryNodeSchema: z.ZodType<MarketMapCategoryNode> = z.lazy(() =>
+const MarketMapCategoryNodeSchema: z.ZodType<MarketMapCategoryNode> = z.lazy(() =>
   z.object({
     categoryName: z.string(),
     totalMarketValue: z.number(),
@@ -207,26 +196,16 @@ export const MarketMapCategoryNodeSchema: z.ZodType<MarketMapCategoryNode> = z.l
 )
 
 export const MarketMapResponseSchema = snapshotResponseSchema(MarketMapCategoryNodeSchema)
-export type MarketMapResponse = z.infer<typeof MarketMapResponseSchema>
 
 export const ExcludedStockItemSchema = z.object({
   stockCode: z.string(),
   stockName: z.string(),
 })
-export type ExcludedStockItem = z.infer<typeof ExcludedStockItemSchema>
-
-export const CategoryOverrideItemSchema = z.object({
-  stockCode: z.string(),
-  stockName: z.string(),
-  categoryName: z.string(),
-})
-export type CategoryOverrideItem = z.infer<typeof CategoryOverrideItemSchema>
 
 export const AllowedIpItemSchema = z.object({
   ip: z.string(),
   createdAt: z.string(),
 })
-export type AllowedIpItem = z.infer<typeof AllowedIpItemSchema>
 
 export const CategoryItemSchema = z.object({
   id: z.number(),
@@ -234,7 +213,6 @@ export const CategoryItemSchema = z.object({
   parentId: z.number().nullable(),
   depth: z.number(),
   displayOrder: z.number(),
-  isLocked: z.boolean(),
 })
 export type CategoryItem = z.infer<typeof CategoryItemSchema>
 
@@ -251,7 +229,6 @@ export const CategoryDeletePreviewSchema = z.object({
   blockingStocks: z.array(StockCategoryItemSchema),
   deletableCategories: z.array(z.string()),
 })
-export type CategoryDeletePreview = z.infer<typeof CategoryDeletePreviewSchema>
 
 export const VersionItemSchema = z.object({
   id: z.number(),
@@ -259,4 +236,3 @@ export const VersionItemSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
 })
-export type VersionItem = z.infer<typeof VersionItemSchema>

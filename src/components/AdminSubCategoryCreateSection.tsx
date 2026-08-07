@@ -61,7 +61,12 @@ export default function AdminSubCategoryCreateSection() {
           ))
         )}
       </div>
-      <button type="button" className="nes-btn is-primary text-xs" onClick={handleSubmit}>
+      <button
+        type="button"
+        disabled={!name.trim() || parentId === null}
+        className="nes-btn is-primary text-xs disabled:opacity-40"
+        onClick={handleSubmit}
+      >
         추가{selectedParent ? ` (${selectedParent.name} 하위)` : ''}
       </button>
     </AdminSection>

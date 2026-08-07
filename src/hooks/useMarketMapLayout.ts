@@ -8,7 +8,7 @@ export interface DisplayGroup {
   items: MarketMapItem[]
 }
 
-export interface LaidOutStockBox {
+interface LaidOutStockBox {
   item: MarketMapItem
   x: number
   y: number

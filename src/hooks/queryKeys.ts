@@ -43,7 +43,6 @@ export const marketMapKeys = {
   map: (market: Market, isExclude: boolean, isCustom: boolean) =>
     [...marketMapKeys.all, 'map', market, isExclude, isCustom] as const,
   excludedStocks: () => [...marketMapKeys.all, 'excluded-stocks'] as const,
-  categories: () => [...marketMapKeys.all, 'categories'] as const,
 }
 
 export const allowedIpKeys = {

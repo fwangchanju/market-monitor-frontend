@@ -1,6 +1,13 @@
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, MutationCache } from '@tanstack/react-query'
+import { getErrorDetail } from '@/utils/errorMessage'
 
 const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onError: (error, _variables, _context, mutation) => {
+      if (mutation.options.meta?.skipGlobalError) return
+      window.alert(getErrorDetail(error))
+    },
+  }),
   defaultOptions: {
     queries: {
       // staleTime/refetchInterval은 여기서 전역으로 정하지 않음 - 시장 데이터(수시 갱신)와

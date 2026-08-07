@@ -173,16 +173,15 @@ export const marketMapTree = [
 ]
 
 export const excludedStocks: { stockCode: string; stockName: string }[] = []
-export const stockCategories: { stockCode: string; stockName: string; categoryName: string }[] = []
 
 // ── 마켓맵 어드민(신규 커스텀 시스템) ───────────────────────────────────
 export const adminCategories = [
-  { id: 1, name: '반도체', parentId: null, depth: 0, displayOrder: 1, isLocked: true },
-  { id: 2, name: '2차전지', parentId: null, depth: 0, displayOrder: 2, isLocked: true },
-  { id: 3, name: '인터넷/플랫폼', parentId: null, depth: 0, displayOrder: 3, isLocked: true },
-  { id: 4, name: '메모리', parentId: 1, depth: 1, displayOrder: 1, isLocked: false },
-  { id: 5, name: '파운드리', parentId: 1, depth: 1, displayOrder: 2, isLocked: false },
-  { id: 6, name: '양극재', parentId: 2, depth: 1, displayOrder: 1, isLocked: false },
+  { id: 1, name: '반도체', parentId: null, depth: 0, displayOrder: 1 },
+  { id: 2, name: '2차전지', parentId: null, depth: 0, displayOrder: 2 },
+  { id: 3, name: '인터넷/플랫폼', parentId: null, depth: 0, displayOrder: 3 },
+  { id: 4, name: '메모리', parentId: 1, depth: 1, displayOrder: 1 },
+  { id: 5, name: '파운드리', parentId: 1, depth: 1, displayOrder: 2 },
+  { id: 6, name: '양극재', parentId: 2, depth: 1, displayOrder: 1 },
 ]
 
 export const adminStockCategories: { stockCode: string; stockName: string; categoryName: string }[] = [

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-export type AdminMode = 'stock' | 'category'
+type AdminMode = 'stock' | 'category'
 
 const MODE_LABELS: Record<AdminMode, string> = {
   stock: '종목관리',

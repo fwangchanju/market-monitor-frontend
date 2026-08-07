@@ -10,13 +10,13 @@ export default function AdminCategoryDeleteSection() {
   const { remove } = useCategoryDeleteFlow()
 
   const trimmed = query.trim().toLowerCase()
-  const deletableCategories = categories?.filter(c => !c.isLocked) ?? []
+  const allCategories = categories ?? []
   const visibleCategories = trimmed
-    ? deletableCategories.filter(c => c.name.toLowerCase().includes(trimmed))
-    : deletableCategories
+    ? allCategories.filter(c => c.name.toLowerCase().includes(trimmed))
+    : allCategories
 
   const handleDeleteByName = () => {
-    const match = deletableCategories.find(c => c.name === query.trim())
+    const match = allCategories.find(c => c.name === query.trim())
     if (!match) return
     remove(match.id, match.name)
   }

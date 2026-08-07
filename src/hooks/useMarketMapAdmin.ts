@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getCategories,
   createCategory,
+  renameCategory,
   reorderCategory,
   reparentCategory,
   getCategoryDeletePreview,
@@ -29,6 +30,7 @@ export function useAdminCategories() {
 export function useCategoryDeletePreview() {
   return useMutation({
     mutationFn: (id: number) => getCategoryDeletePreview(id),
+    meta: { skipGlobalError: true },
   })
 }
 
@@ -37,6 +39,14 @@ export function useCreateCategory() {
   return useMutation({
     mutationFn: ({ name, parentId }: { name: string; parentId: number | null }) =>
       createCategory(name, parentId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.categories() }),
+  })
+}
+
+export function useRenameCategory() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) => renameCategory(id, name),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.categories() }),
   })
 }
@@ -63,6 +73,7 @@ export function useDeleteCategory() {
   return useMutation({
     mutationFn: (id: number) => deleteCategory(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.categories() }),
+    meta: { skipGlobalError: true },
   })
 }
 

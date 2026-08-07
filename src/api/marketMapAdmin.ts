@@ -14,6 +14,9 @@ export const createCategory = (name: string, parentId: number | null) =>
     .post('/admin/market-map/categories', { name, parentId })
     .then(r => CategoryItemSchema.parse(r.data))
 
+export const renameCategory = (id: number, name: string) =>
+  client.patch(`/admin/market-map/categories/${id}/name`, { name })
+
 export const reorderCategory = (id: number, displayOrder: number) =>
   client.patch(`/admin/market-map/categories/${id}/order`, { displayOrder })
 

@@ -1,6 +1,7 @@
 import { isAxiosError } from 'axios'
 import { useCategoryDeletePreview, useDeleteCategory } from './useMarketMapAdmin'
 import type { StockCategoryItem } from '@/types/api'
+import { getErrorDetail } from '@/utils/errorMessage'
 
 function confirmDeletable(categoryName: string, deletableCategories: string[]) {
   const list = deletableCategories.length > 0 ? deletableCategories.join(', ') : '없음'
@@ -17,8 +18,8 @@ function alertBlocked(categoryName: string, blockingStocks: StockCategoryItem[])
   window.alert(`${base}\n${list}`)
 }
 
-function alertDeleteFailed(categoryName: string) {
-  window.alert(`${categoryName}\n삭제 실패했습니다.`)
+function alertDeleteFailed(categoryName: string, error: unknown) {
+  window.alert(`${categoryName}\n${getErrorDetail(error)}`)
 }
 
 /** 카테고리 삭제 미리보기→확인→삭제 플로우. 삭제 실행 자체가 409(레이스)로 실패하면
@@ -33,7 +34,7 @@ export function useCategoryDeleteFlow() {
       preview = await deletePreview.mutateAsync(categoryId)
     } catch (e) {
       if (isAxiosError(e) && e.response?.status === 404) {
-        alertDeleteFailed(categoryName)
+        alertDeleteFailed(categoryName, e)
         return
       }
       throw e
@@ -49,16 +50,16 @@ export function useCategoryDeleteFlow() {
       await deleteCategory.mutateAsync(categoryId)
     } catch (e) {
       if (isAxiosError(e) && e.response?.status === 409) {
-        const retried = await deletePreview.mutateAsync(categoryId).catch(() => null)
-        if (retried) {
+        try {
+          const retried = await deletePreview.mutateAsync(categoryId)
           alertBlocked(retried.categoryName, retried.blockingStocks)
-        } else {
-          alertDeleteFailed(categoryName)
+        } catch (retryError) {
+          alertDeleteFailed(categoryName, retryError)
         }
         return
       }
       if (isAxiosError(e) && e.response?.status === 404) {
-        alertDeleteFailed(categoryName)
+        alertDeleteFailed(categoryName, e)
         return
       }
       throw e
