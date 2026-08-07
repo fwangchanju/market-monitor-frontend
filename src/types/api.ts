@@ -227,7 +227,6 @@ export const CategoryItemSchema = z.object({
   parentId: z.number().nullable(),
   depth: z.number(),
   displayOrder: z.number(),
-  isLocked: z.boolean(),
 })
 export type CategoryItem = z.infer<typeof CategoryItemSchema>
 

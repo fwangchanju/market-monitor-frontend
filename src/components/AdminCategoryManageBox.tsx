@@ -22,7 +22,7 @@ export default function AdminCategoryManageBox({ category, childCategories, sort
     : undefined
 
   const deleteButton =
-    sortable && !category.isLocked ? (
+    sortable ? (
       <button
         type="button"
         onClick={() => remove(category.id, category.name)}

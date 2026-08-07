@@ -74,7 +74,6 @@ export const handlers = [
       parentId: body.parentId,
       depth: parent ? parent.depth + 1 : 0,
       displayOrder: 1,
-      isLocked: false,
     })
   }),
   http.patch('/api/admin/market-map/categories/:id/order', ok),
@@ -82,11 +81,7 @@ export const handlers = [
   http.get('/api/admin/market-map/categories/:id/delete-preview', ({ params }) => {
     const category = data.adminCategories.find(c => c.id === Number(params.id))
     if (!category) return new HttpResponse(null, { status: 404 })
-    return HttpResponse.json(
-      category.isLocked
-        ? { categoryName: category.name, deletable: false, blockingStocks: [], deletableCategories: [] }
-        : { categoryName: category.name, deletable: true, blockingStocks: [], deletableCategories: [] },
-    )
+    return HttpResponse.json({ categoryName: category.name, deletable: true, blockingStocks: [], deletableCategories: [] })
   }),
   http.delete('/api/admin/market-map/categories/:id', ok),
   http.get('/api/admin/market-map/versions', () => HttpResponse.json(data.adminVersions)),
