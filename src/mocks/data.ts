@@ -173,7 +173,6 @@ export const marketMapTree = [
 ]
 
 export const excludedStocks: { stockCode: string; stockName: string }[] = []
-export const stockCategories: { stockCode: string; stockName: string; categoryName: string }[] = []
 
 // ── 마켓맵 어드민(신규 커스텀 시스템) ───────────────────────────────────
 export const adminCategories = [

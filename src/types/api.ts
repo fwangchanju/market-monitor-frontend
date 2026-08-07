@@ -215,13 +215,6 @@ export const ExcludedStockItemSchema = z.object({
 })
 export type ExcludedStockItem = z.infer<typeof ExcludedStockItemSchema>
 
-export const CategoryOverrideItemSchema = z.object({
-  stockCode: z.string(),
-  stockName: z.string(),
-  categoryName: z.string(),
-})
-export type CategoryOverrideItem = z.infer<typeof CategoryOverrideItemSchema>
-
 export const AllowedIpItemSchema = z.object({
   ip: z.string(),
   createdAt: z.string(),

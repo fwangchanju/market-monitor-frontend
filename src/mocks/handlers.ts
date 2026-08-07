@@ -56,10 +56,6 @@ export const handlers = [
   http.post('/api/market-map/excluded-stocks/:stockCode', ok),
   http.delete('/api/market-map/excluded-stocks/:stockCode', ok),
   http.delete('/api/market-map/excluded-stocks', ok),
-  http.get('/api/market-map/categories', () => HttpResponse.json(data.stockCategories)),
-  http.patch('/api/market-map/categories/:stockCode', ok),
-  http.delete('/api/market-map/categories/:stockCode', ok),
-  http.delete('/api/market-map/categories', ok),
   http.delete('/api/market-map/reset', ok),
 
   // ── 관리자(허용 IP) ─────────────────────────────────────────────────
