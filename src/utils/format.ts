@@ -2,12 +2,6 @@
 const withCommas1 = (value: number): string =>
   value.toLocaleString('ko-KR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
-/** 억 원 단위 값 포맷 (소수점 1자리, 천 단위 콤마) */
-export const toEok = (value: number): string => {
-  if (value === 0) return '0'
-  return withCommas1(value)
-}
-
 /** 부호 포함 억 원 단위 포맷 */
 export const toEokSigned = (value: number): string => {
   const sign = value > 0 ? '+' : ''
@@ -33,12 +27,6 @@ export const toEokSignedFromMln = (value: number): string => {
   return `${sign}${withCommas1(eok)}`
 }
 
-/** 천 원 단위 → 억 원 변환 포맷 (천 단위 콤마) */
-export const toEokFromThousand = (value: number): string => {
-  if (value === 0) return '0'
-  return withCommas1(value / 100_000)
-}
-
 /** 퍼센트 포맷 (소수점 2자리, 부호 포함) */
 export const toPctSigned = (value: number): string => {
   const sign = value > 0 ? '+' : ''
@@ -51,12 +39,6 @@ export const toPct = (value: number): string => `${value.toFixed(2)}%`
 // TODO: 아래 날짜/시간 포맷터들은 백엔드가 항상 고정 자릿수 ISO 문자열(LocalDate/LocalDateTime)을
 // 보낸다는 전제로 slice 기반으로 짜여있음. 요일 표시, 로케일별 포맷 등 더 복잡한 표기가 필요해지면
 // new Date(iso) + Intl.DateTimeFormat 기반으로 전환할 것.
-
-/** LocalDateTime(ISO) → 'HH:mm' */
-export const toTimeLabel = (iso: string | null): string => {
-  if (!iso) return '-'
-  return iso.slice(11, 16)
-}
 
 /** LocalDateTime(ISO) → 'MM/DD HH:mm' */
 export const toDateTimeLabel = (iso: string | null): string => {
