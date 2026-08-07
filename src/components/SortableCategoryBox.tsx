@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import CategoryBox from './CategoryBox'
+import CategoryBox, { type EditingProps } from './CategoryBox'
 
 interface Props {
   categoryId: number
@@ -9,10 +9,21 @@ interface Props {
   onSelect: () => void
   highlighted: boolean
   children?: ReactNode
+  renameButton?: ReactNode
   deleteButton?: ReactNode
+  editing?: EditingProps
 }
 
-export default function SortableCategoryBox({ categoryId, name, onSelect, highlighted, children, deleteButton }: Props) {
+export default function SortableCategoryBox({
+  categoryId,
+  name,
+  onSelect,
+  highlighted,
+  children,
+  renameButton,
+  deleteButton,
+  editing,
+}: Props) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: `category-box-${categoryId}`,
     data: { type: 'category-box', categoryId },
@@ -26,7 +37,9 @@ export default function SortableCategoryBox({ categoryId, name, onSelect, highli
         name={name}
         onSelect={onSelect}
         highlighted={highlighted}
+        renameButton={renameButton}
         deleteButton={deleteButton}
+        editing={editing}
         dragHandleProps={{ ...attributes, ...listeners }}
       >
         {children}

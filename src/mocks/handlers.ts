@@ -76,6 +76,7 @@ export const handlers = [
       displayOrder: 1,
     })
   }),
+  http.patch('/api/admin/market-map/categories/:id/name', ok),
   http.patch('/api/admin/market-map/categories/:id/order', ok),
   http.patch('/api/admin/market-map/categories/:id/parent', ok),
   http.get('/api/admin/market-map/categories/:id/delete-preview', ({ params }) => {
