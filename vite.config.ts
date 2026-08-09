@@ -12,7 +12,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/market-monitor/api': {
+      '/api': {
         target: 'http://localhost:8081',
         changeOrigin: true,
       },

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import AdminVersionSaveSection from './AdminVersionSaveSection'
 
 type AdminMode = 'stock' | 'category'
 
@@ -7,7 +8,7 @@ const MODE_LABELS: Record<AdminMode, string> = {
   category: '카테고리관리',
 }
 
-const MODES: AdminMode[] = ['stock', 'category']
+const MODES: AdminMode[] = ['category', 'stock']
 
 interface Props {
   mode: AdminMode
@@ -18,7 +19,7 @@ export default function AdminSidebar({ mode }: Props) {
     <aside className="w-56 shrink-0 bg-[var(--surface)] text-sm">
       <div className="p-4">
         <p className="mb-2 font-bold text-white">FILTER</p>
-        <ul className="flex flex-col gap-1">
+        <ul className="flex list-none flex-col gap-1">
           {MODES.map(m => (
             <li key={m}>
               <Link
@@ -33,6 +34,7 @@ export default function AdminSidebar({ mode }: Props) {
           ))}
         </ul>
       </div>
+      <AdminVersionSaveSection />
     </aside>
   )
 }

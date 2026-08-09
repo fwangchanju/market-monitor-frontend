@@ -5,25 +5,37 @@ import { useRenameCategory } from '@/hooks/useMarketMapAdmin'
 import CategoryBox from './CategoryBox'
 import SortableCategoryBox from './SortableCategoryBox'
 import AdminDraggableCategoryChip from './AdminDraggableCategoryChip'
+import AdminCategoryAddChip from './AdminCategoryAddChip'
 
 interface Props {
   category: CategoryItem
   childCategories: CategoryItem[] | undefined
   sortable: boolean
   highlighted: boolean
+  chipDropHighlightActive: boolean
   onSelect: () => void
 }
 
-export default function AdminCategoryManageBox({ category, childCategories, sortable, highlighted, onSelect }: Props) {
+export default function AdminCategoryManageBox({
+  category,
+  childCategories,
+  sortable,
+  highlighted,
+  chipDropHighlightActive,
+  onSelect,
+}: Props) {
   const { remove } = useCategoryDeleteFlow()
   const renameCategory = useRenameCategory()
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(category.name)
 
   const content = sortable
-    ? childCategories?.map(child => (
-        <AdminDraggableCategoryChip key={child.id} categoryId={child.id} categoryName={child.name} parentId={category.id} />
-      ))
+    ? [
+        <AdminCategoryAddChip key="add" parentId={category.id} />,
+        ...(childCategories?.map(child => (
+          <AdminDraggableCategoryChip key={child.id} categoryId={child.id} categoryName={child.name} parentId={category.id} />
+        )) ?? []),
+      ]
     : undefined
 
   const startRename = () => {
@@ -75,11 +87,18 @@ export default function AdminCategoryManageBox({ category, childCategories, sort
       renameButton={renameButton}
       deleteButton={deleteButton}
       editing={editing}
+      chipDropHighlightActive={chipDropHighlightActive}
     >
       {content}
     </SortableCategoryBox>
   ) : (
-    <CategoryBox categoryId={category.id} name={category.name} onSelect={onSelect} highlighted={highlighted}>
+    <CategoryBox
+      categoryId={category.id}
+      name={category.name}
+      onSelect={onSelect}
+      highlighted={highlighted}
+      chipDropHighlightActive={chipDropHighlightActive}
+    >
       {content}
     </CategoryBox>
   )

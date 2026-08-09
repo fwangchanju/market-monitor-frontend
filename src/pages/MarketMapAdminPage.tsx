@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { isAxiosError } from 'axios'
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
@@ -6,14 +6,10 @@ import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
 import NavBar from '@/components/NavBar'
 import AdminSidebar from '@/components/AdminSidebar'
 import PermissionDenied from '@/components/PermissionDenied'
-import AdminStockSearchSection from '@/components/AdminStockSearchSection'
-import AdminCategorySearchSection from '@/components/AdminCategorySearchSection'
-import AdminExcludedStockSection from '@/components/AdminExcludedStockSection'
+// import AdminStockSearchSection from '@/components/AdminStockSearchSection'
+// import AdminCategorySearchSection from '@/components/AdminCategorySearchSection'
 import AdminStockCategoryBox from '@/components/AdminStockCategoryBox'
-import AdminCategoryCreateSection from '@/components/AdminCategoryCreateSection'
-import AdminSubCategoryCreateSection from '@/components/AdminSubCategoryCreateSection'
-import AdminCategoryDeleteSection from '@/components/AdminCategoryDeleteSection'
-import AdminVersionSaveSection from '@/components/AdminVersionSaveSection'
+import AdminCategoryAddBox from '@/components/AdminCategoryAddBox'
 import AdminCategoryManageBox from '@/components/AdminCategoryManageBox'
 import {
   useAdminCategories,
@@ -24,6 +20,7 @@ import {
 } from '@/hooks/useMarketMapAdmin'
 import { useCategoryDrilldown } from '@/hooks/useCategoryDrilldown'
 import { adminCollisionDetection } from '@/utils/adminCollision'
+import type { StockCategoryItem } from '@/types/api'
 
 type StockDragData = { type: 'stock'; stockCode: string }
 type CategoryBoxDragData = { type: 'category-box'; categoryId: number }
@@ -32,9 +29,10 @@ type CategoryDropData = { type: 'category-target' | 'category-content'; category
 
 export default function MarketMapAdminPage() {
   const [searchParams] = useSearchParams()
-  const mode = searchParams.get('mode') === 'category' ? 'category' : 'stock'
+  const mode = searchParams.get('mode') === 'stock' ? 'stock' : 'category'
   const [draggingStockCode, setDraggingStockCode] = useState<string | null>(null)
   const [draggingCategoryChipParentId, setDraggingCategoryChipParentId] = useState<number | null>(null)
+  const [draggingType, setDraggingType] = useState<'stock' | 'category-box' | 'category-chip' | null>(null)
   const { data: categories, error: categoriesError } = useAdminCategories()
   const { data: stockCategories } = useStockCategories()
   const { currentCategory, currentDepthCategories, enterCategory, goBack } = useCategoryDrilldown(categories)
@@ -42,6 +40,18 @@ export default function MarketMapAdminPage() {
   const reorderCategory = useReorderCategory()
   const reparentCategory = useReparentCategory()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
+  const stocksByCategoryName = useMemo(() => {
+    const map = new Map<string, StockCategoryItem[]>()
+    for (const item of stockCategories ?? []) {
+      const list = map.get(item.categoryName)
+      if (list) list.push(item)
+      else map.set(item.categoryName, [item])
+    }
+    return map
+  }, [stockCategories])
+
+  const isChipDragActive = draggingType === 'stock' || draggingType === 'category-chip'
 
   const groupTitle = currentCategory ? `${currentCategory.name} - 세부 카테고리 목록` : '카테고리 목록'
   const originCategoryName = draggingStockCode
@@ -51,12 +61,14 @@ export default function MarketMapAdminPage() {
   const resetDragState = () => {
     setDraggingStockCode(null)
     setDraggingCategoryChipParentId(null)
+    setDraggingType(null)
   }
 
   const handleDragStart = (event: DragStartEvent) => {
     const activeData = event.active.data.current as StockDragData | CategoryBoxDragData | CategoryChipDragData | undefined
     setDraggingStockCode(activeData?.type === 'stock' ? activeData.stockCode : null)
     setDraggingCategoryChipParentId(activeData?.type === 'category-chip' ? activeData.parentId : null)
+    setDraggingType(activeData?.type ?? null)
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -105,22 +117,12 @@ export default function MarketMapAdminPage() {
         <div className="flex flex-1">
           <AdminSidebar mode={mode} />
           <div className="flex-1 p-4">
-            <div className="flex flex-wrap gap-2">
-              {mode === 'stock' ? (
-                <>
-                  <AdminStockSearchSection />
-                  <AdminCategorySearchSection />
-                  <AdminExcludedStockSection />
-                </>
-              ) : (
-                <>
-                  <AdminCategoryCreateSection />
-                  <AdminSubCategoryCreateSection />
-                  <AdminCategoryDeleteSection />
-                  <AdminVersionSaveSection />
-                </>
-              )}
-            </div>
+            {/* {mode === 'stock' && (
+              <div className="flex flex-wrap gap-2">
+                <AdminStockSearchSection />
+                <AdminCategorySearchSection />
+              </div>
+            )} */}
 
             <div className="mt-4">
               {currentCategory ? (
@@ -142,7 +144,8 @@ export default function MarketMapAdminPage() {
                         category={currentCategory}
                         sortable={false}
                         highlighted={currentCategory.name === originCategoryName}
-                        stockCategories={stockCategories}
+                        items={stocksByCategoryName.get(currentCategory.name)}
+                        chipDropHighlightActive={isChipDragActive}
                         onSelect={() => {}}
                       />
                     )}
@@ -156,7 +159,8 @@ export default function MarketMapAdminPage() {
                           category={category}
                           sortable
                           highlighted={category.name === originCategoryName}
-                          stockCategories={stockCategories}
+                          items={stocksByCategoryName.get(category.name)}
+                          chipDropHighlightActive={isChipDragActive}
                           onSelect={() => enterCategory(category.id)}
                         />
                       ))}
@@ -164,12 +168,14 @@ export default function MarketMapAdminPage() {
                   </>
                 ) : (
                   <>
+                    <AdminCategoryAddBox parentId={currentCategory?.id ?? null} />
                     {currentCategory && (
                       <AdminCategoryManageBox
                         category={currentCategory}
                         childCategories={undefined}
                         sortable={false}
                         highlighted={currentCategory.id === draggingCategoryChipParentId}
+                        chipDropHighlightActive={isChipDragActive}
                         onSelect={() => {}}
                       />
                     )}
@@ -184,6 +190,7 @@ export default function MarketMapAdminPage() {
                           childCategories={categories?.filter((c) => c.parentId === category.id)}
                           sortable
                           highlighted={category.id === draggingCategoryChipParentId}
+                          chipDropHighlightActive={isChipDragActive}
                           onSelect={() => enterCategory(category.id)}
                         />
                       ))}

@@ -19,7 +19,16 @@ import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
 import { toHourLabel } from '@/utils/format'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { halfOverlapCollisionDetection } from '@/utils/dndCollision'
-import type { Market } from '@/types/api'
+import type { Market, MarketMapCategoryNode } from '@/types/api'
+
+function toDisplayGroup(node: MarketMapCategoryNode): DisplayGroup {
+  return {
+    categoryName: node.categoryName,
+    totalMarketValue: node.totalMarketValue,
+    items: node.items,
+    children: node.children.map(toDisplayGroup),
+  }
+}
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 
@@ -40,16 +49,7 @@ export default function MarketMapCustomPage() {
   const rootNodes = data?.items ?? []
   const { path, currentNode, currentSiblings, enterCategory, goToDepth, reset } = useMarketMapDrilldown(rootNodes)
 
-  const groups: DisplayGroup[] = [
-    ...(currentNode
-      ? [{ categoryName: currentNode.categoryName, totalMarketValue: currentNode.totalMarketValue, items: currentNode.items }]
-      : []),
-    ...currentSiblings.map(node => ({
-      categoryName: node.categoryName,
-      totalMarketValue: node.totalMarketValue,
-      items: node.items,
-    })),
-  ]
+  const groups: DisplayGroup[] = currentNode ? [toDisplayGroup(currentNode)] : currentSiblings.map(toDisplayGroup)
 
   const handleMarketChange = (next: Market) => {
     setMarket(next)
@@ -193,9 +193,8 @@ export default function MarketMapCustomPage() {
               <MarketMapTreemap
                 groups={groups}
                 selfCategoryName={currentNode?.categoryName ?? null}
-                path={path}
                 onSelectCategory={enterCategory}
-                heightClassName={isFullscreen ? 'h-[calc(100vh-30px)]' : 'h-[70vh]'}
+                heightClassName={isFullscreen ? 'h-[calc(100vh-80px)]' : 'h-[calc(100vh-110px)]'}
               />
             )}
           </div>

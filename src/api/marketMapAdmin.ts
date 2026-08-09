@@ -21,7 +21,7 @@ export const reorderCategory = (id: number, displayOrder: number) =>
   client.patch(`/admin/market-map/categories/${id}/order`, { displayOrder })
 
 export const reparentCategory = (id: number, parentId: number) =>
-  client.patch(`/admin/market-map/categories/${id}/parent`, { parentId })
+  client.patch(`/admin/market-map/categories/${id}/parent`, { categoryId: parentId })
 
 export const getCategoryDeletePreview = (id: number) =>
   client

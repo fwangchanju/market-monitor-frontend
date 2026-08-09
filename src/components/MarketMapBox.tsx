@@ -10,6 +10,7 @@ interface Props {
   y: number
   width: number
   height: number
+  tooltipAlignLeft: boolean
 }
 
 const MIN_NAME_WIDTH = 16
@@ -26,7 +27,7 @@ function fontSizePx(width: number, height: number): number {
   return Math.max(12, Math.min(22, Math.min(width, height) / 5))
 }
 
-export default function MarketMapBox({ item, x, y, width, height }: Props) {
+export default function MarketMapBox({ item, x, y, width, height, tooltipAlignLeft }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: item.stockCode,
     data: { stockCode: item.stockCode, stockName: item.stockName },
@@ -38,13 +39,13 @@ export default function MarketMapBox({ item, x, y, width, height }: Props) {
   const showPercent = showName && height >= MIN_PERCENT_HEIGHT
   const fontSize = fontSizePx(width, height)
 
-  const handleMouseEnter = (e: React.MouseEvent) => {
-    setHover(true)
-    setTooltipPos({ left: e.clientX + 12, top: e.clientY - 8 })
+  const updateTooltipPos = (e: React.MouseEvent) => {
+    setTooltipPos({ left: e.clientX + (tooltipAlignLeft ? -12 : 12), top: e.clientY - 8 })
   }
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    setTooltipPos({ left: e.clientX + 12, top: e.clientY - 8 })
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    setHover(true)
+    updateTooltipPos(e)
   }
 
   return (
@@ -60,7 +61,7 @@ export default function MarketMapBox({ item, x, y, width, height }: Props) {
         zIndex: isDragging || hover ? 20 : undefined,
       }}
       onMouseEnter={handleMouseEnter}
-      onMouseMove={handleMouseMove}
+      onMouseMove={updateTooltipPos}
       onMouseLeave={() => setHover(false)}
       {...listeners}
       {...attributes}
@@ -82,7 +83,7 @@ export default function MarketMapBox({ item, x, y, width, height }: Props) {
         createPortal(
           <div
             className="pointer-events-none fixed z-[9999] w-max whitespace-nowrap rounded border border-gray-600 bg-[var(--surface)] px-2 py-1 text-left text-xs text-white shadow-lg"
-            style={{ left: tooltipPos.left, top: tooltipPos.top }}
+            style={{ left: tooltipPos.left, top: tooltipPos.top, transform: tooltipAlignLeft ? 'translateX(-100%)' : undefined }}
           >
             <div className="font-bold">{item.stockName}</div>
             <div>전일종가: {toVolume(item.lastPrice)}원</div>
