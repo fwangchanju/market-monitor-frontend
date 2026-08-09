@@ -7,23 +7,41 @@ interface Props {
   category: CategoryItem
   sortable: boolean
   highlighted: boolean
-  stockCategories: StockCategoryItem[] | undefined
+  items: StockCategoryItem[] | undefined
+  chipDropHighlightActive: boolean
   onSelect: () => void
 }
 
-export default function AdminStockCategoryBox({ category, sortable, highlighted, stockCategories, onSelect }: Props) {
-  const items = stockCategories?.filter((a) => a.categoryName === category.name)
-
+export default function AdminStockCategoryBox({
+  category,
+  sortable,
+  highlighted,
+  items,
+  chipDropHighlightActive,
+  onSelect,
+}: Props) {
   const content = items?.map((item) => (
     <AdminDraggableStockChip key={item.stockCode} stockCode={item.stockCode} stockName={item.stockName} />
   ))
 
   return sortable ? (
-    <SortableCategoryBox categoryId={category.id} name={category.name} onSelect={onSelect} highlighted={highlighted}>
+    <SortableCategoryBox
+      categoryId={category.id}
+      name={category.name}
+      onSelect={onSelect}
+      highlighted={highlighted}
+      chipDropHighlightActive={chipDropHighlightActive}
+    >
       {content}
     </SortableCategoryBox>
   ) : (
-    <CategoryBox categoryId={category.id} name={category.name} onSelect={onSelect} highlighted={highlighted}>
+    <CategoryBox
+      categoryId={category.id}
+      name={category.name}
+      onSelect={onSelect}
+      highlighted={highlighted}
+      chipDropHighlightActive={chipDropHighlightActive}
+    >
       {content}
     </CategoryBox>
   )

@@ -12,6 +12,7 @@ interface Props {
   renameButton?: ReactNode
   deleteButton?: ReactNode
   editing?: EditingProps
+  chipDropHighlightActive?: boolean
 }
 
 export default function SortableCategoryBox({
@@ -23,6 +24,7 @@ export default function SortableCategoryBox({
   renameButton,
   deleteButton,
   editing,
+  chipDropHighlightActive,
 }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: `category-box-${categoryId}`,
@@ -40,6 +42,7 @@ export default function SortableCategoryBox({
         renameButton={renameButton}
         deleteButton={deleteButton}
         editing={editing}
+        chipDropHighlightActive={chipDropHighlightActive}
         dragHandleProps={{ ...attributes, ...listeners }}
       >
         {children}

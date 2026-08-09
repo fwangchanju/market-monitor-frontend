@@ -18,6 +18,7 @@ interface Props {
   deleteButton?: ReactNode
   dragHandleProps?: Record<string, unknown>
   editing?: EditingProps
+  chipDropHighlightActive?: boolean
 }
 
 export default function CategoryBox({
@@ -30,11 +31,13 @@ export default function CategoryBox({
   deleteButton,
   dragHandleProps,
   editing,
+  chipDropHighlightActive = false,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({
     id: `category-content-${categoryId}`,
     data: { type: 'category-content', categoryId },
   })
+  const isChipDropTarget = isOver && chipDropHighlightActive
 
   return (
     <div
@@ -75,9 +78,8 @@ export default function CategoryBox({
       </div>
       <div
         ref={setNodeRef}
-        {...dragHandleProps}
         className={`flex h-40 flex-col gap-2 overflow-y-auto rounded border-2 p-1 ${
-          isOver ? 'border-yellow-400 bg-gray-700 brightness-125' : 'border-transparent'
+          isChipDropTarget ? 'border-yellow-400 bg-gray-700 brightness-125' : 'border-transparent'
         }`}
       >
         {children}

@@ -82,6 +82,13 @@ export const toJoEok = (eokValue: number): string => {
   return `${jo.toLocaleString('ko-KR')}조 ${eok.toLocaleString('ko-KR')}억`
 }
 
+/** 억 원 단위 값을 십억 단위 반올림 후 '조/억' 소수 2자리로 포맷 (예: 12942675 → '1294.27조', 1234.5 → '1230.00억') */
+export const toJoEokDecimal = (eokValue: number): string => {
+  const roundedToSipEok = Math.round(eokValue / 10) * 10
+  if (roundedToSipEok >= 10_000) return `${(roundedToSipEok / 10_000).toFixed(2)}조`
+  return `${roundedToSipEok.toFixed(2)}억`
+}
+
 /** 시장명 한글 */
 export const marketLabel = (market: string): string => {
   if (market === 'COMBINED') return '통합'

@@ -7,7 +7,6 @@ import {
   useRestoreVersion,
   useDeleteVersion,
 } from '@/hooks/useMarketMapAdmin'
-import AdminSection from './AdminSection'
 
 export default function AdminVersionSaveSection() {
   const [label, setLabel] = useState('')
@@ -56,39 +55,40 @@ export default function AdminVersionSaveSection() {
   }
 
   return (
-    <AdminSection title="버전 관리">
-      <div className="scrollbar-thin flex flex-1 flex-col gap-2 overflow-y-auto">
-        <div className="flex shrink-0 flex-col gap-1 border-b border-gray-700 pb-2">
-          <span className="text-xs font-bold text-white">현재버전</span>
-          {currentVersion ? (
-            <div className="nes-container is-rounded is-dark flex w-full flex-col gap-1 px-2 py-1 text-white">
-              <span className="truncate text-[9px]">{currentVersion.label}</span>
-              <span className="text-[7px]">{currentVersion.createdAt.slice(0, 10)}</span>
-            </div>
-          ) : (
-            <span className="text-xs text-gray-400">없음</span>
-          )}
-        </div>
+    <div className="border-t border-gray-700 p-4">
+      <p className="mb-2 font-bold text-white">버전관리</p>
+      <div className="flex flex-col gap-1 border-b border-gray-700 pb-2">
+        <span className="text-xs text-white">현재버전</span>
+        {currentVersion ? (
+          <div className="nes-container is-rounded is-dark flex w-full flex-col gap-1 px-2 py-1 text-white">
+            <span className="truncate text-[9px]">{currentVersion.label}</span>
+            <span className="text-[7px]">{currentVersion.createdAt.slice(0, 10)}</span>
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">없음</span>
+        )}
+      </div>
+      <div className="mt-2 flex max-h-48 flex-col gap-1 overflow-y-auto">
         {versions?.map(version => (
           <div
             key={version.id}
-            className={`nes-container is-rounded is-dark flex items-center justify-between gap-2 px-2 py-1 text-white ${
+            className={`nes-container is-rounded is-dark flex flex-col gap-1 px-2 py-1 text-white ${
               selectedId === version.id ? 'border-2 border-[#4f8fd6]' : ''
             }`}
           >
             <button
               type="button"
               onClick={() => handleSelect(version.id, version.label)}
-              className="flex min-w-0 flex-1 flex-col gap-1 truncate border-0 bg-transparent text-left text-white hover:text-[#4f8fd6]"
+              className="flex min-w-0 flex-col truncate border-0 bg-transparent text-left text-white hover:text-[#4f8fd6]"
             >
               <span className="truncate text-[9px]">{version.label}</span>
               <span className="text-[7px]">{version.createdAt.slice(0, 10)}</span>
             </button>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2 text-[9px]">
               <button
                 type="button"
                 onClick={() => handleRestore(version.id, version.label)}
-                className="border-0 bg-transparent text-xs text-[#4f8fd6] hover:brightness-125"
+                className="border-0 bg-transparent text-[#4f8fd6] hover:brightness-125"
               >
                 불러오기
               </button>
@@ -103,18 +103,18 @@ export default function AdminVersionSaveSection() {
           </div>
         ))}
       </div>
-      <div className="flex shrink-0 gap-2">
+      <div className="mt-2 flex flex-col gap-1">
         <input
           type="text"
-          className="nes-input is-dark min-w-0 flex-1 text-xs"
+          className="nes-input is-dark text-xs"
           value={label}
           onChange={e => handleLabelChange(e.target.value)}
           placeholder="버전 태그명"
         />
-        <button type="button" className="nes-btn is-save shrink-0 text-xs" onClick={handleSubmit}>
+        <button type="button" className="nes-btn is-save text-xs" onClick={handleSubmit}>
           {selectedId !== null ? '덮어쓰기' : '저장'}
         </button>
       </div>
-    </AdminSection>
+    </div>
   )
 }

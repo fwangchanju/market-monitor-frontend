@@ -6,6 +6,7 @@ export interface DisplayGroup {
   categoryName: string
   totalMarketValue: number
   items: MarketMapItem[]
+  children: DisplayGroup[]
 }
 
 interface LaidOutStockBox {
@@ -14,6 +15,7 @@ interface LaidOutStockBox {
   y: number
   width: number
   height: number
+  tooltipAlignLeft: boolean
 }
 
 export interface LaidOutCategory {
@@ -25,6 +27,8 @@ export interface LaidOutCategory {
   width: number
   height: number
   boxes: LaidOutStockBox[]
+  subCategories: LaidOutCategory[]
+  tooltipAlignLeft: boolean
 }
 
 interface HierarchyDatum {
@@ -37,6 +41,24 @@ interface HierarchyDatum {
 
 const CATEGORY_HEADER_HEIGHT = 28
 const PADDING = 2
+// 최상위 카테고리의 우측 테두리가 컨테이너 너비의 이 비율을 넘으면, 그 안의 모든 툴팁(카테고리/종목)을 왼쪽으로 뒤집는다.
+// 실제 화면에서 툴팁이 잘리는지 보면서 이 값만 조정하면 됨 (0.75 = 우측 25% 구간에 걸치면 반전).
+const TOOLTIP_FLIP_RIGHT_EDGE_RATIO = 0.85
+
+function toHierarchyDatum(group: DisplayGroup): HierarchyDatum {
+  return {
+    name: group.categoryName,
+    totalMarketValue: group.totalMarketValue,
+    children: [
+      ...group.children.map(toHierarchyDatum),
+      ...group.items.map(item => ({
+        name: item.stockName,
+        value: Math.max(item.totalMarketValue, 0),
+        item,
+      })),
+    ],
+  }
+}
 
 export function useMarketMapLayout(
   groups: DisplayGroup[],
@@ -49,15 +71,7 @@ export function useMarketMapLayout(
 
     const data: HierarchyDatum = {
       name: 'root',
-      children: groups.map(group => ({
-        name: group.categoryName,
-        totalMarketValue: group.totalMarketValue,
-        children: group.items.map(item => ({
-          name: item.stockName,
-          value: Math.max(item.totalMarketValue, 0),
-          item,
-        })),
-      })),
+      children: groups.map(toHierarchyDatum),
     }
 
     const hierarchyRoot = hierarchy(data)
@@ -71,30 +85,52 @@ export function useMarketMapLayout(
       .size([width, height])
       .paddingOuter(PADDING)
       .paddingInner(PADDING)
-      .paddingTop(node => (node.depth === 1 ? CATEGORY_HEADER_HEIGHT : 0))
+      .paddingTop(node => (node.depth > 0 && !node.data.item ? CATEGORY_HEADER_HEIGHT : 0))
       .round(true)(hierarchyRoot)
 
-    const categoryNodes = root.children ?? []
+    const toLaidOutCategory = (
+      node: HierarchyRectangularNode<HierarchyDatum>,
+      originX: number,
+      originY: number,
+      tooltipAlignLeft: boolean,
+    ): LaidOutCategory => {
+      const nx0 = node.x0 ?? 0
+      const ny0 = node.y0 ?? 0
+      const boxes: LaidOutStockBox[] = []
+      const subCategories: LaidOutCategory[] = []
 
-    return categoryNodes.map(categoryNode => {
-      const cx0 = categoryNode.x0 ?? 0
-      const cy0 = categoryNode.y0 ?? 0
-      return {
-        categoryName: categoryNode.data.name,
-        totalMarketValue: categoryNode.data.totalMarketValue ?? 0,
-        isSelf: categoryNode.data.name === selfCategoryName,
-        x: cx0,
-        y: cy0,
-        width: (categoryNode.x1 ?? 0) - cx0,
-        height: (categoryNode.y1 ?? 0) - cy0,
-        boxes: (categoryNode.children ?? []).map(leaf => ({
-          item: leaf.data.item as MarketMapItem,
-          x: (leaf.x0 ?? 0) - cx0,
-          y: (leaf.y0 ?? 0) - cy0,
-          width: (leaf.x1 ?? 0) - (leaf.x0 ?? 0),
-          height: (leaf.y1 ?? 0) - (leaf.y0 ?? 0),
-        })),
+      for (const child of node.children ?? []) {
+        if (child.data.item) {
+          boxes.push({
+            item: child.data.item,
+            x: (child.x0 ?? 0) - nx0,
+            y: (child.y0 ?? 0) - ny0,
+            width: (child.x1 ?? 0) - (child.x0 ?? 0),
+            height: (child.y1 ?? 0) - (child.y0 ?? 0),
+            tooltipAlignLeft,
+          })
+        } else {
+          subCategories.push(toLaidOutCategory(child, nx0, ny0, tooltipAlignLeft))
+        }
       }
+
+      return {
+        categoryName: node.data.name,
+        totalMarketValue: node.data.totalMarketValue ?? 0,
+        isSelf: node.data.name === selfCategoryName,
+        x: nx0 - originX,
+        y: ny0 - originY,
+        width: (node.x1 ?? 0) - nx0,
+        height: (node.y1 ?? 0) - ny0,
+        boxes,
+        subCategories,
+        tooltipAlignLeft,
+      }
+    }
+
+    return (root.children ?? []).map(categoryNode => {
+      const tooltipAlignLeft = (categoryNode.x1 ?? 0) > width * TOOLTIP_FLIP_RIGHT_EDGE_RATIO
+      return toLaidOutCategory(categoryNode, 0, 0, tooltipAlignLeft)
     })
   }, [groups, selfCategoryName, width, height])
 }
