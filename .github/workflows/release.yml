@@ -36,3 +36,10 @@ jobs:
           tags: ghcr.io/fwangchanju/market-monitor-assets:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Notify backend of new assets
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.BACKEND_REPO_PAT }}
+          repository: fwangchanju/market-monitor-backend
+          event-type: frontend-assets-published
