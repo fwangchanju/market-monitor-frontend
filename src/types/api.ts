@@ -173,9 +173,11 @@ export type ProgramTradingDailyItem = z.infer<typeof ProgramTradingDailyItemSche
 const MarketMapItemSchema = z.object({
   stockCode: z.string(),
   stockName: z.string(),
+  currentPrice: z.number(),     // 현재가, 원
   lastPrice: z.number(),        // 전일종가, 원
   totalMarketValue: z.number(), // 원
   changeRate: z.number(),
+  snapshotTime: z.string(),
 })
 export type MarketMapItem = z.infer<typeof MarketMapItemSchema>
 

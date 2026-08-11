@@ -46,6 +46,12 @@ export const toDateTimeLabel = (iso: string | null): string => {
   return `${iso.slice(5, 10)} ${iso.slice(11, 16)}`
 }
 
+/** LocalDateTime(ISO) → 'yyyy-MM-dd HH:mm' */
+export const toFullDateTimeLabel = (iso: string | null): string => {
+  if (!iso) return '-'
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`
+}
+
 /** LocalDateTime(ISO) → 'yyyy-MM-dd HH:00' (분 단위 절삭) */
 export const toHourLabel = (iso: string | null): string => {
   if (!iso) return '-'
