@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useDraggable } from '@dnd-kit/core'
 import type { MarketMapItem } from '@/types/api'
-import { toJoEok, toPctSigned, toVolume } from '@/utils/format'
+import { toFullDateTimeLabel, toJoEok, toPctSigned, toVolume } from '@/utils/format'
 
 interface Props {
   item: MarketMapItem
@@ -86,8 +86,11 @@ export default function MarketMapBox({ item, x, y, width, height, tooltipAlignLe
             style={{ left: tooltipPos.left, top: tooltipPos.top, transform: tooltipAlignLeft ? 'translateX(-100%)' : undefined }}
           >
             <div className="font-bold">{item.stockName}</div>
+            <div>등락률: {toPctSigned(item.changeRate)}</div>
+            <div>현재가: {toVolume(item.currentPrice)}원</div>
             <div>전일종가: {toVolume(item.lastPrice)}원</div>
             <div>시가총액: {toJoEok(item.totalMarketValue / 100_000_000)}</div>
+            <div>기준: {toFullDateTimeLabel(item.snapshotTime)}</div>
           </div>,
           document.body,
         )}
