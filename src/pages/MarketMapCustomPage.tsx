@@ -18,6 +18,7 @@ import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
 import { toHourLabel } from '@/utils/format'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
+import { CAPTURE_ID } from '@/utils/captureIds'
 import { halfOverlapCollisionDetection } from '@/utils/dndCollision'
 import type { Market, MarketMapCategoryNode } from '@/types/api'
 
@@ -161,7 +162,7 @@ export default function MarketMapCustomPage() {
             onToggleCustom={handleToggleCustom}
             compact={isFullscreen}
           />
-          <div ref={captureRef} className="flex-1 p-4">
+          <div ref={captureRef} data-captureid={CAPTURE_ID.MARKET_MAP} className="flex-1 p-4">
             {path.length > 0 && (
               <div className="mb-2 flex h-7 w-full items-center gap-1 truncate border-2 border-white bg-black/70 px-1 text-sm font-bold text-white">
                 <button type="button" onClick={() => goToDepth(0)} className="border-0 bg-transparent p-0 text-white hover:text-yellow-400">
