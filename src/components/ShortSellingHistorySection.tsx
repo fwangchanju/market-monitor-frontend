@@ -4,6 +4,7 @@ import { toYyMmDd, toVolume, toPct, toPctSigned, signClass } from '@/utils/forma
 import { useShortSellingHistory } from '@/hooks/useShortSellingHistory'
 import { useWatchStocks } from '@/hooks/useWatchStocks'
 import DataTable, { type DataTableColumn } from './DataTable'
+import Spinner from './Spinner'
 import WidgetSection from './WidgetSection'
 
 const columns: DataTableColumn<ShortSellingHistoryItem>[] = [
@@ -44,7 +45,11 @@ export default function ShortSellingHistorySection() {
         </div>
       }
     >
-      {isLoading ? null : isError ? (
+      {isLoading ? (
+        <div className="flex justify-center p-8">
+          <Spinner />
+        </div>
+      ) : isError ? (
         <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
       ) : !items || items.length === 0 ? (
         <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>

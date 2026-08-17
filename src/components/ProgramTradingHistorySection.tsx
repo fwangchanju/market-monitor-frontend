@@ -5,6 +5,7 @@ import { useProgramTradingHistory } from '@/hooks/useProgramTradingHistory'
 import { useProgramTradingDailyHistory } from '@/hooks/useProgramTradingDailyHistory'
 import { useWatchStocks } from '@/hooks/useWatchStocks'
 import DataTable, { type DataTableColumn } from './DataTable'
+import Spinner from './Spinner'
 import TabSelector from './TabSelector'
 import WidgetSection from './WidgetSection'
 
@@ -70,7 +71,11 @@ export default function ProgramTradingHistorySection() {
       stale={stale}
       actions={<TabSelector options={GRANULARITIES} value={granularity} onChange={setGranularity} labelFor={granularityLabel} />}
     >
-      {isLoading ? null : isError ? (
+      {isLoading ? (
+        <div className="flex justify-center p-8">
+          <Spinner />
+        </div>
+      ) : isError ? (
         <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
       ) : !items || items.length === 0 ? (
         <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>

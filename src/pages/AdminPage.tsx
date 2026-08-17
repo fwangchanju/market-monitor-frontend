@@ -3,6 +3,7 @@ import { isAxiosError } from 'axios'
 import NavBar from '@/components/NavBar'
 import IpSegmentInput from '@/components/IpSegmentInput'
 import PermissionDenied from '@/components/PermissionDenied'
+import Spinner from '@/components/Spinner'
 import { useAllowedIps } from '@/hooks/useAllowedIps'
 import { allowedIpKeys } from '@/hooks/queryKeys'
 import { registerAllowedIp, deleteAllowedIp } from '@/api/allowedIp'
@@ -15,7 +16,14 @@ export default function AdminPage() {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: allowedIpKeys.all })
 
   if (isLoading) {
-    return null
+    return (
+      <div className="min-h-screen">
+        <NavBar />
+        <div className="flex justify-center p-16">
+          <Spinner />
+        </div>
+      </div>
+    )
   }
 
   if (isAxiosError(error) && error.response?.status === 403) {

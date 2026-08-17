@@ -15,7 +15,7 @@ export default function MarketMapCategorySection({ category, onSelectCategory }:
   const [hover, setHover] = useState(false)
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null)
 
-  const label = `${category.categoryName}(시총:${toJoEokDecimal(category.totalMarketValue / 100_000_000)})`
+  const label = `${category.categoryName} (시총: ${toJoEokDecimal(category.totalMarketValue / 100_000_000)})`
 
   const updateTooltipPos = (e: React.MouseEvent) => {
     setTooltipPos({ left: e.clientX + (category.tooltipAlignLeft ? -12 : 12), top: e.clientY - 8 })

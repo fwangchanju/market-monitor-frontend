@@ -218,6 +218,20 @@ export const CategoryItemSchema = z.object({
 })
 export type CategoryItem = z.infer<typeof CategoryItemSchema>
 
+// GET /admin/market-map/stock-categories 응답 (백엔드 StockCategoryListItem)
+export const StockCategoryListItemSchema = z.object({
+  stockCode: z.string(),
+  stockName: z.string(),
+  market: MarketSchema,
+  totalMarketValue: z.number().nullable(),
+  categoryId: z.number(),
+  parentCategoryName: z.string(),
+  categoryName: z.string().nullable(),
+})
+export type StockCategoryListItem = z.infer<typeof StockCategoryListItemSchema>
+
+// delete-preview API의 blockingStocks 항목 (백엔드 StockCategoryItem — 위 StockCategoryListItem과는
+// 다른 타입이라 market/totalMarketValue/parentCategoryName이 없음)
 export const StockCategoryItemSchema = z.object({
   stockCode: z.string(),
   stockName: z.string(),
