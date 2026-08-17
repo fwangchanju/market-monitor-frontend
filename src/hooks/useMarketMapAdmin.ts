@@ -3,8 +3,6 @@ import {
   getCategories,
   createCategory,
   renameCategory,
-  reorderCategory,
-  reparentCategory,
   getCategoryDeletePreview,
   deleteCategory,
   getVersions,
@@ -47,23 +45,6 @@ export function useRenameCategory() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, name }: { id: number; name: string }) => renameCategory(id, name),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.categories() }),
-  })
-}
-
-export function useReorderCategory() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, displayOrder }: { id: number; displayOrder: number }) =>
-      reorderCategory(id, displayOrder),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.categories() }),
-  })
-}
-
-export function useReparentCategory() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, parentId }: { id: number; parentId: number }) => reparentCategory(id, parentId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.categories() }),
   })
 }
@@ -139,10 +120,7 @@ export function useAssignStockCategory() {
   return useMutation({
     mutationFn: ({ stockCode, categoryId }: { stockCode: string; categoryId: number }) =>
       assignStockCategory(stockCode, categoryId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.categories() })
-      queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.stockCategories() })
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.stockCategories() }),
   })
 }
 

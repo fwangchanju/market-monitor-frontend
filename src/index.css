@@ -1,4 +1,4 @@
-@layer theme, reset, nes, app, utilities;
+@layer theme, nes, reset, app, utilities;
 
 @import "tailwindcss/theme.css" layer(theme);
 @import "nes.css/css/nes.min.css" layer(nes);
@@ -161,9 +161,22 @@ a:hover { text-decoration: underline; }
 .nes-table.is-dark {
   background-color: var(--surface);
 }
+/* nes.css의 .nes-table.is-dark::before가 position:absolute+inset 0인데 table 자체엔
+   position이 없어서, 가장 가까운 positioned 조상(대개 뷰포트)을 기준으로 화면 전체를 덮는
+   빈 레이어가 되어 클릭을 전부 가로채는 버그가 있었음. 장식용 pseudo-element라 그냥 제거. */
+.nes-table.is-dark::before {
+  content: none;
+}
 .nes-table th, .nes-table td {
   border-width: 0 1px 1px 0;
 }
+
+/* 텍스트는 그대로 두고 배경색만 깜빡이는 강조 효과 (animate-pulse는 opacity라 글자까지 흐려짐) */
+@keyframes row-blink {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(79, 143, 214, 0.3); }
+}
+.animate-row-blink { animation: row-blink 1s ease-in-out infinite; }
 
 .scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
 .scrollbar-hide::-webkit-scrollbar { display: none; }

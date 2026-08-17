@@ -7,12 +7,14 @@ import {
   useRestoreVersion,
   useDeleteVersion,
 } from '@/hooks/useMarketMapAdmin'
+import Spinner from './Spinner'
 
 export default function AdminVersionSaveSection() {
   const [label, setLabel] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const { data: versions } = useVersions()
-  const { data: currentVersion } = useCurrentVersion()
+  const { data: versions, isLoading: isVersionsLoading } = useVersions()
+  const { data: currentVersion, isLoading: isCurrentVersionLoading } = useCurrentVersion()
+  const isLoading = isVersionsLoading || isCurrentVersionLoading
   const saveVersion = useSaveVersion()
   const overwriteVersion = useOverwriteVersion()
   const restoreVersion = useRestoreVersion()
@@ -59,7 +61,11 @@ export default function AdminVersionSaveSection() {
       <p className="mb-2 font-bold text-white">버전관리</p>
       <div className="flex flex-col gap-1 border-b border-gray-700 pb-2">
         <span className="text-xs text-white">현재버전</span>
-        {currentVersion ? (
+        {isLoading ? (
+          <div className="flex justify-center p-2">
+            <Spinner className="h-5 w-5" />
+          </div>
+        ) : currentVersion ? (
           <div className="nes-container is-rounded is-dark flex w-full flex-col gap-1 px-2 py-1 text-white">
             <span className="truncate text-[9px]">{currentVersion.label}</span>
             <span className="text-[7px]">{currentVersion.createdAt.slice(0, 10)}</span>

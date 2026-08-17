@@ -1,6 +1,7 @@
 import { useMarketSummary } from '@/hooks/useMarketSummary'
 import { MarketSchema, type Market, type Investor } from '@/types/api'
 import { toEokSigned, signClass, investorLabel, isStale } from '@/utils/format'
+import Spinner from './Spinner'
 import WidgetSection from './WidgetSection'
 
 const MARKETS = MarketSchema.options
@@ -10,7 +11,17 @@ const INVESTORS: Investor[] = [
 ]
 
 export default function InvestorTradingSection() {
-  const { data, isError } = useMarketSummary()
+  const { data, isLoading, isError } = useMarketSummary()
+
+  if (isLoading) {
+    return (
+      <WidgetSection title="투자자별 매매종합">
+        <div className="flex justify-center p-8">
+          <Spinner />
+        </div>
+      </WidgetSection>
+    )
+  }
 
   if (!data) {
     return (

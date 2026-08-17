@@ -1,9 +1,20 @@
 import { useMarketSummary } from '@/hooks/useMarketSummary'
 import { toIndex, toEokFromMln, toPctSigned, signClass, isStale } from '@/utils/format'
+import Spinner from './Spinner'
 import WidgetSection from './WidgetSection'
 
 export default function MarketOverviewSection() {
-  const { data, isError } = useMarketSummary()
+  const { data, isLoading, isError } = useMarketSummary()
+
+  if (isLoading) {
+    return (
+      <WidgetSection title="시장종합">
+        <div className="flex justify-center p-8">
+          <Spinner />
+        </div>
+      </WidgetSection>
+    )
+  }
 
   if (!data) {
     return (

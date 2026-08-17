@@ -1,9 +1,10 @@
 import { useDroppable } from '@dnd-kit/core'
 import { useWatchStocks } from '@/hooks/useWatchStocks'
 import DraggableStockChip from './DraggableStockChip'
+import Spinner from './Spinner'
 
 export default function MainStockSection() {
-  const { data } = useWatchStocks()
+  const { data, isLoading } = useWatchStocks()
   const mainStock = data?.find(s => s.isMain)
   const { setNodeRef, isOver } = useDroppable({ id: 'main-stock-zone' })
 
@@ -14,7 +15,13 @@ export default function MainStockSection() {
         ref={setNodeRef}
         className={`flex h-28 flex-col gap-2 overflow-y-auto ${isOver ? 'bg-gray-700' : ''}`}
       >
-        {mainStock && <DraggableStockChip source="main" stockCode={mainStock.stockCode} stockName={mainStock.stockName} />}
+        {isLoading ? (
+          <div className="flex justify-center p-4">
+            <Spinner />
+          </div>
+        ) : (
+          mainStock && <DraggableStockChip source="main" stockCode={mainStock.stockCode} stockName={mainStock.stockName} />
+        )}
       </div>
     </div>
   )

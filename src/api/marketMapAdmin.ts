@@ -1,10 +1,10 @@
 import client from './client'
-import { CategoryItemSchema, CategoryDeletePreviewSchema, VersionItemSchema, StockCategoryItemSchema } from '@/types/api'
+import { CategoryItemSchema, CategoryDeletePreviewSchema, VersionItemSchema, StockCategoryListItemSchema } from '@/types/api'
 import { z } from 'zod'
 
 const categoryListResponseSchema = z.array(CategoryItemSchema)
 const versionListResponseSchema = z.array(VersionItemSchema)
-const stockCategoryListResponseSchema = z.array(StockCategoryItemSchema)
+const stockCategoryListResponseSchema = z.array(StockCategoryListItemSchema)
 
 export const getCategories = () =>
   client.get('/admin/market-map/categories').then(r => categoryListResponseSchema.parse(r.data))
@@ -16,12 +16,6 @@ export const createCategory = (name: string, parentId: number | null) =>
 
 export const renameCategory = (id: number, name: string) =>
   client.patch(`/admin/market-map/categories/${id}/name`, { name })
-
-export const reorderCategory = (id: number, displayOrder: number) =>
-  client.patch(`/admin/market-map/categories/${id}/order`, { displayOrder })
-
-export const reparentCategory = (id: number, parentId: number) =>
-  client.patch(`/admin/market-map/categories/${id}/parent`, { categoryId: parentId })
 
 export const getCategoryDeletePreview = (id: number) =>
   client

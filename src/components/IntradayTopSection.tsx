@@ -3,6 +3,7 @@ import type { IntradayTopItem, MarketQuery, IntradayInvestor, IntradayRanking } 
 import { toMlnSigned, signClass, investorLabel, marketLabel, rankingLabel, isStale } from '@/utils/format'
 import { useIntradayTop } from '@/hooks/useIntradayTop'
 import DataTable, { type DataTableColumn } from './DataTable'
+import Spinner from './Spinner'
 import TabSelector from './TabSelector'
 import WidgetSection from './WidgetSection'
 
@@ -51,7 +52,11 @@ export default function IntradayTopSection() {
         </>
       }
     >
-      {isLoading ? null : isError ? (
+      {isLoading ? (
+        <div className="flex justify-center p-8">
+          <Spinner />
+        </div>
+      ) : isError ? (
         <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
       ) : !items || items.length === 0 ? (
         <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>

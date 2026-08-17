@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useStocks } from '@/hooks/useStocks'
 import { useWatchStocks } from '@/hooks/useWatchStocks'
 import DraggableStockChip from './DraggableStockChip'
+import Spinner from './Spinner'
 
 export default function StockSearchSection() {
   const [query, setQuery] = useState('')
-  const { data } = useStocks()
+  const { data, isLoading } = useStocks()
   const { data: watchStocks } = useWatchStocks()
 
   const trimmed = query.trim().toLowerCase()
@@ -29,7 +30,11 @@ export default function StockSearchSection() {
         placeholder="종목명/코드 검색"
       />
       <div className="flex h-56 flex-col gap-2 overflow-y-auto">
-        {!trimmed ? null : matches && matches.length === 0 ? (
+        {!trimmed ? null : isLoading ? (
+          <div className="flex justify-center p-4">
+            <Spinner />
+          </div>
+        ) : matches && matches.length === 0 ? (
           <p className="nes-text is-disabled text-xs">검색 결과가 없습니다</p>
         ) : (
           matches?.map(item => (

@@ -33,11 +33,8 @@ export function useCategoryDeleteFlow() {
     try {
       preview = await deletePreview.mutateAsync(categoryId)
     } catch (e) {
-      if (isAxiosError(e) && e.response?.status === 404) {
-        alertDeleteFailed(categoryName, e)
-        return
-      }
-      throw e
+      alertDeleteFailed(categoryName, e)
+      return
     }
 
     if (!preview.deletable) {
@@ -58,11 +55,7 @@ export function useCategoryDeleteFlow() {
         }
         return
       }
-      if (isAxiosError(e) && e.response?.status === 404) {
-        alertDeleteFailed(categoryName, e)
-        return
-      }
-      throw e
+      alertDeleteFailed(categoryName, e)
     }
   }
 
