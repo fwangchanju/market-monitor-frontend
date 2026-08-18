@@ -214,21 +214,29 @@ export const CategoryItemSchema = z.object({
   name: z.string(),
   parentId: z.number().nullable(),
   depth: z.number(),
-  displayOrder: z.number(),
 })
 export type CategoryItem = z.infer<typeof CategoryItemSchema>
 
 // GET /admin/market-map/stock-categories 응답 (백엔드 StockCategoryListItem)
 export const StockCategoryListItemSchema = z.object({
   stockCode: z.string(),
-  stockName: z.string(),
   market: MarketSchema,
+  stockName: z.string(),
+  alias: z.string().nullable(),
   totalMarketValue: z.number().nullable(),
+  originCategoryName: z.string().nullable(),
+  parentCategoryName: z.string().nullable(),
+  categoryName: z.string(),
   categoryId: z.number(),
-  parentCategoryName: z.string(),
-  categoryName: z.string().nullable(),
 })
 export type StockCategoryListItem = z.infer<typeof StockCategoryListItemSchema>
+
+// PATCH /admin/market-map/stock-categories/bulk 응답. failedStockCodes가 비어있으면 전부 반영된 것.
+export const BulkAssignResponseSchema = z.object({
+  failedStockCodes: z.array(z.string()),
+  categoryId: z.number(),
+})
+export type BulkAssignResponse = z.infer<typeof BulkAssignResponseSchema>
 
 // delete-preview API의 blockingStocks 항목 (백엔드 StockCategoryItem — 위 StockCategoryListItem과는
 // 다른 타입이라 market/totalMarketValue/parentCategoryName이 없음)

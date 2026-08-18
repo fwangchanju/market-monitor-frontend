@@ -1,5 +1,11 @@
 import client from './client'
-import { CategoryItemSchema, CategoryDeletePreviewSchema, VersionItemSchema, StockCategoryListItemSchema } from '@/types/api'
+import {
+  CategoryItemSchema,
+  CategoryDeletePreviewSchema,
+  VersionItemSchema,
+  StockCategoryListItemSchema,
+  BulkAssignResponseSchema,
+} from '@/types/api'
 import { z } from 'zod'
 
 const categoryListResponseSchema = z.array(CategoryItemSchema)
@@ -16,6 +22,10 @@ export const createCategory = (name: string, parentId: number | null) =>
 
 export const renameCategory = (id: number, name: string) =>
   client.patch(`/admin/market-map/categories/${id}/name`, { name })
+
+// parentId가 null이면 최상위(루트)로 이동.
+export const reparentCategory = (id: number, parentId: number | null) =>
+  client.patch(`/admin/market-map/categories/${id}/parent`, { categoryId: parentId })
 
 export const getCategoryDeletePreview = (id: number) =>
   client
@@ -46,6 +56,14 @@ export const deleteVersion = (id: number) => client.delete(`/admin/market-map/ve
 
 export const assignStockCategory = (stockCode: string, categoryId: number) =>
   client.put(`/admin/market-map/stock-categories/${stockCode}`, { categoryId })
+
+export const updateAlias = (stockCode: string, alias: string | null) =>
+  client.patch(`/admin/market-map/stock-categories/${stockCode}/alias`, { alias })
+
+export const bulkAssignStockCategory = (stockCodes: string[], categoryId: number) =>
+  client
+    .patch('/admin/market-map/stock-categories/bulk', { stockCodes, categoryId })
+    .then(r => BulkAssignResponseSchema.parse(r.data))
 
 export const getStockCategories = () =>
   client.get('/admin/market-map/stock-categories').then(r => stockCategoryListResponseSchema.parse(r.data))

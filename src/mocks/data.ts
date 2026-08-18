@@ -130,7 +130,7 @@ export const marketMapTree = [
         categoryName: '메모리',
         totalMarketValue: 420_000_000_000_000,
         items: [
-          { stockCode: '005930', stockName: '삼성전자', lastPrice: 71000, totalMarketValue: 420_000_000_000_000, changeRate: 1.2 },
+          { stockCode: '005930', stockName: '삼성전자', lastPrice: 71000, totalMarketValue: 420_000_000_000_000, changeRate: 1.2, currentPrice: 71000, snapshotTime: now() },
         ],
         children: [],
       },
@@ -138,7 +138,7 @@ export const marketMapTree = [
         categoryName: '파운드리',
         totalMarketValue: 130_000_000_000_000,
         items: [
-          { stockCode: '000660', stockName: 'SK하이닉스', lastPrice: 178000, totalMarketValue: 130_000_000_000_000, changeRate: -0.8 },
+          { stockCode: '000660', stockName: 'SK하이닉스', lastPrice: 178000, totalMarketValue: 130_000_000_000_000, changeRate: -0.8, currentPrice: 178000, snapshotTime: now() },
         ],
         children: [],
       },
@@ -148,14 +148,14 @@ export const marketMapTree = [
     categoryName: '2차전지',
     totalMarketValue: 122_000_000_000_000,
     items: [
-      { stockCode: '373220', stockName: 'LG에너지솔루션', lastPrice: 398000, totalMarketValue: 93_000_000_000_000, changeRate: -1.5 },
+      { stockCode: '373220', stockName: 'LG에너지솔루션', lastPrice: 398000, totalMarketValue: 93_000_000_000_000, changeRate: -1.5, currentPrice: 398000, snapshotTime: now() },
     ],
     children: [
       {
         categoryName: '양극재',
         totalMarketValue: 29_000_000_000_000,
         items: [
-          { stockCode: '051910', stockName: 'LG화학', lastPrice: 412000, totalMarketValue: 29_000_000_000_000, changeRate: 2.1 },
+          { stockCode: '051910', stockName: 'LG화학', lastPrice: 412000, totalMarketValue: 29_000_000_000_000, changeRate: 2.1, currentPrice: 412000, snapshotTime: now() },
         ],
         children: [],
       },
@@ -165,8 +165,8 @@ export const marketMapTree = [
     categoryName: '인터넷/플랫폼',
     totalMarketValue: 50_000_000_000_000,
     items: [
-      { stockCode: '035420', stockName: 'NAVER', lastPrice: 198000, totalMarketValue: 32_000_000_000_000, changeRate: 0.3 },
-      { stockCode: '035720', stockName: '카카오', lastPrice: 41500, totalMarketValue: 18_000_000_000_000, changeRate: 3.4 },
+      { stockCode: '035420', stockName: 'NAVER', lastPrice: 198000, totalMarketValue: 32_000_000_000_000, changeRate: 0.3, currentPrice: 198000, snapshotTime: now() },
+      { stockCode: '035720', stockName: '카카오', lastPrice: 41500, totalMarketValue: 18_000_000_000_000, changeRate: 3.4, currentPrice: 41500, snapshotTime: now() },
     ],
     children: [],
   },
@@ -176,21 +176,91 @@ export const excludedStocks: { stockCode: string; stockName: string }[] = []
 
 // ── 마켓맵 어드민(신규 커스텀 시스템) ───────────────────────────────────
 export const adminCategories = [
-  { id: 1, name: '반도체', parentId: null, depth: 0, displayOrder: 1 },
-  { id: 2, name: '2차전지', parentId: null, depth: 0, displayOrder: 2 },
-  { id: 3, name: '인터넷/플랫폼', parentId: null, depth: 0, displayOrder: 3 },
-  { id: 4, name: '메모리', parentId: 1, depth: 1, displayOrder: 1 },
-  { id: 5, name: '파운드리', parentId: 1, depth: 1, displayOrder: 2 },
-  { id: 6, name: '양극재', parentId: 2, depth: 1, displayOrder: 1 },
+  { id: 1, name: '반도체', parentId: null, depth: 0 },
+  { id: 2, name: '2차전지', parentId: null, depth: 0 },
+  { id: 3, name: '인터넷/플랫폼', parentId: null, depth: 0 },
+  { id: 4, name: '메모리', parentId: 1, depth: 1 },
+  { id: 5, name: '파운드리', parentId: 1, depth: 1 },
+  { id: 6, name: '양극재', parentId: 2, depth: 1 },
 ]
 
-export const adminStockCategories: { stockCode: string; stockName: string; categoryName: string }[] = [
-  { stockCode: '005930', stockName: '삼성전자', categoryName: '메모리' },
-  { stockCode: '000660', stockName: 'SK하이닉스', categoryName: '파운드리' },
-  { stockCode: '051910', stockName: 'LG화학', categoryName: '양극재' },
-  { stockCode: '373220', stockName: 'LG에너지솔루션', categoryName: '2차전지' },
-  { stockCode: '035420', stockName: 'NAVER', categoryName: '인터넷/플랫폼' },
-  { stockCode: '035720', stockName: '카카오', categoryName: '인터넷/플랫폼' },
+export const adminStockCategories: {
+  stockCode: string
+  market: 'KOSPI' | 'KOSDAQ'
+  stockName: string
+  alias: string | null
+  totalMarketValue: number | null
+  originCategoryName: string | null
+  parentCategoryName: string | null
+  categoryName: string
+  categoryId: number
+}[] = [
+  {
+    stockCode: '005930',
+    market: 'KOSPI',
+    stockName: '삼성전자',
+    alias: null,
+    totalMarketValue: 420_000_000_000_000,
+    originCategoryName: '반도체와반도체장비',
+    parentCategoryName: '반도체',
+    categoryName: '메모리',
+    categoryId: 4,
+  },
+  {
+    stockCode: '000660',
+    market: 'KOSPI',
+    stockName: 'SK하이닉스',
+    alias: null,
+    totalMarketValue: 130_000_000_000_000,
+    originCategoryName: '반도체와반도체장비',
+    parentCategoryName: '반도체',
+    categoryName: '파운드리',
+    categoryId: 5,
+  },
+  {
+    stockCode: '051910',
+    market: 'KOSPI',
+    stockName: 'LG화학',
+    alias: null,
+    totalMarketValue: 29_000_000_000_000,
+    originCategoryName: '화학',
+    parentCategoryName: '2차전지',
+    categoryName: '양극재',
+    categoryId: 6,
+  },
+  {
+    stockCode: '373220',
+    market: 'KOSPI',
+    stockName: 'LG에너지솔루션',
+    alias: 'LG엔솔',
+    totalMarketValue: 93_000_000_000_000,
+    originCategoryName: '전기장비',
+    parentCategoryName: null,
+    categoryName: '2차전지',
+    categoryId: 2,
+  },
+  {
+    stockCode: '035420',
+    market: 'KOSPI',
+    stockName: 'NAVER',
+    alias: null,
+    totalMarketValue: 32_000_000_000_000,
+    originCategoryName: '소프트웨어',
+    parentCategoryName: null,
+    categoryName: '인터넷/플랫폼',
+    categoryId: 3,
+  },
+  {
+    stockCode: '035720',
+    market: 'KOSDAQ',
+    stockName: '카카오',
+    alias: null,
+    totalMarketValue: 18_000_000_000_000,
+    originCategoryName: '소프트웨어',
+    parentCategoryName: null,
+    categoryName: '인터넷/플랫폼',
+    categoryId: 3,
+  },
 ]
 
 export const adminVersions = [

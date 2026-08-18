@@ -73,11 +73,9 @@ export const handlers = [
       name: body.name,
       parentId: body.parentId,
       depth: parent ? parent.depth + 1 : 0,
-      displayOrder: 1,
     })
   }),
   http.patch('/api/admin/market-map/categories/:id/name', ok),
-  http.patch('/api/admin/market-map/categories/:id/order', ok),
   http.patch('/api/admin/market-map/categories/:id/parent', ok),
   http.get('/api/admin/market-map/categories/:id/delete-preview', ({ params }) => {
     const category = data.adminCategories.find(c => c.id === Number(params.id))
@@ -106,4 +104,9 @@ export const handlers = [
   http.delete('/api/admin/market-map/versions/:id', ok),
   http.get('/api/admin/market-map/stock-categories', () => HttpResponse.json(data.adminStockCategories)),
   http.put('/api/admin/market-map/stock-categories/:stockCode', ok),
+  http.patch('/api/admin/market-map/stock-categories/:stockCode/alias', ok),
+  http.patch('/api/admin/market-map/stock-categories/bulk', async ({ request }) => {
+    const body = (await request.json()) as { stockCodes: string[]; categoryId: number }
+    return HttpResponse.json({ failedStockCodes: [], categoryId: body.categoryId })
+  }),
 ]
