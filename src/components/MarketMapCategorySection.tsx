@@ -36,7 +36,7 @@ export default function MarketMapCategorySection({ category, onSelectCategory }:
         width: category.width,
         height: category.height,
       }}
-      className={`border ${isOver ? 'border-2 border-yellow-400 brightness-125' : 'border-white'}`}
+      className={`border ${isOver || hover ? 'border-2 border-yellow-400 brightness-125' : 'border-white'}`}
     >
       <button
         type="button"
@@ -44,7 +44,7 @@ export default function MarketMapCategorySection({ category, onSelectCategory }:
         onMouseEnter={handleMouseEnter}
         onMouseMove={updateTooltipPos}
         onMouseLeave={() => setHover(false)}
-        className="absolute left-0 top-0 h-7 w-full truncate border-2 border-transparent bg-black/70 px-1 text-left text-sm font-bold text-white hover:border-yellow-400 hover:brightness-125"
+        className="absolute left-0 top-0 h-7 w-full truncate border-2 border-transparent bg-black/70 px-1 text-left text-sm font-bold text-white"
       >
         {label}
       </button>
