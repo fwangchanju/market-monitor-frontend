@@ -1,7 +1,10 @@
 import { useState } from 'react'
+import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import type { CategoryItem } from '@/types/api'
 import { useCreateCategory, useRenameCategory } from '@/hooks/useMarketMapAdmin'
 import { useCategoryDeleteFlow } from '@/hooks/useCategoryDeleteFlow'
+import { useCategoryDragEnd } from '@/hooks/useCategoryDragEnd'
+import { halfOverlapCollisionDetection } from '@/utils/dndCollision'
 
 interface Props {
   categories: CategoryItem[]
@@ -41,6 +44,47 @@ function buildRowsForRoots(categories: CategoryItem[], roots: CategoryItem[], ex
   return rows
 }
 
+// 카테고리 행의 드래그 시작점. 행 전체를 드래그 소스로 삼으면 펼치기/접기 클릭과 충돌하므로 별도 손잡이로 분리.
+function CategoryDragHandle({ categoryId, parentId }: { categoryId: number; parentId: number | null }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `category-drag-${categoryId}`,
+    data: { categoryId, parentId },
+  })
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      {...listeners}
+      {...attributes}
+      className={`shrink-0 cursor-grab touch-none bg-transparent px-1 text-gray-500 hover:text-white active:cursor-grabbing ${isDragging ? 'opacity-30' : ''}`}
+      title="드래그해서 다른 카테고리 밑으로 이동"
+    >
+      ⠿
+    </button>
+  )
+}
+
+// 다른 카테고리가 이 카테고리 위로 드롭되면 그 자식으로 재배정되는 드롭존. 행 전체를 감싼다.
+function DroppableCategoryRow({
+  categoryId,
+  className,
+  children,
+}: {
+  categoryId: number
+  className: string
+  children: React.ReactNode
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `category-drop-${categoryId}`,
+    data: { categoryId },
+  })
+  return (
+    <tr ref={setNodeRef} className={`${className} ${isOver ? 'bg-yellow-400/20' : ''}`}>
+      {children}
+    </tr>
+  )
+}
+
 export default function AdminCategoryTable({ categories }: Props) {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
   const [newName, setNewName] = useState('')
@@ -48,10 +92,13 @@ export default function AdminCategoryTable({ categories }: Props) {
   const [renamingId, setRenamingId] = useState<number | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [highlightedId, setHighlightedId] = useState<number | null>(null)
+  const [isDraggingCategory, setIsDraggingCategory] = useState(false)
 
   const createCategory = useCreateCategory()
   const renameCategory = useRenameCategory()
   const { remove } = useCategoryDeleteFlow()
+  const handleCategoryDragEnd = useCategoryDragEnd()
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   const toggleExpand = (id: number) => {
     setExpandedIds(prev => {
@@ -147,9 +194,14 @@ export default function AdminCategoryTable({ categories }: Props) {
       : `- ${category.name}${countSuffix}`
     const isRenaming = renamingId === category.id
     return (
-      <tr key={category.id} className={`group ${highlightedId === category.id ? 'animate-row-blink' : ''}`}>
+      <DroppableCategoryRow
+        key={category.id}
+        categoryId={category.id}
+        className={`group ${highlightedId === category.id ? 'animate-row-blink' : ''}`}
+      >
         <td className="text-left" style={{ paddingLeft: `${category.depth * 20 + 8}px` }}>
           <div className="flex items-center gap-6">
+            <CategoryDragHandle categoryId={category.id} parentId={category.parentId} />
             <button
               type="button"
               onClick={() => expandable && toggleExpand(category.id)}
@@ -218,53 +270,69 @@ export default function AdminCategoryTable({ categories }: Props) {
             </div>
           </div>
         </td>
-      </tr>
+      </DroppableCategoryRow>
     )
   }
 
   return (
-    <div>
-      <p className="mb-2 px-2 text-sm font-bold text-white">카테고리 목록</p>
-      <div className="mb-4 overflow-x-auto scrollbar-hide">
-        <table className="nes-table is-dark is-bordered w-full text-xs">
-          <tbody>
-            <tr>
-              <td className="text-left">
-                <div className="group/create flex items-center gap-2">
-                  <span className="shrink-0 text-gray-400">0.</span>
-                  <input
-                    type="text"
-                    value={newName}
-                    onChange={e => setNewName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleCreate()}
-                    placeholder="카테고리 추가"
-                    className="nes-input is-dark min-w-0 flex-1 text-xs"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCreate}
-                    className="nes-btn shrink-0 border-[#4f8fd6] bg-[#4f8fd6] px-2 py-0.5 text-xs text-white opacity-0 transition-opacity hover:brightness-125 group-focus-within/create:opacity-100"
-                  >
-                    추가
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="overflow-x-auto scrollbar-hide">
+    <DndContext
+      sensors={sensors}
+      collisionDetection={halfOverlapCollisionDetection}
+      onDragStart={() => setIsDraggingCategory(true)}
+      onDragEnd={event => {
+        setIsDraggingCategory(false)
+        handleCategoryDragEnd(event)
+      }}
+      onDragCancel={() => setIsDraggingCategory(false)}
+    >
+      <div>
+        <div className="mb-2 flex items-center justify-between px-2">
+          <p className="text-sm font-bold text-white">카테고리 목록</p>
+          {isDraggingCategory && (
+            <p className="text-xs text-yellow-400">다른 카테고리 위에 놓으면 그 밑으로, 빈 곳에 놓으면 최상위로 이동합니다</p>
+          )}
+        </div>
+        <div className="mb-4 overflow-x-auto scrollbar-hide">
           <table className="nes-table is-dark is-bordered w-full text-xs">
-            <tbody>{leftRows.map(renderRow)}</tbody>
+            <tbody>
+              <tr>
+                <td className="text-left">
+                  <div className="group/create flex items-center gap-2">
+                    <span className="shrink-0 text-gray-400">0.</span>
+                    <input
+                      type="text"
+                      value={newName}
+                      onChange={e => setNewName(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                      placeholder="카테고리 추가"
+                      className="nes-input is-dark min-w-0 flex-1 text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCreate}
+                      className="nes-btn shrink-0 border-[#4f8fd6] bg-[#4f8fd6] px-2 py-0.5 text-xs text-white opacity-0 transition-opacity hover:brightness-125 group-focus-within/create:opacity-100"
+                    >
+                      추가
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
           </table>
         </div>
-        <div className="overflow-x-auto scrollbar-hide">
-          <table className="nes-table is-dark is-bordered w-full text-xs">
-            <tbody>{rightRows.map(renderRow)}</tbody>
-          </table>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="overflow-x-auto scrollbar-hide">
+            <table className="nes-table is-dark is-bordered w-full text-xs">
+              <tbody>{leftRows.map(renderRow)}</tbody>
+            </table>
+          </div>
+          <div className="overflow-x-auto scrollbar-hide">
+            <table className="nes-table is-dark is-bordered w-full text-xs">
+              <tbody>{rightRows.map(renderRow)}</tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
+    </DndContext>
   )
 }

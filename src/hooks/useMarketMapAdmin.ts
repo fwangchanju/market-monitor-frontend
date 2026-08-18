@@ -3,6 +3,7 @@ import {
   getCategories,
   createCategory,
   renameCategory,
+  reparentCategory,
   getCategoryDeletePreview,
   deleteCategory,
   getVersions,
@@ -12,6 +13,8 @@ import {
   restoreVersion,
   deleteVersion,
   assignStockCategory,
+  updateAlias,
+  bulkAssignStockCategory,
   getStockCategories,
 } from '@/api/marketMapAdmin'
 import { marketMapAdminKeys } from './queryKeys'
@@ -45,6 +48,14 @@ export function useRenameCategory() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, name }: { id: number; name: string }) => renameCategory(id, name),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.categories() }),
+  })
+}
+
+export function useReparentCategory() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, parentId }: { id: number; parentId: number | null }) => reparentCategory(id, parentId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.categories() }),
   })
 }
@@ -120,6 +131,23 @@ export function useAssignStockCategory() {
   return useMutation({
     mutationFn: ({ stockCode, categoryId }: { stockCode: string; categoryId: number }) =>
       assignStockCategory(stockCode, categoryId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.stockCategories() }),
+  })
+}
+
+export function useBulkAssignStockCategory() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ stockCodes, categoryId }: { stockCodes: string[]; categoryId: number }) =>
+      bulkAssignStockCategory(stockCodes, categoryId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.stockCategories() }),
+  })
+}
+
+export function useUpdateAlias() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ stockCode, alias }: { stockCode: string; alias: string | null }) => updateAlias(stockCode, alias),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.stockCategories() }),
   })
 }
