@@ -8,9 +8,10 @@ import { toJoEokDecimal } from '@/utils/format'
 interface Props {
   category: LaidOutCategory
   onSelectCategory: (categoryName: string) => void
+  depth?: number
 }
 
-export default function MarketMapCategorySection({ category, onSelectCategory }: Props) {
+export default function MarketMapCategorySection({ category, onSelectCategory, depth = 0 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: category.categoryName })
   const [hover, setHover] = useState(false)
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null)
@@ -36,7 +37,7 @@ export default function MarketMapCategorySection({ category, onSelectCategory }:
         width: category.width,
         height: category.height,
       }}
-      className={`border ${isOver || hover ? 'border-2 border-yellow-400 brightness-125' : 'border-white'}`}
+      className={`box-content border-2 ${isOver || hover ? 'border-yellow-400 brightness-125' : 'border-white'}`}
     >
       <button
         type="button"
@@ -44,7 +45,9 @@ export default function MarketMapCategorySection({ category, onSelectCategory }:
         onMouseEnter={handleMouseEnter}
         onMouseMove={updateTooltipPos}
         onMouseLeave={() => setHover(false)}
-        className="absolute left-0 top-0 h-7 w-full truncate border-2 border-transparent bg-black/70 px-1 text-left text-sm font-bold text-white"
+        className={`absolute left-0 top-0 h-7 w-full truncate border-2 border-transparent px-1 text-left text-sm font-bold text-white ${
+          depth === 0 ? 'bg-black/70' : 'bg-gray-500'
+        }`}
       >
         {label}
       </button>
@@ -60,7 +63,7 @@ export default function MarketMapCategorySection({ category, onSelectCategory }:
           document.body,
         )}
       {category.subCategories.map(sub => (
-        <MarketMapCategorySection key={sub.categoryName} category={sub} onSelectCategory={onSelectCategory} />
+        <MarketMapCategorySection key={sub.categoryName} category={sub} onSelectCategory={onSelectCategory} depth={depth + 1} />
       ))}
       {category.boxes.map(box => (
         <MarketMapBox

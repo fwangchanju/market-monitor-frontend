@@ -161,7 +161,7 @@ export default function AdminCategoryTable({ categories }: Props) {
       const parentId = row.parentId
       return (
         <tr key={`add-child-${parentId}`}>
-          <td className="text-left" style={{ paddingLeft: `${row.depth * 20 + 8}px` }}>
+          <td className="py-0.5 text-left" style={{ paddingLeft: `${row.depth * 20 + 8}px` }}>
             <div className="group/create flex items-center gap-2">
               <span className="shrink-0 text-gray-400">-</span>
               <input
@@ -170,12 +170,12 @@ export default function AdminCategoryTable({ categories }: Props) {
                 onChange={e => setChildNameByParent(prev => ({ ...prev, [parentId]: e.target.value }))}
                 onKeyDown={e => e.key === 'Enter' && handleCreateChild(parentId)}
                 placeholder={`${row.parentName} 카테고리 추가`}
-                className="nes-input is-dark min-w-0 flex-1 text-xs"
+                className="nes-input is-dark min-w-0 flex-1 text-sm"
               />
               <button
                 type="button"
                 onClick={() => handleCreateChild(parentId)}
-                className="nes-btn shrink-0 border-[#4f8fd6] bg-[#4f8fd6] px-2 py-0.5 text-xs text-white opacity-0 transition-opacity hover:brightness-125 group-focus-within/create:opacity-100"
+                className="nes-btn shrink-0 border-[#4f8fd6] bg-[#4f8fd6] px-3 py-1 text-sm text-white opacity-0 transition-opacity hover:brightness-125 group-focus-within/create:opacity-100"
               >
                 추가
               </button>
@@ -200,7 +200,7 @@ export default function AdminCategoryTable({ categories }: Props) {
         categoryId={category.id}
         className={`group ${highlightedId === category.id ? 'animate-row-blink' : ''}`}
       >
-        <td className="text-left" style={{ paddingLeft: `${category.depth * 20 + 8}px` }}>
+        <td className="py-0.5 text-left" style={{ paddingLeft: `${category.depth * 20 + 8}px` }}>
           <div className="flex items-center gap-6">
             <CategoryDragHandle categoryId={category.id} parentId={category.parentId} />
             <button
@@ -211,7 +211,7 @@ export default function AdminCategoryTable({ categories }: Props) {
               }`}
             >
               {expandable && (
-                <span className="mr-1 inline-block w-3 shrink-0 text-gray-400">{expandedIds.has(category.id) ? '▾' : '▸'}</span>
+                <span className="mr-1 inline-block w-4 shrink-0 text-gray-400">{expandedIds.has(category.id) ? '▾' : '▸'}</span>
               )}
               {isRenaming ? (
                 <input
@@ -224,7 +224,7 @@ export default function AdminCategoryTable({ categories }: Props) {
                     if (e.key === 'Enter') submitRename(category)
                     if (e.key === 'Escape') cancelRename()
                   }}
-                  className="nes-input is-dark min-w-0 flex-1 text-xs"
+                  className="nes-input is-dark min-w-0 flex-1 text-sm"
                 />
               ) : (
                 <span className="truncate">{label}</span>
@@ -238,14 +238,14 @@ export default function AdminCategoryTable({ categories }: Props) {
                   <button
                     type="button"
                     onClick={() => submitRename(category)}
-                    className="nes-btn border-[#4f8fd6] bg-[#4f8fd6] px-2 py-0.5 text-xs text-white hover:brightness-125"
+                    className="nes-btn border-[#4f8fd6] bg-[#4f8fd6] px-3 py-1 text-sm text-white hover:brightness-125"
                   >
                     확인
                   </button>
                   <button
                     type="button"
                     onClick={cancelRename}
-                    className="nes-btn border-gray-600 bg-black px-2 py-0.5 text-xs text-white hover:bg-gray-800"
+                    className="nes-btn border-gray-600 bg-black px-3 py-1 text-sm text-white hover:bg-gray-800"
                   >
                     취소
                   </button>
@@ -255,14 +255,14 @@ export default function AdminCategoryTable({ categories }: Props) {
                   <button
                     type="button"
                     onClick={() => startRename(category)}
-                    className="nes-btn border-[#4f8fd6] bg-[#4f8fd6] px-2 py-0.5 text-xs text-white hover:brightness-125"
+                    className="nes-btn border-[#4f8fd6] bg-[#4f8fd6] px-3 py-1 text-sm text-white hover:brightness-125"
                   >
                     변경
                   </button>
                   <button
                     type="button"
                     onClick={() => remove(category.id, category.name)}
-                    className="nes-btn border-red-600 bg-red-600 px-2 py-0.5 text-xs text-white hover:bg-red-700"
+                    className="nes-btn border-red-600 bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
                   >
                     삭제
                   </button>
@@ -298,14 +298,14 @@ export default function AdminCategoryTable({ categories }: Props) {
         <div className="mb-2 flex items-center justify-between px-2">
           <p className="text-sm font-bold text-white">카테고리 목록</p>
           {isDraggingCategory && (
-            <p className="text-xs text-yellow-400">다른 카테고리 위에 놓으면 그 밑으로, 빈 곳에 놓으면 최상위로 이동합니다</p>
+            <p className="text-sm text-yellow-400">다른 카테고리 위에 놓으면 그 밑으로, 빈 곳에 놓으면 최상위로 이동합니다</p>
           )}
         </div>
         <div className="mb-4 overflow-x-auto scrollbar-hide">
-          <table className="nes-table is-dark is-bordered w-full text-xs [&_td]:border-white/10">
+          <table className="nes-table is-dark is-bordered w-full text-sm [&_td]:border-white/10">
             <tbody>
               <tr>
-                <td className="text-left">
+                <td className="py-0.5 text-left">
                   <div className="group/create flex items-center gap-2">
                     <span className="shrink-0 text-gray-400">0.</span>
                     <input
@@ -314,12 +314,12 @@ export default function AdminCategoryTable({ categories }: Props) {
                       onChange={e => setNewName(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleCreate()}
                       placeholder="카테고리 추가"
-                      className="nes-input is-dark min-w-0 flex-1 text-xs"
+                      className="nes-input is-dark min-w-0 flex-1 text-sm"
                     />
                     <button
                       type="button"
                       onClick={handleCreate}
-                      className="nes-btn shrink-0 border-[#4f8fd6] bg-[#4f8fd6] px-2 py-0.5 text-xs text-white opacity-0 transition-opacity hover:brightness-125 group-focus-within/create:opacity-100"
+                      className="nes-btn shrink-0 border-[#4f8fd6] bg-[#4f8fd6] px-3 py-1 text-sm text-white opacity-0 transition-opacity hover:brightness-125 group-focus-within/create:opacity-100"
                     >
                       추가
                     </button>
@@ -331,12 +331,12 @@ export default function AdminCategoryTable({ categories }: Props) {
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="overflow-x-auto scrollbar-hide">
-            <table className="nes-table is-dark is-bordered w-full text-xs [&_td]:border-white/10">
+            <table className="nes-table is-dark is-bordered w-full text-sm [&_td]:border-white/10">
               <tbody>{leftRows.map(renderRow)}</tbody>
             </table>
           </div>
           <div className="overflow-x-auto scrollbar-hide">
-            <table className="nes-table is-dark is-bordered w-full text-xs [&_td]:border-white/10">
+            <table className="nes-table is-dark is-bordered w-full text-sm [&_td]:border-white/10">
               <tbody>{rightRows.map(renderRow)}</tbody>
             </table>
           </div>
