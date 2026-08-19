@@ -61,29 +61,29 @@ export default function MarketMapSettingsDropdown({ isExclude, onToggleExclude, 
         type="button"
         onClick={() => setIsOpen(prev => !prev)}
         aria-label="설정"
-        className="rounded p-1.5 text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
+        className={`flex items-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6] ${compact ? 'p-1' : 'p-1.5'}`}
       >
         <SettingsIcon className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
       </button>
       {isOpen && (
         <div className="absolute right-0 top-full z-30 mt-2 w-56 border border-gray-700 bg-[var(--surface)] p-4 text-left text-sm shadow-lg">
-          <ToggleSwitch checked={isExclude} onChange={onToggleExclude} label="일부종목 제외" />
-          <div className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
-            {excluded?.map(stock => (
-              <div key={stock.stockCode} className="flex items-center justify-between gap-1 px-1 py-0.5">
-                <span className="truncate text-[10.5px] text-white">- {stock.stockName}</span>
-                <button
-                  type="button"
-                  onClick={() => handleRemove(stock.stockCode)}
-                  className="shrink-0 border-0 bg-transparent text-red-500 hover:text-red-400"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
+          <ToggleSwitch checked={isCustom} onChange={onToggleCustom} label="섹터 커스텀" />
           <div className="mt-6">
-            <ToggleSwitch checked={isCustom} onChange={onToggleCustom} label="섹터 커스텀" />
+            <ToggleSwitch checked={isExclude} onChange={onToggleExclude} label="일부섹터 제외" />
+            <div className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
+              {excluded?.map(stock => (
+                <div key={stock.stockCode} className="flex items-center justify-between gap-1 px-1 py-0.5">
+                  <span className="truncate text-[10.5px] text-white">- {stock.stockName}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(stock.stockCode)}
+                    className="shrink-0 border-0 bg-transparent text-red-500 hover:text-red-400"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

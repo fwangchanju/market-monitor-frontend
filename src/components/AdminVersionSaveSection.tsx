@@ -67,8 +67,8 @@ export default function AdminVersionSaveSection() {
           </div>
         ) : currentVersion ? (
           <div className="nes-container is-rounded is-dark flex w-full flex-col gap-1 px-2 py-1 text-white">
-            <span className="truncate text-[9px]">{currentVersion.label}</span>
-            <span className="text-[7px]">{currentVersion.createdAt.slice(0, 10)}</span>
+            <span className="truncate text-[14px]">이름 : {currentVersion.label}</span>
+            <span className="text-[14px]">저장 : {currentVersion.createdAt.slice(0, 10)}</span>
           </div>
         ) : (
           <span className="text-xs text-gray-400">없음</span>
@@ -78,30 +78,32 @@ export default function AdminVersionSaveSection() {
         {versions?.map(version => (
           <div
             key={version.id}
-            className={`nes-container is-rounded is-dark flex flex-col gap-1 px-2 py-1 text-white ${
+            className={`group nes-container is-rounded is-dark flex items-center gap-2 px-2 py-1 text-white ${
               selectedId === version.id ? 'border-2 border-[#4f8fd6]' : ''
             }`}
           >
             <button
               type="button"
               onClick={() => handleSelect(version.id, version.label)}
-              className="flex min-w-0 flex-col truncate border-0 bg-transparent text-left text-white hover:text-[#4f8fd6]"
+              className="flex min-w-0 flex-1 flex-col truncate border-0 bg-transparent text-left text-white"
             >
-              <span className="truncate text-[9px]">{version.label}</span>
-              <span className="text-[7px]">{version.createdAt.slice(0, 10)}</span>
+              <span className="truncate text-[14px]">이름 : {version.label}</span>
+              <span className="text-[14px]">저장 : {version.createdAt.slice(0, 10)}</span>
             </button>
-            <div className="flex shrink-0 items-center gap-2 text-[9px]">
+            <div className="flex shrink-0 items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
               <button
                 type="button"
                 onClick={() => handleRestore(version.id, version.label)}
-                className="border-0 bg-transparent text-[#4f8fd6] hover:brightness-125"
+                title="불러오기"
+                className="nes-btn border-[#4f8fd6] bg-[#4f8fd6] px-2 py-0.5 text-sm text-white hover:brightness-125"
               >
-                불러오기
+                ⤴
               </button>
               <button
                 type="button"
                 onClick={() => handleDelete(version.id, version.label)}
-                className="border-0 bg-transparent text-red-500 hover:text-red-400"
+                title="삭제"
+                className="nes-btn border-red-600 bg-red-600 px-2 py-0.5 text-sm text-white hover:bg-red-700"
               >
                 ✕
               </button>
@@ -112,7 +114,7 @@ export default function AdminVersionSaveSection() {
       <div className="mt-2 flex flex-col gap-1">
         <input
           type="text"
-          className="nes-input is-dark text-xs"
+          className="nes-input is-dark h-9 text-base"
           value={label}
           onChange={e => handleLabelChange(e.target.value)}
           placeholder="버전 태그명"

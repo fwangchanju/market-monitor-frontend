@@ -774,7 +774,7 @@ export default function AdminStockTable({ items, categories }: Props) {
 
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between px-2">
+      <div className="mb-2 flex min-h-[38px] items-center justify-between px-2">
         <p className="text-sm font-bold text-white">
           종목 목록 ({sorted.length}
           {sorted.length !== items.length ? ` / ${items.length}` : ''})

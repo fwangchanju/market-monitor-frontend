@@ -40,7 +40,10 @@ interface HierarchyDatum {
 }
 
 const CATEGORY_HEADER_HEIGHT = 28
-const PADDING = 2
+// 카테고리 컴포넌트의 테두리(border-2, box-content로 바깥쪽에 그려짐)가 여기서 만든 간격을 파고들기 때문에,
+// 테두리 두께(2px)보다 커야 실제로 여백이 남는다. 정확히 같으면 옆에 테두리 없는 종목 박스가 있을 때
+// 간격이 전부 테두리에 먹혀서 다닥다닥 붙어 보인다.
+const PADDING = 4
 // 최상위 카테고리의 우측 테두리가 컨테이너 너비의 이 비율을 넘으면, 그 안의 모든 툴팁(카테고리/종목)을 왼쪽으로 뒤집는다.
 // 실제 화면에서 툴팁이 잘리는지 보면서 이 값만 조정하면 됨 (0.75 = 우측 25% 구간에 걸치면 반전).
 const TOOLTIP_FLIP_RIGHT_EDGE_RATIO = 0.85
