@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   DndContext,
@@ -20,7 +20,7 @@ import { useMarketMap } from '@/hooks/useMarketMap'
 import { useMarketMapDragEnd } from '@/hooks/useMarketMapDragEnd'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
-import { toHourLabel } from '@/utils/format'
+import { toFullDateTimeLabel } from '@/utils/format'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
@@ -46,6 +46,7 @@ export default function MarketMapCustomPage() {
   const [activeItem, setActiveItem] = useState<{ stockCode: string; stockName: string } | null>(null)
   const [isOverMap, setIsOverMap] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false)
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
@@ -89,6 +90,23 @@ export default function MarketMapCustomPage() {
     setActiveItem(null)
   }
 
+  // 앱 내부 풀스크린(isFullscreen, CSS로 헤더/사이드바만 숨김)과는 별개로, 브라우저 자체의
+  // 진짜 Fullscreen API를 토글한다. 사용자가 F11 키나 Esc로 직접 빠져나가는 경우도 있어서
+  // fullscreenchange 이벤트로 상태를 동기화한다.
+  useEffect(() => {
+    const handleFullscreenChange = () => setIsNativeFullscreen(document.fullscreenElement != null)
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
+  const handleToggleNativeFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      document.documentElement.requestFullscreen()
+    }
+  }
+
   const handleCopy = async () => {
     if (!captureRef.current) return
     setCopyStatus('copying')
@@ -120,7 +138,7 @@ export default function MarketMapCustomPage() {
   return (
     <div className="flex min-h-screen flex-col">
       {isFullscreen ? (
-        <div className="flex items-center justify-end gap-2 bg-white px-2 py-1 shadow-lg">
+        <div className="flex h-8 items-center justify-end gap-2 bg-white px-2 shadow-lg">
           <MarketMapSettingsDropdown
             isExclude={isExclude}
             onToggleExclude={() => setIsExclude(prev => !prev)}
@@ -131,7 +149,7 @@ export default function MarketMapCustomPage() {
           <button
             type="button"
             aria-label="공유"
-            className="rounded p-1.5 text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
+            className="flex items-center rounded p-1 text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
             onClick={() => setIsShareOpen(true)}
           >
             <ShareIcon className="h-4 w-4" />
@@ -139,7 +157,7 @@ export default function MarketMapCustomPage() {
           <button
             type="button"
             aria-label="전체화면 종료"
-            className="rounded p-1.5 text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
+            className="flex items-center rounded p-1 text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
             onClick={() => setIsFullscreen(false)}
           >
             <MinimizeIcon className="h-4 w-4" />
@@ -150,7 +168,7 @@ export default function MarketMapCustomPage() {
           actions={
             <>
               {data?.snapshotTime && (
-                <span className="whitespace-nowrap text-xs text-black">기준시간: {toHourLabel(data.snapshotTime).slice(11)}</span>
+                <span className="whitespace-nowrap text-xs text-black">{toFullDateTimeLabel(data.snapshotTime)} 기준</span>
               )}
               <MarketMapSettingsDropdown
                 isExclude={isExclude}
@@ -174,6 +192,16 @@ export default function MarketMapCustomPage() {
               >
                 <MaximizeIcon className="h-5 w-5" />
               </button>
+              <button
+                type="button"
+                aria-label="F11"
+                className={`rounded p-1.5 hover:bg-gray-100 hover:text-[#4f8fd6] ${
+                  isNativeFullscreen ? 'text-[#4f8fd6]' : 'text-gray-700'
+                }`}
+                onClick={handleToggleNativeFullscreen}
+              >
+                <span className="inline-flex h-5 w-5 items-center justify-center text-[10px] font-bold">F11</span>
+              </button>
               <Link to="/admin/market-map" className="nes-btn ml-6 text-white">
                 관리
               </Link>
@@ -190,7 +218,7 @@ export default function MarketMapCustomPage() {
         onDragCancel={handleDragCancel}
       >
         <div className="flex flex-1">
-          <MarketMapFilterSidebar market={market} onMarketChange={handleMarketChange} compact={isFullscreen} />
+          {!isFullscreen && <MarketMapFilterSidebar market={market} onMarketChange={handleMarketChange} />}
           <div ref={captureRef} data-captureid={CAPTURE_ID.MARKET_MAP} className="flex-1 p-4">
             {path.length > 0 && (
               <div
@@ -221,7 +249,7 @@ export default function MarketMapCustomPage() {
             )}
             {isLoading ? (
               <div
-                className={`flex items-center justify-center ${isFullscreen ? 'h-[calc(100vh-80px)]' : 'h-[calc(100vh-110px)]'}`}
+                className={`flex items-center justify-center ${isFullscreen ? 'h-[calc(100vh-64px)]' : 'h-[calc(100vh-110px)]'}`}
               >
                 <Spinner />
               </div>
@@ -234,7 +262,7 @@ export default function MarketMapCustomPage() {
                 groups={groups}
                 selfCategoryName={currentNode?.categoryName ?? null}
                 onSelectCategory={enterCategory}
-                heightClassName={isFullscreen ? 'h-[calc(100vh-80px)]' : 'h-[calc(100vh-110px)]'}
+                heightClassName={isFullscreen ? 'h-[calc(100vh-64px)]' : 'h-[calc(100vh-110px)]'}
               />
             )}
           </div>
