@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import type { CategoryItem } from '@/types/api'
 import { useCreateCategory, useRenameCategory } from '@/hooks/useMarketMapAdmin'
 import { useCategoryDeleteFlow } from '@/hooks/useCategoryDeleteFlow'
@@ -93,6 +93,7 @@ export default function AdminCategoryTable({ categories }: Props) {
   const [renameValue, setRenameValue] = useState('')
   const [highlightedId, setHighlightedId] = useState<number | null>(null)
   const [isDraggingCategory, setIsDraggingCategory] = useState(false)
+  const [draggedCategory, setDraggedCategory] = useState<CategoryItem | null>(null)
 
   const createCategory = useCreateCategory()
   const renameCategory = useRenameCategory()
@@ -278,12 +279,20 @@ export default function AdminCategoryTable({ categories }: Props) {
     <DndContext
       sensors={sensors}
       collisionDetection={halfOverlapCollisionDetection}
-      onDragStart={() => setIsDraggingCategory(true)}
+      onDragStart={event => {
+        setIsDraggingCategory(true)
+        const dragData = event.active.data.current as { categoryId: number } | undefined
+        setDraggedCategory(dragData ? (categories.find(c => c.id === dragData.categoryId) ?? null) : null)
+      }}
       onDragEnd={event => {
         setIsDraggingCategory(false)
+        setDraggedCategory(null)
         handleCategoryDragEnd(event)
       }}
-      onDragCancel={() => setIsDraggingCategory(false)}
+      onDragCancel={() => {
+        setIsDraggingCategory(false)
+        setDraggedCategory(null)
+      }}
     >
       <div>
         <div className="mb-2 flex items-center justify-between px-2">
@@ -293,7 +302,7 @@ export default function AdminCategoryTable({ categories }: Props) {
           )}
         </div>
         <div className="mb-4 overflow-x-auto scrollbar-hide">
-          <table className="nes-table is-dark is-bordered w-full text-xs">
+          <table className="nes-table is-dark is-bordered w-full text-xs [&_td]:border-white/10">
             <tbody>
               <tr>
                 <td className="text-left">
@@ -322,17 +331,25 @@ export default function AdminCategoryTable({ categories }: Props) {
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="overflow-x-auto scrollbar-hide">
-            <table className="nes-table is-dark is-bordered w-full text-xs">
+            <table className="nes-table is-dark is-bordered w-full text-xs [&_td]:border-white/10">
               <tbody>{leftRows.map(renderRow)}</tbody>
             </table>
           </div>
           <div className="overflow-x-auto scrollbar-hide">
-            <table className="nes-table is-dark is-bordered w-full text-xs">
+            <table className="nes-table is-dark is-bordered w-full text-xs [&_td]:border-white/10">
               <tbody>{rightRows.map(renderRow)}</tbody>
             </table>
           </div>
         </div>
       </div>
+      {/* 커서를 따라다니는 드래그 미리보기 — 손잡이만 흐려지는 것만으론 뭔가 잡혔다는 느낌이 안 나서 추가. */}
+      <DragOverlay>
+        {draggedCategory && (
+          <div className="nes-container is-dark w-max !bg-violet-950 px-3 py-1.5 text-xs whitespace-nowrap text-white shadow-lg">
+            ⠿ {draggedCategory.name}
+          </div>
+        )}
+      </DragOverlay>
     </DndContext>
   )
 }

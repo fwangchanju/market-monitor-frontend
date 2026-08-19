@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import type { CategoryItem, StockCategoryListItem } from '@/types/api'
 import { toJoEokDecimal } from '@/utils/format'
 import { useAssignStockCategory, useBulkAssignStockCategory, useUpdateAlias } from '@/hooks/useMarketMapAdmin'
@@ -29,7 +30,7 @@ const COLUMNS: { key: SortKey; header: string; width: string; align: 'center' | 
   { key: 'stockName', header: '종목명', width: '13%', align: 'left' },
   { key: 'alias', header: '약칭', width: '10%', align: 'left' },
   { key: 'totalMarketValue', header: '시가총액', width: '12%', align: 'right' },
-  { key: 'originCategoryName', header: '업종', width: '14%', align: 'right' },
+  { key: 'originCategoryName', header: '업종', width: '14%', align: 'left' },
   { key: 'parentCategoryName', header: '대분류', width: '14%', align: 'right' },
   { key: 'categoryName', header: '소분류', width: '14%', align: 'right' },
 ]
@@ -283,6 +284,7 @@ function AdminStockCategoryCell({
   options,
   onAssign,
   isHighlighted,
+  rowHoverClass,
   onHoverStart,
   onHoverEnd,
 }: {
@@ -290,6 +292,7 @@ function AdminStockCategoryCell({
   options: CategoryOption[]
   onAssign: (categoryId: number) => void
   isHighlighted: boolean
+  rowHoverClass: string
   onHoverStart: () => void
   onHoverEnd: () => void
 }) {
@@ -310,7 +313,7 @@ function AdminStockCategoryCell({
   return (
     <td
       ref={cellRef}
-      className={`cursor-pointer pl-4 text-left ${isHighlighted ? 'bg-yellow-400/50' : ''}`}
+      className={`cursor-pointer pl-4 text-left ${isHighlighted ? 'bg-yellow-400/50' : rowHoverClass}`}
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
       onClick={() => {
@@ -396,9 +399,17 @@ function BulkAssignButton({
 function AdminAliasCell({
   alias,
   onUpdate,
+  isHighlighted,
+  rowHoverClass,
+  onHoverStart,
+  onHoverEnd,
 }: {
   alias: string | null
   onUpdate: (alias: string | null) => void
+  isHighlighted: boolean
+  rowHoverClass: string
+  onHoverStart: () => void
+  onHoverEnd: () => void
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [value, setValue] = useState('')
@@ -437,7 +448,9 @@ function AdminAliasCell({
 
   return (
     <td
-      className={`cursor-pointer hover:bg-yellow-400/50 ${alignClass('left')}`}
+      className={`cursor-pointer ${alignClass('left')} ${isHighlighted ? 'bg-yellow-400/50' : rowHoverClass}`}
+      onMouseEnter={onHoverStart}
+      onMouseLeave={onHoverEnd}
       onClick={startEdit}
     >
       {alias ?? '-'}
@@ -521,8 +534,9 @@ const AdminStockRow = memo(function AdminStockRow({
   index,
   isSelected,
   onToggleSelected,
-  isHighlighted,
-  onHoverStart,
+  hoveredKind,
+  onCategoryHoverStart,
+  onAliasHoverStart,
   onHoverEnd,
   categoryOptions,
   onAssign,
@@ -532,41 +546,55 @@ const AdminStockRow = memo(function AdminStockRow({
   index: number
   isSelected: boolean
   onToggleSelected: (stockCode: string) => void
-  isHighlighted: boolean
-  onHoverStart: (stockCode: string) => void
+  hoveredKind: 'category' | 'alias' | null
+  onCategoryHoverStart: (stockCode: string) => void
+  onAliasHoverStart: (stockCode: string) => void
   onHoverEnd: () => void
   categoryOptions: CategoryOption[]
   onAssign: (stockCode: string, categoryId: number) => void
   onUpdateAlias: (stockCode: string, alias: string | null) => void
 }) {
+  // 대분류/소분류/약칭 중 하나만 hover해도 그 줄 전체가 옅게 강조되고, 실제 hover 중인 열만
+  // 진하게 표시해서 어떤 걸 hover 중인지 구분되게 한다.
+  const rowHoverClass = hoveredKind ? 'bg-yellow-400/20' : ''
+
   return (
     <tr>
-      <td className="text-center">
+      <td className={`text-center ${rowHoverClass}`}>
         <input type="checkbox" checked={isSelected} onChange={() => onToggleSelected(item.stockCode)} />
       </td>
-      <td className="text-center text-gray-400">{index + 1}</td>
-      <td className="text-center">{item.stockCode}</td>
-      <td className={`text-center ${marketColorClass(item.market)}`}>{MARKET_LABEL[item.market]}</td>
-      <td className={`${alignClass('left')} ${marketColorClass(item.market)}`}>{item.stockName}</td>
-      <AdminAliasCell alias={item.alias} onUpdate={alias => onUpdateAlias(item.stockCode, alias)} />
-      <td className={alignClass('right')}>
+      <td className={`text-center text-gray-400 ${rowHoverClass}`}>{index + 1}</td>
+      <td className={`text-center ${rowHoverClass}`}>{item.stockCode}</td>
+      <td className={`text-center ${marketColorClass(item.market)} ${rowHoverClass}`}>{MARKET_LABEL[item.market]}</td>
+      <td className={`${alignClass('left')} ${marketColorClass(item.market)} ${rowHoverClass}`}>{item.stockName}</td>
+      <AdminAliasCell
+        alias={item.alias}
+        onUpdate={alias => onUpdateAlias(item.stockCode, alias)}
+        isHighlighted={hoveredKind === 'alias'}
+        rowHoverClass={rowHoverClass}
+        onHoverStart={() => onAliasHoverStart(item.stockCode)}
+        onHoverEnd={onHoverEnd}
+      />
+      <td className={`${alignClass('right')} ${rowHoverClass}`}>
         {item.totalMarketValue != null ? toJoEokDecimal(item.totalMarketValue / 100_000_000) : '-'}
       </td>
-      <td className={alignClass('right')}>{item.originCategoryName ?? '-'}</td>
+      <td className={`${alignClass('left')} ${rowHoverClass}`}>{item.originCategoryName ?? '-'}</td>
       <AdminStockCategoryCell
         value={item.parentCategoryName ?? item.categoryName}
         options={categoryOptions}
         onAssign={categoryId => onAssign(item.stockCode, categoryId)}
-        isHighlighted={isHighlighted}
-        onHoverStart={() => onHoverStart(item.stockCode)}
+        isHighlighted={hoveredKind === 'category'}
+        rowHoverClass={rowHoverClass}
+        onHoverStart={() => onCategoryHoverStart(item.stockCode)}
         onHoverEnd={onHoverEnd}
       />
       <AdminStockCategoryCell
         value={item.parentCategoryName ? item.categoryName : '-'}
         options={categoryOptions}
         onAssign={categoryId => onAssign(item.stockCode, categoryId)}
-        isHighlighted={isHighlighted}
-        onHoverStart={() => onHoverStart(item.stockCode)}
+        isHighlighted={hoveredKind === 'category'}
+        rowHoverClass={rowHoverClass}
+        onHoverStart={() => onCategoryHoverStart(item.stockCode)}
         onHoverEnd={onHoverEnd}
       />
     </tr>
@@ -584,7 +612,7 @@ export default function AdminStockTable({ items, categories }: Props) {
   // categories가 안 바뀌면 참조를 유지해야 AdminStockRow의 React.memo가 제대로 스킵된다.
   const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories])
   // 대분류/소분류 셀은 결국 같은 종목의 categoryId를 바꾸는 동일한 액션이라, 둘 중 하나만 호버해도 같이 강조되게 한다.
-  const [hoveredCategoryStock, setHoveredCategoryStock] = useState<string | null>(null)
+  const [hoveredRow, setHoveredRow] = useState<{ stockCode: string; kind: 'category' | 'alias' } | null>(null)
   // 필터/정렬이 바뀌어도 선택 상태는 stockCode 기준으로 유지된다 (전체선택만 "지금 보이는 것" 기준으로 동작).
   const [selectedStockCodes, setSelectedStockCodes] = useState<Set<string>>(new Set())
 
@@ -623,8 +651,12 @@ export default function AdminStockTable({ items, categories }: Props) {
     })
   }, [])
 
-  const handleHoverStart = useCallback((stockCode: string) => setHoveredCategoryStock(stockCode), [])
-  const handleHoverEnd = useCallback(() => setHoveredCategoryStock(null), [])
+  const handleCategoryHoverStart = useCallback(
+    (stockCode: string) => setHoveredRow({ stockCode, kind: 'category' }),
+    [],
+  )
+  const handleAliasHoverStart = useCallback((stockCode: string) => setHoveredRow({ stockCode, kind: 'alias' }), [])
+  const handleHoverEnd = useCallback(() => setHoveredRow(null), [])
 
   const handleBulkAssign = (categoryId: number) => {
     bulkAssignStockCategory.mutate(
@@ -681,6 +713,25 @@ export default function AdminStockTable({ items, categories }: Props) {
     [items, excludedFilters],
   )
 
+  // 필터에 걸려서 화면에서 사라진 종목은 선택도 같이 해제한다 — 안 보이는 종목이 일괄변경에
+  // 딸려 들어가는 걸 막기 위함. filtered가 실제로 바뀔 때(=필터 조작 시)만 실행되므로 체크박스/hover
+  // 같은 잦은 조작과는 무관하다.
+  useEffect(() => {
+    const visibleStockCodes = new Set(filtered.map(item => item.stockCode))
+    setSelectedStockCodes(prev => {
+      let changed = false
+      const next = new Set<string>()
+      for (const stockCode of prev) {
+        if (visibleStockCodes.has(stockCode)) {
+          next.add(stockCode)
+        } else {
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [filtered])
+
   const sortedAscending = useMemo(
     () => [...filtered].sort((a, b) => compareByKey(a, b, sortKey)),
     [filtered, sortKey],
@@ -705,6 +756,22 @@ export default function AdminStockTable({ items, categories }: Props) {
     })
   }
 
+  // 행이 수천 개라 전부 DOM에 그려두면(가상화 없이) 체크박스 하나만 바꿔도 브라우저가 그 거대한
+  // DOM 전체를 놓고 스타일/레이아웃을 다시 계산한다 — React.memo로는 못 줄이는 비용이라 가상화가 필요하다.
+  // 실제 <table>/<tr> 구조는 유지한 채(NES.css 스타일이 table 요소를 대상으로 하므로), 보이는 행 앞뒤로
+  // 스페이서 <tr>만 넣어서 스크롤 높이를 흉내내는 방식.
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const rowVirtualizer = useVirtualizer({
+    count: sorted.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 26,
+    overscan: 15,
+  })
+  const virtualRows = rowVirtualizer.getVirtualItems()
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0
+  const paddingBottom =
+    virtualRows.length > 0 ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end : 0
+
   return (
     <div>
       <div className="mb-2 flex items-center justify-between px-2">
@@ -716,9 +783,9 @@ export default function AdminStockTable({ items, categories }: Props) {
           <BulkAssignButton count={selectedStockCodes.size} options={categoryOptions} onAssign={handleBulkAssign} />
         )}
       </div>
-      <div className="overflow-x-auto scrollbar-hide">
-        <table className="nes-table is-dark is-bordered w-full text-sm [&_td]:py-0.5 [&_th]:py-1">
-          <thead>
+      <div ref={scrollContainerRef} className="max-h-[75vh] overflow-auto scrollbar-hide">
+        <table className="nes-table is-dark is-bordered w-full text-sm [&_td]:border-white/10 [&_td]:py-0.5 [&_th]:border-white/10 [&_th]:py-1">
+          <thead className="sticky top-0 z-10">
             <tr>
               <th className="bg-[#4f8fd6] text-center" style={{ width: CHECKBOX_COLUMN_WIDTH }}>
                 <input type="checkbox" checked={isAllVisibleSelected} onChange={toggleSelectAllVisible} />
@@ -768,21 +835,37 @@ export default function AdminStockTable({ items, categories }: Props) {
                 </td>
               </tr>
             ) : (
-              sorted.map((item, index) => (
-                <AdminStockRow
-                  key={item.stockCode}
-                  item={item}
-                  index={index}
-                  isSelected={selectedStockCodes.has(item.stockCode)}
-                  onToggleSelected={toggleSelected}
-                  isHighlighted={hoveredCategoryStock === item.stockCode}
-                  onHoverStart={handleHoverStart}
-                  onHoverEnd={handleHoverEnd}
-                  categoryOptions={categoryOptions}
-                  onAssign={handleAssign}
-                  onUpdateAlias={handleUpdateAlias}
-                />
-              ))
+              <>
+                {paddingTop > 0 && (
+                  <tr>
+                    <td colSpan={COLUMNS.length + 2} style={{ height: paddingTop, padding: 0, border: 'none' }} />
+                  </tr>
+                )}
+                {virtualRows.map(virtualRow => {
+                  const item = sorted[virtualRow.index]
+                  return (
+                    <AdminStockRow
+                      key={item.stockCode}
+                      item={item}
+                      index={virtualRow.index}
+                      isSelected={selectedStockCodes.has(item.stockCode)}
+                      onToggleSelected={toggleSelected}
+                      hoveredKind={hoveredRow?.stockCode === item.stockCode ? hoveredRow.kind : null}
+                      onCategoryHoverStart={handleCategoryHoverStart}
+                      onAliasHoverStart={handleAliasHoverStart}
+                      onHoverEnd={handleHoverEnd}
+                      categoryOptions={categoryOptions}
+                      onAssign={handleAssign}
+                      onUpdateAlias={handleUpdateAlias}
+                    />
+                  )
+                })}
+                {paddingBottom > 0 && (
+                  <tr>
+                    <td colSpan={COLUMNS.length + 2} style={{ height: paddingBottom, padding: 0, border: 'none' }} />
+                  </tr>
+                )}
+              </>
             )}
           </tbody>
         </table>
