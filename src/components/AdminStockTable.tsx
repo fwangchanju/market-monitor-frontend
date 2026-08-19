@@ -735,17 +735,19 @@ export default function AdminStockTable({ items, categories }: Props) {
                     )}
                   </span>
                 )
+                // col.key로 좁혀진 타입은 아래 클로저(onToggle 등) 안에서는 다시 넓어지므로, 지역 변수로 한 번 고정해둔다.
+                const filterKey = isFilterKey(col.key) ? col.key : null
                 return (
                   <th key={col.key} style={{ width: col.width }} className="whitespace-nowrap bg-[#4f8fd6] text-center">
-                    {isFilterKey(col.key) ? (
+                    {filterKey ? (
                       <div className="flex items-center justify-between pl-2 pr-1">
                         {label}
                         <AdminColumnFilterButton
-                          options={filterOptionsByKey[col.key]}
-                          excluded={excludedFilters[col.key]}
-                          onToggle={value => toggleFilterValue(col.key, value)}
-                          onSelectAll={() => selectAllFilterValues(col.key)}
-                          onSelectNone={() => selectNoneFilterValues(col.key)}
+                          options={filterOptionsByKey[filterKey]}
+                          excluded={excludedFilters[filterKey]}
+                          onToggle={value => toggleFilterValue(filterKey, value)}
+                          onSelectAll={() => selectAllFilterValues(filterKey)}
+                          onSelectNone={() => selectNoneFilterValues(filterKey)}
                         />
                       </div>
                     ) : (
