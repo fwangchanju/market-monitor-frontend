@@ -11,6 +11,7 @@ interface Props {
   width: number
   height: number
   tooltipAlignLeft: boolean
+  tooltipAlignTop: boolean
 }
 
 const MIN_NAME_WIDTH = 16
@@ -27,7 +28,7 @@ function fontSizePx(width: number, height: number): number {
   return Math.max(12, Math.min(22, Math.min(width, height) / 5))
 }
 
-export default function MarketMapBox({ item, x, y, width, height, tooltipAlignLeft }: Props) {
+export default function MarketMapBox({ item, x, y, width, height, tooltipAlignLeft, tooltipAlignTop }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: item.stockCode,
     data: { stockCode: item.stockCode, stockName: item.stockName },
@@ -40,7 +41,10 @@ export default function MarketMapBox({ item, x, y, width, height, tooltipAlignLe
   const fontSize = fontSizePx(width, height)
 
   const updateTooltipPos = (e: React.MouseEvent) => {
-    setTooltipPos({ left: e.clientX + (tooltipAlignLeft ? -12 : 12), top: e.clientY - 8 })
+    setTooltipPos({
+      left: e.clientX + (tooltipAlignLeft ? -12 : 12),
+      top: e.clientY + (tooltipAlignTop ? -8 : 8),
+    })
   }
 
   const handleMouseEnter = (e: React.MouseEvent) => {
@@ -83,7 +87,11 @@ export default function MarketMapBox({ item, x, y, width, height, tooltipAlignLe
         createPortal(
           <div
             className="pointer-events-none fixed z-[9999] w-max whitespace-nowrap rounded border border-gray-600 bg-[var(--surface)] px-2 py-1 text-left text-xs text-white shadow-lg"
-            style={{ left: tooltipPos.left, top: tooltipPos.top, transform: tooltipAlignLeft ? 'translateX(-100%)' : undefined }}
+            style={{
+              left: tooltipPos.left,
+              top: tooltipPos.top,
+              transform: `translate(${tooltipAlignLeft ? '-100%' : '0'}, ${tooltipAlignTop ? '-100%' : '0'})`,
+            }}
           >
             <div className="font-bold">{item.stockName}</div>
             <div>등락률: {toPctSigned(item.changeRate)}</div>

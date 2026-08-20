@@ -25,14 +25,13 @@ const NUMBER_COLUMN_WIDTH = '5%'
 const CHECKBOX_COLUMN_WIDTH = '3%'
 
 const COLUMNS: { key: SortKey; header: string; width: string; align: 'center' | 'left' | 'right' }[] = [
-  { key: 'stockCode', header: '종목코드', width: '10%', align: 'center' },
-  { key: 'market', header: '마켓', width: '8%', align: 'center' },
-  { key: 'stockName', header: '종목명', width: '13%', align: 'left' },
+  { key: 'stockName', header: '종목명(종목코드)', width: '20%', align: 'left' },
   { key: 'alias', header: '약칭', width: '10%', align: 'left' },
   { key: 'totalMarketValue', header: '시가총액', width: '12%', align: 'right' },
-  { key: 'originCategoryName', header: '업종', width: '14%', align: 'left' },
-  { key: 'parentCategoryName', header: '대분류', width: '14%', align: 'right' },
-  { key: 'categoryName', header: '소분류', width: '14%', align: 'right' },
+  { key: 'market', header: '마켓', width: '8%', align: 'center' },
+  { key: 'originCategoryName', header: '업종', width: '13%', align: 'left' },
+  { key: 'parentCategoryName', header: '대분류', width: '13%', align: 'right' },
+  { key: 'categoryName', header: '소분류', width: '13%', align: 'right' },
 ]
 
 const alignClass = (align: 'center' | 'left' | 'right') =>
@@ -155,12 +154,17 @@ function usePopupPosition(
       if (popupRef.current?.contains(target) || triggerRef.current?.contains(target)) return
       close()
     }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close()
+    }
     // capture 없이 window 자체의 scroll(페이지 스크롤)만 감지 — capture:true였으면
     // 팝업 내부 목록의 overflow-y-auto 스크롤까지 잡혀서 즉시 닫혀버림.
     window.addEventListener('scroll', close)
     document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
     return () => {
       document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('scroll', close)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ref/setIsOpen은 안정적이라 isOpen 변화에만 반응하면 됨
@@ -250,12 +254,12 @@ function CategorySearchPopup({
         onChange={e => search.handleQueryChange(e.target.value)}
         onKeyDown={e => (e.key === 'Escape' ? onEscape() : search.handleArrowsAndEnter(e, onSelect))}
         placeholder="카테고리 검색"
-        className="nes-input is-dark w-full text-xs"
+        className="nes-input is-dark w-full py-2 text-[18px]"
       />
       <div className="mt-2 border-t border-gray-600 pt-2">
         <div className="max-h-72 overflow-y-auto">
           {search.matches.length === 0 ? (
-            <p className="px-2 py-1 text-xs text-gray-400">검색 결과가 없습니다</p>
+            <p className="px-2 py-1 text-[18px] text-gray-400">검색 결과가 없습니다</p>
           ) : (
             search.matches.map((opt, index) => (
               <button
@@ -263,7 +267,7 @@ function CategorySearchPopup({
                 type="button"
                 onClick={() => onSelect(opt.id)}
                 onMouseEnter={() => search.setHighlightedIndex(index)}
-                className={`block w-full truncate rounded px-2 py-1 text-left text-xs text-white ${
+                className={`block w-full truncate rounded px-2 py-1 text-left text-[18px] text-white ${
                   index === search.highlightedIndex ? 'bg-[#4f8fd6]/30' : 'bg-transparent'
                 }`}
               >
@@ -287,6 +291,7 @@ function AdminStockCategoryCell({
   rowHoverClass,
   onHoverStart,
   onHoverEnd,
+  onEditingChange,
 }: {
   value: string
   options: CategoryOption[]
@@ -295,6 +300,7 @@ function AdminStockCategoryCell({
   rowHoverClass: string
   onHoverStart: () => void
   onHoverEnd: () => void
+  onEditingChange: (editing: boolean) => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const cellRef = useRef<HTMLTableCellElement>(null)
@@ -302,12 +308,23 @@ function AdminStockCategoryCell({
   const inputRef = useRef<HTMLInputElement>(null)
   const search = useCategorySearchState(options, isOpen)
 
+  // 바깥 클릭/스크롤로 닫힐 때도(usePopupPosition 내부에서 직접 호출) 항상 이 함수를 거치도록,
+  // 팝업 열림 상태를 바꾸는 지점을 하나로 모은다 — 그래야 행 하이라이트(onEditingChange)가 항상 같이 갱신된다.
+  const updateOpen = (open: boolean) => {
+    setIsOpen(open)
+    onEditingChange(open)
+    // 팝업이 열려있는 동안 마우스가 밖으로 나가도(예: 검색 목록 클릭) 진한 컬럼 강조가 그대로 남지 않도록 끈다.
+    if (open) onHoverEnd()
+  }
+
   // 카테고리 목록 팝업은 세로로 훨씬 커져서(약 12개 높이), 기본 임계값(80%)보다 일찍 위로 뒤집어야 화면 밖으로 안 잘린다.
-  const position = usePopupPosition(isOpen, setIsOpen, cellRef, popupRef, () => inputRef.current?.focus(), 0.6)
+  // 대분류/소분류는 테이블 우측에 몰려있어 오른쪽으로 열면 화면 밖으로 잘리므로, 필터 팝업과 동일하게
+  // 셀 우측 끝에 맞춰 왼쪽으로 열리게 한다.
+  const position = usePopupPosition(isOpen, updateOpen, cellRef, popupRef, () => inputRef.current?.focus(), 0.6, true)
 
   const handleSelect = (categoryId: number) => {
     onAssign(categoryId)
-    setIsOpen(false)
+    updateOpen(false)
   }
 
   return (
@@ -316,9 +333,11 @@ function AdminStockCategoryCell({
       className={`cursor-pointer pl-4 text-left ${isHighlighted ? 'bg-yellow-400/50' : rowHoverClass}`}
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
-      onClick={() => {
+      onClick={e => {
+        // 행 전체 클릭 시 체크박스가 토글되는 동작(AdminStockRow)과 별개로 동작해야 하므로 버블링을 막는다.
+        e.stopPropagation()
         search.reset()
-        setIsOpen(true)
+        updateOpen(true)
       }}
     >
       {value}
@@ -329,7 +348,7 @@ function AdminStockCategoryCell({
           position={position}
           search={search}
           onSelect={handleSelect}
-          onEscape={() => setIsOpen(false)}
+          onEscape={() => updateOpen(false)}
         />
       )}
     </td>
@@ -403,6 +422,7 @@ function AdminAliasCell({
   rowHoverClass,
   onHoverStart,
   onHoverEnd,
+  onEditingChange,
 }: {
   alias: string | null
   onUpdate: (alias: string | null) => void
@@ -410,6 +430,7 @@ function AdminAliasCell({
   rowHoverClass: string
   onHoverStart: () => void
   onHoverEnd: () => void
+  onEditingChange: (editing: boolean) => void
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [value, setValue] = useState('')
@@ -417,28 +438,36 @@ function AdminAliasCell({
   const startEdit = () => {
     setValue(alias ?? '')
     setIsEditing(true)
+    onEditingChange(true)
+    // 입력창으로 바뀌면서 이 <td>가 통째로 사라지므로, onMouseLeave가 못 불리기 전에 직접 강조를 꺼준다.
+    onHoverEnd()
+  }
+
+  const stopEdit = () => {
+    setIsEditing(false)
+    onEditingChange(false)
   }
 
   const submit = () => {
     const trimmed = value.trim()
     const next = trimmed === '' ? null : trimmed
-    setIsEditing(false)
+    stopEdit()
     if (next === alias) return
     onUpdate(next)
   }
 
   if (isEditing) {
     return (
-      <td className={alignClass('left')}>
+      <td className={`${alignClass('left')} ${rowHoverClass}`} onClick={e => e.stopPropagation()}>
         <input
           type="text"
           autoFocus
           value={value}
           onChange={e => setValue(e.target.value)}
-          onBlur={() => setIsEditing(false)}
+          onBlur={stopEdit}
           onKeyDown={e => {
             if (e.key === 'Enter') submit()
-            if (e.key === 'Escape') setIsEditing(false)
+            if (e.key === 'Escape') stopEdit()
           }}
           className="nes-input is-dark w-full text-left text-xs"
         />
@@ -451,7 +480,11 @@ function AdminAliasCell({
       className={`cursor-pointer ${alignClass('left')} ${isHighlighted ? 'bg-yellow-400/50' : rowHoverClass}`}
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
-      onClick={startEdit}
+      onClick={e => {
+        // 행 전체 클릭 시 체크박스가 토글되는 동작(AdminStockRow)과 별개로 동작해야 하므로 버블링을 막는다.
+        e.stopPropagation()
+        startEdit()
+      }}
     >
       {alias ?? '-'}
     </td>
@@ -465,24 +498,42 @@ function AdminColumnFilterButton({
   onToggle,
   onSelectAll,
   onSelectNone,
+  onSelectOnly,
 }: {
   options: string[]
   excluded: Set<string>
   onToggle: (value: string) => void
   onSelectAll: () => void
   onSelectNone: () => void
+  onSelectOnly: (value: string) => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [query, setQuery] = useState('')
   const buttonRef = useRef<HTMLButtonElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const isFiltered = excluded.size > 0
 
-  const position = usePopupPosition(isOpen, setIsOpen, buttonRef, popupRef)
+  // 필터 버튼이 팝업의 좌측이 아니라 우측 끝이 되도록(팝업이 왼쪽으로 펼쳐지도록) alignRight로 연다.
+  const position = usePopupPosition(isOpen, setIsOpen, buttonRef, popupRef, () => inputRef.current?.focus(), 0.8, true)
 
   const isAllSelected = excluded.size === 0
   const handleToggleAll = () => {
     if (isAllSelected) onSelectNone()
     else onSelectAll()
+  }
+
+  // 목록/선택 방식은 그대로 두고, 검색어로 화면에 보이는 체크박스만 좁혀서 보여준다.
+  const trimmed = query.trim().toLowerCase()
+  const visibleOptions = trimmed ? options.filter(opt => opt.toLowerCase().includes(trimmed)) : options
+
+  // 아직 아무것도 제외 안 한(전체선택) 상태에서 검색 중이면, 실제 상태는 그대로 두고 화면에서만
+  // "전체"/검색 결과가 체크 해제된 것처럼 보여준다(엑셀 필터 검색과 동일). 이 상태에서 검색 결과 하나를
+  // 체크하면 "이것만 남기기"로 동작해서, 검색 후 클릭 한 번으로 원하는 값만 필터링할 수 있게 한다.
+  const isPreviewingSearch = isAllSelected && trimmed !== ''
+  const handleToggleOption = (opt: string) => {
+    if (isPreviewingSearch) onSelectOnly(opt)
+    else onToggle(opt)
   }
 
   return (
@@ -492,6 +543,7 @@ function AdminColumnFilterButton({
         type="button"
         onClick={e => {
           e.stopPropagation()
+          setQuery('')
           setIsOpen(prev => !prev)
         }}
         className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-yellow-400' : 'text-white/70 hover:text-white'}`}
@@ -502,24 +554,151 @@ function AdminColumnFilterButton({
       {isOpen && position && (
         <div
           ref={popupRef}
-          style={{ position: 'fixed', top: position.top, left: position.left }}
-          className="nes-container is-dark z-50 w-48 !bg-violet-950 p-2 text-left normal-case"
+          style={{
+            position: 'fixed',
+            top: position.top,
+            left: position.left,
+            transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
+          }}
+          className="nes-container is-dark z-50 w-64 !bg-violet-950 p-2 text-left normal-case"
           onClick={e => e.stopPropagation()}
         >
-          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 text-xs font-bold text-white hover:bg-yellow-400/50">
-            <input type="checkbox" checked={isAllSelected} onChange={handleToggleAll} />
+          <input
+            ref={inputRef}
+            type="text"
+            autoFocus
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="검색"
+            className="nes-input is-dark mb-2 w-full py-2 text-[18px]"
+          />
+          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 text-[18px] font-bold text-white hover:bg-yellow-400/50">
+            <input type="checkbox" checked={!isPreviewingSearch && isAllSelected} onChange={handleToggleAll} />
             <span>전체</span>
           </label>
           <div className="max-h-48 overflow-y-auto pt-1">
-            {options.map(opt => (
+            {visibleOptions.map(opt => (
               <label
                 key={opt}
-                className="flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-xs text-white hover:bg-yellow-400/50"
+                className="flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-[18px] text-white hover:bg-yellow-400/50"
               >
-                <input type="checkbox" checked={!excluded.has(opt)} onChange={() => onToggle(opt)} />
+                <input
+                  type="checkbox"
+                  checked={!isPreviewingSearch && !excluded.has(opt)}
+                  onChange={() => handleToggleOption(opt)}
+                />
                 <span className="truncate">{opt}</span>
               </label>
             ))}
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+// 종목명 검색 필터. 다른 필터(업종/대분류/소분류/마켓)와 달리 "기본 전체 포함, 체크 해제로 제외"가 아니라
+// "기본 필터 없음, 검색해서 선택한 종목만 남기기"로 동작한다 — 값의 종류가 2700여 개라 체크박스 목록으로
+// 보여줄 수 없고 검색이 필요하기 때문. 검색어가 비어있으면 위 결과 섹션은 아무것도 보여주지 않는다.
+function AdminStockNameFilterButton({
+  items,
+  selected,
+  onToggle,
+}: {
+  items: StockCategoryListItem[]
+  selected: Set<string>
+  onToggle: (stockCode: string) => void
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const isFiltered = selected.size > 0
+
+  const position = usePopupPosition(isOpen, setIsOpen, buttonRef, popupRef, () => inputRef.current?.focus(), 0.8, true)
+
+  const trimmed = query.trim().toLowerCase()
+  const matches = trimmed
+    ? items.filter(
+        item =>
+          (item.stockName.toLowerCase().includes(trimmed) || item.stockCode.includes(trimmed)) &&
+          !selected.has(item.stockCode),
+      )
+    : []
+  const selectedItems = items.filter(item => selected.has(item.stockCode))
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={e => {
+          e.stopPropagation()
+          setQuery('')
+          setIsOpen(prev => !prev)
+        }}
+        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-yellow-400' : 'text-white/70 hover:text-white'}`}
+        title="필터"
+      >
+        ▼
+      </button>
+      {isOpen && position && (
+        <div
+          ref={popupRef}
+          style={{
+            position: 'fixed',
+            top: position.top,
+            left: position.left,
+            transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
+          }}
+          className="nes-container is-dark z-50 w-64 !bg-violet-950 p-2 text-left normal-case"
+          onClick={e => e.stopPropagation()}
+        >
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="종목명/코드 검색"
+            className="nes-input is-dark mb-2 w-full py-2 text-[18px]"
+          />
+          <div className="max-h-20 overflow-y-auto border-b border-gray-600 pb-1">
+            {trimmed === '' ? null : matches.length === 0 ? (
+              <p className="px-1 text-[18px] text-gray-400">검색 결과 없음</p>
+            ) : (
+              matches.map(item => (
+                <button
+                  key={item.stockCode}
+                  type="button"
+                  onClick={() => {
+                    onToggle(item.stockCode)
+                    setQuery('')
+                  }}
+                  className="flex w-full items-center justify-between rounded bg-transparent px-1 py-0.5 text-left text-[18px] text-white hover:bg-yellow-400/50"
+                >
+                  <span className="truncate">{item.stockName}</span>
+                  <span className="ml-1.5 shrink-0 text-gray-500">{item.stockCode}</span>
+                </button>
+              ))
+            )}
+          </div>
+          <div className="max-h-20 overflow-y-auto pt-1">
+            {selectedItems.length === 0 ? (
+              <p className="px-1 text-[18px] text-gray-400">선택된 종목 없음</p>
+            ) : (
+              selectedItems.map(item => (
+                <button
+                  key={item.stockCode}
+                  type="button"
+                  onClick={() => onToggle(item.stockCode)}
+                  className="flex w-full items-center justify-between rounded bg-transparent px-1 py-0.5 text-left text-[18px] text-yellow-400 hover:bg-yellow-400/20"
+                >
+                  <span className="truncate">{item.stockName}</span>
+                  <span className="ml-1.5 shrink-0 text-gray-500">{item.stockCode}</span>
+                </button>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -554,19 +733,43 @@ const AdminStockRow = memo(function AdminStockRow({
   onAssign: (stockCode: string, categoryId: number) => void
   onUpdateAlias: (stockCode: string, alias: string | null) => void
 }) {
-  // 대분류/소분류/약칭 중 하나만 hover해도 그 줄 전체가 옅게 강조되고, 실제 hover 중인 열만
-  // 진하게 표시해서 어떤 걸 hover 중인지 구분되게 한다.
-  const rowHoverClass = hoveredKind ? 'bg-yellow-400/20' : ''
+  // 행 어디에 마우스를 올려도(체크박스/#/시가총액 등 포함) 줄 전체가 옅게 강조되고, 대분류/소분류/약칭
+  // 중 하나를 hover 중일 때는 그 열만 추가로 진하게 표시해서 어떤 걸 hover 중인지 구분되게 한다.
+  // 체크박스로 선택된 행도 hover 중이 아니어도 항상 동일한 옅은 강조를 유지한다.
+  const [isRowHovered, setIsRowHovered] = useState(false)
+  // 약칭 수정 중이거나 대분류/소분류 검색 팝업이 열려있는 동안은, 마우스가 그 행 위에 없어도
+  // (예: 입력하다가 다른 곳으로 시선이 옮겨간 경우) 지금 어느 행을 수정 중인지 계속 보이도록 강조를 유지한다.
+  const [editingCells, setEditingCells] = useState<Set<'alias' | 'category1' | 'category2'>>(new Set())
+  const setCellEditing = (key: 'alias' | 'category1' | 'category2', editing: boolean) => {
+    setEditingCells(prev => {
+      const next = new Set(prev)
+      if (editing) next.add(key)
+      else next.delete(key)
+      return next
+    })
+  }
+  const rowHoverClass = isRowHovered || isSelected || editingCells.size > 0 ? 'bg-yellow-400/20' : ''
+
+  // 체크박스를 정확히 조준하지 않아도, hover 강조가 뜨는 영역(약칭/대분류/소분류 제외 전체) 아무 곳이나
+  // 클릭하면 체크가 토글되게 한다. 약칭/대분류/소분류 셀은 자기 클릭(stopPropagation)으로 배제되고,
+  // 체크박스 자신을 클릭한 경우는 onChange가 이미 처리하므로 여기서 중복 토글하지 않는다.
+  const handleRowClick = (e: React.MouseEvent<HTMLTableRowElement>) => {
+    if ((e.target as HTMLElement).tagName === 'INPUT') return
+    onToggleSelected(item.stockCode)
+  }
 
   return (
-    <tr>
+    <tr onClick={handleRowClick} onMouseEnter={() => setIsRowHovered(true)} onMouseLeave={() => setIsRowHovered(false)}>
       <td className={`text-center ${rowHoverClass}`}>
         <input type="checkbox" checked={isSelected} onChange={() => onToggleSelected(item.stockCode)} />
       </td>
       <td className={`text-center text-gray-400 ${rowHoverClass}`}>{index + 1}</td>
-      <td className={`text-center ${rowHoverClass}`}>{item.stockCode}</td>
-      <td className={`text-center ${marketColorClass(item.market)} ${rowHoverClass}`}>{MARKET_LABEL[item.market]}</td>
-      <td className={`${alignClass('left')} ${marketColorClass(item.market)} ${rowHoverClass}`}>{item.stockName}</td>
+      <td className={`${rowHoverClass}`}>
+        <div className="flex items-center justify-between pl-4 pr-4">
+          <span className="text-white">{item.stockName}</span>
+          <span className="text-gray-500">{item.stockCode}</span>
+        </div>
+      </td>
       <AdminAliasCell
         alias={item.alias}
         onUpdate={alias => onUpdateAlias(item.stockCode, alias)}
@@ -574,10 +777,12 @@ const AdminStockRow = memo(function AdminStockRow({
         rowHoverClass={rowHoverClass}
         onHoverStart={() => onAliasHoverStart(item.stockCode)}
         onHoverEnd={onHoverEnd}
+        onEditingChange={editing => setCellEditing('alias', editing)}
       />
       <td className={`${alignClass('right')} ${rowHoverClass}`}>
         {item.totalMarketValue != null ? toJoEokDecimal(item.totalMarketValue / 100_000_000) : '-'}
       </td>
+      <td className={`text-center ${marketColorClass(item.market)} ${rowHoverClass}`}>{MARKET_LABEL[item.market]}</td>
       <td className={`${alignClass('left')} ${rowHoverClass}`}>{item.originCategoryName ?? '-'}</td>
       <AdminStockCategoryCell
         value={item.parentCategoryName ?? item.categoryName}
@@ -587,6 +792,7 @@ const AdminStockRow = memo(function AdminStockRow({
         rowHoverClass={rowHoverClass}
         onHoverStart={() => onCategoryHoverStart(item.stockCode)}
         onHoverEnd={onHoverEnd}
+        onEditingChange={editing => setCellEditing('category1', editing)}
       />
       <AdminStockCategoryCell
         value={item.parentCategoryName ? item.categoryName : '-'}
@@ -596,6 +802,7 @@ const AdminStockRow = memo(function AdminStockRow({
         rowHoverClass={rowHoverClass}
         onHoverStart={() => onCategoryHoverStart(item.stockCode)}
         onHoverEnd={onHoverEnd}
+        onEditingChange={editing => setCellEditing('category2', editing)}
       />
     </tr>
   )
@@ -683,6 +890,16 @@ export default function AdminStockTable({ items, categories }: Props) {
     parentCategoryName: new Set(),
     categoryName: new Set(),
   })
+  // 종목명 필터는 다른 필터와 반대로 "선택한 종목코드만 남기기"(포함 방식)로 동작한다. 비어있으면 필터 없음.
+  const [nameFilterStockCodes, setNameFilterStockCodes] = useState<Set<string>>(new Set())
+  const toggleNameFilterStockCode = (stockCode: string) => {
+    setNameFilterStockCodes(prev => {
+      const next = new Set(prev)
+      if (next.has(stockCode)) next.delete(stockCode)
+      else next.add(stockCode)
+      return next
+    })
+  }
 
   const filterOptionsByKey = useMemo(() => {
     const result = {} as Record<FilterKey, string[]>
@@ -707,10 +924,19 @@ export default function AdminStockTable({ items, categories }: Props) {
   const selectNoneFilterValues = (key: FilterKey) => {
     setExcludedFilters(prev => ({ ...prev, [key]: new Set(filterOptionsByKey[key]) }))
   }
+  // 전체선택 상태에서 검색 중 처음 체크하는 값은 "이것만 남기기"로 동작한다(엑셀 필터 검색과 동일한 흐름).
+  const selectOnlyFilterValue = (key: FilterKey, value: string) => {
+    setExcludedFilters(prev => ({ ...prev, [key]: new Set(filterOptionsByKey[key].filter(v => v !== value)) }))
+  }
 
   const filtered = useMemo(
-    () => items.filter(item => FILTER_KEYS.every(key => !excludedFilters[key].has(DISPLAY_VALUE[key](item)))),
-    [items, excludedFilters],
+    () =>
+      items.filter(
+        item =>
+          FILTER_KEYS.every(key => !excludedFilters[key].has(DISPLAY_VALUE[key](item))) &&
+          (nameFilterStockCodes.size === 0 || nameFilterStockCodes.has(item.stockCode)),
+      ),
+    [items, excludedFilters, nameFilterStockCodes],
   )
 
   // 필터에 걸려서 화면에서 사라진 종목은 선택도 같이 해제한다 — 안 보이는 종목이 일괄변경에
@@ -776,18 +1002,30 @@ export default function AdminStockTable({ items, categories }: Props) {
     <div>
       <div className="mb-2 flex min-h-[38px] items-center justify-between px-2">
         <p className="text-sm font-bold text-white">
-          종목 목록 ({sorted.length}
+          종목수 ({sorted.length}
           {sorted.length !== items.length ? ` / ${items.length}` : ''})
         </p>
         {selectedStockCodes.size > 0 && (
           <BulkAssignButton count={selectedStockCodes.size} options={categoryOptions} onAssign={handleBulkAssign} />
         )}
       </div>
-      <div ref={scrollContainerRef} className="max-h-[75vh] overflow-auto scrollbar-hide">
-        <table className="nes-table is-dark is-bordered w-full text-sm [&_td]:border-white/10 [&_td]:py-0.5 [&_th]:border-white/10 [&_th]:py-1">
+      {/* 스크롤해도 테두리가 사라지지 않도록, 테두리는 스크롤되지 않는 이 바깥 wrapper에 둔다
+          (예전엔 <table> 자체에 테두리가 있어서, sticky 헤더가 위로 지나가는 동안 테이블 진짜 위쪽
+          테두리가 같이 스크롤돼 사라지고, 맨 아래 테두리도 끝까지 스크롤해야만 보이는 문제가 있었다). */}
+      <div className="border border-white">
+        <div ref={scrollContainerRef} className="max-h-[75vh] overflow-auto scrollbar-thin">
+          <table className="nes-table is-dark w-full text-sm [&_td]:border-white/10 [&_td]:py-0.5 [&_th]:border-white/10 [&_th]:py-1">
           <thead className="sticky top-0 z-10">
             <tr>
-              <th className="bg-[#4f8fd6] text-center" style={{ width: CHECKBOX_COLUMN_WIDTH }}>
+              <th
+                className="cursor-pointer bg-[#4f8fd6] text-center"
+                style={{ width: CHECKBOX_COLUMN_WIDTH }}
+                onClick={e => {
+                  // 체크박스 자신을 클릭한 경우는 onChange가 이미 처리하므로 여기서 중복 토글하지 않는다.
+                  if ((e.target as HTMLElement).tagName === 'INPUT') return
+                  toggleSelectAllVisible()
+                }}
+              >
                 <input type="checkbox" checked={isAllVisibleSelected} onChange={toggleSelectAllVisible} />
               </th>
               <th className="bg-[#4f8fd6] text-center" style={{ width: NUMBER_COLUMN_WIDTH }}>
@@ -815,6 +1053,16 @@ export default function AdminStockTable({ items, categories }: Props) {
                           onToggle={value => toggleFilterValue(filterKey, value)}
                           onSelectAll={() => selectAllFilterValues(filterKey)}
                           onSelectNone={() => selectNoneFilterValues(filterKey)}
+                          onSelectOnly={value => selectOnlyFilterValue(filterKey, value)}
+                        />
+                      </div>
+                    ) : col.key === 'stockName' ? (
+                      <div className="flex items-center justify-between pl-2 pr-1">
+                        {label}
+                        <AdminStockNameFilterButton
+                          items={items}
+                          selected={nameFilterStockCodes}
+                          onToggle={toggleNameFilterStockCode}
                         />
                       </div>
                     ) : (
@@ -868,7 +1116,8 @@ export default function AdminStockTable({ items, categories }: Props) {
               </>
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   )

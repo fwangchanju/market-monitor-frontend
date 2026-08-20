@@ -16,6 +16,7 @@ interface LaidOutStockBox {
   width: number
   height: number
   tooltipAlignLeft: boolean
+  tooltipAlignTop: boolean
 }
 
 export interface LaidOutCategory {
@@ -29,6 +30,7 @@ export interface LaidOutCategory {
   boxes: LaidOutStockBox[]
   subCategories: LaidOutCategory[]
   tooltipAlignLeft: boolean
+  tooltipAlignTop: boolean
 }
 
 interface HierarchyDatum {
@@ -44,9 +46,10 @@ const CATEGORY_HEADER_HEIGHT = 28
 // 테두리 두께(2px)보다 커야 실제로 여백이 남는다. 정확히 같으면 옆에 테두리 없는 종목 박스가 있을 때
 // 간격이 전부 테두리에 먹혀서 다닥다닥 붙어 보인다.
 const PADDING = 4
-// 최상위 카테고리의 우측 테두리가 컨테이너 너비의 이 비율을 넘으면, 그 안의 모든 툴팁(카테고리/종목)을 왼쪽으로 뒤집는다.
-// 실제 화면에서 툴팁이 잘리는지 보면서 이 값만 조정하면 됨 (0.75 = 우측 25% 구간에 걸치면 반전).
-const TOOLTIP_FLIP_RIGHT_EDGE_RATIO = 0.85
+// 최상위 카테고리의 우측/하단 테두리가 컨테이너 너비/높이의 이 비율을 넘으면, 그 안의 모든 툴팁(카테고리/종목)을
+// 각각 왼쪽/위쪽으로 뒤집는다. 실제 화면에서 툴팁이 잘리는지 보면서 이 값만 조정하면 됨
+// (0.75 = 우측(혹은 하단) 25% 구간에 걸치면 반전).
+const TOOLTIP_FLIP_EDGE_RATIO = 0.85
 
 function toHierarchyDatum(group: DisplayGroup): HierarchyDatum {
   return {
@@ -96,6 +99,7 @@ export function useMarketMapLayout(
       originX: number,
       originY: number,
       tooltipAlignLeft: boolean,
+      tooltipAlignTop: boolean,
     ): LaidOutCategory => {
       const nx0 = node.x0 ?? 0
       const ny0 = node.y0 ?? 0
@@ -111,9 +115,10 @@ export function useMarketMapLayout(
             width: (child.x1 ?? 0) - (child.x0 ?? 0),
             height: (child.y1 ?? 0) - (child.y0 ?? 0),
             tooltipAlignLeft,
+            tooltipAlignTop,
           })
         } else {
-          subCategories.push(toLaidOutCategory(child, nx0, ny0, tooltipAlignLeft))
+          subCategories.push(toLaidOutCategory(child, nx0, ny0, tooltipAlignLeft, tooltipAlignTop))
         }
       }
 
@@ -128,12 +133,14 @@ export function useMarketMapLayout(
         boxes,
         subCategories,
         tooltipAlignLeft,
+        tooltipAlignTop,
       }
     }
 
     return (root.children ?? []).map(categoryNode => {
-      const tooltipAlignLeft = (categoryNode.x1 ?? 0) > width * TOOLTIP_FLIP_RIGHT_EDGE_RATIO
-      return toLaidOutCategory(categoryNode, 0, 0, tooltipAlignLeft)
+      const tooltipAlignLeft = (categoryNode.x1 ?? 0) > width * TOOLTIP_FLIP_EDGE_RATIO
+      const tooltipAlignTop = (categoryNode.y1 ?? 0) > height * TOOLTIP_FLIP_EDGE_RATIO
+      return toLaidOutCategory(categoryNode, 0, 0, tooltipAlignLeft, tooltipAlignTop)
     })
   }, [groups, selfCategoryName, width, height])
 }

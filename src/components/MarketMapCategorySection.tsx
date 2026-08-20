@@ -19,7 +19,10 @@ export default function MarketMapCategorySection({ category, onSelectCategory, d
   const label = `${category.categoryName} (시총: ${toJoEokDecimal(category.totalMarketValue / 100_000_000)})`
 
   const updateTooltipPos = (e: React.MouseEvent) => {
-    setTooltipPos({ left: e.clientX + (category.tooltipAlignLeft ? -12 : 12), top: e.clientY - 8 })
+    setTooltipPos({
+      left: e.clientX + (category.tooltipAlignLeft ? -12 : 12),
+      top: e.clientY + (category.tooltipAlignTop ? -8 : 8),
+    })
   }
 
   const handleMouseEnter = (e: React.MouseEvent) => {
@@ -37,7 +40,7 @@ export default function MarketMapCategorySection({ category, onSelectCategory, d
         width: category.width,
         height: category.height,
       }}
-      className={`box-content border-2 ${isOver || hover ? 'border-yellow-400 brightness-125' : 'border-white'}`}
+      className={`box-content border-2 ${isOver || hover ? 'border-yellow-600' : 'border-white'}`}
     >
       <button
         type="button"
@@ -56,7 +59,11 @@ export default function MarketMapCategorySection({ category, onSelectCategory, d
         createPortal(
           <div
             className="pointer-events-none fixed z-[9999] w-max whitespace-nowrap rounded border border-gray-600 bg-[var(--surface)] px-2 py-1 text-left text-xs text-white shadow-lg"
-            style={{ left: tooltipPos.left, top: tooltipPos.top, transform: category.tooltipAlignLeft ? 'translateX(-100%)' : undefined }}
+            style={{
+              left: tooltipPos.left,
+              top: tooltipPos.top,
+              transform: `translate(${category.tooltipAlignLeft ? '-100%' : '0'}, ${category.tooltipAlignTop ? '-100%' : '0'})`,
+            }}
           >
             {label}
           </div>,
@@ -74,6 +81,7 @@ export default function MarketMapCategorySection({ category, onSelectCategory, d
           width={box.width}
           height={box.height}
           tooltipAlignLeft={box.tooltipAlignLeft}
+          tooltipAlignTop={box.tooltipAlignTop}
         />
       ))}
     </div>

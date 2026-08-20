@@ -61,7 +61,7 @@ export default function MarketMapSettingsDropdown({ isExclude, onToggleExclude, 
         type="button"
         onClick={() => setIsOpen(prev => !prev)}
         aria-label="설정"
-        className={`flex items-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6] ${compact ? 'p-1' : 'p-1.5'}`}
+        className={`flex items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6] ${compact ? 'p-1' : 'h-9 w-9'}`}
       >
         <SettingsIcon className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
       </button>
