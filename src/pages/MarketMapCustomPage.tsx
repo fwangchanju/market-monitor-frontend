@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
   DndContext,
   PointerSensor,
@@ -162,6 +161,16 @@ export default function MarketMapCustomPage() {
           >
             <MinimizeIcon className="h-4 w-4" />
           </button>
+          <button
+            type="button"
+            aria-label="F11"
+            className={`flex items-center rounded p-1 hover:bg-gray-100 hover:text-[#4f8fd6] ${
+              isNativeFullscreen ? 'text-[#4f8fd6]' : 'text-gray-700'
+            }`}
+            onClick={handleToggleNativeFullscreen}
+          >
+            <span className="inline-flex h-4 w-4 items-center justify-center text-[8px] font-bold">F11</span>
+          </button>
         </div>
       ) : (
         <NavBar
@@ -179,7 +188,7 @@ export default function MarketMapCustomPage() {
               <button
                 type="button"
                 aria-label="공유"
-                className="rounded p-1.5 text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
+                className="flex h-9 w-9 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
                 onClick={() => setIsShareOpen(true)}
               >
                 <ShareIcon className="h-5 w-5" />
@@ -187,7 +196,7 @@ export default function MarketMapCustomPage() {
               <button
                 type="button"
                 aria-label="전체화면"
-                className="rounded p-1.5 text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
+                className="flex h-9 w-9 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
                 onClick={() => setIsFullscreen(true)}
               >
                 <MaximizeIcon className="h-5 w-5" />
@@ -195,16 +204,13 @@ export default function MarketMapCustomPage() {
               <button
                 type="button"
                 aria-label="F11"
-                className={`rounded p-1.5 hover:bg-gray-100 hover:text-[#4f8fd6] ${
+                className={`flex h-9 w-9 items-center justify-center rounded hover:bg-gray-100 hover:text-[#4f8fd6] ${
                   isNativeFullscreen ? 'text-[#4f8fd6]' : 'text-gray-700'
                 }`}
                 onClick={handleToggleNativeFullscreen}
               >
-                <span className="inline-flex h-5 w-5 items-center justify-center text-[10px] font-bold">F11</span>
+                <span className="inline-flex h-5 w-5 items-center justify-center text-[13px] font-bold">F11</span>
               </button>
-              <Link to="/admin/market-map" className="nes-btn ml-6 text-white">
-                관리
-              </Link>
             </>
           }
         />

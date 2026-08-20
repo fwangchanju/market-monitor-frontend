@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom'
 const LINKS = [
   { to: '/market-map', label: '마켓맵' },
   { to: '/market-summary', label: '시장요약' },
+  { to: '/admin/market-map', label: '커스텀' },
 ]
 
 interface Props {
