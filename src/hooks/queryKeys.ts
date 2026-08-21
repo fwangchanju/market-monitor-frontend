@@ -50,6 +50,11 @@ export const allowedIpKeys = {
   list: () => [...allowedIpKeys.all, 'list'] as const,
 }
 
+export const accessKeys = {
+  all: ['access'] as const,
+  adminStatus: () => [...accessKeys.all, 'admin-status'] as const,
+}
+
 export const marketMapAdminKeys = {
   all: ['market-map-admin'] as const,
   categories: () => [...marketMapAdminKeys.all, 'categories'] as const,
