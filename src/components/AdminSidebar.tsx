@@ -8,7 +8,7 @@ const MODE_LABELS: Record<AdminMode, string> = {
   category: '카테고리관리',
 }
 
-const MODES: AdminMode[] = ['category', 'stock']
+const MODES: AdminMode[] = ['stock', 'category']
 
 interface Props {
   mode: AdminMode

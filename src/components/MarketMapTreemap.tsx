@@ -7,6 +7,7 @@ interface Props {
   selfCategoryName: string | null
   onSelectCategory: (categoryName: string) => void
   heightClassName?: string
+  showMarketValue: boolean
 }
 
 export default function MarketMapTreemap({
@@ -14,6 +15,7 @@ export default function MarketMapTreemap({
   selfCategoryName,
   onSelectCategory,
   heightClassName = 'h-[70vh]',
+  showMarketValue,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
@@ -44,7 +46,12 @@ export default function MarketMapTreemap({
     // 이어진다. overflow-hidden으로 이 삐져나옴 자체를 화면에서 잘라내 루프의 시작을 막는다.
     <div ref={containerRef} className={`relative w-full overflow-hidden ${heightClassName}`}>
       {categories.map(category => (
-        <MarketMapCategorySection key={category.categoryName} category={category} onSelectCategory={onSelectCategory} />
+        <MarketMapCategorySection
+          key={category.categoryName}
+          category={category}
+          onSelectCategory={onSelectCategory}
+          showMarketValue={showMarketValue}
+        />
       ))}
     </div>
   )
