@@ -4,6 +4,7 @@ import type { CategoryItem, StockCategoryListItem } from '@/types/api'
 import { toJoEokDecimal } from '@/utils/format'
 import { useAssignStockCategory, useBulkAssignStockCategory, useUpdateAlias } from '@/hooks/useMarketMapAdmin'
 import Spinner from './Spinner'
+import { CheckIcon, SearchIcon } from './icons/MarketMapIcons'
 
 interface Props {
   items: StockCategoryListItem[]
@@ -18,20 +19,22 @@ type SortKey =
   | 'totalMarketValue'
   | 'originCategoryName'
   | 'parentCategoryName'
-  | 'categoryName'
+  | 'midCategoryName'
+  | 'subCategoryName'
 type SortDirection = 'asc' | 'desc'
 
 const NUMBER_COLUMN_WIDTH = '5%'
 const CHECKBOX_COLUMN_WIDTH = '3%'
 
 const COLUMNS: { key: SortKey; header: string; width: string; align: 'center' | 'left' | 'right' }[] = [
-  { key: 'stockName', header: '종목명(종목코드)', width: '20%', align: 'left' },
-  { key: 'alias', header: '약칭', width: '10%', align: 'left' },
-  { key: 'totalMarketValue', header: '시가총액', width: '12%', align: 'right' },
-  { key: 'market', header: '마켓', width: '8%', align: 'center' },
-  { key: 'originCategoryName', header: '업종', width: '13%', align: 'left' },
-  { key: 'parentCategoryName', header: '대분류', width: '13%', align: 'right' },
-  { key: 'categoryName', header: '소분류', width: '13%', align: 'right' },
+  { key: 'stockName', header: '종목명(종목코드)', width: '17%', align: 'left' },
+  { key: 'alias', header: '약칭', width: '8%', align: 'left' },
+  { key: 'totalMarketValue', header: '시가총액', width: '10%', align: 'right' },
+  { key: 'market', header: '마켓', width: '7%', align: 'center' },
+  { key: 'originCategoryName', header: '업종', width: '11%', align: 'left' },
+  { key: 'parentCategoryName', header: '대분류', width: '11%', align: 'right' },
+  { key: 'midCategoryName', header: '중분류', width: '11%', align: 'right' },
+  { key: 'subCategoryName', header: '소분류', width: '11%', align: 'right' },
 ]
 
 const alignClass = (align: 'center' | 'left' | 'right') =>
@@ -42,26 +45,35 @@ const marketColorClass = (market: 'KOSPI' | 'KOSDAQ') => (market === 'KOSPI' ? '
 
 const KOREAN_COLLATOR = new Intl.Collator('ko')
 
-function compareByKey(a: StockCategoryListItem, b: StockCategoryListItem, key: SortKey): number {
-  if (key === 'totalMarketValue') {
-    return (a.totalMarketValue ?? -Infinity) - (b.totalMarketValue ?? -Infinity)
-  }
-  return KOREAN_COLLATOR.compare(a[key] ?? '', b[key] ?? '')
-}
-
-// 화면에 실제로 표시되는 값 기준 — 필터 옵션 목록/필터링 판정 둘 다 이 값으로 통일해서 화면과 어긋나지 않게 한다.
-type FilterKey = 'market' | 'originCategoryName' | 'parentCategoryName' | 'categoryName'
-const FILTER_KEYS: readonly FilterKey[] = ['market', 'originCategoryName', 'parentCategoryName', 'categoryName']
+// 화면에 실제로 표시되는 값 기준 — 필터 옵션 목록/필터링/정렬 판정 전부 이 값으로 통일해서 화면과 어긋나지 않게 한다.
+type FilterKey = 'market' | 'originCategoryName' | 'parentCategoryName' | 'midCategoryName' | 'subCategoryName'
+const FILTER_KEYS: readonly FilterKey[] = [
+  'market',
+  'originCategoryName',
+  'parentCategoryName',
+  'midCategoryName',
+  'subCategoryName',
+]
 
 function isFilterKey(key: SortKey): key is FilterKey {
   return (FILTER_KEYS as readonly string[]).includes(key)
 }
 
-const DISPLAY_VALUE: Record<FilterKey, (item: StockCategoryListItem) => string> = {
-  market: item => MARKET_LABEL[item.market],
-  originCategoryName: item => item.originCategoryName ?? '-',
-  parentCategoryName: item => item.parentCategoryName ?? item.categoryName,
-  categoryName: item => (item.parentCategoryName ? item.categoryName : '-'),
+function compareByKey(
+  a: StockCategoryListItem,
+  b: StockCategoryListItem,
+  key: SortKey,
+  displayByStockCode: Map<string, ItemDisplayValues>,
+): number {
+  if (key === 'totalMarketValue') {
+    return (a.totalMarketValue ?? -Infinity) - (b.totalMarketValue ?? -Infinity)
+  }
+  if (isFilterKey(key)) {
+    const av = displayByStockCode.get(a.stockCode)?.[key] ?? ''
+    const bv = displayByStockCode.get(b.stockCode)?.[key] ?? ''
+    return KOREAN_COLLATOR.compare(av, bv)
+  }
+  return KOREAN_COLLATOR.compare(a[key] ?? '', b[key] ?? '')
 }
 
 // 카테고리를 부모-자식 순서로 펼쳐서 검색 옵션으로 만든다 (자식은 들여쓰기 표시).
@@ -95,6 +107,54 @@ interface CategoryOption {
   parentId: number | null
   name: string
   label: string
+}
+
+// 종목 응답엔 categoryId(실제 배정된 카테고리, 뎁스 무관)만 있어서, 대분류/중분류/소분류 3칸에 어떻게
+// 나눠 보여줄지는 이미 받아온 카테고리 트리를 parentId로 거슬러 올라가며 프론트에서 직접 계산한다.
+// 백엔드가 뎁스별 이름 필드를 따로 내려줄 필요가 없어서, 나중에 뎁스가 더 늘어나도 여기만 고치면 된다.
+interface CategoryChain {
+  rootId: number | null
+  rootName: string
+  midId: number | null
+  midName: string | null
+  leafId: number | null
+  leafName: string | null
+}
+
+function resolveCategoryChain(categoryOptionsById: Map<number, CategoryOption>, categoryId: number): CategoryChain {
+  const chain: CategoryOption[] = []
+  let current = categoryOptionsById.get(categoryId)
+  while (current) {
+    chain.unshift(current)
+    current = current.parentId != null ? categoryOptionsById.get(current.parentId) : undefined
+  }
+  return {
+    rootId: chain[0]?.id ?? null,
+    rootName: chain[0]?.name ?? '-',
+    midId: chain[1]?.id ?? null,
+    midName: chain[1]?.name ?? null,
+    leafId: chain[2]?.id ?? null,
+    leafName: chain[2]?.name ?? null,
+  }
+}
+
+interface ItemDisplayValues {
+  market: string
+  originCategoryName: string
+  parentCategoryName: string
+  midCategoryName: string
+  subCategoryName: string
+}
+
+function computeDisplayValues(item: StockCategoryListItem, categoryOptionsById: Map<number, CategoryOption>): ItemDisplayValues {
+  const chain = resolveCategoryChain(categoryOptionsById, item.categoryId)
+  return {
+    market: MARKET_LABEL[item.market],
+    originCategoryName: item.originCategoryName ?? '-',
+    parentCategoryName: chain.rootName,
+    midCategoryName: chain.midName ?? '-',
+    subCategoryName: chain.leafName ?? '-',
+  }
 }
 
 // 검색어가 자기 이름이나 조상(부모/조부모...) 중 하나에라도 걸리면 매칭으로 본다.
@@ -140,10 +200,17 @@ function usePopupPosition(
         openUpward,
         alignRight,
       })
-      onOpen?.()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- ref는 안정적이고 onOpen은 open 시점 1회 실행이면 충분
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ref는 안정적이라 open 시점에만 반응하면 된다
   }, [isOpen])
+
+  // 처음 여는 순간엔 이 컴포넌트가 처음 렌더될 때라 position이 아직 null이라 팝업(및 입력창) 자체가
+  // DOM에 없다 — 그 상태에서 onOpen(주로 input.focus())을 호출하면 허공에 걸린다. position이 실제로
+  // 채워져서 팝업이 DOM에 나타난 뒤에 따로 포커스를 걸어야, 처음 여는 경우에도 커서가 제대로 간다.
+  useEffect(() => {
+    if (isOpen && position) onOpen?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onOpen은 매 렌더 새 함수라 deps에 넣으면 무한루프
+  }, [isOpen, position])
 
   useEffect(() => {
     if (!isOpen) return
@@ -226,6 +293,7 @@ function CategorySearchPopup({
   search,
   onSelect,
   onEscape,
+  contextLabel,
 }: {
   popupRef: React.RefObject<HTMLDivElement | null>
   inputRef: React.RefObject<HTMLInputElement | null>
@@ -233,7 +301,16 @@ function CategorySearchPopup({
   search: ReturnType<typeof useCategorySearchState>
   onSelect: (categoryId: number) => void
   onEscape: () => void
+  // 소분류 팝업처럼 목록이 특정 대분류로 좁혀져 있을 때, 지금 어느 대분류 밑을 보고 있는지 알려주는 칩.
+  contextLabel?: string
 }) {
+  // 방향키로 하이라이트가 화면 밖으로 나가면 스크롤이 안 따라가서 지금 뭐가 선택됐는지 안 보이는
+  // 문제가 있었다 — 하이라이트된 항목의 DOM 노드를 등록해뒀다가, 바뀔 때마다 보이는 영역으로 스크롤한다.
+  const optionRefs = useRef(new Map<number, HTMLButtonElement>())
+  useEffect(() => {
+    optionRefs.current.get(search.highlightedIndex)?.scrollIntoView({ block: 'nearest' })
+  }, [search.highlightedIndex])
+
   return (
     <div
       ref={popupRef}
@@ -256,6 +333,11 @@ function CategorySearchPopup({
         placeholder="카테고리 검색"
         className="nes-input is-dark w-full py-2 text-[18px]"
       />
+      {contextLabel && (
+        <span className="mt-2 inline-block rounded bg-[#4f8fd6]/30 px-2 py-0.5 text-[14px] text-white">
+          {contextLabel}
+        </span>
+      )}
       <div className="mt-2 border-t border-gray-600 pt-2">
         <div className="max-h-72 overflow-y-auto">
           {search.matches.length === 0 ? (
@@ -264,6 +346,10 @@ function CategorySearchPopup({
             search.matches.map((opt, index) => (
               <button
                 key={opt.id}
+                ref={el => {
+                  if (el) optionRefs.current.set(index, el)
+                  else optionRefs.current.delete(index)
+                }}
                 type="button"
                 onClick={() => onSelect(opt.id)}
                 onMouseEnter={() => search.setHighlightedIndex(index)}
@@ -292,6 +378,9 @@ function AdminStockCategoryCell({
   onHoverStart,
   onHoverEnd,
   onEditingChange,
+  contextLabel,
+  disabled,
+  disabledHint,
 }: {
   value: string
   options: CategoryOption[]
@@ -301,12 +390,34 @@ function AdminStockCategoryCell({
   onHoverStart: () => void
   onHoverEnd: () => void
   onEditingChange: (editing: boolean) => void
+  contextLabel?: string
+  // 예: 중분류가 아직 지정 안 된 상태의 소분류 셀 — 고를 수 있는 범위 자체가 없으니 클릭해도 팝업을 안 띄운다.
+  disabled?: boolean
+  // disabled일 때 클릭하면 1.5초간 떴다가 자동으로 사라지는 안내 문구.
+  disabledHint?: string
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [showHint, setShowHint] = useState(false)
   const cellRef = useRef<HTMLTableCellElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const hintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const search = useCategorySearchState(options, isOpen)
+
+  // 셀 위치에 맞춰 펼치면 화면 오른쪽 끝에서 잘릴 걱정을 해야 해서, 그냥 화면 상단 중앙에 고정으로 띄운다.
+  const showDisabledHint = (e: React.MouseEvent<HTMLTableCellElement>) => {
+    e.stopPropagation()
+    if (!disabledHint) return
+    setShowHint(true)
+    if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current)
+    hintTimeoutRef.current = setTimeout(() => setShowHint(false), 1000)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current)
+    }
+  }, [])
 
   // 바깥 클릭/스크롤로 닫힐 때도(usePopupPosition 내부에서 직접 호출) 항상 이 함수를 거치도록,
   // 팝업 열림 상태를 바꾸는 지점을 하나로 모은다 — 그래야 행 하이라이트(onEditingChange)가 항상 같이 갱신된다.
@@ -330,18 +441,24 @@ function AdminStockCategoryCell({
   return (
     <td
       ref={cellRef}
-      className={`cursor-pointer pl-4 text-left ${isHighlighted ? 'bg-yellow-400/50' : rowHoverClass}`}
+      className={`pl-4 text-left ${disabled ? 'cursor-default text-gray-500' : 'cursor-pointer'} ${
+        isHighlighted ? 'bg-yellow-400/50' : rowHoverClass
+      }`}
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
-      onClick={e => {
-        // 행 전체 클릭 시 체크박스가 토글되는 동작(AdminStockRow)과 별개로 동작해야 하므로 버블링을 막는다.
-        e.stopPropagation()
-        search.reset()
-        updateOpen(true)
-      }}
+      onClick={
+        disabled
+          ? showDisabledHint
+          : e => {
+              // 행 전체 클릭 시 체크박스가 토글되는 동작(AdminStockRow)과 별개로 동작해야 하므로 버블링을 막는다.
+              e.stopPropagation()
+              search.reset()
+              updateOpen(true)
+            }
+      }
     >
       {value}
-      {isOpen && position && (
+      {!disabled && isOpen && position && (
         <CategorySearchPopup
           popupRef={popupRef}
           inputRef={inputRef}
@@ -349,7 +466,16 @@ function AdminStockCategoryCell({
           search={search}
           onSelect={handleSelect}
           onEscape={() => updateOpen(false)}
+          contextLabel={contextLabel}
         />
+      )}
+      {disabled && showHint && (
+        <div
+          style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)' }}
+          className="nes-container is-dark z-50 whitespace-nowrap !bg-violet-950 px-3 py-2 text-[18px] text-white"
+        >
+          {disabledHint}
+        </div>
       )}
     </td>
   )
@@ -549,7 +675,7 @@ function AdminColumnFilterButton({
         className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-yellow-400' : 'text-white/70 hover:text-white'}`}
         title="필터"
       >
-        ▼
+        <CheckIcon className="h-3.5 w-3.5" />
       </button>
       {isOpen && position && (
         <div
@@ -597,6 +723,100 @@ function AdminColumnFilterButton({
   )
 }
 
+type MarketValueTier = 'mega' | 'large' | 'mid' | 'small'
+
+// 큰 구간부터 — 필터 팝업에는 "전체"가 별도 항목이 아니라 다른 필터처럼 전체선택 토글로 위에 붙는다.
+const MARKET_VALUE_TIER_OPTIONS: { value: MarketValueTier; label: string; range: string }[] = [
+  { value: 'mega', label: '초대형주', range: '200조 이상' },
+  { value: 'large', label: '대형주', range: '5조 ~ 200조' },
+  { value: 'mid', label: '중형주', range: '5천억 ~ 5조' },
+  { value: 'small', label: '소형주', range: '5천억 미만' },
+]
+
+const HALF_JO = 500_000_000_000 // 5천억
+const FIVE_JO = 5_000_000_000_000 // 5조
+const TWO_HUNDRED_JO = 200_000_000_000_000 // 200조
+
+function marketValueTierOf(totalMarketValue: number | null): MarketValueTier {
+  const value = totalMarketValue ?? 0
+  if (value >= TWO_HUNDRED_JO) return 'mega'
+  if (value >= FIVE_JO) return 'large'
+  if (value >= HALF_JO) return 'mid'
+  return 'small'
+}
+
+// 시가총액 구간 필터. 다른 컬럼 필터(AdminColumnFilterButton)와 동일하게 "기본 전체 포함,
+// 체크 해제로 제외"하는 다중선택 방식이라 대형주+중형주처럼 여러 구간을 동시에 볼 수 있다.
+// 값 종류가 고정된 4개뿐이라 검색 입력 없이 목록만 보여준다.
+function AdminMarketValueFilterButton({
+  excluded,
+  onToggle,
+  onSelectAll,
+  onSelectNone,
+}: {
+  excluded: Set<MarketValueTier>
+  onToggle: (value: MarketValueTier) => void
+  onSelectAll: () => void
+  onSelectNone: () => void
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
+  const isFiltered = excluded.size > 0
+  const isAllSelected = excluded.size === 0
+
+  const position = usePopupPosition(isOpen, setIsOpen, buttonRef, popupRef, undefined, 0.8, true)
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={e => {
+          e.stopPropagation()
+          setIsOpen(prev => !prev)
+        }}
+        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-yellow-400' : 'text-white/70 hover:text-white'}`}
+        title="필터"
+      >
+        <CheckIcon className="h-3.5 w-3.5" />
+      </button>
+      {isOpen && position && (
+        <div
+          ref={popupRef}
+          style={{
+            position: 'fixed',
+            top: position.top,
+            left: position.left,
+            transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
+          }}
+          className="nes-container is-dark z-50 w-64 !bg-violet-950 p-2 text-left normal-case"
+          onClick={e => e.stopPropagation()}
+        >
+          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 text-[18px] font-bold text-white hover:bg-yellow-400/50">
+            <input type="checkbox" checked={isAllSelected} onChange={() => (isAllSelected ? onSelectNone() : onSelectAll())} />
+            <span>전체</span>
+          </label>
+          <div className="pt-1">
+            {MARKET_VALUE_TIER_OPTIONS.map(opt => (
+              <label
+                key={opt.value}
+                className="flex w-full cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-[18px] text-white hover:bg-yellow-400/50"
+              >
+                <input type="checkbox" checked={!excluded.has(opt.value)} onChange={() => onToggle(opt.value)} />
+                <span className="flex flex-1 items-center justify-between gap-2">
+                  <span>{opt.label}</span>
+                  <span className="text-gray-500">{opt.range}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 // 종목명 검색 필터. 다른 필터(업종/대분류/소분류/마켓)와 달리 "기본 전체 포함, 체크 해제로 제외"가 아니라
 // "기본 필터 없음, 검색해서 선택한 종목만 남기기"로 동작한다 — 값의 종류가 2700여 개라 체크박스 목록으로
 // 보여줄 수 없고 검색이 필요하기 때문. 검색어가 비어있으면 위 결과 섹션은 아무것도 보여주지 않는다.
@@ -604,16 +824,20 @@ function AdminStockNameFilterButton({
   items,
   selected,
   onToggle,
+  onClear,
 }: {
   items: StockCategoryListItem[]
   selected: Set<string>
   onToggle: (stockCode: string) => void
+  onClear: () => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const optionRefs = useRef(new Map<number, HTMLButtonElement>())
   const isFiltered = selected.size > 0
 
   const position = usePopupPosition(isOpen, setIsOpen, buttonRef, popupRef, () => inputRef.current?.focus(), 0.8, true)
@@ -628,6 +852,45 @@ function AdminStockNameFilterButton({
     : []
   const selectedItems = items.filter(item => selected.has(item.stockCode))
 
+  useEffect(() => {
+    optionRefs.current.get(highlightedIndex)?.scrollIntoView({ block: 'nearest' })
+  }, [highlightedIndex])
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value)
+    setHighlightedIndex(-1)
+  }
+
+  const handleClearAll = () => {
+    if (selectedItems.length === 0) return
+    if (window.confirm(`선택된 ${selectedItems.length}개 종목의 필터를 모두 제거하시겠습니까?`)) onClear()
+  }
+
+  // Enter: 방향키로 고른 종목 하나만 추가. Ctrl+Enter: 검색어에 매칭된 종목 전부 한 번에 추가
+  // (예: "삼성"까지만 치고 계열사 전부 담기). Ctrl+Shift+Enter: 선택된 종목 전체 제거.
+  // 스페이스는 검색어에 공백을 칠 수도 있어야 해서 안 씀.
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      if (matches.length === 0) return
+      setHighlightedIndex(i => (i < 0 ? 0 : (i + 1) % matches.length))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (matches.length === 0) return
+      setHighlightedIndex(i => (i <= 0 ? matches.length - 1 : i - 1))
+    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+      e.preventDefault()
+      handleClearAll()
+    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault()
+      for (const item of matches) onToggle(item.stockCode)
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      const target = matches[highlightedIndex]
+      if (target) onToggle(target.stockCode)
+    }
+  }
+
   return (
     <>
       <button
@@ -636,12 +899,13 @@ function AdminStockNameFilterButton({
         onClick={e => {
           e.stopPropagation()
           setQuery('')
+          setHighlightedIndex(-1)
           setIsOpen(prev => !prev)
         }}
         className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-yellow-400' : 'text-white/70 hover:text-white'}`}
         title="필터"
       >
-        ▼
+        <SearchIcon className="h-3.5 w-3.5" />
       </button>
       {isOpen && position && (
         <div
@@ -659,23 +923,38 @@ function AdminStockNameFilterButton({
             ref={inputRef}
             type="text"
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={e => handleQueryChange(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="종목명/코드 검색"
-            className="nes-input is-dark mb-2 w-full py-2 text-[18px]"
+            className="nes-input is-dark w-full py-2 text-[18px]"
           />
-          <div className="max-h-20 overflow-y-auto border-b border-gray-600 pb-1">
+          <div className="mt-2 max-h-56 overflow-y-auto">
+            {trimmed !== '' && matches.length > 0 && (
+              <button
+                type="button"
+                onClick={() => matches.forEach(item => onToggle(item.stockCode))}
+                className="nes-btn sticky top-0 z-10 mb-2 flex w-full items-center justify-between border-violet-500 bg-violet-500 px-2 py-0.5 text-left text-xs text-white hover:bg-violet-600"
+              >
+                <span>전체추가({matches.length})</span>
+                <span className="text-white">Ctrl+Enter</span>
+              </button>
+            )}
             {trimmed === '' ? null : matches.length === 0 ? (
               <p className="px-1 text-[18px] text-gray-400">검색 결과 없음</p>
             ) : (
-              matches.map(item => (
+              matches.map((item, index) => (
                 <button
                   key={item.stockCode}
-                  type="button"
-                  onClick={() => {
-                    onToggle(item.stockCode)
-                    setQuery('')
+                  ref={el => {
+                    if (el) optionRefs.current.set(index, el)
+                    else optionRefs.current.delete(index)
                   }}
-                  className="flex w-full items-center justify-between rounded bg-transparent px-1 py-0.5 text-left text-[18px] text-white hover:bg-yellow-400/50"
+                  type="button"
+                  onClick={() => onToggle(item.stockCode)}
+                  onMouseEnter={() => setHighlightedIndex(index)}
+                  className={`flex w-full items-center justify-between rounded px-1 py-0.5 text-left text-[18px] text-white ${
+                    index === highlightedIndex ? 'bg-yellow-400/50' : 'bg-transparent'
+                  }`}
                 >
                   <span className="truncate">{item.stockName}</span>
                   <span className="ml-1.5 shrink-0 text-gray-500">{item.stockCode}</span>
@@ -683,7 +962,18 @@ function AdminStockNameFilterButton({
               ))
             )}
           </div>
-          <div className="max-h-20 overflow-y-auto pt-1">
+          <div className="my-2 border-b border-gray-600" />
+          <div className="max-h-32 overflow-y-auto">
+            {selectedItems.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearAll}
+                className="nes-btn sticky top-0 z-10 mb-2 flex w-full items-center justify-between border-violet-500 bg-violet-500 px-2 py-0.5 text-left text-xs text-white hover:bg-violet-600"
+              >
+                <span>전체제거({selectedItems.length})</span>
+                <span className="text-white">Ctrl+Shift+Enter</span>
+              </button>
+            )}
             {selectedItems.length === 0 ? (
               <p className="px-1 text-[18px] text-gray-400">선택된 종목 없음</p>
             ) : (
@@ -714,10 +1004,13 @@ const AdminStockRow = memo(function AdminStockRow({
   isSelected,
   onToggleSelected,
   hoveredKind,
-  onCategoryHoverStart,
+  onParentCategoryHoverStart,
+  onMidCategoryHoverStart,
+  onSubCategoryHoverStart,
   onAliasHoverStart,
   onHoverEnd,
   categoryOptions,
+  categoryOptionsById,
   onAssign,
   onUpdateAlias,
 }: {
@@ -725,11 +1018,14 @@ const AdminStockRow = memo(function AdminStockRow({
   index: number
   isSelected: boolean
   onToggleSelected: (stockCode: string) => void
-  hoveredKind: 'category' | 'alias' | null
-  onCategoryHoverStart: (stockCode: string) => void
+  hoveredKind: 'parentCategory' | 'midCategory' | 'subCategory' | 'alias' | null
+  onParentCategoryHoverStart: (stockCode: string) => void
+  onMidCategoryHoverStart: (stockCode: string) => void
+  onSubCategoryHoverStart: (stockCode: string) => void
   onAliasHoverStart: (stockCode: string) => void
   onHoverEnd: () => void
   categoryOptions: CategoryOption[]
+  categoryOptionsById: Map<number, CategoryOption>
   onAssign: (stockCode: string, categoryId: number) => void
   onUpdateAlias: (stockCode: string, alias: string | null) => void
 }) {
@@ -739,8 +1035,8 @@ const AdminStockRow = memo(function AdminStockRow({
   const [isRowHovered, setIsRowHovered] = useState(false)
   // 약칭 수정 중이거나 대분류/소분류 검색 팝업이 열려있는 동안은, 마우스가 그 행 위에 없어도
   // (예: 입력하다가 다른 곳으로 시선이 옮겨간 경우) 지금 어느 행을 수정 중인지 계속 보이도록 강조를 유지한다.
-  const [editingCells, setEditingCells] = useState<Set<'alias' | 'category1' | 'category2'>>(new Set())
-  const setCellEditing = (key: 'alias' | 'category1' | 'category2', editing: boolean) => {
+  const [editingCells, setEditingCells] = useState<Set<'alias' | 'category1' | 'category2' | 'category3'>>(new Set())
+  const setCellEditing = (key: 'alias' | 'category1' | 'category2' | 'category3', editing: boolean) => {
     setEditingCells(prev => {
       const next = new Set(prev)
       if (editing) next.add(key)
@@ -749,6 +1045,20 @@ const AdminStockRow = memo(function AdminStockRow({
     })
   }
   const rowHoverClass = isRowHovered || isSelected || editingCells.size > 0 ? 'bg-yellow-400/20' : ''
+
+  // 대분류 팝업엔 최상위 카테고리만, 중분류 팝업엔 "지금 이 종목의 대분류"의 자식만, 소분류 팝업엔
+  // "지금 이 종목의 중분류"의 자식만 보여준다. categoryId(실제 배정된 카테고리)를 parentId로 거슬러
+  // 올라가서 전체 조상 체인을 구한 뒤, 뎁스별로 슬롯에 나눠 담는다.
+  const chain = resolveCategoryChain(categoryOptionsById, item.categoryId)
+  const parentCategoryOptions = categoryOptions.filter(opt => opt.parentId === null)
+  // 이미 한 단계 위로 좁혀진 목록이라 "- " 들여쓰기 접두어가 필요 없다 — 그냥 이름 그대로 보여준다.
+  const midCategoryOptions = categoryOptions
+    .filter(opt => opt.parentId === chain.rootId)
+    .map(opt => ({ ...opt, label: opt.name }))
+  const subCategoryOptions =
+    chain.midId != null
+      ? categoryOptions.filter(opt => opt.parentId === chain.midId).map(opt => ({ ...opt, label: opt.name }))
+      : []
 
   // 체크박스를 정확히 조준하지 않아도, hover 강조가 뜨는 영역(약칭/대분류/소분류 제외 전체) 아무 곳이나
   // 클릭하면 체크가 토글되게 한다. 약칭/대분류/소분류 셀은 자기 클릭(stopPropagation)으로 배제되고,
@@ -785,24 +1095,38 @@ const AdminStockRow = memo(function AdminStockRow({
       <td className={`text-center ${marketColorClass(item.market)} ${rowHoverClass}`}>{MARKET_LABEL[item.market]}</td>
       <td className={`${alignClass('left')} ${rowHoverClass}`}>{item.originCategoryName ?? '-'}</td>
       <AdminStockCategoryCell
-        value={item.parentCategoryName ?? item.categoryName}
-        options={categoryOptions}
+        value={chain.rootName}
+        options={parentCategoryOptions}
         onAssign={categoryId => onAssign(item.stockCode, categoryId)}
-        isHighlighted={hoveredKind === 'category'}
+        isHighlighted={hoveredKind === 'parentCategory'}
         rowHoverClass={rowHoverClass}
-        onHoverStart={() => onCategoryHoverStart(item.stockCode)}
+        onHoverStart={() => onParentCategoryHoverStart(item.stockCode)}
         onHoverEnd={onHoverEnd}
         onEditingChange={editing => setCellEditing('category1', editing)}
       />
       <AdminStockCategoryCell
-        value={item.parentCategoryName ? item.categoryName : '-'}
-        options={categoryOptions}
+        value={chain.midName ?? '-'}
+        options={midCategoryOptions}
         onAssign={categoryId => onAssign(item.stockCode, categoryId)}
-        isHighlighted={hoveredKind === 'category'}
+        isHighlighted={hoveredKind === 'midCategory'}
         rowHoverClass={rowHoverClass}
-        onHoverStart={() => onCategoryHoverStart(item.stockCode)}
+        onHoverStart={() => onMidCategoryHoverStart(item.stockCode)}
         onHoverEnd={onHoverEnd}
         onEditingChange={editing => setCellEditing('category2', editing)}
+        contextLabel={chain.rootName}
+      />
+      <AdminStockCategoryCell
+        value={chain.leafName ?? '-'}
+        options={subCategoryOptions}
+        onAssign={categoryId => onAssign(item.stockCode, categoryId)}
+        isHighlighted={hoveredKind === 'subCategory'}
+        rowHoverClass={rowHoverClass}
+        onHoverStart={() => onSubCategoryHoverStart(item.stockCode)}
+        onHoverEnd={onHoverEnd}
+        onEditingChange={editing => setCellEditing('category3', editing)}
+        contextLabel={chain.midName ?? undefined}
+        disabled={chain.midId == null}
+        disabledHint="중분류를 먼저 지정하세요"
       />
     </tr>
   )
@@ -818,8 +1142,17 @@ export default function AdminStockTable({ items, categories }: Props) {
   const updateAlias = useUpdateAlias()
   // categories가 안 바뀌면 참조를 유지해야 AdminStockRow의 React.memo가 제대로 스킵된다.
   const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories])
-  // 대분류/소분류 셀은 결국 같은 종목의 categoryId를 바꾸는 동일한 액션이라, 둘 중 하나만 호버해도 같이 강조되게 한다.
-  const [hoveredRow, setHoveredRow] = useState<{ stockCode: string; kind: 'category' | 'alias' } | null>(null)
+  const categoryOptionsById = useMemo(() => new Map(categoryOptions.map(opt => [opt.id, opt])), [categoryOptions])
+  // 필터/정렬/컬럼 표시에 쓰는 대분류·중분류·소분류 문자열을 종목마다 한 번씩만 미리 계산해둔다.
+  const displayByStockCode = useMemo(
+    () => new Map(items.map(item => [item.stockCode, computeDisplayValues(item, categoryOptionsById)])),
+    [items, categoryOptionsById],
+  )
+  // 대분류/중분류/소분류는 이제 각각 별도로 assign 요청을 보내는 독립된 액션이라, 셀마다 따로 강조한다.
+  const [hoveredRow, setHoveredRow] = useState<{
+    stockCode: string
+    kind: 'parentCategory' | 'midCategory' | 'subCategory' | 'alias'
+  } | null>(null)
   // 필터/정렬이 바뀌어도 선택 상태는 stockCode 기준으로 유지된다 (전체선택만 "지금 보이는 것" 기준으로 동작).
   const [selectedStockCodes, setSelectedStockCodes] = useState<Set<string>>(new Set())
 
@@ -858,8 +1191,16 @@ export default function AdminStockTable({ items, categories }: Props) {
     })
   }, [])
 
-  const handleCategoryHoverStart = useCallback(
-    (stockCode: string) => setHoveredRow({ stockCode, kind: 'category' }),
+  const handleParentCategoryHoverStart = useCallback(
+    (stockCode: string) => setHoveredRow({ stockCode, kind: 'parentCategory' }),
+    [],
+  )
+  const handleMidCategoryHoverStart = useCallback(
+    (stockCode: string) => setHoveredRow({ stockCode, kind: 'midCategory' }),
+    [],
+  )
+  const handleSubCategoryHoverStart = useCallback(
+    (stockCode: string) => setHoveredRow({ stockCode, kind: 'subCategory' }),
     [],
   )
   const handleAliasHoverStart = useCallback((stockCode: string) => setHoveredRow({ stockCode, kind: 'alias' }), [])
@@ -888,10 +1229,20 @@ export default function AdminStockTable({ items, categories }: Props) {
     market: new Set(),
     originCategoryName: new Set(),
     parentCategoryName: new Set(),
-    categoryName: new Set(),
+    midCategoryName: new Set(),
+    subCategoryName: new Set(),
   })
   // 종목명 필터는 다른 필터와 반대로 "선택한 종목코드만 남기기"(포함 방식)로 동작한다. 비어있으면 필터 없음.
   const [nameFilterStockCodes, setNameFilterStockCodes] = useState<Set<string>>(new Set())
+  const [excludedMarketValueTiers, setExcludedMarketValueTiers] = useState<Set<MarketValueTier>>(new Set())
+  const toggleMarketValueTier = (value: MarketValueTier) => {
+    setExcludedMarketValueTiers(prev => {
+      const next = new Set(prev)
+      if (next.has(value)) next.delete(value)
+      else next.add(value)
+      return next
+    })
+  }
   const toggleNameFilterStockCode = (stockCode: string) => {
     setNameFilterStockCodes(prev => {
       const next = new Set(prev)
@@ -904,11 +1255,11 @@ export default function AdminStockTable({ items, categories }: Props) {
   const filterOptionsByKey = useMemo(() => {
     const result = {} as Record<FilterKey, string[]>
     for (const key of FILTER_KEYS) {
-      const values = new Set(items.map(DISPLAY_VALUE[key]))
+      const values = new Set(items.map(item => displayByStockCode.get(item.stockCode)![key]))
       result[key] = [...values].sort((a, b) => KOREAN_COLLATOR.compare(a, b))
     }
     return result
-  }, [items])
+  }, [items, displayByStockCode])
 
   const toggleFilterValue = (key: FilterKey, value: string) => {
     setExcludedFilters(prev => {
@@ -931,12 +1282,15 @@ export default function AdminStockTable({ items, categories }: Props) {
 
   const filtered = useMemo(
     () =>
-      items.filter(
-        item =>
-          FILTER_KEYS.every(key => !excludedFilters[key].has(DISPLAY_VALUE[key](item))) &&
-          (nameFilterStockCodes.size === 0 || nameFilterStockCodes.has(item.stockCode)),
-      ),
-    [items, excludedFilters, nameFilterStockCodes],
+      items.filter(item => {
+        const display = displayByStockCode.get(item.stockCode)!
+        return (
+          FILTER_KEYS.every(key => !excludedFilters[key].has(display[key])) &&
+          (nameFilterStockCodes.size === 0 || nameFilterStockCodes.has(item.stockCode)) &&
+          !excludedMarketValueTiers.has(marketValueTierOf(item.totalMarketValue))
+        )
+      }),
+    [items, displayByStockCode, excludedFilters, nameFilterStockCodes, excludedMarketValueTiers],
   )
 
   // 필터에 걸려서 화면에서 사라진 종목은 선택도 같이 해제한다 — 안 보이는 종목이 일괄변경에
@@ -959,8 +1313,8 @@ export default function AdminStockTable({ items, categories }: Props) {
   }, [filtered])
 
   const sortedAscending = useMemo(
-    () => [...filtered].sort((a, b) => compareByKey(a, b, sortKey)),
-    [filtered, sortKey],
+    () => [...filtered].sort((a, b) => compareByKey(a, b, sortKey, displayByStockCode)),
+    [filtered, sortKey, displayByStockCode],
   )
 
   const sorted = useMemo(
@@ -1035,9 +1389,9 @@ export default function AdminStockTable({ items, categories }: Props) {
                 const label = (
                   <span className="cursor-pointer select-none hover:text-yellow-400" onClick={() => handleSort(col.key)}>
                     {col.header}
-                    {sortKey === col.key && (
-                      <span className="ml-1 text-gray-400">{sortDirection === 'asc' ? '▲' : '▼'}</span>
-                    )}
+                    <span className={`ml-1 ${sortKey === col.key ? 'text-yellow-400' : 'text-gray-400'}`}>
+                      {sortKey === col.key ? (sortDirection === 'asc' ? '▲' : '▼') : '▼'}
+                    </span>
                   </span>
                 )
                 // col.key로 좁혀진 타입은 아래 클로저(onToggle 등) 안에서는 다시 넓어지므로, 지역 변수로 한 번 고정해둔다.
@@ -1063,6 +1417,17 @@ export default function AdminStockTable({ items, categories }: Props) {
                           items={items}
                           selected={nameFilterStockCodes}
                           onToggle={toggleNameFilterStockCode}
+                          onClear={() => setNameFilterStockCodes(new Set())}
+                        />
+                      </div>
+                    ) : col.key === 'totalMarketValue' ? (
+                      <div className="flex items-center justify-between pl-2 pr-1">
+                        {label}
+                        <AdminMarketValueFilterButton
+                          excluded={excludedMarketValueTiers}
+                          onToggle={toggleMarketValueTier}
+                          onSelectAll={() => setExcludedMarketValueTiers(new Set())}
+                          onSelectNone={() => setExcludedMarketValueTiers(new Set(MARKET_VALUE_TIER_OPTIONS.map(o => o.value)))}
                         />
                       </div>
                     ) : (
@@ -1099,10 +1464,13 @@ export default function AdminStockTable({ items, categories }: Props) {
                       isSelected={selectedStockCodes.has(item.stockCode)}
                       onToggleSelected={toggleSelected}
                       hoveredKind={hoveredRow?.stockCode === item.stockCode ? hoveredRow.kind : null}
-                      onCategoryHoverStart={handleCategoryHoverStart}
+                      onParentCategoryHoverStart={handleParentCategoryHoverStart}
+                      onMidCategoryHoverStart={handleMidCategoryHoverStart}
+                      onSubCategoryHoverStart={handleSubCategoryHoverStart}
                       onAliasHoverStart={handleAliasHoverStart}
                       onHoverEnd={handleHoverEnd}
                       categoryOptions={categoryOptions}
+                      categoryOptionsById={categoryOptionsById}
                       onAssign={handleAssign}
                       onUpdateAlias={handleUpdateAlias}
                     />

@@ -2,21 +2,39 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useDroppable } from '@dnd-kit/core'
 import MarketMapBox from './MarketMapBox'
-import type { LaidOutCategory } from '@/hooks/useMarketMapLayout'
+import { categoryHeaderHeight, PADDING, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
 import { toJoEokDecimal } from '@/utils/format'
 
 interface Props {
   category: LaidOutCategory
   onSelectCategory: (categoryName: string) => void
+  showMarketValue: boolean
   depth?: number
 }
 
-export default function MarketMapCategorySection({ category, onSelectCategory, depth = 0 }: Props) {
+// 헤더 높이(categoryHeaderHeight)와 같은 비율로 폰트 크기도 depth에 따라 줄인다.
+function categoryHeaderFontSize(depth: number): number {
+  return Math.max(14 - depth * 2, 9)
+}
+
+// 투명도로 옅게 하면 페이지 배경 자체가 어두워서 뒤로 비치는 색이 없어 거의 구분이 안 됐다 —
+// 배경과 무관하게 확실히 보이도록 불투명한 순수 무채색(파란기 없는 진짜 검정~회색)을 뎁스가
+// 깊어질수록 점점 밝게 나열한다. Tailwind의 gray-600(파란기 도는 회색, 등락률 0%에 이미 씀)과
+// 헷갈리지 않게 임의값 hex를 쓴다. 배열 끝에 도달하면 마지막 값을 반복한다(더 깊어져도 안전).
+const CATEGORY_HEADER_COLORS = ['bg-black', 'bg-[#333333]', 'bg-[#4d4d4d]', 'bg-[#666666]']
+function categoryHeaderColorClass(depth: number): string {
+  return CATEGORY_HEADER_COLORS[Math.min(depth, CATEGORY_HEADER_COLORS.length - 1)]
+}
+
+export default function MarketMapCategorySection({ category, onSelectCategory, showMarketValue, depth = 0 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: category.categoryName })
   const [hover, setHover] = useState(false)
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null)
 
-  const label = `${category.categoryName} (시총: ${toJoEokDecimal(category.totalMarketValue / 100_000_000)})`
+  // 옵션 꺼두면 박스 위 태그 텍스트에선 시총을 빼되, hover 툴팁은 상세 정보라 그대로 둔다.
+  const marketValueSuffix = ` (시총: ${toJoEokDecimal(category.totalMarketValue / 100_000_000)})`
+  const label = `${category.categoryName}${marketValueSuffix}`
+  const headerLabel = `${category.categoryName}${showMarketValue ? marketValueSuffix : ''}`
 
   const updateTooltipPos = (e: React.MouseEvent) => {
     setTooltipPos({
@@ -44,15 +62,27 @@ export default function MarketMapCategorySection({ category, onSelectCategory, d
     >
       <button
         type="button"
-        onClick={category.isSelf ? undefined : () => onSelectCategory(category.categoryName)}
+        onClick={
+          category.isSelf
+            ? undefined
+            : e => {
+                onSelectCategory(category.categoryName)
+                // 클릭 후에도 이 버튼에 포커스가 남아서 브라우저 기본 포커스 링이 계속 보이는 걸 방지.
+                e.currentTarget.blur()
+              }
+        }
         onMouseEnter={handleMouseEnter}
         onMouseMove={updateTooltipPos}
         onMouseLeave={() => setHover(false)}
-        className={`absolute left-0 top-0 h-7 w-full truncate border-2 border-transparent px-1 text-left text-sm font-bold text-white ${
-          depth === 0 ? 'bg-black/70' : 'bg-gray-500'
-        }`}
+        style={{
+          height: categoryHeaderHeight(depth),
+          fontSize: categoryHeaderFontSize(depth),
+          left: PADDING,
+          width: `calc(100% - ${PADDING * 2}px)`,
+        }}
+        className={`absolute top-0 truncate border-2 border-transparent px-1 text-left font-bold text-white ${categoryHeaderColorClass(depth)}`}
       >
-        {label}
+        {headerLabel}
       </button>
       {hover &&
         tooltipPos &&
@@ -70,7 +100,13 @@ export default function MarketMapCategorySection({ category, onSelectCategory, d
           document.body,
         )}
       {category.subCategories.map(sub => (
-        <MarketMapCategorySection key={sub.categoryName} category={sub} onSelectCategory={onSelectCategory} depth={depth + 1} />
+        <MarketMapCategorySection
+          key={sub.categoryName}
+          category={sub}
+          onSelectCategory={onSelectCategory}
+          showMarketValue={showMarketValue}
+          depth={depth + 1}
+        />
       ))}
       {category.boxes.map(box => (
         <MarketMapBox

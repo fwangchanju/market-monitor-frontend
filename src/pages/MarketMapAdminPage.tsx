@@ -10,7 +10,7 @@ import { useAdminCategories, useStockCategories } from '@/hooks/useMarketMapAdmi
 
 export default function MarketMapAdminPage() {
   const [searchParams] = useSearchParams()
-  const mode = searchParams.get('mode') === 'stock' ? 'stock' : 'category'
+  const mode = searchParams.get('mode') === 'category' ? 'category' : 'stock'
   const { data: categories, error: categoriesError, isLoading } = useAdminCategories()
   const { data: stockCategories } = useStockCategories()
 

@@ -3,8 +3,8 @@ import { Link, useLocation } from 'react-router-dom'
 import { useIsAdmin } from '@/hooks/useAccess'
 
 const BASE_LINKS = [
-  { to: '/market-map', label: '마켓맵' },
   { to: '/market-summary', label: '시장요약' },
+  { to: '/market-map', label: '마켓맵' },
 ]
 const ADMIN_LINK = { to: '/admin/market-map', label: '커스텀' }
 

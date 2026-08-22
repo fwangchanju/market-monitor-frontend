@@ -4,11 +4,8 @@ import { ChevronLeftIcon } from './icons/MarketMapIcons'
 
 const FILTER_ITEMS: { label: string; market?: Market }[] = [
   { label: 'KOSPI', market: 'KOSPI' },
-  { label: 'KOSPI200' },
   { label: 'KOSDAQ', market: 'KOSDAQ' },
-  { label: 'KOSDAQ150' },
   { label: 'All Stocks' },
-  { label: '시가총액순' },
 ]
 
 interface Props {
