@@ -42,14 +42,31 @@ function toDisplayGroup(node: MarketMapCategoryNode): DisplayGroup {
   }
 }
 
-// categoryId -> categoryName. "이 섹터가 제외 목록에 있는지"만 관리하고, 실제로 화면에서
-// 걸러낼지는 별도의 sectorFilterEnabled 마스터 스위치가 결정한다.
-function seedExcludedCategoryNames(nodes: MarketMapCategoryNode[], out: Map<number, string> = new Map()) {
+// categoryId -> "상위 - 하위" 형태의 전체 경로. "이 섹터가 제외 목록에 있는지"만 관리하고,
+// 실제로 화면에서 걸러낼지는 별도의 sectorFilterEnabled 마스터 스위치가 결정한다.
+function seedExcludedCategoryNames(
+  nodes: MarketMapCategoryNode[],
+  ancestors: string[] = [],
+  out: Map<number, string> = new Map(),
+) {
   for (const node of nodes) {
-    if (node.isExcluded) out.set(node.categoryId, node.categoryName)
-    seedExcludedCategoryNames(node.children, out)
+    const path = [...ancestors, node.categoryName]
+    if (node.isExcluded) out.set(node.categoryId, path.join(' - '))
+    seedExcludedCategoryNames(node.children, path, out)
   }
   return out
+}
+
+// 우클릭 제외 시점엔 리프 카테고리명만 알고 있으므로, 뎁스가 있으면(최상위가 아니면) 원본 트리에서
+// 조상 경로를 다시 찾아 "상위 - 하위" 형태로 만든다. 최상위면 경로 길이가 1이라 그대로 리프명만 나온다.
+function findCategoryPath(nodes: MarketMapCategoryNode[], targetId: number, ancestors: string[] = []): string[] | null {
+  for (const node of nodes) {
+    const path = [...ancestors, node.categoryName]
+    if (node.categoryId === targetId) return path
+    const found = findCategoryPath(node.children, targetId, path)
+    if (found) return found
+  }
+  return null
 }
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
@@ -87,7 +104,7 @@ export default function MarketMapCustomPage() {
     const key = `${market}:${isCustom}`
     if (seededKeyRef.current === key) return
     seededKeyRef.current = key
-    setExcludedCategoryNames(seedExcludedCategoryNames(data.items))
+    setExcludedCategoryNames(seedExcludedCategoryNames(data.items, []))
   }, [data, market, isCustom])
 
   // 커스텀 모드가 아니면(기본 분류 트리) isExcluded 자체를 무시한다 — 카테고리 제외는 커스텀 트리 전용 기능.
@@ -136,7 +153,8 @@ export default function MarketMapCustomPage() {
   const handleSelectAllMarketValueTiers = () => setExcludedMarketValueTiers(new Set())
 
   const handleExcludeCategory = (categoryId: number, categoryName: string) => {
-    setExcludedCategoryNames(prev => new Map(prev).set(categoryId, categoryName))
+    const path = findCategoryPath(rootNodes, categoryId)
+    setExcludedCategoryNames(prev => new Map(prev).set(categoryId, path ? path.join(' - ') : categoryName))
     registerExcludedCategory(categoryId).catch(e => console.error('카테고리 제외 실패', e))
   }
 
@@ -195,7 +213,7 @@ export default function MarketMapCustomPage() {
   const downloadLabel = downloadStatus === 'error' ? 'Failed' : 'Download'
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex h-screen select-none flex-col overflow-hidden">
       {!isFullscreen && (
         <NavBar
           actions={

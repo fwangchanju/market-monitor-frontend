@@ -28,21 +28,23 @@ const NUMBER_COLUMN_WIDTH = '5%'
 const CHECKBOX_COLUMN_WIDTH = '3%'
 
 const COLUMNS: { key: SortKey; header: string; width: string; align: 'center' | 'left' | 'right' }[] = [
-  { key: 'stockName', header: '종목명(종목코드)', width: '17%', align: 'left' },
-  { key: 'alias', header: '약칭', width: '8%', align: 'left' },
+  { key: 'stockCode', header: '종목코드', width: '7%', align: 'left' },
+  { key: 'stockName', header: '종목명', width: '10%', align: 'left' },
+  { key: 'alias', header: '표시명 (약칭)', width: '8%', align: 'left' },
   { key: 'totalMarketValue', header: '시가총액', width: '10%', align: 'right' },
   { key: 'market', header: '마켓', width: '7%', align: 'center' },
-  { key: 'originCategoryName', header: '업종', width: '11%', align: 'left' },
-  { key: 'parentCategoryName', header: '대분류', width: '11%', align: 'right' },
-  { key: 'midCategoryName', header: '중분류', width: '11%', align: 'right' },
-  { key: 'subCategoryName', header: '소분류', width: '11%', align: 'right' },
+  { key: 'originCategoryName', header: '거래소 업종분류', width: '11%', align: 'left' },
+  { key: 'parentCategoryName', header: '1차 분류', width: '11%', align: 'right' },
+  { key: 'midCategoryName', header: '2차 분류', width: '11%', align: 'right' },
+  { key: 'subCategoryName', header: '3차 분류', width: '11%', align: 'right' },
 ]
 
 const alignClass = (align: 'center' | 'left' | 'right') =>
   align === 'right' ? 'text-right pr-4' : align === 'left' ? 'text-left pl-4' : 'text-center'
 
 const MARKET_LABEL: Record<'KOSPI' | 'KOSDAQ', string> = { KOSPI: '코스피', KOSDAQ: '코스닥' }
-const marketColorClass = (market: 'KOSPI' | 'KOSDAQ') => (market === 'KOSPI' ? 'text-white' : 'text-[#4f8fd6]')
+const MARKET_FILTER_ORDER = [MARKET_LABEL.KOSPI, MARKET_LABEL.KOSDAQ]
+const marketColorClass = (market: 'KOSPI' | 'KOSDAQ') => (market === 'KOSPI' ? 'text-gray-400' : 'text-[#4f8fd6]')
 
 const KOREAN_COLLATOR = new Intl.Collator('ko')
 
@@ -604,7 +606,7 @@ function AdminAliasCell({
 
   return (
     <td
-      className={`cursor-pointer ${alignClass('left')} ${isHighlighted ? 'bg-yellow-400/50' : rowHoverClass}`}
+      className={`cursor-pointer text-gray-400 ${alignClass('left')} ${isHighlighted ? 'bg-yellow-400/50' : rowHoverClass}`}
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
       onClick={e => {
@@ -673,10 +675,10 @@ function AdminColumnFilterButton({
           setQuery('')
           setIsOpen(prev => !prev)
         }}
-        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-yellow-400' : 'text-white/70 hover:text-white'}`}
+        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-[#ffee00]' : 'text-white/70 hover:text-white'}`}
         title="필터"
       >
-        <CheckIcon className="h-3.5 w-3.5" />
+        <CheckIcon className="h-3.5 w-3.5" strokeWidth={6} />
       </button>
       {isOpen && position && (
         <div
@@ -756,10 +758,10 @@ function AdminMarketValueFilterButton({
           e.stopPropagation()
           setIsOpen(prev => !prev)
         }}
-        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-yellow-400' : 'text-white/70 hover:text-white'}`}
+        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-[#ffee00]' : 'text-white/70 hover:text-white'}`}
         title="필터"
       >
-        <CheckIcon className="h-3.5 w-3.5" />
+        <CheckIcon className="h-3.5 w-3.5" strokeWidth={6} />
       </button>
       {isOpen && position && (
         <div
@@ -882,10 +884,10 @@ function AdminStockNameFilterButton({
           setHighlightedIndex(-1)
           setIsOpen(prev => !prev)
         }}
-        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-yellow-400' : 'text-white/70 hover:text-white'}`}
+        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-[#ffee00]' : 'text-white/70 hover:text-white'}`}
         title="필터"
       >
-        <SearchIcon className="h-3.5 w-3.5" />
+        <SearchIcon className="h-3.5 w-3.5" strokeWidth={6} />
       </button>
       {isOpen && position && (
         <div
@@ -1054,12 +1056,8 @@ const AdminStockRow = memo(function AdminStockRow({
         <input type="checkbox" checked={isSelected} onChange={() => onToggleSelected(item.stockCode)} />
       </td>
       <td className={`text-center text-gray-400 ${rowHoverClass}`}>{index + 1}</td>
-      <td className={`${rowHoverClass}`}>
-        <div className="flex items-center justify-between pl-4 pr-4">
-          <span className="text-white">{item.stockName}</span>
-          <span className="text-gray-500">{item.stockCode}</span>
-        </div>
-      </td>
+      <td className={`${alignClass('left')} text-gray-400 ${rowHoverClass}`}>{item.stockCode}</td>
+      <td className={`${alignClass('left')} text-gray-400 ${rowHoverClass}`}>{item.stockName}</td>
       <AdminAliasCell
         alias={item.alias}
         onUpdate={alias => onUpdateAlias(item.stockCode, alias)}
@@ -1069,11 +1067,11 @@ const AdminStockRow = memo(function AdminStockRow({
         onHoverEnd={onHoverEnd}
         onEditingChange={editing => setCellEditing('alias', editing)}
       />
-      <td className={`${alignClass('right')} ${rowHoverClass}`}>
+      <td className={`${alignClass('right')} text-gray-400 ${rowHoverClass}`}>
         {item.totalMarketValue != null ? toJoEokDecimal(item.totalMarketValue / 100_000_000) : '-'}
       </td>
       <td className={`text-center ${marketColorClass(item.market)} ${rowHoverClass}`}>{MARKET_LABEL[item.market]}</td>
-      <td className={`${alignClass('left')} ${rowHoverClass}`}>{item.originCategoryName ?? '-'}</td>
+      <td className={`${alignClass('left')} text-gray-400 ${rowHoverClass}`}>{item.originCategoryName ?? '-'}</td>
       <AdminStockCategoryCell
         value={chain.rootName}
         options={parentCategoryOptions}
@@ -1106,7 +1104,7 @@ const AdminStockRow = memo(function AdminStockRow({
         onEditingChange={editing => setCellEditing('category3', editing)}
         contextLabel={chain.midName ?? undefined}
         disabled={chain.midId == null}
-        disabledHint="중분류를 먼저 지정하세요"
+        disabledHint="2차 분류를 먼저 지정하세요"
       />
     </tr>
   )
@@ -1232,11 +1230,32 @@ export default function AdminStockTable({ items, categories }: Props) {
     })
   }
 
+  // 컬럼 필터(시장/업종/1~3차 분류) + 종목명 검색 + 시가총액 구간까지 전부 한 번에 초기화.
+  const hasAnyFilter =
+    FILTER_KEYS.some(key => excludedFilters[key].size > 0) ||
+    nameFilterStockCodes.size > 0 ||
+    excludedMarketValueTiers.size > 0
+  const handleClearAllFilters = () => {
+    setExcludedFilters({
+      market: new Set(),
+      originCategoryName: new Set(),
+      parentCategoryName: new Set(),
+      midCategoryName: new Set(),
+      subCategoryName: new Set(),
+    })
+    setNameFilterStockCodes(new Set())
+    setExcludedMarketValueTiers(new Set())
+  }
+
   const filterOptionsByKey = useMemo(() => {
     const result = {} as Record<FilterKey, string[]>
     for (const key of FILTER_KEYS) {
       const values = new Set(items.map(item => displayByStockCode.get(item.stockCode)![key]))
-      result[key] = [...values].sort((a, b) => KOREAN_COLLATOR.compare(a, b))
+      // market은 가나다순(코스닥이 코스피보다 먼저 옴)이 아니라 코스피 -> 코스닥 고정 순서로 보여준다.
+      result[key] =
+        key === 'market'
+          ? MARKET_FILTER_ORDER.filter(v => values.has(v))
+          : [...values].sort((a, b) => KOREAN_COLLATOR.compare(a, b))
     }
     return result
   }, [items, displayByStockCode])
@@ -1333,21 +1352,32 @@ export default function AdminStockTable({ items, categories }: Props) {
     virtualRows.length > 0 ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end : 0
 
   return (
-    <div>
-      <div className="mb-2 flex min-h-[38px] items-center justify-between px-2">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="mb-2 flex min-h-[38px] shrink-0 items-center justify-between px-2">
         <p className="text-sm font-bold text-white">
           종목수 ({sorted.length}
           {sorted.length !== items.length ? ` / ${items.length}` : ''})
         </p>
-        {selectedStockCodes.size > 0 && (
-          <BulkAssignButton count={selectedStockCodes.size} options={categoryOptions} onAssign={handleBulkAssign} />
-        )}
+        <div className="flex items-center gap-2">
+          {hasAnyFilter && (
+            <button
+              type="button"
+              onClick={handleClearAllFilters}
+              className="nes-btn border-sky-500 bg-sky-500 text-xs text-white hover:bg-sky-600"
+            >
+              전체 필터 해제
+            </button>
+          )}
+          {selectedStockCodes.size > 0 && (
+            <BulkAssignButton count={selectedStockCodes.size} options={categoryOptions} onAssign={handleBulkAssign} />
+          )}
+        </div>
       </div>
       {/* 스크롤해도 테두리가 사라지지 않도록, 테두리는 스크롤되지 않는 이 바깥 wrapper에 둔다
           (예전엔 <table> 자체에 테두리가 있어서, sticky 헤더가 위로 지나가는 동안 테이블 진짜 위쪽
           테두리가 같이 스크롤돼 사라지고, 맨 아래 테두리도 끝까지 스크롤해야만 보이는 문제가 있었다). */}
-      <div className="border border-white">
-        <div ref={scrollContainerRef} className="max-h-[75vh] overflow-auto scrollbar-thin">
+      <div className="min-h-0 flex-1 border border-white">
+        <div ref={scrollContainerRef} className="h-full overflow-auto scrollbar-thin">
           <table className="nes-table is-dark w-full text-sm [&_td]:border-white/10 [&_td]:py-0.5 [&_th]:border-white/10 [&_th]:py-1">
           <thead className="sticky top-0 z-10">
             <tr>
@@ -1369,7 +1399,7 @@ export default function AdminStockTable({ items, categories }: Props) {
                 const label = (
                   <span className="cursor-pointer select-none hover:text-yellow-400" onClick={() => handleSort(col.key)}>
                     {col.header}
-                    <span className={`ml-1 ${sortKey === col.key ? 'text-yellow-400' : 'text-gray-400'}`}>
+                    <span className={`ml-1 ${sortKey === col.key ? 'text-[#ffee00]' : 'text-gray-400'}`}>
                       {sortKey === col.key ? (sortDirection === 'asc' ? '▲' : '▼') : '▼'}
                     </span>
                   </span>

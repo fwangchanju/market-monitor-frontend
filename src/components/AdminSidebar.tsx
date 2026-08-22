@@ -4,8 +4,8 @@ import AdminVersionSaveSection from './AdminVersionSaveSection'
 type AdminMode = 'stock' | 'category'
 
 const MODE_LABELS: Record<AdminMode, string> = {
-  stock: '종목관리',
-  category: '카테고리관리',
+  stock: '종목',
+  category: '카테고리',
 }
 
 const MODES: AdminMode[] = ['stock', 'category']

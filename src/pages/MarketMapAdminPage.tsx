@@ -18,7 +18,7 @@ export default function MarketMapAdminPage() {
   // 콘텐츠가 먼저 그려졌다가 사라지지 않도록 상단바+스피너만 보여준다(AdminPage.tsx와 동일 패턴).
   if (isLoading) {
     return (
-      <div className="flex min-h-screen flex-col">
+      <div className="flex h-screen flex-col overflow-hidden">
         <NavBar />
         <div className="flex justify-center p-16">
           <Spinner />
@@ -32,18 +32,16 @@ export default function MarketMapAdminPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-screen flex-col overflow-hidden">
       <NavBar />
-      <div className="flex flex-1">
+      <div className="flex min-h-0 flex-1">
         <AdminSidebar mode={mode} />
-        <div className="flex-1 p-4">
-          <div className="mt-4">
-            {mode === 'stock' ? (
-              <AdminStockTable items={stockCategories ?? []} categories={categories ?? []} />
-            ) : (
-              <AdminCategoryTable categories={categories ?? []} />
-            )}
-          </div>
+        <div className={`flex min-h-0 flex-1 flex-col px-4 pt-2 pb-4 ${mode === 'category' ? 'overflow-y-auto' : ''}`}>
+          {mode === 'stock' ? (
+            <AdminStockTable items={stockCategories ?? []} categories={categories ?? []} />
+          ) : (
+            <AdminCategoryTable categories={categories ?? []} />
+          )}
         </div>
       </div>
     </div>

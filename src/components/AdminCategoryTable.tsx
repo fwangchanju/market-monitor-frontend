@@ -295,7 +295,7 @@ export default function AdminCategoryTable({ categories }: Props) {
       }}
     >
       <div>
-        <div className="mb-2 flex items-center justify-between px-2">
+        <div className="mb-2 flex min-h-[38px] items-center justify-between px-2">
           <p className="text-sm font-bold text-white">카테고리 목록</p>
           {isDraggingCategory && (
             <p className="text-sm text-yellow-400">다른 카테고리 위에 놓으면 그 밑으로, 빈 곳에 놓으면 최상위로 이동합니다</p>

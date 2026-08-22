@@ -116,12 +116,12 @@ export default function MarketMapSettingsDropdown({
       </button>
       {isOpen && (
         <div className="absolute right-0 top-full z-30 mt-2 w-56 border border-gray-700 bg-[var(--surface)] p-4 text-left text-sm shadow-lg">
-          <ToggleSwitch checked={showMarketValue} onChange={onToggleShowMarketValue} label="시가총액 표시" />
+          <ToggleSwitch checked={isCustom} onChange={onToggleCustom} label="개인 설정" />
           <div className="mt-6">
-            <ToggleSwitch checked={isCustom} onChange={onToggleCustom} label="커스텀 모드" />
+            <ToggleSwitch checked={showMarketValue} onChange={onToggleShowMarketValue} label="시가총액 표시" />
           </div>
           <div className={`mt-6 flex items-center justify-between gap-2 ${isDepthDisabled ? 'opacity-40' : ''}`}>
-            <span className="shrink-0 text-white">차수 표시</span>
+            <span className="shrink-0 text-white">분류 단계</span>
             <div className="flex items-center gap-2">
               <span className="w-8 shrink-0 text-right text-gray-400">
                 {depthValue}/{availableMaxDepth}
@@ -138,12 +138,12 @@ export default function MarketMapSettingsDropdown({
             </div>
           </div>
           <div className="mt-6 text-white">
-            <p className="font-bold">일부 제외</p>
+            <p className="font-bold">제외 설정</p>
             <div className="mt-3">
               <ToggleSwitch
                 checked={isAllTiersSelected}
                 onChange={onSelectAllMarketValueTiers}
-                label="1. 시가총액"
+                label="1. 시가총액 기준"
                 disabled={isAllTiersSelected}
               />
               <div className="mt-2 flex flex-col gap-2 pl-2">
@@ -162,7 +162,7 @@ export default function MarketMapSettingsDropdown({
               <ToggleSwitch
                 checked={sectorFilterEnabled}
                 onChange={onToggleSectorFilter}
-                label="2. 섹터"
+                label="2. 섹터 기준"
                 disabled={!isCustom}
               />
               {isCustom && (
