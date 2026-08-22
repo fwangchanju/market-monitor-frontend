@@ -18,10 +18,21 @@ const MIN_NAME_WIDTH = 16
 const MIN_NAME_HEIGHT = 14
 const MIN_PERCENT_HEIGHT = 28
 
+// 등락률 크기에 따라 색상을 4단계로 차등(±1%p 단위, ±3%p 초과는 최대 단계로 고정).
+// 0에 가까울수록 탁하고 짙은 톤, 멀어질수록 쨍하고 선명한 톤으로 — 핀비즈 히트맵과 동일한 방향.
 function boxColorClass(changeRate: number): string {
-  if (changeRate > 0) return 'bg-red-600'
-  if (changeRate < 0) return 'bg-blue-600'
-  return 'bg-gray-600'
+  if (changeRate === 0) return 'bg-gray-600'
+  const abs = Math.abs(changeRate)
+  if (changeRate > 0) {
+    if (abs > 3) return 'bg-red-500'
+    if (abs > 2) return 'bg-red-600'
+    if (abs > 1) return 'bg-red-700'
+    return 'bg-red-900'
+  }
+  if (abs > 3) return 'bg-blue-500'
+  if (abs > 2) return 'bg-blue-600'
+  if (abs > 1) return 'bg-blue-700'
+  return 'bg-blue-900'
 }
 
 function fontSizePx(width: number, height: number): number {
@@ -69,7 +80,7 @@ export default function MarketMapBox({ item, x, y, width, height, tooltipAlignLe
       onMouseLeave={() => setHover(false)}
       {...listeners}
       {...attributes}
-      className={`flex cursor-grab flex-col items-center justify-center overflow-hidden border text-white ${hover ? 'border-2 border-yellow-400 brightness-125' : 'border border-black/40'} ${boxColorClass(item.changeRate)}`}
+      className={`flex cursor-grab flex-col items-center justify-center overflow-hidden border text-white ${hover ? 'border-2 border-yellow-600' : 'border border-black/40'} ${boxColorClass(item.changeRate)}`}
     >
       {showName && (
         <span className="w-full truncate px-1 text-center leading-tight" style={{ fontSize }}>

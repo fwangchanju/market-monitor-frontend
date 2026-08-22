@@ -58,6 +58,10 @@ export const handlers = [
   http.delete('/api/market-map/excluded-stocks', ok),
   http.delete('/api/market-map/reset', ok),
 
+  // ── 접근 권한 ───────────────────────────────────────────────────────
+  // 로컬 개발 환경에서는 항상 admin으로 취급 — 커스텀 버튼 등 admin 전용 UI를 바로 확인할 수 있게.
+  http.get('/api/access/admin-status', () => HttpResponse.json({ isAdmin: true })),
+
   // ── 관리자(허용 IP) ─────────────────────────────────────────────────
   http.get('/api/admin/allowed-ips', () => HttpResponse.json(data.allowedIps)),
   http.post('/api/admin/allowed-ips/:ip', ok),

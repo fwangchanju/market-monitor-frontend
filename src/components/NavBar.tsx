@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useIsAdmin } from '@/hooks/useAccess'
 
-const LINKS = [
+const BASE_LINKS = [
   { to: '/market-map', label: '마켓맵' },
   { to: '/market-summary', label: '시장요약' },
-  { to: '/admin/market-map', label: '커스텀' },
 ]
+const ADMIN_LINK = { to: '/admin/market-map', label: '커스텀' }
 
 interface Props {
   center?: ReactNode
@@ -14,14 +15,16 @@ interface Props {
 
 export default function NavBar({ center, actions }: Props) {
   const location = useLocation()
+  const isAdmin = useIsAdmin()
+  const links = isAdmin ? [...BASE_LINKS, ADMIN_LINK] : BASE_LINKS
 
   const linkClassName = (to: string) =>
     `whitespace-nowrap text-[1.1667rem] ${location.pathname === to ? 'font-bold text-indigo-700' : 'text-black hover:text-gray-600'}`
 
   return (
-    <header className="sticky top-0 z-20 flex h-[60px] items-center gap-4 bg-white px-4 shadow-lg">
+    <header className="sticky top-0 z-20 flex h-12 items-center gap-4 bg-white px-4 shadow-lg">
       <div className="flex items-center gap-4">
-        {LINKS.map(link => (
+        {links.map(link => (
           <Link key={link.to} to={link.to} className={linkClassName(link.to)}>
             {link.label}
           </Link>

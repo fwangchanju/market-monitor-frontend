@@ -19,12 +19,26 @@ import { useMarketMap } from '@/hooks/useMarketMap'
 import { useMarketMapDragEnd } from '@/hooks/useMarketMapDragEnd'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
-import { toFullDateTimeLabel } from '@/utils/format'
+import { toFullDateTimeLabel, toJoEokDecimal } from '@/utils/format'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { halfOverlapCollisionDetection } from '@/utils/dndCollision'
 import type { Market, MarketMapCategoryNode } from '@/types/api'
+
+const MARKET_LABEL: Record<Market, string> = { KOSPI: '코스피', KOSDAQ: '코스닥' }
+
+// 종목 박스 색상 로직(MarketMapBox.boxColorClass)과 같은 방향(0에 가까울수록 짙고 탁하게,
+// 멀어질수록 쨍하게)의 범례. 박스 쪽은 4단계지만 범례는 -3%~+3% 7칸에 맞춰 3단계로 축약했다.
+const CHANGE_RATE_LEGEND = [
+  { label: '-3%', className: 'bg-blue-500' },
+  { label: '-2%', className: 'bg-blue-600' },
+  { label: '-1%', className: 'bg-blue-700' },
+  { label: '0%', className: 'bg-gray-600' },
+  { label: '+1%', className: 'bg-red-700' },
+  { label: '+2%', className: 'bg-red-600' },
+  { label: '+3%', className: 'bg-red-500' },
+] as const
 
 function toDisplayGroup(node: MarketMapCategoryNode): DisplayGroup {
   return {
@@ -59,6 +73,8 @@ export default function MarketMapCustomPage() {
   const { path, currentNode, currentSiblings, enterCategory, goToDepth, reset } = useMarketMapDrilldown(rootNodes)
 
   const groups: DisplayGroup[] = currentNode ? [toDisplayGroup(currentNode)] : currentSiblings.map(toDisplayGroup)
+  // 지금 화면에 나온 그룹들의 시가총액 합 — 드릴다운 깊이에 따라 groups가 바뀌므로 그때그때 다시 계산된다.
+  const totalMarketValue = groups.reduce((sum, group) => sum + group.totalMarketValue, 0)
 
   const handleMarketChange = (next: Market) => {
     setMarket(next)
@@ -135,86 +151,53 @@ export default function MarketMapCustomPage() {
   const downloadLabel = downloadStatus === 'error' ? 'Failed' : 'Download'
 
   return (
-    <div className="flex min-h-screen flex-col">
-      {isFullscreen ? (
-        <div className="flex h-8 items-center justify-end gap-2 bg-white px-2 shadow-lg">
-          <MarketMapSettingsDropdown
-            isExclude={isExclude}
-            onToggleExclude={() => setIsExclude(prev => !prev)}
-            isCustom={isCustom}
-            onToggleCustom={handleToggleCustom}
-            compact
-          />
-          <button
-            type="button"
-            aria-label="공유"
-            className="flex items-center rounded p-1 text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
-            onClick={() => setIsShareOpen(true)}
-          >
-            <ShareIcon className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            aria-label="전체화면 종료"
-            className="flex items-center rounded p-1 text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
-            onClick={() => setIsFullscreen(false)}
-          >
-            <MinimizeIcon className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            aria-label="F11"
-            className={`flex items-center rounded p-1 hover:bg-gray-100 hover:text-[#4f8fd6] ${
-              isNativeFullscreen ? 'text-[#4f8fd6]' : 'text-gray-700'
-            }`}
-            onClick={handleToggleNativeFullscreen}
-          >
-            <span className="inline-flex h-4 w-4 items-center justify-center text-[8px] font-bold">F11</span>
-          </button>
-        </div>
-      ) : (
+    <div className="flex h-screen flex-col overflow-hidden">
+      {!isFullscreen && (
         <NavBar
           actions={
-            <>
-              {data?.snapshotTime && (
-                <span className="whitespace-nowrap text-xs text-black">{toFullDateTimeLabel(data.snapshotTime)} 기준</span>
-              )}
-              <MarketMapSettingsDropdown
-                isExclude={isExclude}
-                onToggleExclude={() => setIsExclude(prev => !prev)}
-                isCustom={isCustom}
-                onToggleCustom={handleToggleCustom}
-              />
-              <button
-                type="button"
-                aria-label="공유"
-                className="flex h-9 w-9 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
-                onClick={() => setIsShareOpen(true)}
-              >
-                <ShareIcon className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                aria-label="전체화면"
-                className="flex h-9 w-9 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
-                onClick={() => setIsFullscreen(true)}
-              >
-                <MaximizeIcon className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                aria-label="F11"
-                className={`flex h-9 w-9 items-center justify-center rounded hover:bg-gray-100 hover:text-[#4f8fd6] ${
-                  isNativeFullscreen ? 'text-[#4f8fd6]' : 'text-gray-700'
-                }`}
-                onClick={handleToggleNativeFullscreen}
-              >
-                <span className="inline-flex h-5 w-5 items-center justify-center text-[13px] font-bold">F11</span>
-              </button>
-            </>
+            data?.snapshotTime && (
+              <span className="whitespace-nowrap text-xs text-black">{toFullDateTimeLabel(data.snapshotTime)} 기준</span>
+            )
           }
         />
       )}
+      {/* 버튼 바 — 전체화면 진입/해제와 무관하게 항상 같은 높이·구성으로 유지된다(예전엔 모드별로
+          완전히 다른 JSX 두 벌을 썼는데, 전체화면 시 최상단 NavBar만 숨기는 걸로 바뀌면서 하나로 합쳤다). */}
+      <div className="flex h-8 shrink-0 items-center justify-end gap-2 bg-white px-2 shadow-lg">
+        <MarketMapSettingsDropdown
+          isExclude={isExclude}
+          onToggleExclude={() => setIsExclude(prev => !prev)}
+          isCustom={isCustom}
+          onToggleCustom={handleToggleCustom}
+          compact
+        />
+        <button
+          type="button"
+          aria-label="공유"
+          className="flex h-7 w-7 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
+          onClick={() => setIsShareOpen(true)}
+        >
+          <ShareIcon className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          aria-label={isFullscreen ? '전체화면 종료' : '전체화면'}
+          className="flex h-7 w-7 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
+          onClick={() => setIsFullscreen(prev => !prev)}
+        >
+          {isFullscreen ? <MinimizeIcon className="h-4 w-4" /> : <MaximizeIcon className="h-4 w-4" />}
+        </button>
+        <button
+          type="button"
+          aria-label="F11"
+          className={`flex h-7 w-7 items-center justify-center rounded hover:bg-gray-100 hover:text-[#4f8fd6] ${
+            isNativeFullscreen ? 'text-[#4f8fd6]' : 'text-gray-700'
+          }`}
+          onClick={handleToggleNativeFullscreen}
+        >
+          <span className="inline-flex h-4 w-4 items-center justify-center text-[8px] font-bold">F11</span>
+        </button>
+      </div>
       <DndContext
         sensors={sensors}
         collisionDetection={halfOverlapCollisionDetection}
@@ -223,13 +206,25 @@ export default function MarketMapCustomPage() {
         onDragEnd={handleDragEndAndReset}
         onDragCancel={handleDragCancel}
       >
-        <div className="flex flex-1">
+        <div className="flex min-h-0 flex-1">
           {!isFullscreen && <MarketMapFilterSidebar market={market} onMarketChange={handleMarketChange} />}
-          <div ref={captureRef} data-captureid={CAPTURE_ID.MARKET_MAP} className="flex-1 p-4">
+          <div ref={captureRef} data-captureid={CAPTURE_ID.MARKET_MAP} className="flex min-h-0 flex-1 flex-col">
+            <div className="mb-1 flex h-7 w-full shrink-0 items-center justify-between border-2 border-white bg-black/70 px-1 text-sm font-bold text-white">
+              <span>
+                {MARKET_LABEL[market]} (시총: {toJoEokDecimal(totalMarketValue / 100_000_000)})
+              </span>
+              <div className="flex items-center gap-0.5">
+                {CHANGE_RATE_LEGEND.map(({ label, className }) => (
+                  <div key={label} className={`flex h-5 w-9 items-center justify-center text-[10px] ${className}`}>
+                    {label}
+                  </div>
+                ))}
+              </div>
+            </div>
             {path.length > 0 && (
               <div
                 onClick={() => goToDepth(0)}
-                className="mb-2 flex h-7 w-full cursor-pointer items-center gap-1 truncate border-2 border-white bg-black/70 px-1 text-sm font-bold text-white hover:text-yellow-400"
+                className="mb-1 flex h-7 w-full shrink-0 cursor-pointer items-center gap-1 truncate border-2 border-white bg-black/70 px-1 text-sm font-bold text-white hover:text-yellow-400"
               >
                 <span>전체</span>
                 {path.map((name, index) => (
@@ -254,9 +249,7 @@ export default function MarketMapCustomPage() {
               </div>
             )}
             {isLoading ? (
-              <div
-                className={`flex items-center justify-center ${isFullscreen ? 'h-[calc(100vh-64px)]' : 'h-[calc(100vh-110px)]'}`}
-              >
+              <div className="flex flex-1 items-center justify-center">
                 <Spinner />
               </div>
             ) : isError ? (
@@ -268,7 +261,7 @@ export default function MarketMapCustomPage() {
                 groups={groups}
                 selfCategoryName={currentNode?.categoryName ?? null}
                 onSelectCategory={enterCategory}
-                heightClassName={isFullscreen ? 'h-[calc(100vh-64px)]' : 'h-[calc(100vh-110px)]'}
+                heightClassName="min-h-0 flex-1"
               />
             )}
           </div>
