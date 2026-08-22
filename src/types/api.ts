@@ -9,6 +9,11 @@ export type MarketQuery = z.infer<typeof MarketQuerySchema>
 export const MarketSchema = z.enum(['KOSPI', 'KOSDAQ'])
 export type Market = z.infer<typeof MarketSchema>
 
+// 시가총액 구간 — 기준값(5천억/5조/200조)은 백엔드가 정의하는 도메인 분류라 백엔드가 계산해서 내려주고,
+// 프론트는 이 값으로 필터링만 한다.
+export const MarketValueTierSchema = z.enum(['MEGA', 'LARGE', 'MID', 'SMALL'])
+export type MarketValueTier = z.infer<typeof MarketValueTierSchema>
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 타입 추출 전용, 실제 파싱엔 안 씀
 const IntradayInvestorSchema = z.enum([
   'FOREIGNER', 'FOREIGN_COMPANY', 'INSTITUTION',
@@ -176,22 +181,27 @@ const MarketMapItemSchema = z.object({
   currentPrice: z.number(),     // 현재가, 원
   lastPrice: z.number(),        // 전일종가, 원
   totalMarketValue: z.number(), // 원
+  marketValueTier: MarketValueTierSchema,
   changeRate: z.number(),
   snapshotTime: z.string(),
 })
 export type MarketMapItem = z.infer<typeof MarketMapItemSchema>
 
 export interface MarketMapCategoryNode {
+  categoryId: number
   categoryName: string
   totalMarketValue: number
+  isExcluded: boolean
   children: MarketMapCategoryNode[]
   items: MarketMapItem[]
 }
 
 const MarketMapCategoryNodeSchema: z.ZodType<MarketMapCategoryNode> = z.lazy(() =>
   z.object({
+    categoryId: z.number(),
     categoryName: z.string(),
     totalMarketValue: z.number(),
+    isExcluded: z.boolean(),
     children: z.array(MarketMapCategoryNodeSchema),
     items: z.array(MarketMapItemSchema),
   }),
@@ -224,6 +234,7 @@ export const StockCategoryListItemSchema = z.object({
   stockName: z.string(),
   alias: z.string().nullable(),
   totalMarketValue: z.number().nullable(),
+  marketValueTier: MarketValueTierSchema.nullable(),
   originCategoryName: z.string().nullable(),
   parentCategoryName: z.string().nullable(),
   categoryName: z.string(),

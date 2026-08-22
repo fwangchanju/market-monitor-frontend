@@ -3,6 +3,7 @@ import { hierarchy, treemap, type HierarchyRectangularNode } from 'd3-hierarchy'
 import type { MarketMapItem } from '@/types/api'
 
 export interface DisplayGroup {
+  categoryId: number
   categoryName: string
   totalMarketValue: number
   items: MarketMapItem[]
@@ -20,6 +21,7 @@ interface LaidOutStockBox {
 }
 
 export interface LaidOutCategory {
+  categoryId: number
   categoryName: string
   totalMarketValue: number
   isSelf: boolean
@@ -35,6 +37,7 @@ export interface LaidOutCategory {
 
 interface HierarchyDatum {
   name: string
+  categoryId?: number
   value?: number
   totalMarketValue?: number
   item?: MarketMapItem
@@ -60,6 +63,7 @@ const TOOLTIP_FLIP_EDGE_RATIO = 0.85
 function toHierarchyDatum(group: DisplayGroup): HierarchyDatum {
   return {
     name: group.categoryName,
+    categoryId: group.categoryId,
     totalMarketValue: group.totalMarketValue,
     children: [
       ...group.children.map(toHierarchyDatum),
@@ -130,6 +134,7 @@ export function useMarketMapLayout(
       }
 
       return {
+        categoryId: node.data.categoryId ?? -1,
         categoryName: node.data.name,
         totalMarketValue: node.data.totalMarketValue ?? 0,
         isSelf: node.data.name === selfCategoryName,

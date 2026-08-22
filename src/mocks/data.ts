@@ -122,51 +122,63 @@ export const shortSellingHistoryItems = Array.from({ length: 20 }, (_, i) => ({
 
 export const marketMapTree = [
   {
+    categoryId: 1,
     categoryName: '반도체',
     totalMarketValue: 550_000_000_000_000,
+    isExcluded: false,
     items: [],
     children: [
       {
+        categoryId: 4,
         categoryName: '메모리',
         totalMarketValue: 420_000_000_000_000,
+        isExcluded: false,
         items: [
-          { stockCode: '005930', stockName: '삼성전자', lastPrice: 71000, totalMarketValue: 420_000_000_000_000, changeRate: 1.2, currentPrice: 71000, snapshotTime: now() },
+          { stockCode: '005930', stockName: '삼성전자', lastPrice: 71000, totalMarketValue: 420_000_000_000_000, marketValueTier: 'MEGA', changeRate: 1.2, currentPrice: 71000, snapshotTime: now() },
         ],
         children: [],
       },
       {
+        categoryId: 5,
         categoryName: '파운드리',
         totalMarketValue: 130_000_000_000_000,
+        isExcluded: false,
         items: [
-          { stockCode: '000660', stockName: 'SK하이닉스', lastPrice: 178000, totalMarketValue: 130_000_000_000_000, changeRate: -0.8, currentPrice: 178000, snapshotTime: now() },
+          { stockCode: '000660', stockName: 'SK하이닉스', lastPrice: 178000, totalMarketValue: 130_000_000_000_000, marketValueTier: 'MEGA', changeRate: -0.8, currentPrice: 178000, snapshotTime: now() },
         ],
         children: [],
       },
     ],
   },
   {
+    categoryId: 2,
     categoryName: '2차전지',
     totalMarketValue: 122_000_000_000_000,
+    isExcluded: false,
     items: [
-      { stockCode: '373220', stockName: 'LG에너지솔루션', lastPrice: 398000, totalMarketValue: 93_000_000_000_000, changeRate: -1.5, currentPrice: 398000, snapshotTime: now() },
+      { stockCode: '373220', stockName: 'LG에너지솔루션', lastPrice: 398000, totalMarketValue: 93_000_000_000_000, marketValueTier: 'LARGE', changeRate: -1.5, currentPrice: 398000, snapshotTime: now() },
     ],
     children: [
       {
+        categoryId: 6,
         categoryName: '양극재',
         totalMarketValue: 29_000_000_000_000,
+        isExcluded: false,
         items: [
-          { stockCode: '051910', stockName: 'LG화학', lastPrice: 412000, totalMarketValue: 29_000_000_000_000, changeRate: 2.1, currentPrice: 412000, snapshotTime: now() },
+          { stockCode: '051910', stockName: 'LG화학', lastPrice: 412000, totalMarketValue: 29_000_000_000_000, marketValueTier: 'LARGE', changeRate: 2.1, currentPrice: 412000, snapshotTime: now() },
         ],
         children: [],
       },
     ],
   },
   {
+    categoryId: 3,
     categoryName: '인터넷/플랫폼',
     totalMarketValue: 50_000_000_000_000,
+    isExcluded: false,
     items: [
-      { stockCode: '035420', stockName: 'NAVER', lastPrice: 198000, totalMarketValue: 32_000_000_000_000, changeRate: 0.3, currentPrice: 198000, snapshotTime: now() },
-      { stockCode: '035720', stockName: '카카오', lastPrice: 41500, totalMarketValue: 18_000_000_000_000, changeRate: 3.4, currentPrice: 41500, snapshotTime: now() },
+      { stockCode: '035420', stockName: 'NAVER', lastPrice: 198000, totalMarketValue: 32_000_000_000_000, marketValueTier: 'LARGE', changeRate: 0.3, currentPrice: 198000, snapshotTime: now() },
+      { stockCode: '035720', stockName: '카카오', lastPrice: 41500, totalMarketValue: 18_000_000_000_000, marketValueTier: 'MID', changeRate: 3.4, currentPrice: 41500, snapshotTime: now() },
     ],
     children: [],
   },
@@ -190,6 +202,7 @@ export const adminStockCategories: {
   stockName: string
   alias: string | null
   totalMarketValue: number | null
+  marketValueTier: 'MEGA' | 'LARGE' | 'MID' | 'SMALL' | null
   originCategoryName: string | null
   parentCategoryName: string | null
   categoryName: string
@@ -201,6 +214,7 @@ export const adminStockCategories: {
     stockName: '삼성전자',
     alias: null,
     totalMarketValue: 420_000_000_000_000,
+    marketValueTier: 'MEGA',
     originCategoryName: '반도체와반도체장비',
     parentCategoryName: '반도체',
     categoryName: '메모리',
@@ -212,6 +226,7 @@ export const adminStockCategories: {
     stockName: 'SK하이닉스',
     alias: null,
     totalMarketValue: 130_000_000_000_000,
+    marketValueTier: 'MEGA',
     originCategoryName: '반도체와반도체장비',
     parentCategoryName: '반도체',
     categoryName: '파운드리',
@@ -223,6 +238,7 @@ export const adminStockCategories: {
     stockName: 'LG화학',
     alias: null,
     totalMarketValue: 29_000_000_000_000,
+    marketValueTier: 'LARGE',
     originCategoryName: '화학',
     parentCategoryName: '2차전지',
     categoryName: '양극재',
@@ -234,6 +250,7 @@ export const adminStockCategories: {
     stockName: 'LG에너지솔루션',
     alias: 'LG엔솔',
     totalMarketValue: 93_000_000_000_000,
+    marketValueTier: 'LARGE',
     originCategoryName: '전기장비',
     parentCategoryName: null,
     categoryName: '2차전지',
@@ -245,6 +262,7 @@ export const adminStockCategories: {
     stockName: 'NAVER',
     alias: null,
     totalMarketValue: 32_000_000_000_000,
+    marketValueTier: 'LARGE',
     originCategoryName: '소프트웨어',
     parentCategoryName: null,
     categoryName: '인터넷/플랫폼',
@@ -256,6 +274,7 @@ export const adminStockCategories: {
     stockName: '카카오',
     alias: null,
     totalMarketValue: 18_000_000_000_000,
+    marketValueTier: 'MID',
     originCategoryName: '소프트웨어',
     parentCategoryName: null,
     categoryName: '인터넷/플랫폼',

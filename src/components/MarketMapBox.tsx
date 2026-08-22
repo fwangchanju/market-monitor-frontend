@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useDraggable } from '@dnd-kit/core'
 import type { MarketMapItem } from '@/types/api'
 import { toFullDateTimeLabel, toJoEok, toPctSigned, toVolume } from '@/utils/format'
 
@@ -40,10 +39,6 @@ function fontSizePx(width: number, height: number): number {
 }
 
 export default function MarketMapBox({ item, x, y, width, height, tooltipAlignLeft, tooltipAlignTop }: Props) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: item.stockCode,
-    data: { stockCode: item.stockCode, stockName: item.stockName },
-  })
   const [hover, setHover] = useState(false)
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null)
 
@@ -65,22 +60,18 @@ export default function MarketMapBox({ item, x, y, width, height, tooltipAlignLe
 
   return (
     <div
-      ref={setNodeRef}
       style={{
         position: 'absolute',
         left: x,
         top: y,
         width,
         height,
-        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-        zIndex: isDragging || hover ? 20 : undefined,
+        zIndex: hover ? 20 : undefined,
       }}
       onMouseEnter={handleMouseEnter}
       onMouseMove={updateTooltipPos}
       onMouseLeave={() => setHover(false)}
-      {...listeners}
-      {...attributes}
-      className={`flex cursor-grab flex-col items-center justify-center overflow-hidden border text-white ${hover ? 'border-2 border-yellow-600' : 'border border-black/40'} ${boxColorClass(item.changeRate)}`}
+      className={`flex flex-col items-center justify-center overflow-hidden border text-white ${hover ? 'border-2 border-yellow-600' : 'border border-black/40'} ${boxColorClass(item.changeRate)}`}
     >
       {showName && (
         <span className="w-full truncate px-1 text-center leading-tight" style={{ fontSize }}>

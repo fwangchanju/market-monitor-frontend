@@ -56,6 +56,9 @@ export const handlers = [
   http.post('/api/market-map/excluded-stocks/:stockCode', ok),
   http.delete('/api/market-map/excluded-stocks/:stockCode', ok),
   http.delete('/api/market-map/excluded-stocks', ok),
+  http.post('/api/market-map/excluded-categories/:categoryId', ok),
+  http.delete('/api/market-map/excluded-categories/:categoryId', ok),
+  http.delete('/api/market-map/excluded-categories', ok),
   http.delete('/api/market-map/reset', ok),
 
   // ── 접근 권한 ───────────────────────────────────────────────────────

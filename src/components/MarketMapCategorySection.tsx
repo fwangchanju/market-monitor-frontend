@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useDroppable } from '@dnd-kit/core'
 import MarketMapBox from './MarketMapBox'
 import { categoryHeaderHeight, PADDING, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
 import { toJoEokDecimal } from '@/utils/format'
@@ -8,7 +7,10 @@ import { toJoEokDecimal } from '@/utils/format'
 interface Props {
   category: LaidOutCategory
   onSelectCategory: (categoryName: string) => void
+  onOpenExcludeMenu: (categoryId: number, categoryName: string, e: React.MouseEvent) => void
   showMarketValue: boolean
+  // 커스텀 모드가 아닐 때는(기본 분류 트리) 카테고리 제외 액션 자체를 제공하지 않는다.
+  canExclude: boolean
   depth?: number
 }
 
@@ -26,8 +28,14 @@ function categoryHeaderColorClass(depth: number): string {
   return CATEGORY_HEADER_COLORS[Math.min(depth, CATEGORY_HEADER_COLORS.length - 1)]
 }
 
-export default function MarketMapCategorySection({ category, onSelectCategory, showMarketValue, depth = 0 }: Props) {
-  const { setNodeRef, isOver } = useDroppable({ id: category.categoryName })
+export default function MarketMapCategorySection({
+  category,
+  onSelectCategory,
+  onOpenExcludeMenu,
+  showMarketValue,
+  canExclude,
+  depth = 0,
+}: Props) {
   const [hover, setHover] = useState(false)
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null)
 
@@ -50,7 +58,6 @@ export default function MarketMapCategorySection({ category, onSelectCategory, s
 
   return (
     <div
-      ref={setNodeRef}
       style={{
         position: 'absolute',
         left: category.x,
@@ -58,7 +65,7 @@ export default function MarketMapCategorySection({ category, onSelectCategory, s
         width: category.width,
         height: category.height,
       }}
-      className={`box-content border-2 ${isOver || hover ? 'border-yellow-600' : 'border-black'}`}
+      className={`box-content border-2 ${hover ? 'border-yellow-600' : 'border-black'}`}
     >
       <button
         type="button"
@@ -69,6 +76,14 @@ export default function MarketMapCategorySection({ category, onSelectCategory, s
                 onSelectCategory(category.categoryName)
                 // 클릭 후에도 이 버튼에 포커스가 남아서 브라우저 기본 포커스 링이 계속 보이는 걸 방지.
                 e.currentTarget.blur()
+              }
+        }
+        onContextMenu={
+          category.isSelf || !canExclude
+            ? undefined
+            : e => {
+                e.preventDefault()
+                onOpenExcludeMenu(category.categoryId, category.categoryName, e)
               }
         }
         onMouseEnter={handleMouseEnter}
@@ -104,7 +119,9 @@ export default function MarketMapCategorySection({ category, onSelectCategory, s
           key={sub.categoryName}
           category={sub}
           onSelectCategory={onSelectCategory}
+          onOpenExcludeMenu={onOpenExcludeMenu}
           showMarketValue={showMarketValue}
+          canExclude={canExclude}
           depth={depth + 1}
         />
       ))}

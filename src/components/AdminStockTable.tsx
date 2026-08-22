@@ -1,7 +1,8 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import type { CategoryItem, StockCategoryListItem } from '@/types/api'
+import type { CategoryItem, MarketValueTier, StockCategoryListItem } from '@/types/api'
 import { toJoEokDecimal } from '@/utils/format'
+import { MARKET_VALUE_TIER_OPTIONS } from '@/utils/marketValueTier'
 import { useAssignStockCategory, useBulkAssignStockCategory, useUpdateAlias } from '@/hooks/useMarketMapAdmin'
 import Spinner from './Spinner'
 import { CheckIcon, SearchIcon } from './icons/MarketMapIcons'
@@ -723,27 +724,6 @@ function AdminColumnFilterButton({
   )
 }
 
-type MarketValueTier = 'mega' | 'large' | 'mid' | 'small'
-
-// 큰 구간부터 — 필터 팝업에는 "전체"가 별도 항목이 아니라 다른 필터처럼 전체선택 토글로 위에 붙는다.
-const MARKET_VALUE_TIER_OPTIONS: { value: MarketValueTier; label: string; range: string }[] = [
-  { value: 'mega', label: '초대형주', range: '200조 이상' },
-  { value: 'large', label: '대형주', range: '5조 ~ 200조' },
-  { value: 'mid', label: '중형주', range: '5천억 ~ 5조' },
-  { value: 'small', label: '소형주', range: '5천억 미만' },
-]
-
-const HALF_JO = 500_000_000_000 // 5천억
-const FIVE_JO = 5_000_000_000_000 // 5조
-const TWO_HUNDRED_JO = 200_000_000_000_000 // 200조
-
-function marketValueTierOf(totalMarketValue: number | null): MarketValueTier {
-  const value = totalMarketValue ?? 0
-  if (value >= TWO_HUNDRED_JO) return 'mega'
-  if (value >= FIVE_JO) return 'large'
-  if (value >= HALF_JO) return 'mid'
-  return 'small'
-}
 
 // 시가총액 구간 필터. 다른 컬럼 필터(AdminColumnFilterButton)와 동일하게 "기본 전체 포함,
 // 체크 해제로 제외"하는 다중선택 방식이라 대형주+중형주처럼 여러 구간을 동시에 볼 수 있다.
@@ -1287,7 +1267,7 @@ export default function AdminStockTable({ items, categories }: Props) {
         return (
           FILTER_KEYS.every(key => !excludedFilters[key].has(display[key])) &&
           (nameFilterStockCodes.size === 0 || nameFilterStockCodes.has(item.stockCode)) &&
-          !excludedMarketValueTiers.has(marketValueTierOf(item.totalMarketValue))
+          (item.marketValueTier == null || !excludedMarketValueTiers.has(item.marketValueTier))
         )
       }),
     [items, displayByStockCode, excludedFilters, nameFilterStockCodes, excludedMarketValueTiers],
