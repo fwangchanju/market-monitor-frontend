@@ -38,7 +38,11 @@ export default function MarketMapAdminPage() {
         <AdminSidebar mode={mode} />
         <div className={`flex min-h-0 flex-1 flex-col px-4 pt-2 pb-4 ${mode === 'category' ? 'overflow-y-auto' : ''}`}>
           {mode === 'stock' ? (
-            <AdminStockTable items={stockCategories ?? []} categories={categories ?? []} />
+            <AdminStockTable
+              items={stockCategories?.items ?? []}
+              categories={categories ?? []}
+              snapshotTime={stockCategories?.snapshotTime ?? null}
+            />
           ) : (
             <AdminCategoryTable categories={categories ?? []} />
           )}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import type { CategoryItem } from '@/types/api'
 import { useCreateCategory, useRenameCategory } from '@/hooks/useMarketMapAdmin'
@@ -10,7 +10,9 @@ interface Props {
   categories: CategoryItem[]
 }
 
-type Row = { type: 'category'; item: CategoryItem } | { type: 'add-child'; parentId: number; parentName: string; depth: number }
+type Row =
+  | { type: 'category'; item: CategoryItem; siblingIndex: number }
+  | { type: 'add-child'; parentId: number; parentPath: string[]; depth: number }
 
 // 이름순 정렬하되 "미분류"는 항상 맨 뒤로.
 function compareCategoryName(a: CategoryItem, b: CategoryItem): number {
@@ -19,48 +21,85 @@ function compareCategoryName(a: CategoryItem, b: CategoryItem): number {
   return a.name.localeCompare(b.name, 'ko')
 }
 
-function buildVisibleRows(categories: CategoryItem[], parentId: number | null, expandedIds: Set<number>): Row[] {
+// 세부 카테고리 추가 입력창의 placeholder용 — 루트부터 해당 카테고리까지 이름을 전부 이어붙인다.
+// (예: 뎁스2 밑에 추가하면 "반도체" - "메모리"의 세부 카테고리 추가. 처럼 조상 전체가 보이게)
+function buildPathById(categories: CategoryItem[]): Map<number, string[]> {
+  const byId = new Map(categories.map(c => [c.id, c]))
+  const cache = new Map<number, string[]>()
+  const resolve = (id: number): string[] => {
+    const cached = cache.get(id)
+    if (cached) return cached
+    const category = byId.get(id)!
+    const path = category.parentId != null ? [...resolve(category.parentId), category.name] : [category.name]
+    cache.set(id, path)
+    return path
+  }
+  for (const c of categories) resolve(c.id)
+  return cache
+}
+
+function buildVisibleRows(
+  categories: CategoryItem[],
+  parentId: number | null,
+  expandedIds: Set<number>,
+  addingChildFor: number | null,
+  pathById: Map<number, string[]>,
+): Row[] {
   const children = categories.filter(c => c.parentId === parentId).sort(compareCategoryName)
   const rows: Row[] = []
-  for (const child of children) {
-    rows.push({ type: 'category', item: child })
+  children.forEach((child, index) => {
+    rows.push({ type: 'category', item: child, siblingIndex: index + 1 })
+    // 펼침 여부와 무관하게, 세부 카테고리 추가 버튼을 누른 카테고리 바로 아래에 입력줄을 끼워 넣는다.
+    if (addingChildFor === child.id) {
+      rows.push({ type: 'add-child', parentId: child.id, parentPath: pathById.get(child.id) ?? [child.name], depth: child.depth + 1 })
+    }
     if (expandedIds.has(child.id)) {
-      rows.push({ type: 'add-child', parentId: child.id, parentName: child.name, depth: child.depth + 1 })
-      rows.push(...buildVisibleRows(categories, child.id, expandedIds))
+      rows.push(...buildVisibleRows(categories, child.id, expandedIds, addingChildFor, pathById))
     }
-  }
+  })
   return rows
 }
 
-function buildRowsForRoots(categories: CategoryItem[], roots: CategoryItem[], expandedIds: Set<number>): Row[] {
+function buildRowsForRoots(
+  categories: CategoryItem[],
+  roots: CategoryItem[],
+  expandedIds: Set<number>,
+  addingChildFor: number | null,
+  pathById: Map<number, string[]>,
+): Row[] {
   const rows: Row[] = []
-  for (const root of roots) {
-    rows.push({ type: 'category', item: root })
-    if (expandedIds.has(root.id)) {
-      rows.push({ type: 'add-child', parentId: root.id, parentName: root.name, depth: root.depth + 1 })
-      rows.push(...buildVisibleRows(categories, root.id, expandedIds))
+  roots.forEach((root, index) => {
+    rows.push({ type: 'category', item: root, siblingIndex: index + 1 })
+    if (addingChildFor === root.id) {
+      rows.push({ type: 'add-child', parentId: root.id, parentPath: pathById.get(root.id) ?? [root.name], depth: root.depth + 1 })
     }
-  }
+    if (expandedIds.has(root.id)) {
+      rows.push(...buildVisibleRows(categories, root.id, expandedIds, addingChildFor, pathById))
+    }
+  })
   return rows
 }
 
-// 카테고리 행의 드래그 시작점. 행 전체를 드래그 소스로 삼으면 펼치기/접기 클릭과 충돌하므로 별도 손잡이로 분리.
-function CategoryDragHandle({ categoryId, parentId }: { categoryId: number; parentId: number | null }) {
+// 카테고리 이름 자체가 드래그 소스 — 별도 손잡이 버튼 없이 이름을 눌러서 바로 끌 수 있다.
+function DraggableCategoryName({
+  categoryId,
+  parentId,
+  label,
+  className,
+}: {
+  categoryId: number
+  parentId: number | null
+  label: string
+  className: string
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `category-drag-${categoryId}`,
     data: { categoryId, parentId },
   })
   return (
-    <button
-      ref={setNodeRef}
-      type="button"
-      {...listeners}
-      {...attributes}
-      className={`shrink-0 cursor-grab touch-none bg-transparent px-1 text-gray-500 hover:text-white active:cursor-grabbing ${isDragging ? 'opacity-30' : ''}`}
-      title="드래그해서 다른 카테고리 밑으로 이동"
-    >
-      ⠿
-    </button>
+    <span ref={setNodeRef} {...listeners} {...attributes} className={`${className} ${isDragging ? 'opacity-30' : ''}`}>
+      {label}
+    </span>
   )
 }
 
@@ -89,6 +128,8 @@ export default function AdminCategoryTable({ categories }: Props) {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
   const [newName, setNewName] = useState('')
   const [childNameByParent, setChildNameByParent] = useState<Record<number, string>>({})
+  // 펼침과 무관하게 "지금 이 카테고리 밑에 추가 입력줄을 보여줄지"만 따로 관리 — 한 번에 하나만 연다.
+  const [addingChildFor, setAddingChildFor] = useState<number | null>(null)
   const [renamingId, setRenamingId] = useState<number | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [highlightedId, setHighlightedId] = useState<number | null>(null)
@@ -101,6 +142,9 @@ export default function AdminCategoryTable({ categories }: Props) {
   const handleCategoryDragEnd = useCategoryDragEnd()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
+  const pathById = useMemo(() => buildPathById(categories), [categories])
+  const hasChildren = (id: number) => categories.some(c => c.parentId === id)
+
   const toggleExpand = (id: number) => {
     setExpandedIds(prev => {
       const next = new Set(prev)
@@ -108,6 +152,13 @@ export default function AdminCategoryTable({ categories }: Props) {
       else next.add(id)
       return next
     })
+  }
+
+  const handleExpandAll = () => setExpandedIds(new Set(categories.filter(c => hasChildren(c.id)).map(c => c.id)))
+  const handleCollapseAll = () => setExpandedIds(new Set())
+
+  const toggleAddChild = (id: number) => {
+    setAddingChildFor(prev => (prev === id ? null : id))
   }
 
   const triggerHighlight = (id: number) => {
@@ -143,15 +194,12 @@ export default function AdminCategoryTable({ categories }: Props) {
     renameCategory.mutate({ id: category.id, name: trimmed }, { onSuccess: () => triggerHighlight(category.id) })
   }
 
-  const hasChildren = (id: number) => categories.some(c => c.parentId === id)
-  const childCount = (id: number) => categories.filter(c => c.parentId === id).length
-
   const rootCategories = categories.filter(c => c.parentId === null).sort(compareCategoryName)
   const splitIndex = Math.ceil(rootCategories.length / 2)
   const leftRoots = rootCategories.slice(0, splitIndex)
   const rightRoots = rootCategories.slice(splitIndex)
-  const leftRows = buildRowsForRoots(categories, leftRoots, expandedIds)
-  const rightRows = buildRowsForRoots(categories, rightRoots, expandedIds)
+  const leftRows = buildRowsForRoots(categories, leftRoots, expandedIds, addingChildFor, pathById)
+  const rightRows = buildRowsForRoots(categories, rightRoots, expandedIds, addingChildFor, pathById)
 
   const rootIndexById = new Map<number, number>()
   rootCategories.forEach((c, i) => rootIndexById.set(c.id, i + 1))
@@ -159,6 +207,7 @@ export default function AdminCategoryTable({ categories }: Props) {
   const renderRow = (row: Row) => {
     if (row.type === 'add-child') {
       const parentId = row.parentId
+      const quotedPath = row.parentPath.map(name => `"${name}"`).join(' - ')
       return (
         <tr key={`add-child-${parentId}`}>
           <td className="py-0.5 text-left" style={{ paddingLeft: `${row.depth * 20 + 8}px` }}>
@@ -166,10 +215,14 @@ export default function AdminCategoryTable({ categories }: Props) {
               <span className="shrink-0 text-gray-400">-</span>
               <input
                 type="text"
+                autoFocus
                 value={childNameByParent[parentId] ?? ''}
                 onChange={e => setChildNameByParent(prev => ({ ...prev, [parentId]: e.target.value }))}
-                onKeyDown={e => e.key === 'Enter' && handleCreateChild(parentId)}
-                placeholder={`${row.parentName} 카테고리 추가`}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleCreateChild(parentId)
+                  if (e.key === 'Escape') setAddingChildFor(null)
+                }}
+                placeholder={`${quotedPath}의 세부 카테고리 추가.`}
                 className="nes-input is-dark min-w-0 flex-1 text-sm"
               />
               <button
@@ -188,11 +241,7 @@ export default function AdminCategoryTable({ categories }: Props) {
     const category = row.item
     const isRoot = category.parentId === null
     const expandable = isRoot || hasChildren(category.id)
-    const count = childCount(category.id)
-    const countSuffix = count > 0 ? `(${count})` : ''
-    const label = isRoot
-      ? `${rootIndexById.get(category.id)}. ${category.name}${countSuffix}`
-      : `- ${category.name}${countSuffix}`
+    const label = isRoot ? `${rootIndexById.get(category.id)}. ${category.name}` : `${row.siblingIndex}) ${category.name}`
     const isRenaming = renamingId === category.id
     return (
       <DroppableCategoryRow
@@ -202,23 +251,23 @@ export default function AdminCategoryTable({ categories }: Props) {
       >
         <td className="py-0.5 text-left" style={{ paddingLeft: `${category.depth * 20 + 8}px` }}>
           <div className="flex items-center gap-6">
-            <CategoryDragHandle categoryId={category.id} parentId={category.parentId} />
-            <button
-              type="button"
-              onClick={() => expandable && toggleExpand(category.id)}
-              className={`flex items-center border-0 bg-transparent text-left text-white ${isRenaming ? 'min-w-0 flex-1' : ''} ${
-                expandable ? 'cursor-pointer hover:text-yellow-400' : 'cursor-default'
-              }`}
-            >
-              {expandable && (
-                <span className="mr-1 inline-block w-4 shrink-0 text-gray-400">{expandedIds.has(category.id) ? '▾' : '▸'}</span>
+            <div className={`flex items-center ${isRenaming ? 'min-w-0 flex-1' : ''}`}>
+              {expandable ? (
+                <button
+                  type="button"
+                  onClick={() => toggleExpand(category.id)}
+                  className="mr-1 flex h-6 w-6 shrink-0 items-center justify-center border-0 bg-transparent text-gray-400 hover:text-yellow-400"
+                >
+                  {expandedIds.has(category.id) ? '▾' : '▸'}
+                </button>
+              ) : (
+                <span className="mr-1 inline-block h-6 w-6 shrink-0" />
               )}
               {isRenaming ? (
                 <input
                   type="text"
                   autoFocus
                   value={renameValue}
-                  onClick={e => e.stopPropagation()}
                   onChange={e => setRenameValue(e.target.value)}
                   onKeyDown={e => {
                     if (e.key === 'Enter') submitRename(category)
@@ -227,9 +276,14 @@ export default function AdminCategoryTable({ categories }: Props) {
                   className="nes-input is-dark min-w-0 flex-1 text-sm"
                 />
               ) : (
-                <span className="truncate">{label}</span>
+                <DraggableCategoryName
+                  categoryId={category.id}
+                  parentId={category.parentId}
+                  label={label}
+                  className="cursor-grab touch-none truncate text-left text-white hover:text-yellow-400 active:cursor-grabbing"
+                />
               )}
-            </button>
+            </div>
             <div
               className={`flex shrink-0 items-center gap-3 ${isRenaming ? '' : 'opacity-0 transition-opacity group-hover:opacity-100'}`}
             >
@@ -252,6 +306,13 @@ export default function AdminCategoryTable({ categories }: Props) {
                 </>
               ) : (
                 <>
+                  <button
+                    type="button"
+                    onClick={() => toggleAddChild(category.id)}
+                    className="nes-btn border-sky-500 bg-sky-500 px-3 py-1 text-sm text-white hover:bg-sky-600"
+                  >
+                    추가
+                  </button>
                   <button
                     type="button"
                     onClick={() => startRename(category)}
@@ -296,7 +357,23 @@ export default function AdminCategoryTable({ categories }: Props) {
     >
       <div>
         <div className="mb-2 flex min-h-[38px] items-center justify-between px-2">
-          <p className="text-sm font-bold text-white">카테고리 목록</p>
+          <div className="flex items-center gap-3">
+            <p className="text-sm font-bold text-white">카테고리 목록</p>
+            <button
+              type="button"
+              onClick={handleExpandAll}
+              className="nes-btn border-[#4f8fd6] bg-[#4f8fd6] px-2 py-1 text-xs text-white hover:brightness-125"
+            >
+              펼치기
+            </button>
+            <button
+              type="button"
+              onClick={handleCollapseAll}
+              className="nes-btn border-red-600 bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
+            >
+              접기
+            </button>
+          </div>
           {isDraggingCategory && (
             <p className="text-sm text-yellow-400">다른 카테고리 위에 놓으면 그 밑으로, 빈 곳에 놓으면 최상위로 이동합니다</p>
           )}

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { MarketMapItem } from '@/types/api'
-import { toFullDateTimeLabel, toJoEok, toPctSigned, toVolume } from '@/utils/format'
+import { toJoEok, toPctSigned, toVolume } from '@/utils/format'
 
 interface Props {
   item: MarketMapItem
@@ -100,7 +100,6 @@ export default function MarketMapBox({ item, x, y, width, height, tooltipAlignLe
             <div>현재가: {toVolume(item.currentPrice)}원</div>
             <div>전일종가: {toVolume(item.lastPrice)}원</div>
             <div>시가총액: {toJoEok(item.totalMarketValue / 100_000_000)}</div>
-            <div>기준: {toFullDateTimeLabel(item.snapshotTime)}</div>
           </div>,
           document.body,
         )}

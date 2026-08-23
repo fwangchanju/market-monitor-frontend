@@ -18,6 +18,10 @@ interface Props {
   onChangeMaxDepth: (value: number) => void
   showMarketValue: boolean
   onToggleShowMarketValue: () => void
+  showAvgChangeRate: boolean
+  onToggleShowAvgChangeRate: () => void
+  showUpDownCount: boolean
+  onToggleShowUpDownCount: () => void
   excludedMarketValueTiers: Set<MarketValueTier>
   onToggleMarketValueTier: (tier: MarketValueTier) => void
   onSelectAllMarketValueTiers: () => void
@@ -75,6 +79,10 @@ export default function MarketMapSettingsDropdown({
   onChangeMaxDepth,
   showMarketValue,
   onToggleShowMarketValue,
+  showAvgChangeRate,
+  onToggleShowAvgChangeRate,
+  showUpDownCount,
+  onToggleShowUpDownCount,
   excludedMarketValueTiers,
   onToggleMarketValueTier,
   onSelectAllMarketValueTiers,
@@ -116,12 +124,9 @@ export default function MarketMapSettingsDropdown({
       </button>
       {isOpen && (
         <div className="absolute right-0 top-full z-30 mt-2 w-56 border border-gray-700 bg-[var(--surface)] p-4 text-left text-sm shadow-lg">
-          <ToggleSwitch checked={isCustom} onChange={onToggleCustom} label="개인 설정" />
-          <div className="mt-6">
-            <ToggleSwitch checked={showMarketValue} onChange={onToggleShowMarketValue} label="시가총액 표시" />
-          </div>
+          <ToggleSwitch checked={isCustom} onChange={onToggleCustom} label="1. 개인 설정 모드" />
           <div className={`mt-6 flex items-center justify-between gap-2 ${isDepthDisabled ? 'opacity-40' : ''}`}>
-            <span className="shrink-0 text-white">분류 단계</span>
+            <span className="shrink-0 text-white">2. 분류 단계</span>
             <div className="flex items-center gap-2">
               <span className="w-8 shrink-0 text-right text-gray-400">
                 {depthValue}/{availableMaxDepth}
@@ -138,7 +143,15 @@ export default function MarketMapSettingsDropdown({
             </div>
           </div>
           <div className="mt-6 text-white">
-            <p className="font-bold">제외 설정</p>
+            <p className="font-bold">3. 표시</p>
+            <div className="mt-2 flex flex-col gap-2 pl-2">
+              <ToggleSwitch checked={showMarketValue} onChange={onToggleShowMarketValue} label="1) 시가총액 합" />
+              <ToggleSwitch checked={showAvgChangeRate} onChange={onToggleShowAvgChangeRate} label="2) 등락률 평균" />
+              <ToggleSwitch checked={showUpDownCount} onChange={onToggleShowUpDownCount} label="3) 등락 종목수" />
+            </div>
+          </div>
+          <div className="mt-6 text-white">
+            <p className="font-bold">4. 제외 설정</p>
             <div className="mt-3">
               <ToggleSwitch
                 checked={isAllTiersSelected}

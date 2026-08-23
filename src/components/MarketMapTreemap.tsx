@@ -10,6 +10,8 @@ interface Props {
   onExcludeCategory: (categoryId: number, categoryName: string) => void
   heightClassName?: string
   showMarketValue: boolean
+  showAvgChangeRate: boolean
+  showUpDownCount: boolean
   // 커스텀 모드가 아닐 때는(기본 분류 트리) 카테고리 제외 액션 자체를 제공하지 않는다.
   canExclude: boolean
 }
@@ -28,6 +30,8 @@ export default function MarketMapTreemap({
   onExcludeCategory,
   heightClassName = 'h-[70vh]',
   showMarketValue,
+  showAvgChangeRate,
+  showUpDownCount,
   canExclude,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -81,6 +85,8 @@ export default function MarketMapTreemap({
           onSelectCategory={onSelectCategory}
           onOpenExcludeMenu={handleOpenExcludeMenu}
           showMarketValue={showMarketValue}
+          showAvgChangeRate={showAvgChangeRate}
+          showUpDownCount={showUpDownCount}
           canExclude={canExclude}
         />
       ))}

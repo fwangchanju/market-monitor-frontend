@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { MarketMapCategoryNode, MarketValueTier } from '@/types/api'
+import type { MarketMapCategoryNode, MarketMapItem, MarketValueTier } from '@/types/api'
 
 // 카테고리 exclude는 하위 전체로 자동 전파된다 — 제외된 노드는 자식을 아예 살펴보지 않고 통째로 버리므로,
 // 자식이 스스로 isExcluded=false여도 부모가 제외되면 같이 사라진다.
@@ -27,13 +27,26 @@ function filterNodes(
   return result
 }
 
-// 뎁스 제한을 넘어가는 하위 카테고리는(그 안의 종목까지) 통째로 숨긴다 — 접어서 상위로 펼치는 게 아니라
-// 완전히 안 보이게 하는 방식이라, 숨겨진 만큼 상위 카테고리의 합계도 같이 줄어든다.
-// depth는 루트로 넘어온 nodes를 1로 보는 화면 기준(= "차수" 슬라이더 값과 동일 단위).
+// depth === maxDepth인 노드는 이 뎁스까지만 태그를 보여준다는 뜻 — 그 밑에 있던 하위 카테고리들의
+// 태그(헤더)는 없애되, 안에 있던 종목은 사라지지 않고 전부 이 노드 박스 안으로 펼쳐서 보여준다.
+function collectAllItems(node: MarketMapCategoryNode): MarketMapItem[] {
+  const items = [...node.items]
+  for (const child of node.children) items.push(...collectAllItems(child))
+  return items
+}
+
+// depth는 루트로 넘어온 nodes를 1로 보는 화면 기준(= "분류 단계" 슬라이더 값과 동일 단위).
 function limitDepth(nodes: MarketMapCategoryNode[], maxDepth: number, depth = 1): MarketMapCategoryNode[] {
   const result: MarketMapCategoryNode[] = []
   for (const node of nodes) {
-    const children = depth >= maxDepth ? [] : limitDepth(node.children, maxDepth, depth + 1)
+    if (depth >= maxDepth) {
+      const items = collectAllItems(node)
+      const totalMarketValue = items.reduce((sum, item) => sum + item.totalMarketValue, 0)
+      if (totalMarketValue <= 0) continue
+      result.push({ ...node, items, children: [], totalMarketValue })
+      continue
+    }
+    const children = limitDepth(node.children, maxDepth, depth + 1)
     const totalMarketValue =
       node.items.reduce((sum, item) => sum + item.totalMarketValue, 0) +
       children.reduce((sum, child) => sum + child.totalMarketValue, 0)

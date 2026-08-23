@@ -53,8 +53,12 @@ export default function MarketMapFilterSidebar({ market, onMarketChange }: Props
       <button
         type="button"
         aria-label={collapsed ? '사이드바 열기' : '사이드바 닫기'}
-        onClick={() => setCollapsed(prev => !prev)}
-        className="absolute right-0 top-0 z-10 flex h-full w-4 items-center justify-center border-0 bg-[var(--surface)] text-white hover:bg-gray-700"
+        onClick={e => {
+          setCollapsed(prev => !prev)
+          // 클릭 후에도 포커스가 남아있으면 브라우저 기본 포커스 링이 테두리처럼 계속 보인다.
+          e.currentTarget.blur()
+        }}
+        className="absolute right-0 top-0 z-10 flex h-full w-4 items-center justify-center border-0 bg-[var(--surface)] text-white outline-none hover:bg-gray-700"
       >
         <ChevronLeftIcon className={`h-3 w-3 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
       </button>

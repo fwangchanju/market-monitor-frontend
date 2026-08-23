@@ -1,7 +1,8 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { createPortal } from 'react-dom'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { CategoryItem, MarketValueTier, StockCategoryListItem } from '@/types/api'
-import { toJoEokDecimal } from '@/utils/format'
+import { toFullDateTimeLabel, toJoEokDecimal } from '@/utils/format'
 import { MARKET_VALUE_TIER_OPTIONS } from '@/utils/marketValueTier'
 import { useAssignStockCategory, useBulkAssignStockCategory, useUpdateAlias } from '@/hooks/useMarketMapAdmin'
 import Spinner from './Spinner'
@@ -10,6 +11,7 @@ import { CheckIcon, SearchIcon } from './icons/MarketMapIcons'
 interface Props {
   items: StockCategoryListItem[]
   categories: CategoryItem[]
+  snapshotTime: string | null
 }
 
 type SortKey =
@@ -33,7 +35,7 @@ const COLUMNS: { key: SortKey; header: string; width: string; align: 'center' | 
   { key: 'alias', header: '표시명 (약칭)', width: '8%', align: 'left' },
   { key: 'totalMarketValue', header: '시가총액', width: '10%', align: 'right' },
   { key: 'market', header: '마켓', width: '7%', align: 'center' },
-  { key: 'originCategoryName', header: '거래소 업종분류', width: '11%', align: 'left' },
+  { key: 'originCategoryName', header: '거래소 분류', width: '11%', align: 'left' },
   { key: 'parentCategoryName', header: '1차 분류', width: '11%', align: 'right' },
   { key: 'midCategoryName', header: '2차 분류', width: '11%', align: 'right' },
   { key: 'subCategoryName', header: '3차 분류', width: '11%', align: 'right' },
@@ -606,7 +608,7 @@ function AdminAliasCell({
 
   return (
     <td
-      className={`cursor-pointer text-gray-400 ${alignClass('left')} ${isHighlighted ? 'bg-yellow-400/50' : rowHoverClass}`}
+      className={`cursor-pointer text-white ${alignClass('left')} ${isHighlighted ? 'bg-yellow-400/50' : rowHoverClass}`}
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
       onClick={e => {
@@ -1110,10 +1112,13 @@ const AdminStockRow = memo(function AdminStockRow({
   )
 })
 
-export default function AdminStockTable({ items, categories }: Props) {
+export default function AdminStockTable({ items, categories, snapshotTime }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('totalMarketValue')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [isPending, startTransition] = useTransition()
+  // 헤더가 sticky + 스크롤 컨테이너(overflow-auto) 안에 있어서, 그 위로 뜨는 툴팁은 일반 absolute로는
+  // 부모의 overflow에 잘린다 — body에 포털로 그려서 잘리지 않게 한다(MarketMapBox 등과 동일한 패턴).
+  const [snapshotTooltipPos, setSnapshotTooltipPos] = useState<{ left: number; top: number } | null>(null)
 
   const assignStockCategory = useAssignStockCategory()
   const bulkAssignStockCategory = useBulkAssignStockCategory()
@@ -1247,6 +1252,17 @@ export default function AdminStockTable({ items, categories }: Props) {
     setExcludedMarketValueTiers(new Set())
   }
 
+  // 전체 필터 해제 버튼 옆에 "지금 뭐가 필터링 중인지" 보여주기 위한 라벨 목록.
+  const activeFilterLabels: string[] = []
+  if (nameFilterStockCodes.size > 0) activeFilterLabels.push('종목명')
+  if (excludedMarketValueTiers.size > 0) activeFilterLabels.push('시가총액')
+  for (const key of FILTER_KEYS) {
+    if (excludedFilters[key].size > 0) {
+      const header = COLUMNS.find(col => col.key === key)?.header
+      if (header) activeFilterLabels.push(header)
+    }
+  }
+
   const filterOptionsByKey = useMemo(() => {
     const result = {} as Record<FilterKey, string[]>
     for (const key of FILTER_KEYS) {
@@ -1360,13 +1376,16 @@ export default function AdminStockTable({ items, categories }: Props) {
         </p>
         <div className="flex items-center gap-2">
           {hasAnyFilter && (
-            <button
-              type="button"
-              onClick={handleClearAllFilters}
-              className="nes-btn border-sky-500 bg-sky-500 text-xs text-white hover:bg-sky-600"
-            >
-              전체 필터 해제
-            </button>
+            <>
+              <span className="text-xs text-gray-400">{activeFilterLabels.join('/')} 필터 중</span>
+              <button
+                type="button"
+                onClick={handleClearAllFilters}
+                className="nes-btn border-sky-500 bg-sky-500 text-xs text-white hover:bg-sky-600"
+              >
+                전체 필터 해제
+              </button>
+            </>
           )}
           {selectedStockCodes.size > 0 && (
             <BulkAssignButton count={selectedStockCodes.size} options={categoryOptions} onAssign={handleBulkAssign} />
@@ -1432,7 +1451,26 @@ export default function AdminStockTable({ items, categories }: Props) {
                       </div>
                     ) : col.key === 'totalMarketValue' ? (
                       <div className="flex items-center justify-between pl-2 pr-1">
-                        {label}
+                        <span
+                          onMouseEnter={e => {
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            setSnapshotTooltipPos({ left: rect.left + rect.width / 2, top: rect.top })
+                          }}
+                          onMouseLeave={() => setSnapshotTooltipPos(null)}
+                        >
+                          {label}
+                        </span>
+                        {snapshotTime &&
+                          snapshotTooltipPos &&
+                          createPortal(
+                            <div
+                              className="nes-container is-dark fixed z-50 w-max -translate-x-1/2 -translate-y-full !bg-violet-950 px-2 py-1 text-[18px] normal-case text-white"
+                              style={{ left: snapshotTooltipPos.left, top: snapshotTooltipPos.top - 4 }}
+                            >
+                              기준: {toFullDateTimeLabel(snapshotTime)}
+                            </div>,
+                            document.body,
+                          )}
                         <AdminMarketValueFilterButton
                           excluded={excludedMarketValueTiers}
                           onToggle={toggleMarketValueTier}

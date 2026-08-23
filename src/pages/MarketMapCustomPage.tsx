@@ -10,12 +10,12 @@ import { useMarketMap } from '@/hooks/useMarketMap'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useFilteredMarketMapTree } from '@/hooks/useFilteredMarketMapTree'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
-import { toFullDateTimeLabel, toJoEokDecimal } from '@/utils/format'
+import { toFullDateTimeLabel, toJoEokDecimal, toPctSigned } from '@/utils/format'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { registerExcludedCategory, unregisterExcludedCategory } from '@/api/marketMap'
-import type { Market, MarketMapCategoryNode, MarketValueTier } from '@/types/api'
+import type { Market, MarketMapCategoryNode, MarketMapItem, MarketValueTier } from '@/types/api'
 
 // 왼쪽 사이드바 필터 버튼 텍스트(MarketMapFilterSidebar의 FILTER_ITEMS)와 동일하게 맞춘다.
 const MARKET_LABEL: Record<Market, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ' }
@@ -40,6 +40,17 @@ function toDisplayGroup(node: MarketMapCategoryNode): DisplayGroup {
     items: node.items,
     children: node.children.map(toDisplayGroup),
   }
+}
+
+// 등락률 평균/상승·하락·보합 종목수는 개별 종목(changeRate) 기준이라, 지금 화면에 보이는
+// 그룹들의 종목을 전부(하위 카테고리 포함) 펼쳐서 모아야 한다.
+function collectItems(groups: DisplayGroup[]): MarketMapItem[] {
+  const result: MarketMapItem[] = []
+  for (const group of groups) {
+    result.push(...group.items)
+    result.push(...collectItems(group.children))
+  }
+  return result
 }
 
 // categoryId -> "상위 - 하위" 형태의 전체 경로. "이 섹터가 제외 목록에 있는지"만 관리하고,
@@ -76,6 +87,8 @@ export default function MarketMapCustomPage() {
   const [market, setMarket] = useState<Market>('KOSPI')
   const [isCustom, setIsCustom] = useState(true)
   const [showMarketValue, setShowMarketValue] = useState(true)
+  const [showAvgChangeRate, setShowAvgChangeRate] = useState(false)
+  const [showUpDownCount, setShowUpDownCount] = useState(false)
   const [excludedMarketValueTiers, setExcludedMarketValueTiers] = useState<Set<MarketValueTier>>(new Set())
   const [excludedCategoryNames, setExcludedCategoryNames] = useState<Map<number, string>>(new Map())
   // 섹터 제외를 목록별로 켜고 끄는 게 아니라, 제외 적용 자체를 통째로 켜고 끄는 마스터 스위치.
@@ -130,6 +143,12 @@ export default function MarketMapCustomPage() {
   const groups: DisplayGroup[] = currentNode ? [toDisplayGroup(currentNode)] : currentSiblings.map(toDisplayGroup)
   // 지금 화면에 나온 그룹들의 시가총액 합 — 드릴다운 깊이에 따라 groups가 바뀌므로 그때그때 다시 계산된다.
   const totalMarketValue = groups.reduce((sum, group) => sum + group.totalMarketValue, 0)
+  const visibleItems = collectItems(groups)
+  const avgChangeRate =
+    visibleItems.length > 0 ? visibleItems.reduce((sum, item) => sum + item.changeRate, 0) / visibleItems.length : 0
+  const advancerCount = visibleItems.filter(item => item.changeRate > 0).length
+  const declinerCount = visibleItems.filter(item => item.changeRate < 0).length
+  const unchangedCount = visibleItems.length - advancerCount - declinerCount
 
   const handleMarketChange = (next: Market) => {
     setMarket(next)
@@ -214,15 +233,7 @@ export default function MarketMapCustomPage() {
 
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden">
-      {!isFullscreen && (
-        <NavBar
-          actions={
-            data?.snapshotTime && (
-              <span className="whitespace-nowrap text-xs text-black">{toFullDateTimeLabel(data.snapshotTime)} 기준</span>
-            )
-          }
-        />
-      )}
+      {!isFullscreen && <NavBar />}
       {/* 버튼 바 — 전체화면 진입/해제와 무관하게 항상 같은 높이·구성으로 유지된다(예전엔 모드별로
           완전히 다른 JSX 두 벌을 썼는데, 전체화면 시 최상단 NavBar만 숨기는 걸로 바뀌면서 하나로 합쳤다). */}
       <div className="flex h-8 shrink-0 items-center justify-end gap-2 bg-white px-2 shadow-lg">
@@ -234,6 +245,10 @@ export default function MarketMapCustomPage() {
           onChangeMaxDepth={setMaxDepth}
           showMarketValue={showMarketValue}
           onToggleShowMarketValue={() => setShowMarketValue(prev => !prev)}
+          showAvgChangeRate={showAvgChangeRate}
+          onToggleShowAvgChangeRate={() => setShowAvgChangeRate(prev => !prev)}
+          showUpDownCount={showUpDownCount}
+          onToggleShowUpDownCount={() => setShowUpDownCount(prev => !prev)}
           excludedMarketValueTiers={excludedMarketValueTiers}
           onToggleMarketValueTier={handleToggleMarketValueTier}
           onSelectAllMarketValueTiers={handleSelectAllMarketValueTiers}
@@ -277,13 +292,22 @@ export default function MarketMapCustomPage() {
             <span>
               {MARKET_LABEL[market]}
               {showMarketValue && ` (시총: ${toJoEokDecimal(totalMarketValue / 100_000_000)})`}
+              {showAvgChangeRate && ` (등락률 평균: ${toPctSigned(avgChangeRate)})`}
+              {showUpDownCount && ` (상승: ${advancerCount} / 하락: ${declinerCount} / 보합: ${unchangedCount})`}
             </span>
-            <div className="flex items-center gap-0.5">
-              {CHANGE_RATE_LEGEND.map(({ label, className }) => (
-                <div key={label} className={`flex h-5 w-9 items-center justify-center text-[10px] ${className}`}>
-                  {label}
-                </div>
-              ))}
+            <div className="flex items-center gap-2">
+              {data?.snapshotTime && (
+                <span className="whitespace-nowrap text-xs font-normal text-white">
+                  {toFullDateTimeLabel(data.snapshotTime)} 기준
+                </span>
+              )}
+              <div className="flex items-center gap-0.5">
+                {CHANGE_RATE_LEGEND.map(({ label, className }) => (
+                  <div key={label} className={`flex h-5 w-9 items-center justify-center text-[10px] ${className}`}>
+                    {label}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
           {path.length > 0 && (
@@ -350,6 +374,8 @@ export default function MarketMapCustomPage() {
               onExcludeCategory={handleExcludeCategory}
               heightClassName="min-h-0 flex-1"
               showMarketValue={showMarketValue}
+              showAvgChangeRate={showAvgChangeRate}
+              showUpDownCount={showUpDownCount}
               canExclude={isCustom}
             />
           )}
