@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import type { CategoryItem } from '@/types/api'
 import { useCreateCategory, useRenameCategory } from '@/hooks/useMarketMapAdmin'
@@ -21,40 +21,24 @@ function compareCategoryName(a: CategoryItem, b: CategoryItem): number {
   return a.name.localeCompare(b.name, 'ko')
 }
 
-// 세부 카테고리 추가 입력창의 placeholder용 — 루트부터 해당 카테고리까지 이름을 전부 이어붙인다.
-// (예: 뎁스2 밑에 추가하면 "반도체" - "메모리"의 세부 카테고리 추가. 처럼 조상 전체가 보이게)
-function buildPathById(categories: CategoryItem[]): Map<number, string[]> {
-  const byId = new Map(categories.map(c => [c.id, c]))
-  const cache = new Map<number, string[]>()
-  const resolve = (id: number): string[] => {
-    const cached = cache.get(id)
-    if (cached) return cached
-    const category = byId.get(id)!
-    const path = category.parentId != null ? [...resolve(category.parentId), category.name] : [category.name]
-    cache.set(id, path)
-    return path
-  }
-  for (const c of categories) resolve(c.id)
-  return cache
-}
-
 function buildVisibleRows(
   categories: CategoryItem[],
   parentId: number | null,
+  parentPath: string[],
   expandedIds: Set<number>,
   addingChildFor: number | null,
-  pathById: Map<number, string[]>,
 ): Row[] {
   const children = categories.filter(c => c.parentId === parentId).sort(compareCategoryName)
   const rows: Row[] = []
   children.forEach((child, index) => {
     rows.push({ type: 'category', item: child, siblingIndex: index + 1 })
+    const childPath = [...parentPath, child.name]
     // 펼침 여부와 무관하게, 세부 카테고리 추가 버튼을 누른 카테고리 바로 아래에 입력줄을 끼워 넣는다.
     if (addingChildFor === child.id) {
-      rows.push({ type: 'add-child', parentId: child.id, parentPath: pathById.get(child.id) ?? [child.name], depth: child.depth + 1 })
+      rows.push({ type: 'add-child', parentId: child.id, parentPath: childPath, depth: child.depth + 1 })
     }
     if (expandedIds.has(child.id)) {
-      rows.push(...buildVisibleRows(categories, child.id, expandedIds, addingChildFor, pathById))
+      rows.push(...buildVisibleRows(categories, child.id, childPath, expandedIds, addingChildFor))
     }
   })
   return rows
@@ -65,16 +49,16 @@ function buildRowsForRoots(
   roots: CategoryItem[],
   expandedIds: Set<number>,
   addingChildFor: number | null,
-  pathById: Map<number, string[]>,
 ): Row[] {
   const rows: Row[] = []
   roots.forEach((root, index) => {
     rows.push({ type: 'category', item: root, siblingIndex: index + 1 })
+    const rootPath = [root.name]
     if (addingChildFor === root.id) {
-      rows.push({ type: 'add-child', parentId: root.id, parentPath: pathById.get(root.id) ?? [root.name], depth: root.depth + 1 })
+      rows.push({ type: 'add-child', parentId: root.id, parentPath: rootPath, depth: root.depth + 1 })
     }
     if (expandedIds.has(root.id)) {
-      rows.push(...buildVisibleRows(categories, root.id, expandedIds, addingChildFor, pathById))
+      rows.push(...buildVisibleRows(categories, root.id, rootPath, expandedIds, addingChildFor))
     }
   })
   return rows
@@ -142,7 +126,6 @@ export default function AdminCategoryTable({ categories }: Props) {
   const handleCategoryDragEnd = useCategoryDragEnd()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
-  const pathById = useMemo(() => buildPathById(categories), [categories])
   const hasChildren = (id: number) => categories.some(c => c.parentId === id)
 
   const toggleExpand = (id: number) => {
@@ -198,8 +181,8 @@ export default function AdminCategoryTable({ categories }: Props) {
   const splitIndex = Math.ceil(rootCategories.length / 2)
   const leftRoots = rootCategories.slice(0, splitIndex)
   const rightRoots = rootCategories.slice(splitIndex)
-  const leftRows = buildRowsForRoots(categories, leftRoots, expandedIds, addingChildFor, pathById)
-  const rightRows = buildRowsForRoots(categories, rightRoots, expandedIds, addingChildFor, pathById)
+  const leftRows = buildRowsForRoots(categories, leftRoots, expandedIds, addingChildFor)
+  const rightRows = buildRowsForRoots(categories, rightRoots, expandedIds, addingChildFor)
 
   const rootIndexById = new Map<number, number>()
   rootCategories.forEach((c, i) => rootIndexById.set(c.id, i + 1))
@@ -207,7 +190,7 @@ export default function AdminCategoryTable({ categories }: Props) {
   const renderRow = (row: Row) => {
     if (row.type === 'add-child') {
       const parentId = row.parentId
-      const quotedPath = row.parentPath.map(name => `"${name}"`).join(' - ')
+      const quotedChain = row.parentPath.map(name => `'${name}'`).join(' - ')
       return (
         <tr key={`add-child-${parentId}`}>
           <td className="py-0.5 text-left" style={{ paddingLeft: `${row.depth * 20 + 8}px` }}>
@@ -222,7 +205,7 @@ export default function AdminCategoryTable({ categories }: Props) {
                   if (e.key === 'Enter') handleCreateChild(parentId)
                   if (e.key === 'Escape') setAddingChildFor(null)
                 }}
-                placeholder={`${quotedPath}의 세부 카테고리 추가.`}
+                placeholder={`${quotedChain} 섹터 내 세부항목 추가`}
                 className="nes-input is-dark min-w-0 flex-1 text-sm"
               />
               <button
@@ -378,38 +361,34 @@ export default function AdminCategoryTable({ categories }: Props) {
             <p className="text-sm text-yellow-400">다른 카테고리 위에 놓으면 그 밑으로, 빈 곳에 놓으면 최상위로 이동합니다</p>
           )}
         </div>
-        <div className="mb-4 overflow-x-auto scrollbar-hide">
-          <table className="nes-table is-dark is-bordered w-full text-sm [&_td]:border-white/10">
-            <tbody>
-              <tr>
-                <td className="py-0.5 text-left">
-                  <div className="group/create flex items-center gap-2">
-                    <span className="shrink-0 text-gray-400">0.</span>
-                    <input
-                      type="text"
-                      value={newName}
-                      onChange={e => setNewName(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleCreate()}
-                      placeholder="카테고리 추가"
-                      className="nes-input is-dark min-w-0 flex-1 text-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleCreate}
-                      className="nes-btn shrink-0 border-[#4f8fd6] bg-[#4f8fd6] px-3 py-1 text-sm text-white opacity-0 transition-opacity hover:brightness-125 group-focus-within/create:opacity-100"
-                    >
-                      추가
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="overflow-x-auto scrollbar-hide">
             <table className="nes-table is-dark is-bordered w-full text-sm [&_td]:border-white/10">
-              <tbody>{leftRows.map(renderRow)}</tbody>
+              <tbody>
+                <tr>
+                  <td className="py-0.5 text-left">
+                    <div className="group/create flex items-center gap-2">
+                      <span className="shrink-0 text-gray-400">0.</span>
+                      <input
+                        type="text"
+                        value={newName}
+                        onChange={e => setNewName(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                        placeholder="카테고리 추가"
+                        className="nes-input is-dark min-w-0 flex-1 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCreate}
+                        className="nes-btn shrink-0 border-[#4f8fd6] bg-[#4f8fd6] px-3 py-1 text-sm text-white opacity-0 transition-opacity hover:brightness-125 group-focus-within/create:opacity-100"
+                      >
+                        추가
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {leftRows.map(renderRow)}
+              </tbody>
             </table>
           </div>
           <div className="overflow-x-auto scrollbar-hide">

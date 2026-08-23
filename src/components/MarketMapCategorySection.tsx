@@ -63,7 +63,13 @@ export default function MarketMapCategorySection({
   const unchangedCount = items.length - advancerCount - declinerCount
   const avgChangeRateSuffix = ` (등락률 평균: ${toPctSigned(avgChangeRate)})`
   const upDownCountSuffix = ` (상승: ${advancerCount} / 하락: ${declinerCount} / 보합: ${unchangedCount})`
-  const label = `${category.categoryName}${marketValueSuffix}${avgChangeRateSuffix}${upDownCountSuffix}`
+  // 호버 툴팁은 태그 텍스트와 달리 항목별로 줄바꿈해서 보여준다.
+  const label = [
+    category.categoryName,
+    `시총: ${toJoEokDecimal(category.totalMarketValue / 100_000_000)}`,
+    `등락률 평균: ${toPctSigned(avgChangeRate)}`,
+    `상승: ${advancerCount} / 하락: ${declinerCount} / 보합: ${unchangedCount}`,
+  ].join('\n')
   // 옵션 태그는 지금 보이는 화면의 최상단 뎁스(depth===0)에만 출력한다 — 세부 카테고리까지
   // 전부 중복으로 나오면 지저분해서, 드릴다운해서 들어가도 그 시점의 최상단 뎁스에서만 다시 보여준다.
   const headerSuffix =
@@ -139,7 +145,7 @@ export default function MarketMapCategorySection({
         tooltipPos &&
         createPortal(
           <div
-            className="pointer-events-none fixed z-[9999] w-max whitespace-nowrap rounded border border-gray-600 bg-[var(--surface)] px-2 py-1 text-left text-xs text-white shadow-lg"
+            className="pointer-events-none fixed z-[9999] w-max whitespace-pre-line rounded border border-gray-600 bg-[var(--surface)] px-2 py-1 text-left text-xs text-white shadow-lg"
             style={{
               left: tooltipPos.left,
               top: tooltipPos.top,

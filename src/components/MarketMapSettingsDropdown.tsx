@@ -209,7 +209,7 @@ export default function MarketMapSettingsDropdown({
       </button>
       {isOpen && (
         <div className="absolute right-0 top-full z-30 mt-2 w-56 border border-gray-700 bg-[var(--surface)] p-4 text-left text-sm shadow-lg">
-          <ToggleSwitch checked={isCustom} onChange={onToggleCustom} label="개인 설정 모드" />
+          <ToggleSwitch checked={isCustom} onChange={onToggleCustom} label="커스텀 모드" />
           <div className={`mt-6 flex items-center justify-between gap-2 ${isDepthDisabled ? 'opacity-40' : ''}`}>
             <span className="shrink-0 text-white">분류 단계</span>
             <div className="flex items-center gap-2">

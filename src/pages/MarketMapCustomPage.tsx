@@ -210,9 +210,9 @@ export default function MarketMapCustomPage() {
   const modeStatusText =
     (isCustom
       ? isFullTierRange
-        ? `'개인 설정 모드' 사용 중.`
-        : `'개인 설정 모드' 사용 중으로 ${tierRangeText} 표시 중.`
-      : `'거래소 분류 기준'으로 '개인 설정 모드' 미사용 중.`) +
+        ? `'커스텀 모드' 사용 중.`
+        : `'커스텀 모드' 사용 중으로 ${tierRangeText} 표시 중.`
+      : `'거래소 분류 기준'으로 '커스텀 모드' 미사용 중.`) +
     excludedSectorText +
     ` ${visibleItems.length}/${totalItemCount}`
 
