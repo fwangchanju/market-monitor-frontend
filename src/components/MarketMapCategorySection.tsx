@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import MarketMapBox from './MarketMapBox'
 import { categoryHeaderHeight, PADDING, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
@@ -7,7 +7,8 @@ import type { MarketMapItem } from '@/types/api'
 
 interface Props {
   category: LaidOutCategory
-  onSelectCategory: (categoryName: string) => void
+  // rect는 이 카테고리 박스 전체의 화면상 위치 — 줌인 애니메이션이 어디서부터 확대되는지 계산하는 데 쓴다.
+  onSelectCategory: (categoryName: string, rect: DOMRect) => void
   onOpenExcludeMenu: (categoryId: number, categoryName: string, e: React.MouseEvent) => void
   showMarketValue: boolean
   showAvgChangeRate: boolean
@@ -51,6 +52,7 @@ export default function MarketMapCategorySection({
 }: Props) {
   const [hover, setHover] = useState(false)
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null)
+  const boxRef = useRef<HTMLDivElement>(null)
 
   // 옵션 꺼두면 박스 위 태그 텍스트에선 시총을 빼되, hover 툴팁은 상세 정보라 그대로 둔다.
   const marketValueSuffix = ` (시총: ${toJoEokDecimal(category.totalMarketValue / 100_000_000)})`
@@ -62,9 +64,14 @@ export default function MarketMapCategorySection({
   const avgChangeRateSuffix = ` (등락률 평균: ${toPctSigned(avgChangeRate)})`
   const upDownCountSuffix = ` (상승: ${advancerCount} / 하락: ${declinerCount} / 보합: ${unchangedCount})`
   const label = `${category.categoryName}${marketValueSuffix}${avgChangeRateSuffix}${upDownCountSuffix}`
-  const headerLabel = `${category.categoryName}${showMarketValue ? marketValueSuffix : ''}${
-    showAvgChangeRate ? avgChangeRateSuffix : ''
-  }${showUpDownCount ? upDownCountSuffix : ''}`
+  // 옵션 태그는 지금 보이는 화면의 최상단 뎁스(depth===0)에만 출력한다 — 세부 카테고리까지
+  // 전부 중복으로 나오면 지저분해서, 드릴다운해서 들어가도 그 시점의 최상단 뎁스에서만 다시 보여준다.
+  const headerSuffix =
+    depth === 0
+      ? `${showMarketValue ? marketValueSuffix : ''}${showAvgChangeRate ? avgChangeRateSuffix : ''}${
+          showUpDownCount ? upDownCountSuffix : ''
+        }`
+      : ''
 
   const updateTooltipPos = (e: React.MouseEvent) => {
     setTooltipPos({
@@ -80,6 +87,7 @@ export default function MarketMapCategorySection({
 
   return (
     <div
+      ref={boxRef}
       style={{
         position: 'absolute',
         left: category.x,
@@ -95,7 +103,8 @@ export default function MarketMapCategorySection({
           category.isSelf
             ? undefined
             : e => {
-                onSelectCategory(category.categoryName)
+                const rect = boxRef.current?.getBoundingClientRect()
+                onSelectCategory(category.categoryName, rect ?? e.currentTarget.getBoundingClientRect())
                 // 클릭 후에도 이 버튼에 포커스가 남아서 브라우저 기본 포커스 링이 계속 보이는 걸 방지.
                 e.currentTarget.blur()
               }
@@ -119,7 +128,12 @@ export default function MarketMapCategorySection({
         }}
         className={`absolute top-0 truncate border-2 border-transparent px-1 text-left font-bold text-white ${categoryHeaderColorClass(depth)}`}
       >
-        {headerLabel}
+        {category.categoryName}
+        {headerSuffix && (
+          <span className="font-normal" style={{ fontSize: '0.8em' }}>
+            {headerSuffix}
+          </span>
+        )}
       </button>
       {hover &&
         tooltipPos &&
