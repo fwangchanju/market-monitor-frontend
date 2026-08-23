@@ -5,12 +5,13 @@ import {
   VersionItemSchema,
   StockCategoryListItemSchema,
   BulkAssignResponseSchema,
+  snapshotResponseSchema,
 } from '@/types/api'
 import { z } from 'zod'
 
 const categoryListResponseSchema = z.array(CategoryItemSchema)
 const versionListResponseSchema = z.array(VersionItemSchema)
-const stockCategoryListResponseSchema = z.array(StockCategoryListItemSchema)
+const stockCategoryListResponseSchema = snapshotResponseSchema(StockCategoryListItemSchema)
 
 export const getCategories = () =>
   client.get('/admin/market-map/categories').then(r => categoryListResponseSchema.parse(r.data))

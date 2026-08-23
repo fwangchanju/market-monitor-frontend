@@ -3,10 +3,10 @@ import { Link, useLocation } from 'react-router-dom'
 import { useIsAdmin } from '@/hooks/useAccess'
 
 const BASE_LINKS = [
-  { to: '/market-summary', label: '시장요약' },
-  { to: '/market-map', label: '마켓맵' },
+  { to: '/market-summary', label: '요약' },
+  { to: '/market-map', label: '지도' },
 ]
-const ADMIN_LINK = { to: '/admin/market-map', label: '커스텀' }
+const ADMIN_LINK = { to: '/admin/market-map', label: '개인 설정' }
 
 interface Props {
   center?: ReactNode

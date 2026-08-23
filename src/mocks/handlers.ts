@@ -56,6 +56,9 @@ export const handlers = [
   http.post('/api/market-map/excluded-stocks/:stockCode', ok),
   http.delete('/api/market-map/excluded-stocks/:stockCode', ok),
   http.delete('/api/market-map/excluded-stocks', ok),
+  http.post('/api/market-map/excluded-categories/:categoryId', ok),
+  http.delete('/api/market-map/excluded-categories/:categoryId', ok),
+  http.delete('/api/market-map/excluded-categories', ok),
   http.delete('/api/market-map/reset', ok),
 
   // ── 접근 권한 ───────────────────────────────────────────────────────
@@ -106,7 +109,7 @@ export const handlers = [
   }),
   http.post('/api/admin/market-map/versions/:id/restore', ok),
   http.delete('/api/admin/market-map/versions/:id', ok),
-  http.get('/api/admin/market-map/stock-categories', () => HttpResponse.json(data.adminStockCategories)),
+  http.get('/api/admin/market-map/stock-categories', () => HttpResponse.json(snapshot(data.adminStockCategories))),
   http.put('/api/admin/market-map/stock-categories/:stockCode', ok),
   http.patch('/api/admin/market-map/stock-categories/:stockCode/alias', ok),
   http.patch('/api/admin/market-map/stock-categories/bulk', async ({ request }) => {
