@@ -8,3 +8,12 @@ export const MARKET_VALUE_TIER_OPTIONS: { value: MarketValueTier; label: string;
   { value: 'MID', label: '중형주', range: '5천억 이상' },
   { value: 'SMALL', label: '소형주', range: '5천억 미만' },
 ]
+
+// 시가총액 구간 슬라이더는 작은 것부터 큰 순서로 왼쪽→오른쪽에 배치한다(위 옵션 목록과는 반대 순서).
+export const MARKET_VALUE_TIER_ASCENDING: MarketValueTier[] = ['SMALL', 'MID', 'LARGE', 'MEGA']
+export const MARKET_VALUE_TIER_SHORT_LABEL: Record<MarketValueTier, string> = {
+  SMALL: '소형주',
+  MID: '중형주',
+  LARGE: '대형주',
+  MEGA: '초대형주',
+}
