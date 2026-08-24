@@ -10,7 +10,7 @@ import { useMarketMap } from '@/hooks/useMarketMap'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useFilteredMarketMapTree } from '@/hooks/useFilteredMarketMapTree'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
-import { toFullDateTimeLabel, toJoEokDecimal, toPctSigned } from '@/utils/format'
+import { toFullDateTimeLabel } from '@/utils/format'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
@@ -20,6 +20,10 @@ import type { Market, MarketMapCategoryNode, MarketMapItem, MarketValueTier } fr
 
 // 왼쪽 사이드바 필터 버튼 텍스트(MarketMapFilterSidebar의 FILTER_ITEMS)와 동일하게 맞춘다.
 const MARKET_LABEL: Record<Market, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ' }
+
+// 상단 바 상태 요약 텍스트(modeStatusText)에서 문장 구분마다 쓰는 간격 — 일반 공백은 렌더링 시 하나로
+// 뭉개지므로, non-breaking space 4개로 tab처럼 보이는 간격을 낸다.
+const STATUS_TEXT_GAP = '    '
 
 // 종목 박스 색상 로직(MarketMapBox.boxColorClass)과 같은 방향(0에 가까울수록 짙고 탁하게,
 // 멀어질수록 쨍하게)의 범례. 박스 쪽은 4단계지만 범례는 -3%~+3% 7칸에 맞춰 3단계로 축약했다.
@@ -184,37 +188,43 @@ export default function MarketMapCustomPage() {
   useEffect(() => setBreadcrumbHoverIndex(null), [path])
 
   const groups: DisplayGroup[] = currentNode ? [toDisplayGroup(currentNode)] : currentSiblings.map(toDisplayGroup)
-  // 지금 화면에 나온 그룹들의 시가총액 합 — 드릴다운 깊이에 따라 groups가 바뀌므로 그때그때 다시 계산된다.
-  const totalMarketValue = groups.reduce((sum, group) => sum + group.totalMarketValue, 0)
   const visibleItems = collectItems(groups)
   // 지금 뎁스(path) 기준으로, 카테고리 제외/시가총액 구간 필터를 적용하기 전 원본 트리에 있는 전체 종목 수.
   const rawCurrentNode = findRawNodeByPath(rootNodes, path)
   const totalItemCount = collectRawItems(rawCurrentNode ? [rawCurrentNode] : rootNodes).length
-  const avgChangeRate =
-    visibleItems.length > 0 ? visibleItems.reduce((sum, item) => sum + item.changeRate, 0) / visibleItems.length : 0
-  const advancerCount = visibleItems.filter(item => item.changeRate > 0).length
-  const declinerCount = visibleItems.filter(item => item.changeRate < 0).length
-  const unchangedCount = visibleItems.length - advancerCount - declinerCount
 
   // 상단 바에 지금 켜져있는 모드/시가총액 구간 상태를 한눈에 보여주기 위한 요약 텍스트.
   const isFullTierRange = tierRangeMinIndex === 0 && tierRangeMaxIndex === MARKET_VALUE_TIER_ASCENDING.length - 1
   // 큰 등급 -> 작은 등급 순서로 출력.
-  const tierRangeText = `${MARKET_VALUE_TIER_SHORT_LABEL[MARKET_VALUE_TIER_ASCENDING[tierRangeMaxIndex]]}에서 ${MARKET_VALUE_TIER_SHORT_LABEL[MARKET_VALUE_TIER_ASCENDING[tierRangeMinIndex]]}까지만`
-  // 상위 - 하위 경로 구분자를 "내"로 바꿔서 하나의 따옴표로 감싼다: "금융 - 금속" -> "'금융 내 금속'".
-  const excludedSectorText =
-    excludedCategoryIds.size > 0
-      ? ` 추가로 ${Array.from(excludedCategoryNames.values())
-          .map(name => `'${name.replace(/ - /g, ' 내 ')}'`)
-          .join(', ')} 섹터 제외.`
-      : ''
-  const modeStatusText =
-    (isCustom
-      ? isFullTierRange
-        ? `'커스텀 모드' 사용 중.`
-        : `'커스텀 모드' 사용 중으로 ${tierRangeText} 표시 중.`
-      : `'거래소 분류 기준'으로 '커스텀 모드' 미사용 중.`) +
-    excludedSectorText +
-    ` ${visibleItems.length}/${totalItemCount}`
+  const tierRangeText = `${MARKET_VALUE_TIER_SHORT_LABEL[MARKET_VALUE_TIER_ASCENDING[tierRangeMaxIndex]]}~${MARKET_VALUE_TIER_SHORT_LABEL[MARKET_VALUE_TIER_ASCENDING[tierRangeMinIndex]]}`
+  // 상위 - 하위 경로 구분자를 "내"로 바꿔서 이어붙인다: "금융 - 금속" -> "금융 내 금속".
+  const excludedSectorNames = Array.from(excludedCategoryNames.values())
+    .map(name => name.replace(/ - /g, ' 내 '))
+    .join(', ')
+  const modeStatusText = isCustom ? (
+    <>
+      <span className="underline">커스텀 모드</span> 사용 중
+      {!isFullTierRange && (
+        <>
+          {STATUS_TEXT_GAP}
+          <span className="underline">{tierRangeText}</span>만 표시
+        </>
+      )}
+      {excludedCategoryIds.size > 0 && (
+        <>
+          {STATUS_TEXT_GAP}
+          <span className="underline">{excludedSectorNames}</span> 제외
+        </>
+      )}
+      {STATUS_TEXT_GAP}
+      {visibleItems.length}/{totalItemCount}종목
+    </>
+  ) : (
+    <>
+      <span className="underline">커스텀 모드</span> 미사용{STATUS_TEXT_GAP}
+      {visibleItems.length}/{totalItemCount}종목
+    </>
+  )
 
   const handleMarketChange = (next: Market) => {
     setMarket(next)
@@ -358,27 +368,24 @@ export default function MarketMapCustomPage() {
       <div className="flex min-h-0 flex-1">
         {!isFullscreen && <MarketMapFilterSidebar market={market} onMarketChange={handleMarketChange} />}
         <div ref={captureRef} data-captureid={CAPTURE_ID.MARKET_MAP} className="flex min-h-0 flex-1 flex-col bg-black">
-          <div className="relative mb-1 flex h-7 w-full shrink-0 items-center justify-between border-2 border-black bg-black/70 px-1 text-sm font-bold text-white">
-            <span className="whitespace-nowrap">
-              {MARKET_LABEL[market]}
-              {data?.snapshotTime && (
-                <span className="ml-2 text-xs font-normal text-white">{toFullDateTimeLabel(data.snapshotTime)}</span>
-              )}
-              <span className="text-xs font-normal">
-                {showMarketValue && ` (시총: ${toJoEokDecimal(totalMarketValue / 100_000_000)})`}
-                {showAvgChangeRate && ` (등락률 평균: ${toPctSigned(avgChangeRate)})`}
-                {showUpDownCount && ` (상승: ${advancerCount} / 하락: ${declinerCount} / 보합: ${unchangedCount})`}
-              </span>
-            </span>
-            <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-sm font-normal text-gray-400">
+          <div className="mb-1 grid h-7 w-full shrink-0 grid-cols-[auto_1fr_auto] items-center border-2 border-black bg-black/70 px-1 text-sm font-bold text-white">
+            <span className="whitespace-nowrap">{MARKET_LABEL[market]}</span>
+            <span className="min-w-0 whitespace-nowrap text-center text-sm font-normal text-gray-400">
               {modeStatusText}
             </span>
-            <div className="flex items-center gap-0.5">
-              {CHANGE_RATE_LEGEND.map(({ label, className }) => (
-                <div key={label} className={`flex h-5 w-9 items-center justify-center text-[10px] ${className}`}>
-                  {label}
-                </div>
-              ))}
+            <div className="flex items-center gap-3">
+              {data?.snapshotTime && (
+                <span className="whitespace-nowrap text-xs font-normal text-white">
+                  {toFullDateTimeLabel(data.snapshotTime)}
+                </span>
+              )}
+              <div className="flex items-center gap-0.5">
+                {CHANGE_RATE_LEGEND.map(({ label, className }) => (
+                  <div key={label} className={`flex h-5 w-9 items-center justify-center text-[10px] ${className}`}>
+                    {label}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
           {path.length > 0 && (
