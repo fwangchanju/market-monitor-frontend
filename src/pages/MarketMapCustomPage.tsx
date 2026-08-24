@@ -15,6 +15,7 @@ import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { registerExcludedCategory, unregisterExcludedCategory } from '@/api/marketMap'
+import { MARKET_VALUE_TIER_ASCENDING, MARKET_VALUE_TIER_SHORT_LABEL } from '@/utils/marketValueTier'
 import type { Market, MarketMapCategoryNode, MarketMapItem, MarketValueTier } from '@/types/api'
 
 // 왼쪽 사이드바 필터 버튼 텍스트(MarketMapFilterSidebar의 FILTER_ITEMS)와 동일하게 맞춘다.
@@ -53,6 +54,29 @@ function collectItems(groups: DisplayGroup[]): MarketMapItem[] {
   return result
 }
 
+// 카테고리 제외/시가총액 구간 필터를 적용하기 "전" 원본 트리 기준으로, 지금 보고 있는 뎁스(path)에
+// 해당하는 종목을 전부 모은다 — "제외된 개수까지 포함한 전체 리스트 개수"를 보여주기 위한 분모.
+function collectRawItems(nodes: MarketMapCategoryNode[]): MarketMapItem[] {
+  const result: MarketMapItem[] = []
+  for (const node of nodes) {
+    result.push(...node.items)
+    result.push(...collectRawItems(node.children))
+  }
+  return result
+}
+
+function findRawNodeByPath(nodes: MarketMapCategoryNode[], path: string[]): MarketMapCategoryNode | null {
+  let node: MarketMapCategoryNode | null = null
+  let siblings = nodes
+  for (const name of path) {
+    const found = siblings.find(n => n.categoryName === name)
+    if (!found) return null
+    node = found
+    siblings = found.children
+  }
+  return node
+}
+
 // categoryId -> "상위 - 하위" 형태의 전체 경로. "이 섹터가 제외 목록에 있는지"만 관리하고,
 // 실제로 화면에서 걸러낼지는 별도의 sectorFilterEnabled 마스터 스위치가 결정한다.
 function seedExcludedCategoryNames(
@@ -86,10 +110,14 @@ type DownloadStatus = 'idle' | 'downloading' | 'error'
 export default function MarketMapCustomPage() {
   const [market, setMarket] = useState<Market>('KOSPI')
   const [isCustom, setIsCustom] = useState(true)
-  const [showMarketValue, setShowMarketValue] = useState(true)
+  const [showMarketValue, setShowMarketValue] = useState(false)
   const [showAvgChangeRate, setShowAvgChangeRate] = useState(false)
   const [showUpDownCount, setShowUpDownCount] = useState(false)
-  const [excludedMarketValueTiers, setExcludedMarketValueTiers] = useState<Set<MarketValueTier>>(new Set())
+  // MARKET_VALUE_TIER_ASCENDING(소→초) 기준 인덱스 — 이 구간(포함) 밖의 등급은 제외된다.
+  // 기본값(양끝)이면 아무것도 제외 안 함.
+  // 기본값: 중형주~초대형주만(소형주 제외) 표시.
+  const [tierRangeMinIndex, setTierRangeMinIndex] = useState(MARKET_VALUE_TIER_ASCENDING.indexOf('MID'))
+  const [tierRangeMaxIndex, setTierRangeMaxIndex] = useState(MARKET_VALUE_TIER_ASCENDING.length - 1)
   const [excludedCategoryNames, setExcludedCategoryNames] = useState<Map<number, string>>(new Map())
   // 섹터 제외를 목록별로 켜고 끄는 게 아니라, 제외 적용 자체를 통째로 켜고 끄는 마스터 스위치.
   const [sectorFilterEnabled, setSectorFilterEnabled] = useState(true)
@@ -102,6 +130,9 @@ export default function MarketMapCustomPage() {
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
   // 브레드크럼에서 지금 hover 중인 구간의 인덱스 — 이 인덱스 이하(자기 자신 포함) 구간을 전부 강조 표시한다.
   const [breadcrumbHoverIndex, setBreadcrumbHoverIndex] = useState<number | null>(null)
+  // null이 아니면 MarketMapTreemap이 해당 뎁스로 줄어드는 줌아웃 애니메이션을 재생하고, 끝나면
+  // handleZoomOutComplete를 불러서 실제 이동을 한다 — 애니메이션 도중엔 path/groups를 먼저 바꾸지 않는다.
+  const [zoomOutRequestDepth, setZoomOutRequestDepth] = useState<number | null>(null)
   const captureRef = useRef<HTMLDivElement>(null)
   // 새로 받아온 (market, isCustom) 조합의 데이터가 처음 도착했을 때만 서버 isExcluded로 시드하고,
   // 그 뒤 60초 백그라운드 재조회가 로컬에서 방금 토글한 상태를 덮어쓰지 않게 한다(fire-and-forget 저장이라
@@ -126,6 +157,18 @@ export default function MarketMapCustomPage() {
     [excludedCategoryNames, sectorFilterEnabled, isCustom],
   )
 
+  // 슬라이더의 두 핸들(포함) 밖에 있는 등급만 실제 필터링에 쓰는 Set으로 변환한다.
+  // 커스텀 모드가 아니면(기본 분류 트리) 시가총액 구간 필터도 무시한다 — 카테고리 제외와 동일하게 커스텀 트리 전용 기능.
+  const excludedMarketValueTiers = useMemo(
+    () =>
+      isCustom
+        ? new Set(
+            MARKET_VALUE_TIER_ASCENDING.filter((_, index) => index < tierRangeMinIndex || index > tierRangeMaxIndex),
+          )
+        : new Set<MarketValueTier>(),
+    [tierRangeMinIndex, tierRangeMaxIndex, isCustom],
+  )
+
   // 커스텀 모드가 아니면 뎁스 제한도 무시한다(기본 트리는 어차피 사실상 1뎁스).
   const { filteredRootNodes, availableMaxDepth } = useFilteredMarketMapTree(
     rootNodes,
@@ -144,11 +187,34 @@ export default function MarketMapCustomPage() {
   // 지금 화면에 나온 그룹들의 시가총액 합 — 드릴다운 깊이에 따라 groups가 바뀌므로 그때그때 다시 계산된다.
   const totalMarketValue = groups.reduce((sum, group) => sum + group.totalMarketValue, 0)
   const visibleItems = collectItems(groups)
+  // 지금 뎁스(path) 기준으로, 카테고리 제외/시가총액 구간 필터를 적용하기 전 원본 트리에 있는 전체 종목 수.
+  const rawCurrentNode = findRawNodeByPath(rootNodes, path)
+  const totalItemCount = collectRawItems(rawCurrentNode ? [rawCurrentNode] : rootNodes).length
   const avgChangeRate =
     visibleItems.length > 0 ? visibleItems.reduce((sum, item) => sum + item.changeRate, 0) / visibleItems.length : 0
   const advancerCount = visibleItems.filter(item => item.changeRate > 0).length
   const declinerCount = visibleItems.filter(item => item.changeRate < 0).length
   const unchangedCount = visibleItems.length - advancerCount - declinerCount
+
+  // 상단 바에 지금 켜져있는 모드/시가총액 구간 상태를 한눈에 보여주기 위한 요약 텍스트.
+  const isFullTierRange = tierRangeMinIndex === 0 && tierRangeMaxIndex === MARKET_VALUE_TIER_ASCENDING.length - 1
+  // 큰 등급 -> 작은 등급 순서로 출력.
+  const tierRangeText = `${MARKET_VALUE_TIER_SHORT_LABEL[MARKET_VALUE_TIER_ASCENDING[tierRangeMaxIndex]]}에서 ${MARKET_VALUE_TIER_SHORT_LABEL[MARKET_VALUE_TIER_ASCENDING[tierRangeMinIndex]]}까지만`
+  // 상위 - 하위 경로 구분자를 "내"로 바꿔서 하나의 따옴표로 감싼다: "금융 - 금속" -> "'금융 내 금속'".
+  const excludedSectorText =
+    excludedCategoryIds.size > 0
+      ? ` 추가로 ${Array.from(excludedCategoryNames.values())
+          .map(name => `'${name.replace(/ - /g, ' 내 ')}'`)
+          .join(', ')} 섹터 제외.`
+      : ''
+  const modeStatusText =
+    (isCustom
+      ? isFullTierRange
+        ? `'커스텀 모드' 사용 중.`
+        : `'커스텀 모드' 사용 중으로 ${tierRangeText} 표시 중.`
+      : `'거래소 분류 기준'으로 '커스텀 모드' 미사용 중.`) +
+    excludedSectorText +
+    ` ${visibleItems.length}/${totalItemCount}`
 
   const handleMarketChange = (next: Market) => {
     setMarket(next)
@@ -160,16 +226,20 @@ export default function MarketMapCustomPage() {
     reset()
   }
 
-  const handleToggleMarketValueTier = (tier: MarketValueTier) => {
-    setExcludedMarketValueTiers(prev => {
-      const next = new Set(prev)
-      if (next.has(tier)) next.delete(tier)
-      else next.add(tier)
-      return next
-    })
+  const handleChangeTierRange = (minIndex: number, maxIndex: number) => {
+    setTierRangeMinIndex(minIndex)
+    setTierRangeMaxIndex(maxIndex)
   }
 
-  const handleSelectAllMarketValueTiers = () => setExcludedMarketValueTiers(new Set())
+  // breadcrumb에서 상위 뎁스로 갈 때, 바로 이동하지 않고 줌아웃 애니메이션을 먼저 요청한다.
+  const handleGoToDepth = (depth: number) => {
+    if (depth >= path.length) return
+    setZoomOutRequestDepth(depth)
+  }
+  const handleZoomOutComplete = (depth: number) => {
+    goToDepth(depth)
+    setZoomOutRequestDepth(null)
+  }
 
   const handleExcludeCategory = (categoryId: number, categoryName: string) => {
     const path = findCategoryPath(rootNodes, categoryId)
@@ -249,9 +319,9 @@ export default function MarketMapCustomPage() {
           onToggleShowAvgChangeRate={() => setShowAvgChangeRate(prev => !prev)}
           showUpDownCount={showUpDownCount}
           onToggleShowUpDownCount={() => setShowUpDownCount(prev => !prev)}
-          excludedMarketValueTiers={excludedMarketValueTiers}
-          onToggleMarketValueTier={handleToggleMarketValueTier}
-          onSelectAllMarketValueTiers={handleSelectAllMarketValueTiers}
+          tierRangeMinIndex={tierRangeMinIndex}
+          tierRangeMaxIndex={tierRangeMaxIndex}
+          onChangeTierRange={handleChangeTierRange}
           sectorFilterEnabled={sectorFilterEnabled}
           onToggleSectorFilter={() => setSectorFilterEnabled(prev => !prev)}
           excludedCategories={Array.from(excludedCategoryNames, ([categoryId, categoryName]) => ({ categoryId, categoryName }))}
@@ -287,27 +357,28 @@ export default function MarketMapCustomPage() {
       </div>
       <div className="flex min-h-0 flex-1">
         {!isFullscreen && <MarketMapFilterSidebar market={market} onMarketChange={handleMarketChange} />}
-        <div ref={captureRef} data-captureid={CAPTURE_ID.MARKET_MAP} className="flex min-h-0 flex-1 flex-col">
-          <div className="mb-1 flex h-7 w-full shrink-0 items-center justify-between border-2 border-black bg-black/70 px-1 text-sm font-bold text-white">
-            <span>
+        <div ref={captureRef} data-captureid={CAPTURE_ID.MARKET_MAP} className="flex min-h-0 flex-1 flex-col bg-black">
+          <div className="relative mb-1 flex h-7 w-full shrink-0 items-center justify-between border-2 border-black bg-black/70 px-1 text-sm font-bold text-white">
+            <span className="whitespace-nowrap">
               {MARKET_LABEL[market]}
-              {showMarketValue && ` (시총: ${toJoEokDecimal(totalMarketValue / 100_000_000)})`}
-              {showAvgChangeRate && ` (등락률 평균: ${toPctSigned(avgChangeRate)})`}
-              {showUpDownCount && ` (상승: ${advancerCount} / 하락: ${declinerCount} / 보합: ${unchangedCount})`}
-            </span>
-            <div className="flex items-center gap-2">
               {data?.snapshotTime && (
-                <span className="whitespace-nowrap text-xs font-normal text-white">
-                  {toFullDateTimeLabel(data.snapshotTime)} 기준
-                </span>
+                <span className="ml-2 text-xs font-normal text-white">{toFullDateTimeLabel(data.snapshotTime)}</span>
               )}
-              <div className="flex items-center gap-0.5">
-                {CHANGE_RATE_LEGEND.map(({ label, className }) => (
-                  <div key={label} className={`flex h-5 w-9 items-center justify-center text-[10px] ${className}`}>
-                    {label}
-                  </div>
-                ))}
-              </div>
+              <span className="text-xs font-normal">
+                {showMarketValue && ` (시총: ${toJoEokDecimal(totalMarketValue / 100_000_000)})`}
+                {showAvgChangeRate && ` (등락률 평균: ${toPctSigned(avgChangeRate)})`}
+                {showUpDownCount && ` (상승: ${advancerCount} / 하락: ${declinerCount} / 보합: ${unchangedCount})`}
+              </span>
+            </span>
+            <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-sm font-normal text-gray-400">
+              {modeStatusText}
+            </span>
+            <div className="flex items-center gap-0.5">
+              {CHANGE_RATE_LEGEND.map(({ label, className }) => (
+                <div key={label} className={`flex h-5 w-9 items-center justify-center text-[10px] ${className}`}>
+                  {label}
+                </div>
+              ))}
             </div>
           </div>
           {path.length > 0 && (
@@ -316,7 +387,7 @@ export default function MarketMapCustomPage() {
             // 않도록(스테일 하이라이트 방지), 그리고 실제 마우스가 움직인 경우에만 값이 바뀌므로
             // 클릭 직후 레이아웃이 바뀌면서 커서 아래에 새 버튼이 나타나 생기는 유령 hover도 막아준다.
             <div
-              onClick={() => goToDepth(0)}
+              onClick={() => handleGoToDepth(0)}
               onMouseMove={e => {
                 const target = e.target instanceof Element ? e.target.closest<HTMLElement>('[data-breadcrumb-index]') : null
                 setBreadcrumbHoverIndex(target ? Number(target.dataset.breadcrumbIndex) : 0)
@@ -345,7 +416,7 @@ export default function MarketMapCustomPage() {
                         type="button"
                         onClick={e => {
                           e.stopPropagation()
-                          goToDepth(segmentIndex)
+                          handleGoToDepth(segmentIndex)
                         }}
                         style={{ fontFamily: 'inherit' }}
                         className={`border-0 bg-transparent p-0 text-sm font-bold ${isHighlighted ? 'text-yellow-400' : 'text-white'}`}
@@ -370,6 +441,7 @@ export default function MarketMapCustomPage() {
             <MarketMapTreemap
               groups={groups}
               selfCategoryName={currentNode?.categoryName ?? null}
+              depth={path.length}
               onSelectCategory={enterCategory}
               onExcludeCategory={handleExcludeCategory}
               heightClassName="min-h-0 flex-1"
@@ -377,6 +449,8 @@ export default function MarketMapCustomPage() {
               showAvgChangeRate={showAvgChangeRate}
               showUpDownCount={showUpDownCount}
               canExclude={isCustom}
+              zoomOutRequestDepth={zoomOutRequestDepth}
+              onZoomOutComplete={handleZoomOutComplete}
             />
           )}
         </div>

@@ -6,7 +6,7 @@ const BASE_LINKS = [
   { to: '/market-summary', label: '요약' },
   { to: '/market-map', label: '지도' },
 ]
-const ADMIN_LINK = { to: '/admin/market-map', label: '개인 설정' }
+const ADMIN_LINK = { to: '/admin/market-map', label: '커스텀' }
 
 interface Props {
   center?: ReactNode
