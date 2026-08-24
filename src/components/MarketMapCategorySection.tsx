@@ -57,7 +57,10 @@ export default function MarketMapCategorySection({
   // 옵션 꺼두면 박스 위 태그 텍스트에선 시총을 빼되, hover 툴팁은 상세 정보라 그대로 둔다.
   const marketValueSuffix = ` (시총: ${toJoEokDecimal(category.totalMarketValue / 100_000_000)})`
   const items = collectCategoryItems(category)
-  const avgChangeRate = items.length > 0 ? items.reduce((sum, item) => sum + item.changeRate, 0) / items.length : 0
+  // 종목 수 기준 산술평균이 아니라, 시가총액으로 가중치를 준 평균.
+  const totalWeight = items.reduce((sum, item) => sum + item.totalMarketValue, 0)
+  const avgChangeRate =
+    totalWeight > 0 ? items.reduce((sum, item) => sum + item.changeRate * item.totalMarketValue, 0) / totalWeight : 0
   const advancerCount = items.filter(item => item.changeRate > 0).length
   const declinerCount = items.filter(item => item.changeRate < 0).length
   const unchangedCount = items.length - advancerCount - declinerCount
@@ -68,7 +71,7 @@ export default function MarketMapCategorySection({
     category.categoryName,
     `시총: ${toJoEokDecimal(category.totalMarketValue / 100_000_000)}`,
     `등락률 평균: ${toPctSigned(avgChangeRate)}`,
-    `상승: ${advancerCount} / 하락: ${declinerCount} / 보합: ${unchangedCount}`,
+    `상승 ${advancerCount} 보합 ${unchangedCount} 하락 ${declinerCount}`,
   ].join('\n')
   // 옵션 태그는 지금 보이는 화면의 최상단 뎁스(depth===0)에만 출력한다 — 세부 카테고리까지
   // 전부 중복으로 나오면 지저분해서, 드릴다운해서 들어가도 그 시점의 최상단 뎁스에서만 다시 보여준다.

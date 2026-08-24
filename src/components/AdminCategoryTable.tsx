@@ -14,10 +14,18 @@ type Row =
   | { type: 'category'; item: CategoryItem; siblingIndex: number }
   | { type: 'add-child'; parentId: number; parentPath: string[]; depth: number }
 
-// 이름순 정렬하되 "미분류"는 항상 맨 뒤로.
+// 특수문자 < 숫자 < 영어 < 한글 순으로 묶고, 그룹 내에서는 이름순 정렬.
+function charTier(ch: string): number {
+  if (/[0-9]/.test(ch)) return 1
+  if (/[a-zA-Z]/.test(ch)) return 2
+  if (/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(ch)) return 3
+  return 0
+}
+
 function compareCategoryName(a: CategoryItem, b: CategoryItem): number {
-  if (a.name === '미분류') return 1
-  if (b.name === '미분류') return -1
+  const tierA = charTier(a.name[0] ?? '')
+  const tierB = charTier(b.name[0] ?? '')
+  if (tierA !== tierB) return tierA - tierB
   return a.name.localeCompare(b.name, 'ko')
 }
 
