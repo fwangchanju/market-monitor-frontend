@@ -12,9 +12,10 @@ interface Props {
   onSelectCategory: (categoryName: string) => void
   onExcludeCategory: (categoryId: number, categoryName: string) => void
   heightClassName?: string
-  showMarketValue: boolean
-  showAvgChangeRate: boolean
-  showUpDownCount: boolean
+  // 셋 다 null = 전부 꺼짐. [min, max]면 그 뎁스 범위(현재 화면 기준 상대 뎁스)에서만 표시.
+  marketValueDepthRange: [number, number] | null
+  avgChangeRateDepthRange: [number, number] | null
+  upDownCountDepthRange: [number, number] | null
   // 커스텀 모드가 아닐 때는(기본 분류 트리) 카테고리 제외 액션 자체를 제공하지 않는다.
   canExclude: boolean
   // 0이 아닌 뎁스가 오면 그 뎁스로 진입할 때 썼던 위치로 줄어드는 애니메이션을 재생한다.
@@ -75,9 +76,9 @@ export default function MarketMapTreemap({
   onSelectCategory,
   onExcludeCategory,
   heightClassName = 'h-[70vh]',
-  showMarketValue,
-  showAvgChangeRate,
-  showUpDownCount,
+  marketValueDepthRange,
+  avgChangeRateDepthRange,
+  upDownCountDepthRange,
   canExclude,
   zoomOutRequestDepth,
   onZoomOutComplete,
@@ -247,9 +248,9 @@ export default function MarketMapTreemap({
               category={category}
               onSelectCategory={noop}
               onOpenExcludeMenu={noop}
-              showMarketValue={showMarketValue}
-              showAvgChangeRate={showAvgChangeRate}
-              showUpDownCount={showUpDownCount}
+              marketValueDepthRange={marketValueDepthRange}
+              avgChangeRateDepthRange={avgChangeRateDepthRange}
+              upDownCountDepthRange={upDownCountDepthRange}
               canExclude={false}
             />
           ))}
@@ -262,9 +263,9 @@ export default function MarketMapTreemap({
             category={category}
             onSelectCategory={handleSelectCategory}
             onOpenExcludeMenu={handleOpenExcludeMenu}
-            showMarketValue={showMarketValue}
-            showAvgChangeRate={showAvgChangeRate}
-            showUpDownCount={showUpDownCount}
+            marketValueDepthRange={marketValueDepthRange}
+            avgChangeRateDepthRange={avgChangeRateDepthRange}
+            upDownCountDepthRange={upDownCountDepthRange}
             canExclude={canExclude}
           />
         ))}

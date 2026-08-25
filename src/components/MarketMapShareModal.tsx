@@ -59,7 +59,7 @@ export default function MarketMapShareModal({
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70" onClick={onClose}>
-      <div className="w-[630px] border border-gray-700 bg-[var(--surface)] p-4" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-3xl border border-gray-700 bg-[var(--surface)] p-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-gray-700 pb-3">
           <p className="flex h-6 items-center font-bold leading-none text-white">Share Map</p>
           <button
@@ -71,23 +71,16 @@ export default function MarketMapShareModal({
             ✕
           </button>
         </div>
-        <div className="mt-4 flex h-[288px] items-center justify-center overflow-hidden border border-gray-700 bg-black/30">
+        <div className="mt-4 flex items-center justify-center overflow-hidden border border-gray-700 bg-black/30">
           {previewSrc ? (
-            <img src={previewSrc} alt="마켓맵 미리보기" className="h-full w-full object-contain" />
+            <img src={previewSrc} alt="마켓맵 미리보기" className="h-auto w-full" />
           ) : (
-            <Spinner />
+            <div className="flex h-96 w-full items-center justify-center">
+              <Spinner />
+            </div>
           )}
         </div>
-        <div className="mt-4 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={onDownload}
-            disabled={isDownloading}
-            className="nes-btn flex items-center gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800"
-          >
-            {isDownloading ? <Spinner className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
-            {downloadLabel}
-          </button>
+        <div className="mt-4 flex items-center gap-4 border-t border-gray-700 pt-3">
           <button
             type="button"
             onClick={onCopy}
@@ -97,14 +90,14 @@ export default function MarketMapShareModal({
             {isCopying && <Spinner className="h-4 w-4" />}
             {copyLabel}
           </button>
-        </div>
-        <div className="mt-4 flex items-center justify-end border-t border-gray-700 pt-3">
           <button
             type="button"
-            onClick={onClose}
-            className="nes-btn border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800"
+            onClick={onDownload}
+            disabled={isDownloading}
+            className="nes-btn flex items-center gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800"
           >
-            Close
+            {isDownloading ? <Spinner className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
+            {downloadLabel}
           </button>
         </div>
       </div>

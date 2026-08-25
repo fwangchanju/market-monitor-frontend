@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import MarketMapFilterSidebar from '@/components/MarketMapFilterSidebar'
 import MarketMapSettingsDropdown from '@/components/MarketMapSettingsDropdown'
@@ -10,7 +11,7 @@ import { useMarketMap } from '@/hooks/useMarketMap'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useFilteredMarketMapTree } from '@/hooks/useFilteredMarketMapTree'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
-import { toFullDateTimeLabel } from '@/utils/format'
+import { TAB_GAP, toFullDateTimeLabel } from '@/utils/format'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
@@ -21,20 +22,16 @@ import type { Market, MarketMapCategoryNode, MarketMapItem, MarketValueTier } fr
 // 왼쪽 사이드바 필터 버튼 텍스트(MarketMapFilterSidebar의 FILTER_ITEMS)와 동일하게 맞춘다.
 const MARKET_LABEL: Record<Market, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ' }
 
-// 상단 바 상태 요약 텍스트(modeStatusText)에서 문장 구분마다 쓰는 간격 — 일반 공백은 렌더링 시 하나로
-// 뭉개지므로, non-breaking space 4개로 tab처럼 보이는 간격을 낸다.
-const STATUS_TEXT_GAP = '    '
-
 // 종목 박스 색상 로직(MarketMapBox.boxColorClass)과 같은 방향(0에 가까울수록 짙고 탁하게,
 // 멀어질수록 쨍하게)의 범례. 박스 쪽은 4단계지만 범례는 -3%~+3% 7칸에 맞춰 3단계로 축약했다.
 const CHANGE_RATE_LEGEND = [
-  { label: '-5%', className: 'bg-blue-500' },
-  { label: '-3%', className: 'bg-blue-600' },
-  { label: '-1%', className: 'bg-blue-700' },
+  { label: '-10%', className: 'bg-blue-500' },
+  { label: '-6%', className: 'bg-blue-600' },
+  { label: '-2%', className: 'bg-blue-700' },
   { label: '0%', className: 'bg-gray-600' },
-  { label: '+1%', className: 'bg-red-700' },
-  { label: '+3%', className: 'bg-red-600' },
-  { label: '+5%', className: 'bg-red-500' },
+  { label: '+2%', className: 'bg-red-700' },
+  { label: '+6%', className: 'bg-red-600' },
+  { label: '+10%', className: 'bg-red-500' },
 ] as const
 
 function toDisplayGroup(node: MarketMapCategoryNode): DisplayGroup {
@@ -111,12 +108,24 @@ function findCategoryPath(nodes: MarketMapCategoryNode[], targetId: number, ance
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
 
+// 표시 옵션 슬라이더 인덱스(0=OFF, 1=뎁스0, 2=뎁스1, ...)를 실제 뎁스 범위로 변환한다.
+// max가 OFF(0)에 있으면 완전히 꺼짐.
+function toDepthRange(minIndex: number, maxIndex: number): [number, number] | null {
+  return maxIndex > 0 ? [Math.max(minIndex - 1, 0), maxIndex - 1] : null
+}
+
 export default function MarketMapCustomPage() {
   const [market, setMarket] = useState<Market>('KOSPI')
   const [isCustom, setIsCustom] = useState(true)
-  const [showMarketValue, setShowMarketValue] = useState(false)
-  const [showAvgChangeRate, setShowAvgChangeRate] = useState(false)
-  const [showUpDownCount, setShowUpDownCount] = useState(false)
+  // 세 표시 옵션(시가총액 합/등락률 평균/등락 종목수) 모두 슬라이더 인덱스 기준(0=OFF, 1=뎁스0, 2=뎁스1, ...)
+  // — 둘 다 0(OFF)이면 꺼짐. 실제 뎁스 범위로 변환한 값은 각각의 DepthRange를 통해서만 하위로 내려보낸다.
+  const [marketValueDepthMinIndex, setMarketValueDepthMinIndex] = useState(0)
+  const [marketValueDepthMaxIndex, setMarketValueDepthMaxIndex] = useState(0)
+  // 기본값: 2차 분류만 켜짐(렌더러가 캡처하는 기본 화면에 등락률이 보이도록).
+  const [avgChangeRateDepthMinIndex, setAvgChangeRateDepthMinIndex] = useState(2)
+  const [avgChangeRateDepthMaxIndex, setAvgChangeRateDepthMaxIndex] = useState(2)
+  const [upDownCountDepthMinIndex, setUpDownCountDepthMinIndex] = useState(0)
+  const [upDownCountDepthMaxIndex, setUpDownCountDepthMaxIndex] = useState(0)
   // MARKET_VALUE_TIER_ASCENDING(소→초) 기준 인덱스 — 이 구간(포함) 밖의 등급은 제외된다.
   // 기본값(양끝)이면 아무것도 제외 안 함.
   // 기본값: 중형주~초대형주만(소형주 제외) 표시.
@@ -126,8 +135,23 @@ export default function MarketMapCustomPage() {
   // 섹터 제외를 목록별로 켜고 끄는 게 아니라, 제외 적용 자체를 통째로 켜고 끄는 마스터 스위치.
   const [sectorFilterEnabled, setSectorFilterEnabled] = useState(true)
   // null = 제한 없음(전체 뎁스 표시). 슬라이더의 실제 상한(availableMaxDepth)은 트리 계산 후에 나온다.
-  const [maxDepth, setMaxDepth] = useState<number | null>(null)
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  // 기본값 2(렌더러 캡처 기준 화면에 맞춤).
+  const [maxDepth, setMaxDepth] = useState<number | null>(2)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [isFullscreen, setIsFullscreen] = useState(() => searchParams.get('fullscreen') === 'on')
+  // 초기 상태 읽는 용도일 뿐, 주소창에 계속 남아있을 필요는 없어서 진입 직후 지운다.
+  useEffect(() => {
+    if (!searchParams.has('fullscreen')) return
+    setSearchParams(
+      prev => {
+        const next = new URLSearchParams(prev)
+        next.delete('fullscreen')
+        return next
+      },
+      { replace: true },
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 진입 시 한 번만 지우면 됨
+  }, [])
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false)
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
@@ -181,6 +205,30 @@ export default function MarketMapCustomPage() {
     isCustom ? maxDepth : null,
   )
 
+  // 데이터가 얕아서(예: 기본값 2인데 실제 뎁스가 1까지밖에 없음) 저장된 범위가 availableMaxDepth를
+  // 넘어설 수 있다 — 이럴 땐 어중간하게 줄여서 보여주는 대신 아예 OFF로 취급한다("분류 차수 범위"
+  // 단일 슬라이더처럼 최대치로 줄여 보여주는 것과는 다른 정책). 실제 뎁스 범위 계산은 물론, 슬라이더에
+  // 내려보내는 값도 이 값으로 통일해야 슬라이더 내부 드래그/클릭 판정도 어긋나지 않는다.
+  const clampDepthRange = (minIndex: number, maxIndex: number): [number, number] =>
+    maxIndex > availableMaxDepth ? [0, 0] : [minIndex, maxIndex]
+  const [marketValueClampedMinIndex, marketValueClampedMaxIndex] = clampDepthRange(
+    marketValueDepthMinIndex,
+    marketValueDepthMaxIndex,
+  )
+  const [avgChangeRateClampedMinIndex, avgChangeRateClampedMaxIndex] = clampDepthRange(
+    avgChangeRateDepthMinIndex,
+    avgChangeRateDepthMaxIndex,
+  )
+  const [upDownCountClampedMinIndex, upDownCountClampedMaxIndex] = clampDepthRange(
+    upDownCountDepthMinIndex,
+    upDownCountDepthMaxIndex,
+  )
+
+  // 슬라이더 인덱스(0=OFF, 1=뎁스0, ...)를 실제 뎁스 범위로 변환 — max가 OFF(0)에 있으면 완전히 꺼짐.
+  const marketValueDepthRange = toDepthRange(marketValueClampedMinIndex, marketValueClampedMaxIndex)
+  const avgChangeRateDepthRange = toDepthRange(avgChangeRateClampedMinIndex, avgChangeRateClampedMaxIndex)
+  const upDownCountDepthRange = toDepthRange(upDownCountClampedMinIndex, upDownCountClampedMaxIndex)
+
   const { path, currentNode, currentSiblings, enterCategory, goToDepth, reset } = useMarketMapDrilldown(filteredRootNodes)
   // path가 바뀌면(어떤 방식의 이동이든) 이전 hover 상태를 무조건 지운다 — 안 그러면 브레드크럼 바가
   // path 없을 때 사라졌다가 다시 나타날 때, 예전에 hover했던 값이 그대로 남아 있다가 새로 그려진
@@ -206,22 +254,22 @@ export default function MarketMapCustomPage() {
       <span className="underline">커스텀 모드</span> 사용 중
       {!isFullTierRange && (
         <>
-          {STATUS_TEXT_GAP}
+          {TAB_GAP}
           <span className="underline">{tierRangeText}</span>만 표시
         </>
       )}
       {excludedCategoryIds.size > 0 && (
         <>
-          {STATUS_TEXT_GAP}
+          {TAB_GAP}
           <span className="underline">{excludedSectorNames}</span> 제외
         </>
       )}
-      {STATUS_TEXT_GAP}
+      {TAB_GAP}
       {visibleItems.length}/{totalItemCount}종목
     </>
   ) : (
     <>
-      <span className="underline">커스텀 모드</span> 미사용{STATUS_TEXT_GAP}
+      <span className="underline">커스텀 모드</span> 미사용{TAB_GAP}
       {visibleItems.length}/{totalItemCount}종목
     </>
   )
@@ -323,12 +371,24 @@ export default function MarketMapCustomPage() {
           maxDepth={maxDepth}
           availableMaxDepth={availableMaxDepth}
           onChangeMaxDepth={setMaxDepth}
-          showMarketValue={showMarketValue}
-          onToggleShowMarketValue={() => setShowMarketValue(prev => !prev)}
-          showAvgChangeRate={showAvgChangeRate}
-          onToggleShowAvgChangeRate={() => setShowAvgChangeRate(prev => !prev)}
-          showUpDownCount={showUpDownCount}
-          onToggleShowUpDownCount={() => setShowUpDownCount(prev => !prev)}
+          marketValueDepthMinIndex={marketValueClampedMinIndex}
+          marketValueDepthMaxIndex={marketValueClampedMaxIndex}
+          onChangeMarketValueDepthRange={(min, max) => {
+            setMarketValueDepthMinIndex(min)
+            setMarketValueDepthMaxIndex(max)
+          }}
+          avgChangeRateDepthMinIndex={avgChangeRateClampedMinIndex}
+          avgChangeRateDepthMaxIndex={avgChangeRateClampedMaxIndex}
+          onChangeAvgChangeRateDepthRange={(min, max) => {
+            setAvgChangeRateDepthMinIndex(min)
+            setAvgChangeRateDepthMaxIndex(max)
+          }}
+          upDownCountDepthMinIndex={upDownCountClampedMinIndex}
+          upDownCountDepthMaxIndex={upDownCountClampedMaxIndex}
+          onChangeUpDownCountDepthRange={(min, max) => {
+            setUpDownCountDepthMinIndex(min)
+            setUpDownCountDepthMaxIndex(max)
+          }}
           tierRangeMinIndex={tierRangeMinIndex}
           tierRangeMaxIndex={tierRangeMaxIndex}
           onChangeTierRange={handleChangeTierRange}
@@ -452,9 +512,9 @@ export default function MarketMapCustomPage() {
               onSelectCategory={enterCategory}
               onExcludeCategory={handleExcludeCategory}
               heightClassName="min-h-0 flex-1"
-              showMarketValue={showMarketValue}
-              showAvgChangeRate={showAvgChangeRate}
-              showUpDownCount={showUpDownCount}
+              marketValueDepthRange={marketValueDepthRange}
+              avgChangeRateDepthRange={avgChangeRateDepthRange}
+              upDownCountDepthRange={upDownCountDepthRange}
               canExclude={isCustom}
               zoomOutRequestDepth={zoomOutRequestDepth}
               onZoomOutComplete={handleZoomOutComplete}
