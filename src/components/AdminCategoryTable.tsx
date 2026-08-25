@@ -14,6 +14,16 @@ type Row =
   | { type: 'category'; item: CategoryItem; siblingIndex: number }
   | { type: 'add-child'; parentId: number; parentPath: string[]; depth: number }
 
+// 3차 분류(세부의 세부) 번호 표기용 원문자. 유니코드에 50까지만 있어서 그 이상은 괄호 표기로 대체.
+const CIRCLED_NUMBERS = [
+  ...Array.from({ length: 20 }, (_, i) => String.fromCodePoint(0x2460 + i)), // ①~⑳ (1~20)
+  ...Array.from({ length: 15 }, (_, i) => String.fromCodePoint(0x3251 + i)), // ㉑~㉟ (21~35)
+  ...Array.from({ length: 15 }, (_, i) => String.fromCodePoint(0x32b1 + i)), // ㊱~㊿ (36~50)
+]
+function toCircledNumber(n: number): string {
+  return CIRCLED_NUMBERS[n - 1] ?? `(${n})`
+}
+
 // 특수문자 < 숫자 < 영어 < 한글 순으로 묶고, 그룹 내에서는 이름순 정렬.
 function charTier(ch: string): number {
   if (/[0-9]/.test(ch)) return 1
@@ -232,7 +242,11 @@ export default function AdminCategoryTable({ categories }: Props) {
     const category = row.item
     const isRoot = category.parentId === null
     const expandable = isRoot || hasChildren(category.id)
-    const label = isRoot ? `${rootIndexById.get(category.id)}. ${category.name}` : `${row.siblingIndex}) ${category.name}`
+    const label = isRoot
+      ? `${rootIndexById.get(category.id)}. ${category.name}`
+      : category.depth === 2
+        ? `${toCircledNumber(row.siblingIndex)} ${category.name}`
+        : `${row.siblingIndex}) ${category.name}`
     const isRenaming = renamingId === category.id
     return (
       <DroppableCategoryRow

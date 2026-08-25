@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import MarketMapBox from './MarketMapBox'
 import { categoryHeaderHeight, PADDING, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
-import { toJoEokDecimal, toPctSigned } from '@/utils/format'
+import { TAB_GAP, toJoEokDecimal, toPctSigned } from '@/utils/format'
 import type { MarketMapItem } from '@/types/api'
 
 interface Props {
@@ -10,9 +10,10 @@ interface Props {
   // rect는 이 카테고리 박스 전체의 화면상 위치 — 줌인 애니메이션이 어디서부터 확대되는지 계산하는 데 쓴다.
   onSelectCategory: (categoryName: string, rect: DOMRect) => void
   onOpenExcludeMenu: (categoryId: number, categoryName: string, e: React.MouseEvent) => void
-  showMarketValue: boolean
-  showAvgChangeRate: boolean
-  showUpDownCount: boolean
+  // 셋 다 null = 전부 꺼짐. [min, max]면 그 뎁스 범위(현재 화면 기준 상대 뎁스)에서만 표시.
+  marketValueDepthRange: [number, number] | null
+  avgChangeRateDepthRange: [number, number] | null
+  upDownCountDepthRange: [number, number] | null
   // 커스텀 모드가 아닐 때는(기본 분류 트리) 카테고리 제외 액션 자체를 제공하지 않는다.
   canExclude: boolean
   depth?: number
@@ -24,6 +25,10 @@ function collectCategoryItems(category: LaidOutCategory): MarketMapItem[] {
   const items = category.boxes.map(box => box.item)
   for (const sub of category.subCategories) items.push(...collectCategoryItems(sub))
   return items
+}
+
+function isInDepthRange(range: [number, number] | null, depth: number): boolean {
+  return range !== null && depth >= range[0] && depth <= range[1]
 }
 
 // 헤더 높이(categoryHeaderHeight)와 같은 비율로 폰트 크기도 depth에 따라 줄인다.
@@ -44,9 +49,9 @@ export default function MarketMapCategorySection({
   category,
   onSelectCategory,
   onOpenExcludeMenu,
-  showMarketValue,
-  showAvgChangeRate,
-  showUpDownCount,
+  marketValueDepthRange,
+  avgChangeRateDepthRange,
+  upDownCountDepthRange,
   canExclude,
   depth = 0,
 }: Props) {
@@ -54,8 +59,6 @@ export default function MarketMapCategorySection({
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null)
   const boxRef = useRef<HTMLDivElement>(null)
 
-  // 옵션 꺼두면 박스 위 태그 텍스트에선 시총을 빼되, hover 툴팁은 상세 정보라 그대로 둔다.
-  const marketValueSuffix = ` (시총: ${toJoEokDecimal(category.totalMarketValue / 100_000_000)})`
   const items = collectCategoryItems(category)
   // 종목 수 기준 산술평균이 아니라, 시가총액으로 가중치를 준 평균.
   const totalWeight = items.reduce((sum, item) => sum + item.totalMarketValue, 0)
@@ -64,23 +67,23 @@ export default function MarketMapCategorySection({
   const advancerCount = items.filter(item => item.changeRate > 0).length
   const declinerCount = items.filter(item => item.changeRate < 0).length
   const unchangedCount = items.length - advancerCount - declinerCount
-  const avgChangeRateSuffix = ` (등락률 평균: ${toPctSigned(avgChangeRate)})`
-  const upDownCountSuffix = ` (상승: ${advancerCount} / 하락: ${declinerCount} / 보합: ${unchangedCount})`
   // 호버 툴팁은 태그 텍스트와 달리 항목별로 줄바꿈해서 보여준다.
   const label = [
     category.categoryName,
+    `가중평균 등락률: ${toPctSigned(avgChangeRate)}`,
+    `상승 ${advancerCount} 하락 ${declinerCount} 보합 ${unchangedCount}`,
     `시총: ${toJoEokDecimal(category.totalMarketValue / 100_000_000)}`,
-    `등락률 평균: ${toPctSigned(avgChangeRate)}`,
-    `상승 ${advancerCount} 보합 ${unchangedCount} 하락 ${declinerCount}`,
   ].join('\n')
-  // 옵션 태그는 지금 보이는 화면의 최상단 뎁스(depth===0)에만 출력한다 — 세부 카테고리까지
-  // 전부 중복으로 나오면 지저분해서, 드릴다운해서 들어가도 그 시점의 최상단 뎁스에서만 다시 보여준다.
-  const headerSuffix =
-    depth === 0
-      ? `${showMarketValue ? marketValueSuffix : ''}${showAvgChangeRate ? avgChangeRateSuffix : ''}${
-          showUpDownCount ? upDownCountSuffix : ''
-        }`
-      : ''
+  // 태그는 공간이 좁아서 라벨 없이 값만 나열한다 — 표시되는 항목들 사이는 TAB_GAP으로 구분,
+  // 등락 종목수 안의 상승/하락/보합 사이는 스페이스 1칸. 순서는 등락률 → 등락 종목수 → 시총(표시 설정 순서와 동일).
+  const headerParts = [
+    isInDepthRange(avgChangeRateDepthRange, depth) ? toPctSigned(avgChangeRate) : null,
+    isInDepthRange(upDownCountDepthRange, depth)
+      ? `${advancerCount}(↑) ${declinerCount}(↓) ${unchangedCount}(-)`
+      : null,
+    isInDepthRange(marketValueDepthRange, depth) ? toJoEokDecimal(category.totalMarketValue / 100_000_000) : null,
+  ].filter((part): part is string => part !== null)
+  const headerSuffix = headerParts.length > 0 ? ` ${headerParts.join(TAB_GAP)}` : ''
 
   const updateTooltipPos = (e: React.MouseEvent) => {
     setTooltipPos({
@@ -138,11 +141,7 @@ export default function MarketMapCategorySection({
         className={`absolute top-0 truncate border-2 border-transparent px-1 text-left font-bold text-white ${categoryHeaderColorClass(depth)}`}
       >
         {category.categoryName}
-        {headerSuffix && (
-          <span className="font-normal" style={{ fontSize: '0.8em' }}>
-            {headerSuffix}
-          </span>
-        )}
+        {headerSuffix && <span className="font-normal">{headerSuffix}</span>}
       </button>
       {hover &&
         tooltipPos &&
@@ -165,9 +164,9 @@ export default function MarketMapCategorySection({
           category={sub}
           onSelectCategory={onSelectCategory}
           onOpenExcludeMenu={onOpenExcludeMenu}
-          showMarketValue={showMarketValue}
-          showAvgChangeRate={showAvgChangeRate}
-          showUpDownCount={showUpDownCount}
+          marketValueDepthRange={marketValueDepthRange}
+          avgChangeRateDepthRange={avgChangeRateDepthRange}
+          upDownCountDepthRange={upDownCountDepthRange}
           canExclude={canExclude}
           depth={depth + 1}
         />

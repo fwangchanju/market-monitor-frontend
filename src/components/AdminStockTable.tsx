@@ -1263,10 +1263,29 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
     }
   }
 
+  // 특정 필터(key)를 뺀 나머지 필터(다른 컬럼 필터 + 종목명 검색 + 시가총액 구간)를 전부 적용했을 때
+  // 통과하는지 판정 — key 자신의 필터는 빼야, 이미 체크 해제한 값도 그 필터 드롭다운에서 계속 보이고
+  // 다시 켤 수 있다.
+  const matchesFilters = useCallback(
+    (item: StockCategoryListItem, excludeKey?: FilterKey) => {
+      const display = displayByStockCode.get(item.stockCode)!
+      return (
+        FILTER_KEYS.every(key => key === excludeKey || !excludedFilters[key].has(display[key])) &&
+        (nameFilterStockCodes.size === 0 || nameFilterStockCodes.has(item.stockCode)) &&
+        (item.marketValueTier == null || !excludedMarketValueTiers.has(item.marketValueTier))
+      )
+    },
+    [displayByStockCode, excludedFilters, nameFilterStockCodes, excludedMarketValueTiers],
+  )
+
+  // 필터 옵션 목록도 전체 items가 아니라, 다른 필터들을 통과한 종목 기준으로만 뽑는다 — 그래야 1차
+  // 분류를 필터링하면 2차/3차 분류 목록에도 그 안에 실제로 존재하는 값만 남는다.
   const filterOptionsByKey = useMemo(() => {
     const result = {} as Record<FilterKey, string[]>
     for (const key of FILTER_KEYS) {
-      const values = new Set(items.map(item => displayByStockCode.get(item.stockCode)![key]))
+      const values = new Set(
+        items.filter(item => matchesFilters(item, key)).map(item => displayByStockCode.get(item.stockCode)![key]),
+      )
       // market은 가나다순(코스닥이 코스피보다 먼저 옴)이 아니라 코스피 -> 코스닥 고정 순서로 보여준다.
       result[key] =
         key === 'market'
@@ -1274,7 +1293,7 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
           : [...values].sort((a, b) => KOREAN_COLLATOR.compare(a, b))
     }
     return result
-  }, [items, displayByStockCode])
+  }, [items, displayByStockCode, matchesFilters])
 
   const toggleFilterValue = (key: FilterKey, value: string) => {
     setExcludedFilters(prev => {
@@ -1295,18 +1314,7 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
     setExcludedFilters(prev => ({ ...prev, [key]: new Set(filterOptionsByKey[key].filter(v => v !== value)) }))
   }
 
-  const filtered = useMemo(
-    () =>
-      items.filter(item => {
-        const display = displayByStockCode.get(item.stockCode)!
-        return (
-          FILTER_KEYS.every(key => !excludedFilters[key].has(display[key])) &&
-          (nameFilterStockCodes.size === 0 || nameFilterStockCodes.has(item.stockCode)) &&
-          (item.marketValueTier == null || !excludedMarketValueTiers.has(item.marketValueTier))
-        )
-      }),
-    [items, displayByStockCode, excludedFilters, nameFilterStockCodes, excludedMarketValueTiers],
-  )
+  const filtered = useMemo(() => items.filter(item => matchesFilters(item)), [items, matchesFilters])
 
   // 필터에 걸려서 화면에서 사라진 종목은 선택도 같이 해제한다 — 안 보이는 종목이 일괄변경에
   // 딸려 들어가는 걸 막기 위함. filtered가 실제로 바뀔 때(=필터 조작 시)만 실행되므로 체크박스/hover
