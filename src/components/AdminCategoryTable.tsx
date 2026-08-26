@@ -10,6 +10,10 @@ interface Props {
   categories: CategoryItem[]
 }
 
+// 루트 카테고리를 몇 개 컬럼으로 나눠서 나란히 보여줄지 — 전체펼치기 시 한 컬럼이 과도하게
+// 길어지는 걸 줄이기 위해 나눈다.
+const ROOT_COLUMN_COUNT = 3
+
 type Row =
   | { type: 'category'; item: CategoryItem; siblingIndex: number }
   | { type: 'add-child'; parentId: number; parentPath: string[]; depth: number }
@@ -196,11 +200,11 @@ export default function AdminCategoryTable({ categories }: Props) {
   }
 
   const rootCategories = categories.filter(c => c.parentId === null).sort(compareCategoryName)
-  const splitIndex = Math.ceil(rootCategories.length / 2)
-  const leftRoots = rootCategories.slice(0, splitIndex)
-  const rightRoots = rootCategories.slice(splitIndex)
-  const leftRows = buildRowsForRoots(categories, leftRoots, expandedIds, addingChildFor)
-  const rightRows = buildRowsForRoots(categories, rightRoots, expandedIds, addingChildFor)
+  const columnSize = Math.ceil(rootCategories.length / ROOT_COLUMN_COUNT)
+  const columnRoots = Array.from({ length: ROOT_COLUMN_COUNT }, (_, i) =>
+    rootCategories.slice(i * columnSize, (i + 1) * columnSize),
+  )
+  const columnRows = columnRoots.map(roots => buildRowsForRoots(categories, roots, expandedIds, addingChildFor))
 
   const rootIndexById = new Map<number, number>()
   rootCategories.forEach((c, i) => rootIndexById.set(c.id, i + 1))
@@ -383,41 +387,40 @@ export default function AdminCategoryTable({ categories }: Props) {
             <p className="text-sm text-yellow-400">다른 카테고리 위에 놓으면 그 밑으로, 빈 곳에 놓으면 최상위로 이동합니다</p>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="overflow-x-auto scrollbar-hide">
-            <table className="nes-table is-dark is-bordered w-full text-sm [&_td]:border-white/10">
-              <tbody>
-                <tr>
-                  <td className="py-0.5 text-left">
-                    <div className="group/create flex items-center gap-2">
-                      <span className="shrink-0 text-gray-400">0.</span>
-                      <input
-                        type="text"
-                        value={newName}
-                        onChange={e => setNewName(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleCreate()}
-                        placeholder="카테고리 추가"
-                        className="nes-input is-dark min-w-0 flex-1 text-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleCreate}
-                        className="nes-btn shrink-0 border-[#4f8fd6] bg-[#4f8fd6] px-3 py-1 text-sm text-white opacity-0 transition-opacity hover:brightness-125 group-focus-within/create:opacity-100"
-                      >
-                        추가
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                {leftRows.map(renderRow)}
-              </tbody>
-            </table>
-          </div>
-          <div className="overflow-x-auto scrollbar-hide">
-            <table className="nes-table is-dark is-bordered w-full text-sm [&_td]:border-white/10">
-              <tbody>{rightRows.map(renderRow)}</tbody>
-            </table>
-          </div>
+        <div className="grid grid-cols-3 gap-4">
+          {columnRows.map((rows, columnIndex) => (
+            <div key={columnIndex} className="overflow-x-auto scrollbar-hide">
+              <table className="nes-table is-dark is-bordered w-full text-sm [&_td]:border-white/10">
+                <tbody>
+                  {columnIndex === 0 && (
+                    <tr>
+                      <td className="py-0.5 text-left">
+                        <div className="group/create flex items-center gap-2">
+                          <span className="shrink-0 text-gray-400">0.</span>
+                          <input
+                            type="text"
+                            value={newName}
+                            onChange={e => setNewName(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                            placeholder="카테고리 추가"
+                            className="nes-input is-dark min-w-0 flex-1 text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleCreate}
+                            className="nes-btn shrink-0 border-[#4f8fd6] bg-[#4f8fd6] px-3 py-1 text-sm text-white opacity-0 transition-opacity hover:brightness-125 group-focus-within/create:opacity-100"
+                          >
+                            추가
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {rows.map(renderRow)}
+                </tbody>
+              </table>
+            </div>
+          ))}
         </div>
       </div>
       {/* 커서를 따라다니는 드래그 미리보기 — 손잡이만 흐려지는 것만으론 뭔가 잡혔다는 느낌이 안 나서 추가. */}

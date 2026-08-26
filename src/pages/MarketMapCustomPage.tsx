@@ -10,13 +10,15 @@ import { ShareIcon, MaximizeIcon, MinimizeIcon } from '@/components/icons/Market
 import { useMarketMap } from '@/hooks/useMarketMap'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useFilteredMarketMapTree } from '@/hooks/useFilteredMarketMapTree'
+import { usePersistedState } from '@/hooks/usePersistedState'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
-import { TAB_GAP, toFullDateTimeLabel } from '@/utils/format'
+import { TAB_GAP, toMarketMapSnapshotTimeLabel, toIndex, toPctSigned, signClass } from '@/utils/format'
+import { useMarketSummary } from '@/hooks/useMarketSummary'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { registerExcludedCategory, unregisterExcludedCategory } from '@/api/marketMap'
-import { MARKET_VALUE_TIER_ASCENDING, MARKET_VALUE_TIER_SHORT_LABEL } from '@/utils/marketValueTier'
+import { MARKET_VALUE_TIER_ASCENDING } from '@/utils/marketValueTier'
 import type { Market, MarketMapCategoryNode, MarketMapItem, MarketValueTier } from '@/types/api'
 
 // 왼쪽 사이드바 필터 버튼 텍스트(MarketMapFilterSidebar의 FILTER_ITEMS)와 동일하게 맞춘다.
@@ -115,25 +117,38 @@ function toDepthRange(minIndex: number, maxIndex: number): [number, number] | nu
 }
 
 export default function MarketMapCustomPage() {
-  const [market, setMarket] = useState<Market>('KOSPI')
-  const [isCustom, setIsCustom] = useState(true)
+  const [market, setMarket] = usePersistedState<Market>('marketMap.market', 'KOSPI')
+  const [isCustom, setIsCustom] = usePersistedState('marketMap.isCustom', true)
   // 세 표시 옵션(시가총액 합/등락률 평균/등락 종목수) 모두 슬라이더 인덱스 기준(0=OFF, 1=뎁스0, 2=뎁스1, ...)
   // — 둘 다 0(OFF)이면 꺼짐. 실제 뎁스 범위로 변환한 값은 각각의 DepthRange를 통해서만 하위로 내려보낸다.
-  const [marketValueDepthMinIndex, setMarketValueDepthMinIndex] = useState(0)
-  const [marketValueDepthMaxIndex, setMarketValueDepthMaxIndex] = useState(0)
+  const [marketValueDepthMinIndex, setMarketValueDepthMinIndex] = usePersistedState('marketMap.marketValueDepthMinIndex', 0)
+  const [marketValueDepthMaxIndex, setMarketValueDepthMaxIndex] = usePersistedState('marketMap.marketValueDepthMaxIndex', 0)
   // 기본값: 2차 분류만 켜짐(렌더러가 캡처하는 기본 화면에 등락률이 보이도록).
-  const [avgChangeRateDepthMinIndex, setAvgChangeRateDepthMinIndex] = useState(2)
-  const [avgChangeRateDepthMaxIndex, setAvgChangeRateDepthMaxIndex] = useState(2)
-  const [upDownCountDepthMinIndex, setUpDownCountDepthMinIndex] = useState(0)
-  const [upDownCountDepthMaxIndex, setUpDownCountDepthMaxIndex] = useState(0)
+  const [avgChangeRateDepthMinIndex, setAvgChangeRateDepthMinIndex] = usePersistedState('marketMap.avgChangeRateDepthMinIndex', 2)
+  const [avgChangeRateDepthMaxIndex, setAvgChangeRateDepthMaxIndex] = usePersistedState('marketMap.avgChangeRateDepthMaxIndex', 2)
+  const [upDownCountDepthMinIndex, setUpDownCountDepthMinIndex] = usePersistedState('marketMap.upDownCountDepthMinIndex', 0)
+  const [upDownCountDepthMaxIndex, setUpDownCountDepthMaxIndex] = usePersistedState('marketMap.upDownCountDepthMaxIndex', 0)
   // MARKET_VALUE_TIER_ASCENDING(소→초) 기준 인덱스 — 이 구간(포함) 밖의 등급은 제외된다.
   // 기본값(양끝)이면 아무것도 제외 안 함.
   // 기본값: 중형주~초대형주만(소형주 제외) 표시.
-  const [tierRangeMinIndex, setTierRangeMinIndex] = useState(MARKET_VALUE_TIER_ASCENDING.indexOf('MID'))
-  const [tierRangeMaxIndex, setTierRangeMaxIndex] = useState(MARKET_VALUE_TIER_ASCENDING.length - 1)
-  const [excludedCategoryNames, setExcludedCategoryNames] = useState<Map<number, string>>(new Map())
+  const [tierRangeMinIndex, setTierRangeMinIndex] = usePersistedState(
+    'marketMap.tierRangeMinIndex',
+    MARKET_VALUE_TIER_ASCENDING.indexOf('MID'),
+  )
+  const [tierRangeMaxIndex, setTierRangeMaxIndex] = usePersistedState(
+    'marketMap.tierRangeMaxIndex',
+    MARKET_VALUE_TIER_ASCENDING.length - 1,
+  )
+  const [excludedCategoryNames, setExcludedCategoryNames] = usePersistedState<Map<number, string>>(
+    'marketMap.excludedCategoryNames',
+    new Map(),
+    {
+      serialize: map => [...map.entries()],
+      deserialize: raw => new Map(raw as [number, string][]),
+    },
+  )
   // 섹터 제외를 목록별로 켜고 끄는 게 아니라, 제외 적용 자체를 통째로 켜고 끄는 마스터 스위치.
-  const [sectorFilterEnabled, setSectorFilterEnabled] = useState(true)
+  const [sectorFilterEnabled, setSectorFilterEnabled] = usePersistedState('marketMap.sectorFilterEnabled', true)
   // null = 제한 없음(전체 뎁스 표시). 슬라이더의 실제 상한(availableMaxDepth)은 트리 계산 후에 나온다.
   // 기본값 2(렌더러 캡처 기준 화면에 맞춤).
   const [maxDepth, setMaxDepth] = useState<number | null>(2)
@@ -168,6 +183,8 @@ export default function MarketMapCustomPage() {
   const seededKeyRef = useRef<string | null>(null)
 
   const { data, isLoading, isError } = useMarketMap(market, isCustom)
+  const { data: marketSummaryData } = useMarketSummary()
+  const marketOverview = marketSummaryData?.marketOverviews.items.find(item => item.market === market)
 
   const rootNodes = data?.items ?? []
 
@@ -177,7 +194,7 @@ export default function MarketMapCustomPage() {
     if (seededKeyRef.current === key) return
     seededKeyRef.current = key
     setExcludedCategoryNames(seedExcludedCategoryNames(data.items, []))
-  }, [data, market, isCustom])
+  }, [data, market, isCustom, setExcludedCategoryNames])
 
   // 커스텀 모드가 아니면(기본 분류 트리) isExcluded 자체를 무시한다 — 카테고리 제외는 커스텀 트리 전용 기능.
   const excludedCategoryIds = useMemo(
@@ -241,36 +258,17 @@ export default function MarketMapCustomPage() {
   const rawCurrentNode = findRawNodeByPath(rootNodes, path)
   const totalItemCount = collectRawItems(rawCurrentNode ? [rawCurrentNode] : rootNodes).length
 
-  // 상단 바에 지금 켜져있는 모드/시가총액 구간 상태를 한눈에 보여주기 위한 요약 텍스트.
-  const isFullTierRange = tierRangeMinIndex === 0 && tierRangeMaxIndex === MARKET_VALUE_TIER_ASCENDING.length - 1
-  // 큰 등급 -> 작은 등급 순서로 출력.
-  const tierRangeText = `${MARKET_VALUE_TIER_SHORT_LABEL[MARKET_VALUE_TIER_ASCENDING[tierRangeMaxIndex]]}~${MARKET_VALUE_TIER_SHORT_LABEL[MARKET_VALUE_TIER_ASCENDING[tierRangeMinIndex]]}`
-  // 상위 - 하위 경로 구분자를 "내"로 바꿔서 이어붙인다: "금융 - 금속" -> "금융 내 금속".
-  const excludedSectorNames = Array.from(excludedCategoryNames.values())
-    .map(name => name.replace(/ - /g, ' 내 '))
-    .join(', ')
-  const modeStatusText = isCustom ? (
+  // 상단 바 표시: 커스텀 모드 on/off를 점등 표시로, 텍스트는 종목 수 하나만 고정 출력.
+  const modeStatusText = (
     <>
-      <span className="underline">커스텀 모드</span> 사용 중
-      {!isFullTierRange && (
-        <>
-          {TAB_GAP}
-          <span className="underline">{tierRangeText}</span>만 표시
-        </>
-      )}
-      {excludedCategoryIds.size > 0 && (
-        <>
-          {TAB_GAP}
-          <span className="underline">{excludedSectorNames}</span> 제외
-        </>
-      )}
-      {TAB_GAP}
-      {visibleItems.length}/{totalItemCount}종목
-    </>
-  ) : (
-    <>
-      <span className="underline">커스텀 모드</span> 미사용{TAB_GAP}
-      {visibleItems.length}/{totalItemCount}종목
+      <span
+        className={`mr-1.5 inline-block h-2 w-2 rounded-full ${
+          isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-600'
+        }`}
+      />
+      <span className={isCustom ? 'text-white' : undefined}>
+        커스텀 모드 ({visibleItems.length}/{totalItemCount}종목)
+      </span>
     </>
   )
 
@@ -429,14 +427,27 @@ export default function MarketMapCustomPage() {
         {!isFullscreen && <MarketMapFilterSidebar market={market} onMarketChange={handleMarketChange} />}
         <div ref={captureRef} data-captureid={CAPTURE_ID.MARKET_MAP} className="flex min-h-0 flex-1 flex-col bg-black">
           <div className="mb-1 grid h-7 w-full shrink-0 grid-cols-[auto_1fr_auto] items-center border-2 border-black bg-black/70 px-1 text-sm font-bold text-white">
-            <span className="whitespace-nowrap">{MARKET_LABEL[market]}</span>
-            <span className="min-w-0 whitespace-nowrap text-center text-sm font-normal text-gray-400">
+            <div className="flex items-center whitespace-nowrap">
+              <span className="text-2xl">{MARKET_LABEL[market]}</span>
+              {marketOverview && (
+                <span className={`text-base font-normal ${signClass(marketOverview.changeRate)}`}>
+                  {TAB_GAP}
+                  {toIndex(marketOverview.indexValue)}
+                  {TAB_GAP}
+                  {marketOverview.changeValue > 0 ? '▲' : marketOverview.changeValue < 0 ? '▼' : ''}
+                  {toIndex(Math.abs(marketOverview.changeValue))}
+                  {TAB_GAP}
+                  {toPctSigned(marketOverview.changeRate)}
+                </span>
+              )}
+            </div>
+            <span className="min-w-0 whitespace-nowrap text-center text-base font-normal text-gray-400">
               {modeStatusText}
             </span>
             <div className="flex items-center gap-3">
               {data?.snapshotTime && (
-                <span className="whitespace-nowrap text-xs font-normal text-white">
-                  {toFullDateTimeLabel(data.snapshotTime)}
+                <span className="whitespace-nowrap text-base font-normal text-white">
+                  {toMarketMapSnapshotTimeLabel(data.snapshotTime)}
                 </span>
               )}
               <div className="flex items-center gap-0.5">

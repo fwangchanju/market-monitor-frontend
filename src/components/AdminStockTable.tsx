@@ -5,13 +5,18 @@ import type { CategoryItem, MarketValueTier, StockCategoryListItem } from '@/typ
 import { toFullDateTimeLabel, toJoEokDecimal } from '@/utils/format'
 import { MARKET_VALUE_TIER_OPTIONS } from '@/utils/marketValueTier'
 import { useAssignStockCategory, useBulkAssignStockCategory, useUpdateAlias } from '@/hooks/useMarketMapAdmin'
+import { usePersistedState } from '@/hooks/usePersistedState'
 import Spinner from './Spinner'
-import { CheckIcon, SearchIcon } from './icons/MarketMapIcons'
+import { CheckIcon, ChevronDownIcon, RedoIcon, RefreshIcon, SearchIcon, UndoIcon } from './icons/MarketMapIcons'
 
 interface Props {
   items: StockCategoryListItem[]
   categories: CategoryItem[]
   snapshotTime: string | null
+  // 다른 탭에서 카테고리를 추가/변경한 뒤 이 화면의 필터 상태를 유지한 채로 카테고리 목록만
+  // 다시 불러오고 싶을 때 쓰는 버튼용 — 전체 새로고침(필터 초기화)을 피하기 위함.
+  onRefetchCategories: () => void
+  isRefetchingCategories: boolean
 }
 
 type SortKey =
@@ -114,6 +119,32 @@ interface CategoryOption {
   label: string
 }
 
+// Ctrl+Z/Y 실행취소·다시실행 대상 — 카테고리 변경만 관리한다(필터 걸어놓고 카테고리를 바꾸면
+// 그 종목이 필터에서 바로 사라지는데, 잘못 눌렀을 때 다시 검색하지 않고 바로 되돌리기 위함).
+// 메모리에만(컴포넌트 상태) 두고, 종목 탭을 벗어나면(언마운트) 자연히 사라진다.
+type UndoableActionInput =
+  | { type: 'category'; stockCode: string; before: number; after: number }
+  | { type: 'bulkCategory'; categoryName: string; after: number; entries: { stockCode: string; before: number }[] }
+// id는 실행취소/다시실행 "목록"에서 스택 순서와 무관하게 특정 항목 하나를 골라 가리키기 위한
+// 프론트 전용 식별자 — 백엔드 요청엔 실리지 않는다.
+type UndoableAction = UndoableActionInput & { id: string }
+const UNDO_STACK_LIMIT = 50
+
+// 실행취소/다시실행 목록에 보여줄 한 줄 설명 — "종목명: 이전 카테고리 → 이후 카테고리" 형태로,
+// 지금 undo 목록에 있든 redo 목록에 있든(즉 아직 실행 전이든 이미 되돌린 뒤든) 항상 같은 문구를 쓴다.
+function describeUndoableAction(
+  action: UndoableAction,
+  items: StockCategoryListItem[],
+  categoryOptionsById: Map<number, CategoryOption>,
+): string {
+  const categoryLabel = (id: number) => categoryOptionsById.get(id)?.name ?? '(알 수 없음)'
+  if (action.type === 'category') {
+    const stockName = items.find(item => item.stockCode === action.stockCode)?.stockName ?? action.stockCode
+    return `${stockName}: ${categoryLabel(action.before)} → ${categoryLabel(action.after)} 변경`
+  }
+  return `${action.entries.length}개 종목 → ${action.categoryName} 변경`
+}
+
 // 종목 응답엔 categoryId(실제 배정된 카테고리, 뎁스 무관)만 있어서, 대분류/중분류/소분류 3칸에 어떻게
 // 나눠 보여줄지는 이미 받아온 카테고리 트리를 parentId로 거슬러 올라가며 프론트에서 직접 계산한다.
 // 백엔드가 뎁스별 이름 필드를 따로 내려줄 필요가 없어서, 나중에 뎁스가 더 늘어나도 여기만 고치면 된다.
@@ -180,6 +211,13 @@ interface PopupPosition {
   alignRight: boolean
 }
 
+// 필터 팝업 목록 한 행의 높이(px) — 테이블 본문과 같은 text-sm(20px 줄높이) + py-0.5(위아래 2px씩) 기준.
+const FILTER_LIST_ROW_HEIGHT = 24
+// 필터 팝업을 한 화면에 몇 개 행까지 보여줄지 — 이보다 적으면 목록 실제 높이만큼만 차지하고,
+// 많으면 이 높이에서 스크롤(overflow-y-auto)된다.
+const FILTER_LIST_MAX_VISIBLE_ROWS = 15
+const FILTER_LIST_MAX_HEIGHT = FILTER_LIST_ROW_HEIGHT * FILTER_LIST_MAX_VISIBLE_ROWS
+
 // 팝업(카테고리 검색창/필터 드롭다운) 공통 로직 — 트리거 기준 위치 계산 + 바깥 클릭/스크롤 시 닫기.
 function usePopupPosition(
   isOpen: boolean,
@@ -243,6 +281,77 @@ function usePopupPosition(
   }, [isOpen])
 
   return position
+}
+
+// 실행취소/다시실행 히스토리 목록 팝업 — 최신 항목이 위로 오도록 뒤집어서 보여주고, 텍스트는 항상
+// 고정("종목명: 이전 → 이후")이며 각 행에 마우스를 올렸을 때만 우측에 실행취소/다시실행 텍스트 버튼이
+// 나타난다. 클릭하면 스택 순서와 무관하게 그 항목 하나만 되돌리거나 다시 적용한다.
+function UndoRedoHistoryPopup({
+  isOpen,
+  setIsOpen,
+  triggerRef,
+  actions,
+  direction,
+  items,
+  categoryOptionsById,
+  onPick,
+}: {
+  isOpen: boolean
+  setIsOpen: (open: boolean) => void
+  triggerRef: React.RefObject<HTMLElement | null>
+  actions: UndoableAction[]
+  direction: 'undo' | 'redo'
+  items: StockCategoryListItem[]
+  categoryOptionsById: Map<number, CategoryOption>
+  onPick: (id: string) => void
+}) {
+  const popupRef = useRef<HTMLDivElement>(null)
+  // 툴바 왼쪽(종목수 옆)에 있는 버튼이라 오른쪽에 펼칠 공간이 넉넉함 — alignRight 없이 왼쪽 정렬로 연다.
+  const position = usePopupPosition(isOpen, setIsOpen, triggerRef, popupRef, undefined, 0.8, false)
+  const actionLabel = direction === 'undo' ? '실행취소' : '다시실행'
+
+  if (!isOpen || !position) return null
+
+  const ordered = [...actions].reverse()
+
+  return (
+    <div
+      ref={popupRef}
+      style={{
+        position: 'fixed',
+        top: position.top,
+        left: position.left,
+        transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
+      }}
+      className="nes-container is-dark z-50 !bg-violet-950 p-2 text-sm"
+      onClick={e => e.stopPropagation()}
+    >
+      {ordered.length === 0 ? (
+        <p className="whitespace-nowrap px-1 text-gray-400">{actionLabel}할 변경 내역이 없습니다</p>
+      ) : (
+        <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: FILTER_LIST_MAX_HEIGHT }}>
+          {ordered.map(action => (
+            <div
+              key={action.id}
+              className="group flex items-center justify-between gap-3 whitespace-nowrap rounded px-1 py-0.5 hover:bg-yellow-400/10"
+            >
+              <span className="text-white">{describeUndoableAction(action, items, categoryOptionsById)}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  onPick(action.id)
+                  setIsOpen(false)
+                }}
+                className="hidden shrink-0 border-0 bg-transparent text-xs text-white hover:text-yellow-400 group-hover:inline-block"
+              >
+                {actionLabel}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // 카테고리 검색창의 검색어/방향키 탐색 상태 — AdminStockCategoryCell과 BulkAssignButton이 공유.
@@ -336,17 +445,17 @@ function CategorySearchPopup({
         onChange={e => search.handleQueryChange(e.target.value)}
         onKeyDown={e => (e.key === 'Escape' ? onEscape() : search.handleArrowsAndEnter(e, onSelect))}
         placeholder="카테고리 검색"
-        className="nes-input is-dark w-full py-2 text-[18px]"
+        className="nes-input is-dark w-full py-2 text-sm"
       />
       {contextLabel && (
-        <span className="mt-2 inline-block rounded bg-[#4f8fd6]/30 px-2 py-0.5 text-[14px] text-white">
+        <span className="mt-2 inline-block rounded bg-[#4f8fd6]/30 px-2 py-0.5 text-xs text-white">
           {contextLabel}
         </span>
       )}
       <div className="mt-2 border-t border-gray-600 pt-2">
-        <div className="max-h-72 overflow-y-auto">
+        <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: FILTER_LIST_MAX_HEIGHT }}>
           {search.matches.length === 0 ? (
-            <p className="px-2 py-1 text-[18px] text-gray-400">검색 결과가 없습니다</p>
+            <p className="px-2 py-1 text-sm text-gray-400">검색 결과가 없습니다</p>
           ) : (
             search.matches.map((opt, index) => (
               <button
@@ -358,7 +467,7 @@ function CategorySearchPopup({
                 type="button"
                 onClick={() => onSelect(opt.id)}
                 onMouseEnter={() => search.setHighlightedIndex(index)}
-                className={`block w-full truncate rounded px-2 py-1 text-left text-[18px] text-white ${
+                className={`block w-full truncate rounded px-2 py-0.5 text-left text-sm text-white ${
                   index === search.highlightedIndex ? 'bg-[#4f8fd6]/30' : 'bg-transparent'
                 }`}
               >
@@ -477,7 +586,7 @@ function AdminStockCategoryCell({
       {disabled && showHint && (
         <div
           style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)' }}
-          className="nes-container is-dark z-50 whitespace-nowrap !bg-violet-950 px-3 py-2 text-[18px] text-white"
+          className="nes-container is-dark z-50 whitespace-nowrap !bg-violet-950 px-3 py-2 text-sm text-white"
         >
           {disabledHint}
         </div>
@@ -491,18 +600,30 @@ function BulkAssignButton({
   count,
   options,
   onAssign,
+  alignRight = false,
+  widthPx,
+  disabled = false,
+  disabledHint,
 }: {
   count: number
   options: CategoryOption[]
   onAssign: (categoryId: number) => void
+  alignRight?: boolean
+  // 아래 실제 컬럼(th) 폭에 맞추기 위한 값 — 없으면 버튼 기본(내용에 맞는) 폭을 그대로 쓴다.
+  widthPx?: number
+  // 선행 단계(1차/2차)가 아직 적용 안 된 상태의 2차/3차 버튼 — 버튼 자체는 평소와 똑같이 보이되,
+  // 클릭하면 팝업 대신 안내 문구만 잠깐 띄운다(AdminStockCategoryCell의 disabled 셀과 동일한 패턴).
+  disabled?: boolean
+  disabledHint?: string
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [showHint, setShowHint] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const hintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const search = useCategorySearchState(options, isOpen)
 
-  // 버튼이 화면 우측 끝에 붙어있어서, 팝업은 버튼 오른쪽 끝에 맞춰 왼쪽으로 열리게 한다.
   const position = usePopupPosition(
     isOpen,
     setIsOpen,
@@ -510,8 +631,26 @@ function BulkAssignButton({
     popupRef,
     () => inputRef.current?.focus(),
     0.6,
-    true,
+    alignRight,
   )
+
+  useEffect(() => {
+    return () => {
+      if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current)
+    }
+  }, [])
+
+  const handleClick = () => {
+    if (disabled) {
+      if (!disabledHint) return
+      setShowHint(true)
+      if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current)
+      hintTimeoutRef.current = setTimeout(() => setShowHint(false), 1000)
+      return
+    }
+    search.reset()
+    setIsOpen(true)
+  }
 
   const handleSelect = (categoryId: number) => {
     onAssign(categoryId)
@@ -523,15 +662,13 @@ function BulkAssignButton({
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => {
-          search.reset()
-          setIsOpen(true)
-        }}
+        onClick={handleClick}
+        style={widthPx != null ? { width: widthPx } : undefined}
         className="nes-btn border-sky-500 bg-sky-500 text-xs text-white hover:bg-sky-600"
       >
         일괄변경 ({count})
       </button>
-      {isOpen && position && (
+      {isOpen && position && !disabled && (
         <CategorySearchPopup
           popupRef={popupRef}
           inputRef={inputRef}
@@ -540,6 +677,14 @@ function BulkAssignButton({
           onSelect={handleSelect}
           onEscape={() => setIsOpen(false)}
         />
+      )}
+      {disabled && showHint && disabledHint && (
+        <div
+          style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)' }}
+          className="nes-container is-dark z-50 whitespace-nowrap !bg-violet-950 px-3 py-2 text-sm text-white"
+        >
+          {disabledHint}
+        </div>
       )}
     </>
   )
@@ -691,7 +836,7 @@ function AdminColumnFilterButton({
             left: position.left,
             transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
           }}
-          className="nes-container is-dark z-50 w-64 !bg-violet-950 p-2 text-left normal-case"
+          className="nes-container is-dark z-50 !bg-violet-950 p-2 text-left text-sm normal-case"
           onClick={e => e.stopPropagation()}
         >
           <input
@@ -701,24 +846,24 @@ function AdminColumnFilterButton({
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="검색"
-            className="nes-input is-dark mb-2 w-full py-2 text-[18px]"
+            className="nes-input is-dark mb-2 w-full py-2 text-sm"
           />
-          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 text-[18px] font-bold text-white hover:bg-yellow-400/50">
+          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 font-bold text-white hover:bg-yellow-400/50">
             <input type="checkbox" checked={!isPreviewingSearch && isAllSelected} onChange={handleToggleAll} />
             <span>전체</span>
           </label>
-          <div className="max-h-48 overflow-y-auto pt-1">
+          <div className="overflow-y-auto pt-1 scrollbar-thin" style={{ maxHeight: FILTER_LIST_MAX_HEIGHT }}>
             {visibleOptions.map(opt => (
               <label
                 key={opt}
-                className="flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-[18px] text-white hover:bg-yellow-400/50"
+                className="flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-white hover:bg-yellow-400/50"
               >
                 <input
                   type="checkbox"
                   checked={!isPreviewingSearch && !excluded.has(opt)}
                   onChange={() => handleToggleOption(opt)}
                 />
-                <span className="truncate">{opt}</span>
+                <span className="whitespace-nowrap">{opt}</span>
               </label>
             ))}
           </div>
@@ -774,10 +919,10 @@ function AdminMarketValueFilterButton({
             left: position.left,
             transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
           }}
-          className="nes-container is-dark z-50 w-64 !bg-violet-950 p-2 text-left normal-case"
+          className="nes-container is-dark z-50 !bg-violet-950 p-2 text-left text-sm normal-case"
           onClick={e => e.stopPropagation()}
         >
-          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 text-[18px] font-bold text-white hover:bg-yellow-400/50">
+          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 font-bold text-white hover:bg-yellow-400/50">
             <input type="checkbox" checked={isAllSelected} onChange={() => (isAllSelected ? onSelectNone() : onSelectAll())} />
             <span>전체</span>
           </label>
@@ -785,7 +930,7 @@ function AdminMarketValueFilterButton({
             {MARKET_VALUE_TIER_OPTIONS.map(opt => (
               <label
                 key={opt.value}
-                className="flex w-full cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-[18px] text-white hover:bg-yellow-400/50"
+                className="flex w-full cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-white hover:bg-yellow-400/50"
               >
                 <input type="checkbox" checked={!excluded.has(opt.value)} onChange={() => onToggle(opt.value)} />
                 <span className="flex flex-1 items-center justify-between gap-2">
@@ -900,7 +1045,7 @@ function AdminStockNameFilterButton({
             left: position.left,
             transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
           }}
-          className="nes-container is-dark z-50 w-64 !bg-violet-950 p-2 text-left normal-case"
+          className="nes-container is-dark z-50 !bg-violet-950 p-2 text-left text-sm normal-case"
           onClick={e => e.stopPropagation()}
         >
           <input
@@ -910,9 +1055,9 @@ function AdminStockNameFilterButton({
             onChange={e => handleQueryChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="종목명/코드 검색"
-            className="nes-input is-dark w-full py-2 text-[18px]"
+            className="nes-input is-dark w-full py-2 text-sm"
           />
-          <div className="mt-2 max-h-56 overflow-y-auto">
+          <div className="mt-2 overflow-y-auto scrollbar-thin" style={{ maxHeight: FILTER_LIST_MAX_HEIGHT }}>
             {trimmed !== '' && matches.length > 0 && (
               <button
                 type="button"
@@ -924,7 +1069,7 @@ function AdminStockNameFilterButton({
               </button>
             )}
             {trimmed === '' ? null : matches.length === 0 ? (
-              <p className="px-1 text-[18px] text-gray-400">검색 결과 없음</p>
+              <p className="px-1 text-gray-400">검색 결과 없음</p>
             ) : (
               matches.map((item, index) => (
                 <button
@@ -936,18 +1081,18 @@ function AdminStockNameFilterButton({
                   type="button"
                   onClick={() => onToggle(item.stockCode)}
                   onMouseEnter={() => setHighlightedIndex(index)}
-                  className={`flex w-full items-center justify-between rounded px-1 py-0.5 text-left text-[18px] text-white ${
+                  className={`flex w-full items-center justify-between rounded px-1 py-0.5 text-left text-white ${
                     index === highlightedIndex ? 'bg-yellow-400/50' : 'bg-transparent'
                   }`}
                 >
-                  <span className="truncate">{item.stockName}</span>
+                  <span className="whitespace-nowrap">{item.stockName}</span>
                   <span className="ml-1.5 shrink-0 text-gray-500">{item.stockCode}</span>
                 </button>
               ))
             )}
           </div>
           <div className="my-2 border-b border-gray-600" />
-          <div className="max-h-32 overflow-y-auto">
+          <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: FILTER_LIST_ROW_HEIGHT * 6 }}>
             {selectedItems.length > 0 && (
               <button
                 type="button"
@@ -959,16 +1104,16 @@ function AdminStockNameFilterButton({
               </button>
             )}
             {selectedItems.length === 0 ? (
-              <p className="px-1 text-[18px] text-gray-400">선택된 종목 없음</p>
+              <p className="px-1 text-gray-400">선택된 종목 없음</p>
             ) : (
               selectedItems.map(item => (
                 <button
                   key={item.stockCode}
                   type="button"
                   onClick={() => onToggle(item.stockCode)}
-                  className="flex w-full items-center justify-between rounded bg-transparent px-1 py-0.5 text-left text-[18px] text-yellow-400 hover:bg-yellow-400/20"
+                  className="flex w-full items-center justify-between rounded bg-transparent px-1 py-0.5 text-left text-yellow-400 hover:bg-yellow-400/20"
                 >
-                  <span className="truncate">{item.stockName}</span>
+                  <span className="whitespace-nowrap">{item.stockName}</span>
                   <span className="ml-1.5 shrink-0 text-gray-500">{item.stockCode}</span>
                 </button>
               ))
@@ -1112,9 +1257,15 @@ const AdminStockRow = memo(function AdminStockRow({
   )
 })
 
-export default function AdminStockTable({ items, categories, snapshotTime }: Props) {
-  const [sortKey, setSortKey] = useState<SortKey>('totalMarketValue')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+export default function AdminStockTable({
+  items,
+  categories,
+  snapshotTime,
+  onRefetchCategories,
+  isRefetchingCategories,
+}: Props) {
+  const [sortKey, setSortKey] = usePersistedState<SortKey>('adminStockTable.sortKey', 'totalMarketValue')
+  const [sortDirection, setSortDirection] = usePersistedState<SortDirection>('adminStockTable.sortDirection', 'desc')
   const [isPending, startTransition] = useTransition()
   // 헤더가 sticky + 스크롤 컨테이너(overflow-auto) 안에 있어서, 그 위로 뜨는 툴팁은 일반 absolute로는
   // 부모의 overflow에 잘린다 — body에 포털로 그려서 잘리지 않게 한다(MarketMapBox 등과 동일한 패턴).
@@ -1123,6 +1274,90 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
   const assignStockCategory = useAssignStockCategory()
   const bulkAssignStockCategory = useBulkAssignStockCategory()
   const updateAlias = useUpdateAlias()
+  // handleAssign/runBulkAssign에서 "변경 전" 카테고리를 읽어야 하는데, items를 그대로 의존성에 넣으면
+  // 카테고리가 바뀔 때마다(=매 변경마다) 콜백 identity가 바뀌어 AdminStockRow의 memo가 무력화된다 —
+  // ref로 최신 값만 따라가게 해서 콜백은 그대로 안정적으로 유지한다.
+  const itemsRef = useRef(items)
+  itemsRef.current = items
+
+  // Ctrl+Z/Y 실행취소·다시실행 스택(카테고리 변경만 대상, 메모리에만 유지).
+  const [undoStack, setUndoStack] = useState<UndoableAction[]>([])
+  const [redoStack, setRedoStack] = useState<UndoableAction[]>([])
+  const actionIdRef = useRef(0)
+  const pushUndo = useCallback((action: UndoableActionInput) => {
+    const withId: UndoableAction = { ...action, id: String(actionIdRef.current++) }
+    setUndoStack(prev => [...prev.slice(-UNDO_STACK_LIMIT + 1), withId])
+    setRedoStack([])
+  }, [])
+  const applyCategoryAction = (action: UndoableAction, direction: 'before' | 'after') => {
+    if (action.type === 'category') {
+      assignStockCategory.mutate({ stockCode: action.stockCode, categoryId: direction === 'before' ? action.before : action.after })
+    } else {
+      for (const entry of action.entries) {
+        assignStockCategory.mutate({ stockCode: entry.stockCode, categoryId: direction === 'before' ? entry.before : action.after })
+      }
+    }
+  }
+  const handleUndo = () => {
+    const action = undoStack[undoStack.length - 1]
+    if (!action) return
+    applyCategoryAction(action, 'before')
+    setUndoStack(prev => prev.slice(0, -1))
+    setRedoStack(prev => [...prev, action])
+  }
+  const handleRedo = () => {
+    const action = redoStack[redoStack.length - 1]
+    if (!action) return
+    applyCategoryAction(action, 'after')
+    setRedoStack(prev => prev.slice(0, -1))
+    setUndoStack(prev => [...prev, action])
+  }
+  // 목록에서 스택 위치와 무관하게 특정 항목 하나만 골라 되돌리거나 다시 적용 — 순서 상관없이
+  // 그 항목의 before/after 값으로 직접 바꿔버리고, 다른 항목들의 순서는 그대로 둔다.
+  const handleUndoItem = (id: string) => {
+    const action = undoStack.find(a => a.id === id)
+    if (!action) return
+    applyCategoryAction(action, 'before')
+    setUndoStack(prev => prev.filter(a => a.id !== id))
+    setRedoStack(prev => [...prev, action])
+  }
+  const handleRedoItem = (id: string) => {
+    const action = redoStack.find(a => a.id === id)
+    if (!action) return
+    applyCategoryAction(action, 'after')
+    setRedoStack(prev => prev.filter(a => a.id !== id))
+    setUndoStack(prev => [...prev, action])
+  }
+  const [isUndoListOpen, setIsUndoListOpen] = useState(false)
+  const [isRedoListOpen, setIsRedoListOpen] = useState(false)
+  // 목록 팝업 위치 기준은 화살표가 아니라 UNDO/REDO 버튼 전체(테두리) — 팝업 좌측이 버튼 좌측 테두리와 맞도록.
+  const undoGroupRef = useRef<HTMLDivElement>(null)
+  const redoGroupRef = useRef<HTMLDivElement>(null)
+  // 키보드 리스너는 마운트 시 한 번만 등록하고(=종목 탭에 있는 동안만, 언마운트되면 자동 해제),
+  // 매번 최신 핸들러를 부르도록 ref로 우회한다.
+  const undoRef = useRef(handleUndo)
+  undoRef.current = handleUndo
+  const redoRef = useRef(handleRedo)
+  redoRef.current = handleRedo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      // 입력창 안에서는 브라우저 기본 실행취소(텍스트 되돌리기)에 맡긴다.
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return
+      if (!(e.ctrlKey || e.metaKey)) return
+      const key = e.key.toLowerCase()
+      if (key === 'z') {
+        e.preventDefault()
+        if (e.shiftKey) redoRef.current()
+        else undoRef.current()
+      } else if (key === 'y') {
+        e.preventDefault()
+        redoRef.current()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
   // categories가 안 바뀌면 참조를 유지해야 AdminStockRow의 React.memo가 제대로 스킵된다.
   const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories])
   const categoryOptionsById = useMemo(() => new Map(categoryOptions.map(opt => [opt.id, opt])), [categoryOptions])
@@ -1138,6 +1373,38 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
   } | null>(null)
   // 필터/정렬이 바뀌어도 선택 상태는 stockCode 기준으로 유지된다 (전체선택만 "지금 보이는 것" 기준으로 동작).
   const [selectedStockCodes, setSelectedStockCodes] = useState<Set<string>>(new Set())
+  // 1차→2차→3차 순서로 일괄적용하는 단계형 플로우 상태 — 이번 선택 안에서 방금 일괄적용한 1차/2차를
+  // 기억해뒀다가, 2차/3차 버튼의 선택지를 그 하위 카테고리로만 좁힌다. 선택이 전부 풀리면(새 작업 시작) 초기화.
+  const [bulkParentId, setBulkParentId] = useState<number | null>(null)
+  const [bulkMidId, setBulkMidId] = useState<number | null>(null)
+  useEffect(() => {
+    if (selectedStockCodes.size === 0) {
+      setBulkParentId(null)
+      setBulkMidId(null)
+    }
+  }, [selectedStockCodes])
+
+  // 툴바의 1차/2차/3차 일괄적용 버튼 폭을 그 컬럼(th) 실제 렌더 폭에 맞추기 위한 측정 — 버튼은 계속
+  // 툴바(테이블 밖) 안에 그대로 있고, 폭만 아래 컬럼과 맞춘다. 위치는 안 건드리므로 테이블 레이아웃엔 영향 없음.
+  const parentThRef = useRef<HTMLTableCellElement>(null)
+  const midThRef = useRef<HTMLTableCellElement>(null)
+  const subThRef = useRef<HTMLTableCellElement>(null)
+  const [bulkButtonWidths, setBulkButtonWidths] = useState<{ parent: number; mid: number; sub: number } | null>(null)
+
+  useLayoutEffect(() => {
+    if (selectedStockCodes.size === 0) return
+    const measure = () => {
+      const parentWidth = parentThRef.current?.getBoundingClientRect().width
+      const midWidth = midThRef.current?.getBoundingClientRect().width
+      const subWidth = subThRef.current?.getBoundingClientRect().width
+      if (parentWidth == null || midWidth == null || subWidth == null) return
+      setBulkButtonWidths({ parent: parentWidth, mid: midWidth, sub: subWidth })
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 선택 여부(비어있다가 생기는 전환)에만 반응하면 됨
+  }, [selectedStockCodes.size > 0])
 
   const handleSort = (key: SortKey) => {
     startTransition(() => {
@@ -1153,9 +1420,13 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
   // AdminStockRow에 props로 내려가는 콜백들 — 매 렌더마다 새 함수면 React.memo가 무력화되므로 useCallback으로 고정한다.
   const handleAssign = useCallback(
     (stockCode: string, categoryId: number) => {
+      const before = itemsRef.current.find(item => item.stockCode === stockCode)?.categoryId
       assignStockCategory.mutate({ stockCode, categoryId })
+      if (before != null && before !== categoryId) {
+        pushUndo({ type: 'category', stockCode, before, after: categoryId })
+      }
     },
-    [assignStockCategory],
+    [assignStockCategory, pushUndo],
   )
 
   const handleUpdateAlias = useCallback(
@@ -1189,13 +1460,26 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
   const handleAliasHoverStart = useCallback((stockCode: string) => setHoveredRow({ stockCode, kind: 'alias' }), [])
   const handleHoverEnd = useCallback(() => setHoveredRow(null), [])
 
-  const handleBulkAssign = (categoryId: number) => {
+  // 1차→2차→3차 단계형 일괄적용 공통 로직. 각 단계는 독립된 assign 호출이라(서버 입장에선 categoryId를
+  // 여러 번 덮어쓰는 흐름이지만), 다음 단계 버튼에서 계속 이어서 좁혀나갈 수 있도록 선택은 유지한다.
+  const runBulkAssign = (categoryId: number, onSuccessExtra?: () => void) => {
+    const targets = [...selectedStockCodes]
+    // 실행취소용으로 각 종목의 "변경 전" 카테고리를 미리 스냅샷 — 일괄적용은 종목마다 원래 카테고리가
+    // 달랐을 수 있어서, 되돌릴 때도 종목별로 각자의 이전 값으로 복원해야 한다.
+    const beforeByStockCode = new Map(targets.map(stockCode => [stockCode, itemsRef.current.find(item => item.stockCode === stockCode)?.categoryId]))
     bulkAssignStockCategory.mutate(
-      { stockCodes: [...selectedStockCodes], categoryId },
+      { stockCodes: targets, categoryId },
       {
         onSuccess: result => {
-          setSelectedStockCodes(new Set())
+          onSuccessExtra?.()
           const categoryName = categoryOptions.find(opt => opt.id === result.categoryId)?.name ?? ''
+          const entries = targets
+            .filter(stockCode => !result.failedStockCodes.includes(stockCode))
+            .map(stockCode => ({ stockCode, before: beforeByStockCode.get(stockCode) }))
+            .filter((entry): entry is { stockCode: string; before: number } => entry.before != null && entry.before !== categoryId)
+          if (entries.length > 0) {
+            pushUndo({ type: 'bulkCategory', categoryName, after: categoryId, entries })
+          }
           if (result.failedStockCodes.length === 0) {
             window.alert(`카테고리: ${categoryName}\n일괄 적용 완료되었습니다.`)
           } else {
@@ -1208,16 +1492,52 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
     )
   }
 
-  const [excludedFilters, setExcludedFilters] = useState<Record<FilterKey, Set<string>>>({
-    market: new Set(),
-    originCategoryName: new Set(),
-    parentCategoryName: new Set(),
-    midCategoryName: new Set(),
-    subCategoryName: new Set(),
-  })
+  const handleBulkAssignParent = (categoryId: number) => {
+    runBulkAssign(categoryId, () => {
+      setBulkParentId(categoryId)
+      setBulkMidId(null)
+    })
+  }
+  const handleBulkAssignMid = (categoryId: number) => {
+    runBulkAssign(categoryId, () => setBulkMidId(categoryId))
+  }
+  const handleBulkAssignSub = (categoryId: number) => {
+    runBulkAssign(categoryId)
+  }
+
+  const bulkParentOptions = categoryOptions.filter(opt => opt.parentId === null)
+  const bulkMidOptions = bulkParentId != null ? categoryOptions.filter(opt => opt.parentId === bulkParentId) : []
+  const bulkSubOptions = bulkMidId != null ? categoryOptions.filter(opt => opt.parentId === bulkMidId) : []
+
+  const [excludedFilters, setExcludedFilters] = usePersistedState<Record<FilterKey, Set<string>>>(
+    'adminStockTable.excludedFilters',
+    {
+      market: new Set(),
+      originCategoryName: new Set(),
+      parentCategoryName: new Set(),
+      midCategoryName: new Set(),
+      subCategoryName: new Set(),
+    },
+    {
+      serialize: filters =>
+        Object.fromEntries(Object.entries(filters).map(([key, value]) => [key, [...value]])),
+      deserialize: raw =>
+        Object.fromEntries(
+          Object.entries(raw as Record<FilterKey, string[]>).map(([key, value]) => [key, new Set(value)]),
+        ) as Record<FilterKey, Set<string>>,
+    },
+  )
   // 종목명 필터는 다른 필터와 반대로 "선택한 종목코드만 남기기"(포함 방식)로 동작한다. 비어있으면 필터 없음.
-  const [nameFilterStockCodes, setNameFilterStockCodes] = useState<Set<string>>(new Set())
-  const [excludedMarketValueTiers, setExcludedMarketValueTiers] = useState<Set<MarketValueTier>>(new Set())
+  const [nameFilterStockCodes, setNameFilterStockCodes] = usePersistedState<Set<string>>(
+    'adminStockTable.nameFilterStockCodes',
+    new Set(),
+    { serialize: set => [...set], deserialize: raw => new Set(raw as string[]) },
+  )
+  const [excludedMarketValueTiers, setExcludedMarketValueTiers] = usePersistedState<Set<MarketValueTier>>(
+    'adminStockTable.excludedMarketValueTiers',
+    new Set(),
+    { serialize: set => [...set], deserialize: raw => new Set(raw as MarketValueTier[]) },
+  )
   const toggleMarketValueTier = (value: MarketValueTier) => {
     setExcludedMarketValueTiers(prev => {
       const next = new Set(prev)
@@ -1378,10 +1698,82 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="mb-2 flex min-h-[38px] shrink-0 items-center justify-between px-2">
-        <p className="text-sm font-bold text-white">
-          종목수 ({sorted.length}
-          {sorted.length !== items.length ? ` / ${items.length}` : ''})
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm font-bold text-white">
+            종목수 ({sorted.length}
+            {sorted.length !== items.length ? ` / ${items.length}` : ''})
+          </p>
+          <div className="flex items-center gap-2">
+            <div
+              ref={undoGroupRef}
+              className={`nes-btn flex items-stretch gap-0 border-sky-500 bg-sky-500 p-0 text-white ${undoStack.length === 0 ? 'opacity-50' : ''}`}
+            >
+              <button
+                type="button"
+                onClick={handleUndo}
+                disabled={undoStack.length === 0}
+                className="flex items-center gap-1.5 border-0 bg-transparent px-2 py-1 text-xs text-white hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white"
+                title="실행취소 (Ctrl+Z)"
+              >
+                <UndoIcon className="h-4 w-4" />
+                UNDO
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsUndoListOpen(prev => !prev)}
+                disabled={undoStack.length === 0}
+                className={`flex items-center justify-center border-0 bg-transparent px-4 py-1 hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white ${isUndoListOpen ? 'text-yellow-400' : 'text-white'}`}
+                title="실행취소 목록"
+              >
+                <ChevronDownIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <UndoRedoHistoryPopup
+              isOpen={isUndoListOpen}
+              setIsOpen={setIsUndoListOpen}
+              triggerRef={undoGroupRef}
+              actions={undoStack}
+              direction="undo"
+              items={items}
+              categoryOptionsById={categoryOptionsById}
+              onPick={handleUndoItem}
+            />
+            <div
+              ref={redoGroupRef}
+              className={`nes-btn flex items-stretch gap-0 border-sky-500 bg-sky-500 p-0 text-white ${redoStack.length === 0 ? 'opacity-50' : ''}`}
+            >
+              <button
+                type="button"
+                onClick={handleRedo}
+                disabled={redoStack.length === 0}
+                className="flex items-center gap-1.5 border-0 bg-transparent px-2 py-1 text-xs text-white hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white"
+                title="다시실행 (Ctrl+Y)"
+              >
+                <RedoIcon className="h-4 w-4" />
+                REDO
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsRedoListOpen(prev => !prev)}
+                disabled={redoStack.length === 0}
+                className={`flex items-center justify-center border-0 bg-transparent px-4 py-1 hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white ${isRedoListOpen ? 'text-yellow-400' : 'text-white'}`}
+                title="다시실행 목록"
+              >
+                <ChevronDownIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <UndoRedoHistoryPopup
+              isOpen={isRedoListOpen}
+              setIsOpen={setIsRedoListOpen}
+              triggerRef={redoGroupRef}
+              actions={redoStack}
+              direction="redo"
+              items={items}
+              categoryOptionsById={categoryOptionsById}
+              onPick={handleRedoItem}
+            />
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           {hasAnyFilter && (
             <>
@@ -1395,8 +1787,44 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
               </button>
             </>
           )}
+          <button
+            type="button"
+            onClick={onRefetchCategories}
+            disabled={isRefetchingCategories}
+            className="nes-btn flex items-center gap-1 border-sky-500 bg-sky-500 text-xs text-white hover:bg-sky-600 disabled:opacity-50"
+            title="다른 탭에서 추가/변경한 카테고리를 반영합니다 (필터는 유지됨)"
+          >
+            <RefreshIcon className={`h-3.5 w-3.5 ${isRefetchingCategories ? 'animate-spin' : ''}`} />
+            {isRefetchingCategories ? '새로고침 중...' : '새로고침'}
+          </button>
           {selectedStockCodes.size > 0 && (
-            <BulkAssignButton count={selectedStockCodes.size} options={categoryOptions} onAssign={handleBulkAssign} />
+            <>
+              <BulkAssignButton
+                count={selectedStockCodes.size}
+                options={bulkParentOptions}
+                onAssign={handleBulkAssignParent}
+                alignRight
+                widthPx={bulkButtonWidths?.parent}
+              />
+              <BulkAssignButton
+                count={selectedStockCodes.size}
+                options={bulkMidOptions}
+                onAssign={handleBulkAssignMid}
+                alignRight
+                widthPx={bulkButtonWidths?.mid}
+                disabled={bulkParentId == null}
+                disabledHint="1차 분류를 먼저 일괄적용하세요"
+              />
+              <BulkAssignButton
+                count={selectedStockCodes.size}
+                options={bulkSubOptions}
+                onAssign={handleBulkAssignSub}
+                alignRight
+                widthPx={bulkButtonWidths?.sub}
+                disabled={bulkMidId == null}
+                disabledHint="2차 분류를 먼저 일괄적용하세요"
+              />
+            </>
           )}
         </div>
       </div>
@@ -1434,7 +1862,20 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
                 // col.key로 좁혀진 타입은 아래 클로저(onToggle 등) 안에서는 다시 넓어지므로, 지역 변수로 한 번 고정해둔다.
                 const filterKey = isFilterKey(col.key) ? col.key : null
                 return (
-                  <th key={col.key} style={{ width: col.width }} className="whitespace-nowrap bg-[#4f8fd6] text-center">
+                  <th
+                    key={col.key}
+                    ref={
+                      col.key === 'parentCategoryName'
+                        ? parentThRef
+                        : col.key === 'midCategoryName'
+                          ? midThRef
+                          : col.key === 'subCategoryName'
+                            ? subThRef
+                            : undefined
+                    }
+                    style={{ width: col.width }}
+                    className="whitespace-nowrap bg-[#4f8fd6] text-center"
+                  >
                     {filterKey ? (
                       <div className="flex items-center justify-between pl-2 pr-1">
                         {label}

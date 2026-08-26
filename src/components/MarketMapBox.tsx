@@ -17,21 +17,21 @@ const MIN_NAME_WIDTH = 16
 const MIN_NAME_HEIGHT = 14
 const MIN_PERCENT_HEIGHT = 28
 
-// 등락률 크기에 따라 색상을 4단계로 차등(2%/6%/10%p 기준, ±10%p 초과는 최대 단계로 고정).
+// 등락률 크기에 따라 색상을 4단계로 차등(2%/5%/8%p 기준, ±8%p 초과는 최대 단계로 고정).
 // 0에 가까울수록 탁하고 짙은 톤, 멀어질수록 쨍하고 선명한 톤으로 — 핀비즈 히트맵과 동일한 방향.
 function boxColorClass(changeRate: number): string {
   if (changeRate === 0) return 'bg-gray-600'
   const abs = Math.abs(changeRate)
   if (changeRate > 0) {
-    if (abs > 10) return 'bg-red-500'
-    if (abs > 6) return 'bg-red-600'
-    if (abs > 2) return 'bg-red-700'
-    return 'bg-red-900'
+    if (abs > 8) return 'bg-red-500'
+    if (abs > 5) return 'bg-red-700'
+    if (abs > 2) return 'bg-red-900'
+    return 'bg-red-950'
   }
-  if (abs > 10) return 'bg-blue-500'
-  if (abs > 6) return 'bg-blue-600'
-  if (abs > 2) return 'bg-blue-700'
-  return 'bg-blue-900'
+  if (abs > 8) return 'bg-blue-500'
+  if (abs > 5) return 'bg-blue-700'
+  if (abs > 2) return 'bg-blue-900'
+  return 'bg-blue-950'
 }
 
 function fontSizePx(width: number, height: number): number {
