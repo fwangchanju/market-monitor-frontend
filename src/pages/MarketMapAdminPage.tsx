@@ -11,7 +11,13 @@ import { useAdminCategories, useStockCategories } from '@/hooks/useMarketMapAdmi
 export default function MarketMapAdminPage() {
   const [searchParams] = useSearchParams()
   const mode = searchParams.get('mode') === 'category' ? 'category' : 'stock'
-  const { data: categories, error: categoriesError, isLoading } = useAdminCategories()
+  const {
+    data: categories,
+    error: categoriesError,
+    isLoading,
+    refetch: refetchCategories,
+    isRefetching: isRefetchingCategories,
+  } = useAdminCategories()
   const { data: stockCategories } = useStockCategories()
 
   // 로딩 중엔 admin 여부를 아직 모르므로, 403으로 걸러지기 전까지 사이드바/테이블 같은 실제
@@ -42,6 +48,8 @@ export default function MarketMapAdminPage() {
               items={stockCategories?.items ?? []}
               categories={categories ?? []}
               snapshotTime={stockCategories?.snapshotTime ?? null}
+              onRefetchCategories={() => refetchCategories()}
+              isRefetchingCategories={isRefetchingCategories}
             />
           ) : (
             <AdminCategoryTable categories={categories ?? []} />

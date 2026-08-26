@@ -11,12 +11,13 @@ import { useMarketMap } from '@/hooks/useMarketMap'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useFilteredMarketMapTree } from '@/hooks/useFilteredMarketMapTree'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
-import { TAB_GAP, toFullDateTimeLabel } from '@/utils/format'
+import { TAB_GAP, toFullDateTimeLabel, toIndex, toPctSigned, signClass } from '@/utils/format'
+import { useMarketSummary } from '@/hooks/useMarketSummary'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { registerExcludedCategory, unregisterExcludedCategory } from '@/api/marketMap'
-import { MARKET_VALUE_TIER_ASCENDING, MARKET_VALUE_TIER_SHORT_LABEL } from '@/utils/marketValueTier'
+import { MARKET_VALUE_TIER_ASCENDING } from '@/utils/marketValueTier'
 import type { Market, MarketMapCategoryNode, MarketMapItem, MarketValueTier } from '@/types/api'
 
 // 왼쪽 사이드바 필터 버튼 텍스트(MarketMapFilterSidebar의 FILTER_ITEMS)와 동일하게 맞춘다.
@@ -168,6 +169,8 @@ export default function MarketMapCustomPage() {
   const seededKeyRef = useRef<string | null>(null)
 
   const { data, isLoading, isError } = useMarketMap(market, isCustom)
+  const { data: marketSummaryData } = useMarketSummary()
+  const marketOverview = marketSummaryData?.marketOverviews.items.find(item => item.market === market)
 
   const rootNodes = data?.items ?? []
 
@@ -241,36 +244,17 @@ export default function MarketMapCustomPage() {
   const rawCurrentNode = findRawNodeByPath(rootNodes, path)
   const totalItemCount = collectRawItems(rawCurrentNode ? [rawCurrentNode] : rootNodes).length
 
-  // 상단 바에 지금 켜져있는 모드/시가총액 구간 상태를 한눈에 보여주기 위한 요약 텍스트.
-  const isFullTierRange = tierRangeMinIndex === 0 && tierRangeMaxIndex === MARKET_VALUE_TIER_ASCENDING.length - 1
-  // 큰 등급 -> 작은 등급 순서로 출력.
-  const tierRangeText = `${MARKET_VALUE_TIER_SHORT_LABEL[MARKET_VALUE_TIER_ASCENDING[tierRangeMaxIndex]]}~${MARKET_VALUE_TIER_SHORT_LABEL[MARKET_VALUE_TIER_ASCENDING[tierRangeMinIndex]]}`
-  // 상위 - 하위 경로 구분자를 "내"로 바꿔서 이어붙인다: "금융 - 금속" -> "금융 내 금속".
-  const excludedSectorNames = Array.from(excludedCategoryNames.values())
-    .map(name => name.replace(/ - /g, ' 내 '))
-    .join(', ')
-  const modeStatusText = isCustom ? (
+  // 상단 바 표시: 커스텀 모드 on/off를 점등 표시로, 텍스트는 종목 수 하나만 고정 출력.
+  const modeStatusText = (
     <>
-      <span className="underline">커스텀 모드</span> 사용 중
-      {!isFullTierRange && (
-        <>
-          {TAB_GAP}
-          <span className="underline">{tierRangeText}</span>만 표시
-        </>
-      )}
-      {excludedCategoryIds.size > 0 && (
-        <>
-          {TAB_GAP}
-          <span className="underline">{excludedSectorNames}</span> 제외
-        </>
-      )}
-      {TAB_GAP}
-      {visibleItems.length}/{totalItemCount}종목
-    </>
-  ) : (
-    <>
-      <span className="underline">커스텀 모드</span> 미사용{TAB_GAP}
-      {visibleItems.length}/{totalItemCount}종목
+      <span
+        className={`mr-1.5 inline-block h-2 w-2 rounded-full ${
+          isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-600'
+        }`}
+      />
+      <span className={isCustom ? 'text-white' : undefined}>
+        커스텀 모드 ({visibleItems.length}/{totalItemCount}종목)
+      </span>
     </>
   )
 
@@ -429,8 +413,21 @@ export default function MarketMapCustomPage() {
         {!isFullscreen && <MarketMapFilterSidebar market={market} onMarketChange={handleMarketChange} />}
         <div ref={captureRef} data-captureid={CAPTURE_ID.MARKET_MAP} className="flex min-h-0 flex-1 flex-col bg-black">
           <div className="mb-1 grid h-7 w-full shrink-0 grid-cols-[auto_1fr_auto] items-center border-2 border-black bg-black/70 px-1 text-sm font-bold text-white">
-            <span className="whitespace-nowrap">{MARKET_LABEL[market]}</span>
-            <span className="min-w-0 whitespace-nowrap text-center text-sm font-normal text-gray-400">
+            <div className="flex items-center whitespace-nowrap">
+              <span className="text-2xl">{MARKET_LABEL[market]}</span>
+              {marketOverview && (
+                <span className={`text-base font-normal ${signClass(marketOverview.changeRate)}`}>
+                  {TAB_GAP}
+                  {toIndex(marketOverview.indexValue)}
+                  {TAB_GAP}
+                  {marketOverview.changeValue > 0 ? '▲' : marketOverview.changeValue < 0 ? '▼' : ''}
+                  {toIndex(Math.abs(marketOverview.changeValue))}
+                  {TAB_GAP}
+                  {toPctSigned(marketOverview.changeRate)}
+                </span>
+              )}
+            </div>
+            <span className="min-w-0 whitespace-nowrap text-center text-base font-normal text-gray-400">
               {modeStatusText}
             </span>
             <div className="flex items-center gap-3">

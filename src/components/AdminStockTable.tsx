@@ -6,12 +6,16 @@ import { toFullDateTimeLabel, toJoEokDecimal } from '@/utils/format'
 import { MARKET_VALUE_TIER_OPTIONS } from '@/utils/marketValueTier'
 import { useAssignStockCategory, useBulkAssignStockCategory, useUpdateAlias } from '@/hooks/useMarketMapAdmin'
 import Spinner from './Spinner'
-import { CheckIcon, SearchIcon } from './icons/MarketMapIcons'
+import { CheckIcon, RefreshIcon, SearchIcon } from './icons/MarketMapIcons'
 
 interface Props {
   items: StockCategoryListItem[]
   categories: CategoryItem[]
   snapshotTime: string | null
+  // 다른 탭에서 카테고리를 추가/변경한 뒤 이 화면의 필터 상태를 유지한 채로 카테고리 목록만
+  // 다시 불러오고 싶을 때 쓰는 버튼용 — 전체 새로고침(필터 초기화)을 피하기 위함.
+  onRefetchCategories: () => void
+  isRefetchingCategories: boolean
 }
 
 type SortKey =
@@ -178,7 +182,15 @@ interface PopupPosition {
   left: number
   openUpward: boolean
   alignRight: boolean
+  width: number
 }
+
+// 필터 팝업 목록 한 행의 높이(px) — 테이블 본문과 같은 text-sm(20px 줄높이) + py-0.5(위아래 2px씩) 기준.
+const FILTER_LIST_ROW_HEIGHT = 24
+// 필터 팝업을 한 화면에 몇 개 행까지 보여줄지 — 이보다 적으면 목록 실제 높이만큼만 차지하고,
+// 많으면 이 높이에서 스크롤(overflow-y-auto)된다.
+const FILTER_LIST_MAX_VISIBLE_ROWS = 15
+const FILTER_LIST_MAX_HEIGHT = FILTER_LIST_ROW_HEIGHT * FILTER_LIST_MAX_VISIBLE_ROWS
 
 // 팝업(카테고리 검색창/필터 드롭다운) 공통 로직 — 트리거 기준 위치 계산 + 바깥 클릭/스크롤 시 닫기.
 function usePopupPosition(
@@ -199,11 +211,15 @@ function usePopupPosition(
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect()
       const openUpward = rect.bottom > window.innerHeight * flipThreshold
+      // 필터 팝업(트리거가 th 안의 버튼)은 폭을 그 컬럼(th) 실제 렌더 폭에 맞춘다 — th가 아니면(예: 카테고리
+      // 검색 팝업처럼 td 안에서 여는 경우) 트리거 자체 폭으로 대체.
+      const columnWidth = triggerRef.current.closest('th')?.getBoundingClientRect().width
       setPosition({
         top: openUpward ? rect.top : rect.bottom,
         left: alignRight ? rect.right : rect.left,
         openUpward,
         alignRight,
+        width: columnWidth ?? rect.width,
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ref는 안정적이라 open 시점에만 반응하면 된다
@@ -336,17 +352,17 @@ function CategorySearchPopup({
         onChange={e => search.handleQueryChange(e.target.value)}
         onKeyDown={e => (e.key === 'Escape' ? onEscape() : search.handleArrowsAndEnter(e, onSelect))}
         placeholder="카테고리 검색"
-        className="nes-input is-dark w-full py-2 text-[18px]"
+        className="nes-input is-dark w-full py-2 text-sm"
       />
       {contextLabel && (
-        <span className="mt-2 inline-block rounded bg-[#4f8fd6]/30 px-2 py-0.5 text-[14px] text-white">
+        <span className="mt-2 inline-block rounded bg-[#4f8fd6]/30 px-2 py-0.5 text-xs text-white">
           {contextLabel}
         </span>
       )}
       <div className="mt-2 border-t border-gray-600 pt-2">
-        <div className="max-h-72 overflow-y-auto">
+        <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: FILTER_LIST_MAX_HEIGHT }}>
           {search.matches.length === 0 ? (
-            <p className="px-2 py-1 text-[18px] text-gray-400">검색 결과가 없습니다</p>
+            <p className="px-2 py-1 text-sm text-gray-400">검색 결과가 없습니다</p>
           ) : (
             search.matches.map((opt, index) => (
               <button
@@ -358,7 +374,7 @@ function CategorySearchPopup({
                 type="button"
                 onClick={() => onSelect(opt.id)}
                 onMouseEnter={() => search.setHighlightedIndex(index)}
-                className={`block w-full truncate rounded px-2 py-1 text-left text-[18px] text-white ${
+                className={`block w-full truncate rounded px-2 py-0.5 text-left text-sm text-white ${
                   index === search.highlightedIndex ? 'bg-[#4f8fd6]/30' : 'bg-transparent'
                 }`}
               >
@@ -491,18 +507,30 @@ function BulkAssignButton({
   count,
   options,
   onAssign,
+  alignRight = false,
+  widthPx,
+  disabled = false,
+  disabledHint,
 }: {
   count: number
   options: CategoryOption[]
   onAssign: (categoryId: number) => void
+  alignRight?: boolean
+  // 아래 실제 컬럼(th) 폭에 맞추기 위한 값 — 없으면 버튼 기본(내용에 맞는) 폭을 그대로 쓴다.
+  widthPx?: number
+  // 선행 단계(1차/2차)가 아직 적용 안 된 상태의 2차/3차 버튼 — 버튼 자체는 평소와 똑같이 보이되,
+  // 클릭하면 팝업 대신 안내 문구만 잠깐 띄운다(AdminStockCategoryCell의 disabled 셀과 동일한 패턴).
+  disabled?: boolean
+  disabledHint?: string
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [showHint, setShowHint] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const hintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const search = useCategorySearchState(options, isOpen)
 
-  // 버튼이 화면 우측 끝에 붙어있어서, 팝업은 버튼 오른쪽 끝에 맞춰 왼쪽으로 열리게 한다.
   const position = usePopupPosition(
     isOpen,
     setIsOpen,
@@ -510,8 +538,26 @@ function BulkAssignButton({
     popupRef,
     () => inputRef.current?.focus(),
     0.6,
-    true,
+    alignRight,
   )
+
+  useEffect(() => {
+    return () => {
+      if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current)
+    }
+  }, [])
+
+  const handleClick = () => {
+    if (disabled) {
+      if (!disabledHint) return
+      setShowHint(true)
+      if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current)
+      hintTimeoutRef.current = setTimeout(() => setShowHint(false), 1000)
+      return
+    }
+    search.reset()
+    setIsOpen(true)
+  }
 
   const handleSelect = (categoryId: number) => {
     onAssign(categoryId)
@@ -523,15 +569,13 @@ function BulkAssignButton({
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => {
-          search.reset()
-          setIsOpen(true)
-        }}
+        onClick={handleClick}
+        style={widthPx != null ? { width: widthPx } : undefined}
         className="nes-btn border-sky-500 bg-sky-500 text-xs text-white hover:bg-sky-600"
       >
         일괄변경 ({count})
       </button>
-      {isOpen && position && (
+      {isOpen && position && !disabled && (
         <CategorySearchPopup
           popupRef={popupRef}
           inputRef={inputRef}
@@ -540,6 +584,14 @@ function BulkAssignButton({
           onSelect={handleSelect}
           onEscape={() => setIsOpen(false)}
         />
+      )}
+      {disabled && showHint && disabledHint && (
+        <div
+          style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)' }}
+          className="nes-container is-dark z-50 whitespace-nowrap !bg-violet-950 px-3 py-2 text-sm text-white"
+        >
+          {disabledHint}
+        </div>
       )}
     </>
   )
@@ -689,9 +741,10 @@ function AdminColumnFilterButton({
             position: 'fixed',
             top: position.top,
             left: position.left,
+            width: position.width,
             transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
           }}
-          className="nes-container is-dark z-50 w-64 !bg-violet-950 p-2 text-left normal-case"
+          className="nes-container is-dark z-50 !bg-violet-950 p-2 text-left text-sm normal-case"
           onClick={e => e.stopPropagation()}
         >
           <input
@@ -701,17 +754,17 @@ function AdminColumnFilterButton({
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="검색"
-            className="nes-input is-dark mb-2 w-full py-2 text-[18px]"
+            className="nes-input is-dark mb-2 w-full py-2 text-sm"
           />
-          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 text-[18px] font-bold text-white hover:bg-yellow-400/50">
+          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 font-bold text-white hover:bg-yellow-400/50">
             <input type="checkbox" checked={!isPreviewingSearch && isAllSelected} onChange={handleToggleAll} />
             <span>전체</span>
           </label>
-          <div className="max-h-48 overflow-y-auto pt-1">
+          <div className="overflow-y-auto pt-1 scrollbar-thin" style={{ maxHeight: FILTER_LIST_MAX_HEIGHT }}>
             {visibleOptions.map(opt => (
               <label
                 key={opt}
-                className="flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-[18px] text-white hover:bg-yellow-400/50"
+                className="flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-white hover:bg-yellow-400/50"
               >
                 <input
                   type="checkbox"
@@ -772,12 +825,13 @@ function AdminMarketValueFilterButton({
             position: 'fixed',
             top: position.top,
             left: position.left,
+            width: position.width,
             transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
           }}
-          className="nes-container is-dark z-50 w-64 !bg-violet-950 p-2 text-left normal-case"
+          className="nes-container is-dark z-50 !bg-violet-950 p-2 text-left text-sm normal-case"
           onClick={e => e.stopPropagation()}
         >
-          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 text-[18px] font-bold text-white hover:bg-yellow-400/50">
+          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 font-bold text-white hover:bg-yellow-400/50">
             <input type="checkbox" checked={isAllSelected} onChange={() => (isAllSelected ? onSelectNone() : onSelectAll())} />
             <span>전체</span>
           </label>
@@ -785,7 +839,7 @@ function AdminMarketValueFilterButton({
             {MARKET_VALUE_TIER_OPTIONS.map(opt => (
               <label
                 key={opt.value}
-                className="flex w-full cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-[18px] text-white hover:bg-yellow-400/50"
+                className="flex w-full cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-white hover:bg-yellow-400/50"
               >
                 <input type="checkbox" checked={!excluded.has(opt.value)} onChange={() => onToggle(opt.value)} />
                 <span className="flex flex-1 items-center justify-between gap-2">
@@ -898,9 +952,10 @@ function AdminStockNameFilterButton({
             position: 'fixed',
             top: position.top,
             left: position.left,
+            width: position.width,
             transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
           }}
-          className="nes-container is-dark z-50 w-64 !bg-violet-950 p-2 text-left normal-case"
+          className="nes-container is-dark z-50 !bg-violet-950 p-2 text-left text-sm normal-case"
           onClick={e => e.stopPropagation()}
         >
           <input
@@ -910,9 +965,9 @@ function AdminStockNameFilterButton({
             onChange={e => handleQueryChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="종목명/코드 검색"
-            className="nes-input is-dark w-full py-2 text-[18px]"
+            className="nes-input is-dark w-full py-2 text-sm"
           />
-          <div className="mt-2 max-h-56 overflow-y-auto">
+          <div className="mt-2 overflow-y-auto scrollbar-thin" style={{ maxHeight: FILTER_LIST_MAX_HEIGHT }}>
             {trimmed !== '' && matches.length > 0 && (
               <button
                 type="button"
@@ -924,7 +979,7 @@ function AdminStockNameFilterButton({
               </button>
             )}
             {trimmed === '' ? null : matches.length === 0 ? (
-              <p className="px-1 text-[18px] text-gray-400">검색 결과 없음</p>
+              <p className="px-1 text-gray-400">검색 결과 없음</p>
             ) : (
               matches.map((item, index) => (
                 <button
@@ -936,7 +991,7 @@ function AdminStockNameFilterButton({
                   type="button"
                   onClick={() => onToggle(item.stockCode)}
                   onMouseEnter={() => setHighlightedIndex(index)}
-                  className={`flex w-full items-center justify-between rounded px-1 py-0.5 text-left text-[18px] text-white ${
+                  className={`flex w-full items-center justify-between rounded px-1 py-0.5 text-left text-white ${
                     index === highlightedIndex ? 'bg-yellow-400/50' : 'bg-transparent'
                   }`}
                 >
@@ -947,7 +1002,7 @@ function AdminStockNameFilterButton({
             )}
           </div>
           <div className="my-2 border-b border-gray-600" />
-          <div className="max-h-32 overflow-y-auto">
+          <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: FILTER_LIST_ROW_HEIGHT * 6 }}>
             {selectedItems.length > 0 && (
               <button
                 type="button"
@@ -959,14 +1014,14 @@ function AdminStockNameFilterButton({
               </button>
             )}
             {selectedItems.length === 0 ? (
-              <p className="px-1 text-[18px] text-gray-400">선택된 종목 없음</p>
+              <p className="px-1 text-gray-400">선택된 종목 없음</p>
             ) : (
               selectedItems.map(item => (
                 <button
                   key={item.stockCode}
                   type="button"
                   onClick={() => onToggle(item.stockCode)}
-                  className="flex w-full items-center justify-between rounded bg-transparent px-1 py-0.5 text-left text-[18px] text-yellow-400 hover:bg-yellow-400/20"
+                  className="flex w-full items-center justify-between rounded bg-transparent px-1 py-0.5 text-left text-yellow-400 hover:bg-yellow-400/20"
                 >
                   <span className="truncate">{item.stockName}</span>
                   <span className="ml-1.5 shrink-0 text-gray-500">{item.stockCode}</span>
@@ -1112,7 +1167,13 @@ const AdminStockRow = memo(function AdminStockRow({
   )
 })
 
-export default function AdminStockTable({ items, categories, snapshotTime }: Props) {
+export default function AdminStockTable({
+  items,
+  categories,
+  snapshotTime,
+  onRefetchCategories,
+  isRefetchingCategories,
+}: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('totalMarketValue')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [isPending, startTransition] = useTransition()
@@ -1138,6 +1199,38 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
   } | null>(null)
   // 필터/정렬이 바뀌어도 선택 상태는 stockCode 기준으로 유지된다 (전체선택만 "지금 보이는 것" 기준으로 동작).
   const [selectedStockCodes, setSelectedStockCodes] = useState<Set<string>>(new Set())
+  // 1차→2차→3차 순서로 일괄적용하는 단계형 플로우 상태 — 이번 선택 안에서 방금 일괄적용한 1차/2차를
+  // 기억해뒀다가, 2차/3차 버튼의 선택지를 그 하위 카테고리로만 좁힌다. 선택이 전부 풀리면(새 작업 시작) 초기화.
+  const [bulkParentId, setBulkParentId] = useState<number | null>(null)
+  const [bulkMidId, setBulkMidId] = useState<number | null>(null)
+  useEffect(() => {
+    if (selectedStockCodes.size === 0) {
+      setBulkParentId(null)
+      setBulkMidId(null)
+    }
+  }, [selectedStockCodes])
+
+  // 툴바의 1차/2차/3차 일괄적용 버튼 폭을 그 컬럼(th) 실제 렌더 폭에 맞추기 위한 측정 — 버튼은 계속
+  // 툴바(테이블 밖) 안에 그대로 있고, 폭만 아래 컬럼과 맞춘다. 위치는 안 건드리므로 테이블 레이아웃엔 영향 없음.
+  const parentThRef = useRef<HTMLTableCellElement>(null)
+  const midThRef = useRef<HTMLTableCellElement>(null)
+  const subThRef = useRef<HTMLTableCellElement>(null)
+  const [bulkButtonWidths, setBulkButtonWidths] = useState<{ parent: number; mid: number; sub: number } | null>(null)
+
+  useLayoutEffect(() => {
+    if (selectedStockCodes.size === 0) return
+    const measure = () => {
+      const parentWidth = parentThRef.current?.getBoundingClientRect().width
+      const midWidth = midThRef.current?.getBoundingClientRect().width
+      const subWidth = subThRef.current?.getBoundingClientRect().width
+      if (parentWidth == null || midWidth == null || subWidth == null) return
+      setBulkButtonWidths({ parent: parentWidth, mid: midWidth, sub: subWidth })
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 선택 여부(비어있다가 생기는 전환)에만 반응하면 됨
+  }, [selectedStockCodes.size > 0])
 
   const handleSort = (key: SortKey) => {
     startTransition(() => {
@@ -1189,12 +1282,14 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
   const handleAliasHoverStart = useCallback((stockCode: string) => setHoveredRow({ stockCode, kind: 'alias' }), [])
   const handleHoverEnd = useCallback(() => setHoveredRow(null), [])
 
-  const handleBulkAssign = (categoryId: number) => {
+  // 1차→2차→3차 단계형 일괄적용 공통 로직. 각 단계는 독립된 assign 호출이라(서버 입장에선 categoryId를
+  // 여러 번 덮어쓰는 흐름이지만), 다음 단계 버튼에서 계속 이어서 좁혀나갈 수 있도록 선택은 유지한다.
+  const runBulkAssign = (categoryId: number, onSuccessExtra?: () => void) => {
     bulkAssignStockCategory.mutate(
       { stockCodes: [...selectedStockCodes], categoryId },
       {
         onSuccess: result => {
-          setSelectedStockCodes(new Set())
+          onSuccessExtra?.()
           const categoryName = categoryOptions.find(opt => opt.id === result.categoryId)?.name ?? ''
           if (result.failedStockCodes.length === 0) {
             window.alert(`카테고리: ${categoryName}\n일괄 적용 완료되었습니다.`)
@@ -1207,6 +1302,23 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
       },
     )
   }
+
+  const handleBulkAssignParent = (categoryId: number) => {
+    runBulkAssign(categoryId, () => {
+      setBulkParentId(categoryId)
+      setBulkMidId(null)
+    })
+  }
+  const handleBulkAssignMid = (categoryId: number) => {
+    runBulkAssign(categoryId, () => setBulkMidId(categoryId))
+  }
+  const handleBulkAssignSub = (categoryId: number) => {
+    runBulkAssign(categoryId)
+  }
+
+  const bulkParentOptions = categoryOptions.filter(opt => opt.parentId === null)
+  const bulkMidOptions = bulkParentId != null ? categoryOptions.filter(opt => opt.parentId === bulkParentId) : []
+  const bulkSubOptions = bulkMidId != null ? categoryOptions.filter(opt => opt.parentId === bulkMidId) : []
 
   const [excludedFilters, setExcludedFilters] = useState<Record<FilterKey, Set<string>>>({
     market: new Set(),
@@ -1378,10 +1490,12 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="mb-2 flex min-h-[38px] shrink-0 items-center justify-between px-2">
-        <p className="text-sm font-bold text-white">
-          종목수 ({sorted.length}
-          {sorted.length !== items.length ? ` / ${items.length}` : ''})
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm font-bold text-white">
+            종목수 ({sorted.length}
+            {sorted.length !== items.length ? ` / ${items.length}` : ''})
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           {hasAnyFilter && (
             <>
@@ -1395,8 +1509,44 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
               </button>
             </>
           )}
+          <button
+            type="button"
+            onClick={onRefetchCategories}
+            disabled={isRefetchingCategories}
+            className="nes-btn flex items-center gap-1 border-sky-500 bg-sky-500 text-xs text-white hover:bg-sky-600 disabled:opacity-50"
+            title="다른 탭에서 추가/변경한 카테고리를 반영합니다 (필터는 유지됨)"
+          >
+            <RefreshIcon className={`h-3.5 w-3.5 ${isRefetchingCategories ? 'animate-spin' : ''}`} />
+            {isRefetchingCategories ? '새로고침 중...' : '새로고침'}
+          </button>
           {selectedStockCodes.size > 0 && (
-            <BulkAssignButton count={selectedStockCodes.size} options={categoryOptions} onAssign={handleBulkAssign} />
+            <>
+              <BulkAssignButton
+                count={selectedStockCodes.size}
+                options={bulkParentOptions}
+                onAssign={handleBulkAssignParent}
+                alignRight
+                widthPx={bulkButtonWidths?.parent}
+              />
+              <BulkAssignButton
+                count={selectedStockCodes.size}
+                options={bulkMidOptions}
+                onAssign={handleBulkAssignMid}
+                alignRight
+                widthPx={bulkButtonWidths?.mid}
+                disabled={bulkParentId == null}
+                disabledHint="1차 분류를 먼저 일괄적용하세요"
+              />
+              <BulkAssignButton
+                count={selectedStockCodes.size}
+                options={bulkSubOptions}
+                onAssign={handleBulkAssignSub}
+                alignRight
+                widthPx={bulkButtonWidths?.sub}
+                disabled={bulkMidId == null}
+                disabledHint="2차 분류를 먼저 일괄적용하세요"
+              />
+            </>
           )}
         </div>
       </div>
@@ -1434,7 +1584,20 @@ export default function AdminStockTable({ items, categories, snapshotTime }: Pro
                 // col.key로 좁혀진 타입은 아래 클로저(onToggle 등) 안에서는 다시 넓어지므로, 지역 변수로 한 번 고정해둔다.
                 const filterKey = isFilterKey(col.key) ? col.key : null
                 return (
-                  <th key={col.key} style={{ width: col.width }} className="whitespace-nowrap bg-[#4f8fd6] text-center">
+                  <th
+                    key={col.key}
+                    ref={
+                      col.key === 'parentCategoryName'
+                        ? parentThRef
+                        : col.key === 'midCategoryName'
+                          ? midThRef
+                          : col.key === 'subCategoryName'
+                            ? subThRef
+                            : undefined
+                    }
+                    style={{ width: col.width }}
+                    className="whitespace-nowrap bg-[#4f8fd6] text-center"
+                  >
                     {filterKey ? (
                       <div className="flex items-center justify-between pl-2 pr-1">
                         {label}
