@@ -10,6 +10,7 @@ import { ShareIcon, MaximizeIcon, MinimizeIcon } from '@/components/icons/Market
 import { useMarketMap } from '@/hooks/useMarketMap'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useFilteredMarketMapTree } from '@/hooks/useFilteredMarketMapTree'
+import { usePersistedState } from '@/hooks/usePersistedState'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
 import { TAB_GAP, toFullDateTimeLabel, toIndex, toPctSigned, signClass } from '@/utils/format'
 import { useMarketSummary } from '@/hooks/useMarketSummary'
@@ -116,25 +117,38 @@ function toDepthRange(minIndex: number, maxIndex: number): [number, number] | nu
 }
 
 export default function MarketMapCustomPage() {
-  const [market, setMarket] = useState<Market>('KOSPI')
-  const [isCustom, setIsCustom] = useState(true)
+  const [market, setMarket] = usePersistedState<Market>('marketMap.market', 'KOSPI')
+  const [isCustom, setIsCustom] = usePersistedState('marketMap.isCustom', true)
   // 세 표시 옵션(시가총액 합/등락률 평균/등락 종목수) 모두 슬라이더 인덱스 기준(0=OFF, 1=뎁스0, 2=뎁스1, ...)
   // — 둘 다 0(OFF)이면 꺼짐. 실제 뎁스 범위로 변환한 값은 각각의 DepthRange를 통해서만 하위로 내려보낸다.
-  const [marketValueDepthMinIndex, setMarketValueDepthMinIndex] = useState(0)
-  const [marketValueDepthMaxIndex, setMarketValueDepthMaxIndex] = useState(0)
+  const [marketValueDepthMinIndex, setMarketValueDepthMinIndex] = usePersistedState('marketMap.marketValueDepthMinIndex', 0)
+  const [marketValueDepthMaxIndex, setMarketValueDepthMaxIndex] = usePersistedState('marketMap.marketValueDepthMaxIndex', 0)
   // 기본값: 2차 분류만 켜짐(렌더러가 캡처하는 기본 화면에 등락률이 보이도록).
-  const [avgChangeRateDepthMinIndex, setAvgChangeRateDepthMinIndex] = useState(2)
-  const [avgChangeRateDepthMaxIndex, setAvgChangeRateDepthMaxIndex] = useState(2)
-  const [upDownCountDepthMinIndex, setUpDownCountDepthMinIndex] = useState(0)
-  const [upDownCountDepthMaxIndex, setUpDownCountDepthMaxIndex] = useState(0)
+  const [avgChangeRateDepthMinIndex, setAvgChangeRateDepthMinIndex] = usePersistedState('marketMap.avgChangeRateDepthMinIndex', 2)
+  const [avgChangeRateDepthMaxIndex, setAvgChangeRateDepthMaxIndex] = usePersistedState('marketMap.avgChangeRateDepthMaxIndex', 2)
+  const [upDownCountDepthMinIndex, setUpDownCountDepthMinIndex] = usePersistedState('marketMap.upDownCountDepthMinIndex', 0)
+  const [upDownCountDepthMaxIndex, setUpDownCountDepthMaxIndex] = usePersistedState('marketMap.upDownCountDepthMaxIndex', 0)
   // MARKET_VALUE_TIER_ASCENDING(소→초) 기준 인덱스 — 이 구간(포함) 밖의 등급은 제외된다.
   // 기본값(양끝)이면 아무것도 제외 안 함.
   // 기본값: 중형주~초대형주만(소형주 제외) 표시.
-  const [tierRangeMinIndex, setTierRangeMinIndex] = useState(MARKET_VALUE_TIER_ASCENDING.indexOf('MID'))
-  const [tierRangeMaxIndex, setTierRangeMaxIndex] = useState(MARKET_VALUE_TIER_ASCENDING.length - 1)
-  const [excludedCategoryNames, setExcludedCategoryNames] = useState<Map<number, string>>(new Map())
+  const [tierRangeMinIndex, setTierRangeMinIndex] = usePersistedState(
+    'marketMap.tierRangeMinIndex',
+    MARKET_VALUE_TIER_ASCENDING.indexOf('MID'),
+  )
+  const [tierRangeMaxIndex, setTierRangeMaxIndex] = usePersistedState(
+    'marketMap.tierRangeMaxIndex',
+    MARKET_VALUE_TIER_ASCENDING.length - 1,
+  )
+  const [excludedCategoryNames, setExcludedCategoryNames] = usePersistedState<Map<number, string>>(
+    'marketMap.excludedCategoryNames',
+    new Map(),
+    {
+      serialize: map => [...map.entries()],
+      deserialize: raw => new Map(raw as [number, string][]),
+    },
+  )
   // 섹터 제외를 목록별로 켜고 끄는 게 아니라, 제외 적용 자체를 통째로 켜고 끄는 마스터 스위치.
-  const [sectorFilterEnabled, setSectorFilterEnabled] = useState(true)
+  const [sectorFilterEnabled, setSectorFilterEnabled] = usePersistedState('marketMap.sectorFilterEnabled', true)
   // null = 제한 없음(전체 뎁스 표시). 슬라이더의 실제 상한(availableMaxDepth)은 트리 계산 후에 나온다.
   // 기본값 2(렌더러 캡처 기준 화면에 맞춤).
   const [maxDepth, setMaxDepth] = useState<number | null>(2)
@@ -180,7 +194,7 @@ export default function MarketMapCustomPage() {
     if (seededKeyRef.current === key) return
     seededKeyRef.current = key
     setExcludedCategoryNames(seedExcludedCategoryNames(data.items, []))
-  }, [data, market, isCustom])
+  }, [data, market, isCustom, setExcludedCategoryNames])
 
   // 커스텀 모드가 아니면(기본 분류 트리) isExcluded 자체를 무시한다 — 카테고리 제외는 커스텀 트리 전용 기능.
   const excludedCategoryIds = useMemo(

@@ -5,6 +5,7 @@ import type { CategoryItem, MarketValueTier, StockCategoryListItem } from '@/typ
 import { toFullDateTimeLabel, toJoEokDecimal } from '@/utils/format'
 import { MARKET_VALUE_TIER_OPTIONS } from '@/utils/marketValueTier'
 import { useAssignStockCategory, useBulkAssignStockCategory, useUpdateAlias } from '@/hooks/useMarketMapAdmin'
+import { usePersistedState } from '@/hooks/usePersistedState'
 import Spinner from './Spinner'
 import { CheckIcon, RefreshIcon, SearchIcon } from './icons/MarketMapIcons'
 
@@ -182,7 +183,6 @@ interface PopupPosition {
   left: number
   openUpward: boolean
   alignRight: boolean
-  width: number
 }
 
 // 필터 팝업 목록 한 행의 높이(px) — 테이블 본문과 같은 text-sm(20px 줄높이) + py-0.5(위아래 2px씩) 기준.
@@ -211,15 +211,11 @@ function usePopupPosition(
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect()
       const openUpward = rect.bottom > window.innerHeight * flipThreshold
-      // 필터 팝업(트리거가 th 안의 버튼)은 폭을 그 컬럼(th) 실제 렌더 폭에 맞춘다 — th가 아니면(예: 카테고리
-      // 검색 팝업처럼 td 안에서 여는 경우) 트리거 자체 폭으로 대체.
-      const columnWidth = triggerRef.current.closest('th')?.getBoundingClientRect().width
       setPosition({
         top: openUpward ? rect.top : rect.bottom,
         left: alignRight ? rect.right : rect.left,
         openUpward,
         alignRight,
-        width: columnWidth ?? rect.width,
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ref는 안정적이라 open 시점에만 반응하면 된다
@@ -493,7 +489,7 @@ function AdminStockCategoryCell({
       {disabled && showHint && (
         <div
           style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)' }}
-          className="nes-container is-dark z-50 whitespace-nowrap !bg-violet-950 px-3 py-2 text-[18px] text-white"
+          className="nes-container is-dark z-50 whitespace-nowrap !bg-violet-950 px-3 py-2 text-sm text-white"
         >
           {disabledHint}
         </div>
@@ -741,7 +737,6 @@ function AdminColumnFilterButton({
             position: 'fixed',
             top: position.top,
             left: position.left,
-            width: position.width,
             transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
           }}
           className="nes-container is-dark z-50 !bg-violet-950 p-2 text-left text-sm normal-case"
@@ -771,7 +766,7 @@ function AdminColumnFilterButton({
                   checked={!isPreviewingSearch && !excluded.has(opt)}
                   onChange={() => handleToggleOption(opt)}
                 />
-                <span className="truncate">{opt}</span>
+                <span className="whitespace-nowrap">{opt}</span>
               </label>
             ))}
           </div>
@@ -825,7 +820,6 @@ function AdminMarketValueFilterButton({
             position: 'fixed',
             top: position.top,
             left: position.left,
-            width: position.width,
             transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
           }}
           className="nes-container is-dark z-50 !bg-violet-950 p-2 text-left text-sm normal-case"
@@ -952,7 +946,6 @@ function AdminStockNameFilterButton({
             position: 'fixed',
             top: position.top,
             left: position.left,
-            width: position.width,
             transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
           }}
           className="nes-container is-dark z-50 !bg-violet-950 p-2 text-left text-sm normal-case"
@@ -995,7 +988,7 @@ function AdminStockNameFilterButton({
                     index === highlightedIndex ? 'bg-yellow-400/50' : 'bg-transparent'
                   }`}
                 >
-                  <span className="truncate">{item.stockName}</span>
+                  <span className="whitespace-nowrap">{item.stockName}</span>
                   <span className="ml-1.5 shrink-0 text-gray-500">{item.stockCode}</span>
                 </button>
               ))
@@ -1023,7 +1016,7 @@ function AdminStockNameFilterButton({
                   onClick={() => onToggle(item.stockCode)}
                   className="flex w-full items-center justify-between rounded bg-transparent px-1 py-0.5 text-left text-yellow-400 hover:bg-yellow-400/20"
                 >
-                  <span className="truncate">{item.stockName}</span>
+                  <span className="whitespace-nowrap">{item.stockName}</span>
                   <span className="ml-1.5 shrink-0 text-gray-500">{item.stockCode}</span>
                 </button>
               ))
@@ -1174,8 +1167,8 @@ export default function AdminStockTable({
   onRefetchCategories,
   isRefetchingCategories,
 }: Props) {
-  const [sortKey, setSortKey] = useState<SortKey>('totalMarketValue')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [sortKey, setSortKey] = usePersistedState<SortKey>('adminStockTable.sortKey', 'totalMarketValue')
+  const [sortDirection, setSortDirection] = usePersistedState<SortDirection>('adminStockTable.sortDirection', 'desc')
   const [isPending, startTransition] = useTransition()
   // 헤더가 sticky + 스크롤 컨테이너(overflow-auto) 안에 있어서, 그 위로 뜨는 툴팁은 일반 absolute로는
   // 부모의 overflow에 잘린다 — body에 포털로 그려서 잘리지 않게 한다(MarketMapBox 등과 동일한 패턴).
@@ -1320,16 +1313,35 @@ export default function AdminStockTable({
   const bulkMidOptions = bulkParentId != null ? categoryOptions.filter(opt => opt.parentId === bulkParentId) : []
   const bulkSubOptions = bulkMidId != null ? categoryOptions.filter(opt => opt.parentId === bulkMidId) : []
 
-  const [excludedFilters, setExcludedFilters] = useState<Record<FilterKey, Set<string>>>({
-    market: new Set(),
-    originCategoryName: new Set(),
-    parentCategoryName: new Set(),
-    midCategoryName: new Set(),
-    subCategoryName: new Set(),
-  })
+  const [excludedFilters, setExcludedFilters] = usePersistedState<Record<FilterKey, Set<string>>>(
+    'adminStockTable.excludedFilters',
+    {
+      market: new Set(),
+      originCategoryName: new Set(),
+      parentCategoryName: new Set(),
+      midCategoryName: new Set(),
+      subCategoryName: new Set(),
+    },
+    {
+      serialize: filters =>
+        Object.fromEntries(Object.entries(filters).map(([key, value]) => [key, [...value]])),
+      deserialize: raw =>
+        Object.fromEntries(
+          Object.entries(raw as Record<FilterKey, string[]>).map(([key, value]) => [key, new Set(value)]),
+        ) as Record<FilterKey, Set<string>>,
+    },
+  )
   // 종목명 필터는 다른 필터와 반대로 "선택한 종목코드만 남기기"(포함 방식)로 동작한다. 비어있으면 필터 없음.
-  const [nameFilterStockCodes, setNameFilterStockCodes] = useState<Set<string>>(new Set())
-  const [excludedMarketValueTiers, setExcludedMarketValueTiers] = useState<Set<MarketValueTier>>(new Set())
+  const [nameFilterStockCodes, setNameFilterStockCodes] = usePersistedState<Set<string>>(
+    'adminStockTable.nameFilterStockCodes',
+    new Set(),
+    { serialize: set => [...set], deserialize: raw => new Set(raw as string[]) },
+  )
+  const [excludedMarketValueTiers, setExcludedMarketValueTiers] = usePersistedState<Set<MarketValueTier>>(
+    'adminStockTable.excludedMarketValueTiers',
+    new Set(),
+    { serialize: set => [...set], deserialize: raw => new Set(raw as MarketValueTier[]) },
+  )
   const toggleMarketValueTier = (value: MarketValueTier) => {
     setExcludedMarketValueTiers(prev => {
       const next = new Set(prev)
