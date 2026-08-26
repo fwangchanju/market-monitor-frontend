@@ -12,7 +12,7 @@ import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useFilteredMarketMapTree } from '@/hooks/useFilteredMarketMapTree'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
-import { TAB_GAP, toFullDateTimeLabel, toIndex, toPctSigned, signClass } from '@/utils/format'
+import { TAB_GAP, toMarketMapSnapshotTimeLabel, toIndex, toPctSigned, signClass } from '@/utils/format'
 import { useMarketSummary } from '@/hooks/useMarketSummary'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
@@ -446,8 +446,8 @@ export default function MarketMapCustomPage() {
             </span>
             <div className="flex items-center gap-3">
               {data?.snapshotTime && (
-                <span className="whitespace-nowrap text-xs font-normal text-white">
-                  {toFullDateTimeLabel(data.snapshotTime)}
+                <span className="whitespace-nowrap text-base font-normal text-white">
+                  {toMarketMapSnapshotTimeLabel(data.snapshotTime)}
                 </span>
               )}
               <div className="flex items-center gap-0.5">

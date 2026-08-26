@@ -56,6 +56,15 @@ export const toFullDateTimeLabel = (iso: string | null): string => {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`
 }
 
+const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토']
+
+/** LocalDateTime(ISO) → 'yyyy-MM-dd (요일) HH:mm (5분 간격)' — 마켓맵 상단 스냅샷 시각 전용 표기 */
+export const toMarketMapSnapshotTimeLabel = (iso: string | null): string => {
+  if (!iso) return '-'
+  const weekday = WEEKDAY_KO[new Date(iso).getDay()]
+  return `${iso.slice(0, 10)} (${weekday}) ${iso.slice(11, 16)} (5분 간격)`
+}
+
 /** LocalDateTime(ISO) → 'yyyy-MM-dd HH:00' (분 단위 절삭) */
 export const toHourLabel = (iso: string | null): string => {
   if (!iso) return '-'

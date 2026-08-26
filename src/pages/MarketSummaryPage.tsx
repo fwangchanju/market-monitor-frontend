@@ -55,10 +55,10 @@ export default function MarketSummaryPage() {
         <div ref={captureRef} className="mx-auto max-w-[1400px]">
           <div className="mt-4 grid grid-cols-1 gap-4">
             <MarketOverviewSection />
-            <InvestorTradingSection />
-            <IntradayTopSection />
-            <ProgramTradingSection />
             <IndexContributionSection />
+            <InvestorTradingSection />
+            <ProgramTradingSection />
+            <IntradayTopSection />
             <ShortSellingHistorySection />
             <ProgramTradingHistorySection />
           </div>

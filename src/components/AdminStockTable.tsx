@@ -7,7 +7,7 @@ import { MARKET_VALUE_TIER_OPTIONS } from '@/utils/marketValueTier'
 import { useAssignStockCategory, useBulkAssignStockCategory, useUpdateAlias } from '@/hooks/useMarketMapAdmin'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import Spinner from './Spinner'
-import { CheckIcon, RefreshIcon, SearchIcon } from './icons/MarketMapIcons'
+import { CheckIcon, ChevronDownIcon, RedoIcon, RefreshIcon, SearchIcon, UndoIcon } from './icons/MarketMapIcons'
 
 interface Props {
   items: StockCategoryListItem[]
@@ -117,6 +117,32 @@ interface CategoryOption {
   parentId: number | null
   name: string
   label: string
+}
+
+// Ctrl+Z/Y 실행취소·다시실행 대상 — 카테고리 변경만 관리한다(필터 걸어놓고 카테고리를 바꾸면
+// 그 종목이 필터에서 바로 사라지는데, 잘못 눌렀을 때 다시 검색하지 않고 바로 되돌리기 위함).
+// 메모리에만(컴포넌트 상태) 두고, 종목 탭을 벗어나면(언마운트) 자연히 사라진다.
+type UndoableActionInput =
+  | { type: 'category'; stockCode: string; before: number; after: number }
+  | { type: 'bulkCategory'; categoryName: string; after: number; entries: { stockCode: string; before: number }[] }
+// id는 실행취소/다시실행 "목록"에서 스택 순서와 무관하게 특정 항목 하나를 골라 가리키기 위한
+// 프론트 전용 식별자 — 백엔드 요청엔 실리지 않는다.
+type UndoableAction = UndoableActionInput & { id: string }
+const UNDO_STACK_LIMIT = 50
+
+// 실행취소/다시실행 목록에 보여줄 한 줄 설명 — "종목명: 이전 카테고리 → 이후 카테고리" 형태로,
+// 지금 undo 목록에 있든 redo 목록에 있든(즉 아직 실행 전이든 이미 되돌린 뒤든) 항상 같은 문구를 쓴다.
+function describeUndoableAction(
+  action: UndoableAction,
+  items: StockCategoryListItem[],
+  categoryOptionsById: Map<number, CategoryOption>,
+): string {
+  const categoryLabel = (id: number) => categoryOptionsById.get(id)?.name ?? '(알 수 없음)'
+  if (action.type === 'category') {
+    const stockName = items.find(item => item.stockCode === action.stockCode)?.stockName ?? action.stockCode
+    return `${stockName}: ${categoryLabel(action.before)} → ${categoryLabel(action.after)} 변경`
+  }
+  return `${action.entries.length}개 종목 → ${action.categoryName} 변경`
 }
 
 // 종목 응답엔 categoryId(실제 배정된 카테고리, 뎁스 무관)만 있어서, 대분류/중분류/소분류 3칸에 어떻게
@@ -255,6 +281,77 @@ function usePopupPosition(
   }, [isOpen])
 
   return position
+}
+
+// 실행취소/다시실행 히스토리 목록 팝업 — 최신 항목이 위로 오도록 뒤집어서 보여주고, 텍스트는 항상
+// 고정("종목명: 이전 → 이후")이며 각 행에 마우스를 올렸을 때만 우측에 실행취소/다시실행 텍스트 버튼이
+// 나타난다. 클릭하면 스택 순서와 무관하게 그 항목 하나만 되돌리거나 다시 적용한다.
+function UndoRedoHistoryPopup({
+  isOpen,
+  setIsOpen,
+  triggerRef,
+  actions,
+  direction,
+  items,
+  categoryOptionsById,
+  onPick,
+}: {
+  isOpen: boolean
+  setIsOpen: (open: boolean) => void
+  triggerRef: React.RefObject<HTMLElement | null>
+  actions: UndoableAction[]
+  direction: 'undo' | 'redo'
+  items: StockCategoryListItem[]
+  categoryOptionsById: Map<number, CategoryOption>
+  onPick: (id: string) => void
+}) {
+  const popupRef = useRef<HTMLDivElement>(null)
+  // 툴바 왼쪽(종목수 옆)에 있는 버튼이라 오른쪽에 펼칠 공간이 넉넉함 — alignRight 없이 왼쪽 정렬로 연다.
+  const position = usePopupPosition(isOpen, setIsOpen, triggerRef, popupRef, undefined, 0.8, false)
+  const actionLabel = direction === 'undo' ? '실행취소' : '다시실행'
+
+  if (!isOpen || !position) return null
+
+  const ordered = [...actions].reverse()
+
+  return (
+    <div
+      ref={popupRef}
+      style={{
+        position: 'fixed',
+        top: position.top,
+        left: position.left,
+        transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
+      }}
+      className="nes-container is-dark z-50 !bg-violet-950 p-2 text-sm"
+      onClick={e => e.stopPropagation()}
+    >
+      {ordered.length === 0 ? (
+        <p className="whitespace-nowrap px-1 text-gray-400">{actionLabel}할 변경 내역이 없습니다</p>
+      ) : (
+        <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: FILTER_LIST_MAX_HEIGHT }}>
+          {ordered.map(action => (
+            <div
+              key={action.id}
+              className="group flex items-center justify-between gap-3 whitespace-nowrap rounded px-1 py-0.5 hover:bg-yellow-400/10"
+            >
+              <span className="text-white">{describeUndoableAction(action, items, categoryOptionsById)}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  onPick(action.id)
+                  setIsOpen(false)
+                }}
+                className="hidden shrink-0 border-0 bg-transparent text-xs text-white hover:text-yellow-400 group-hover:inline-block"
+              >
+                {actionLabel}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // 카테고리 검색창의 검색어/방향키 탐색 상태 — AdminStockCategoryCell과 BulkAssignButton이 공유.
@@ -1177,6 +1274,90 @@ export default function AdminStockTable({
   const assignStockCategory = useAssignStockCategory()
   const bulkAssignStockCategory = useBulkAssignStockCategory()
   const updateAlias = useUpdateAlias()
+  // handleAssign/runBulkAssign에서 "변경 전" 카테고리를 읽어야 하는데, items를 그대로 의존성에 넣으면
+  // 카테고리가 바뀔 때마다(=매 변경마다) 콜백 identity가 바뀌어 AdminStockRow의 memo가 무력화된다 —
+  // ref로 최신 값만 따라가게 해서 콜백은 그대로 안정적으로 유지한다.
+  const itemsRef = useRef(items)
+  itemsRef.current = items
+
+  // Ctrl+Z/Y 실행취소·다시실행 스택(카테고리 변경만 대상, 메모리에만 유지).
+  const [undoStack, setUndoStack] = useState<UndoableAction[]>([])
+  const [redoStack, setRedoStack] = useState<UndoableAction[]>([])
+  const actionIdRef = useRef(0)
+  const pushUndo = useCallback((action: UndoableActionInput) => {
+    const withId: UndoableAction = { ...action, id: String(actionIdRef.current++) }
+    setUndoStack(prev => [...prev.slice(-UNDO_STACK_LIMIT + 1), withId])
+    setRedoStack([])
+  }, [])
+  const applyCategoryAction = (action: UndoableAction, direction: 'before' | 'after') => {
+    if (action.type === 'category') {
+      assignStockCategory.mutate({ stockCode: action.stockCode, categoryId: direction === 'before' ? action.before : action.after })
+    } else {
+      for (const entry of action.entries) {
+        assignStockCategory.mutate({ stockCode: entry.stockCode, categoryId: direction === 'before' ? entry.before : action.after })
+      }
+    }
+  }
+  const handleUndo = () => {
+    const action = undoStack[undoStack.length - 1]
+    if (!action) return
+    applyCategoryAction(action, 'before')
+    setUndoStack(prev => prev.slice(0, -1))
+    setRedoStack(prev => [...prev, action])
+  }
+  const handleRedo = () => {
+    const action = redoStack[redoStack.length - 1]
+    if (!action) return
+    applyCategoryAction(action, 'after')
+    setRedoStack(prev => prev.slice(0, -1))
+    setUndoStack(prev => [...prev, action])
+  }
+  // 목록에서 스택 위치와 무관하게 특정 항목 하나만 골라 되돌리거나 다시 적용 — 순서 상관없이
+  // 그 항목의 before/after 값으로 직접 바꿔버리고, 다른 항목들의 순서는 그대로 둔다.
+  const handleUndoItem = (id: string) => {
+    const action = undoStack.find(a => a.id === id)
+    if (!action) return
+    applyCategoryAction(action, 'before')
+    setUndoStack(prev => prev.filter(a => a.id !== id))
+    setRedoStack(prev => [...prev, action])
+  }
+  const handleRedoItem = (id: string) => {
+    const action = redoStack.find(a => a.id === id)
+    if (!action) return
+    applyCategoryAction(action, 'after')
+    setRedoStack(prev => prev.filter(a => a.id !== id))
+    setUndoStack(prev => [...prev, action])
+  }
+  const [isUndoListOpen, setIsUndoListOpen] = useState(false)
+  const [isRedoListOpen, setIsRedoListOpen] = useState(false)
+  // 목록 팝업 위치 기준은 화살표가 아니라 UNDO/REDO 버튼 전체(테두리) — 팝업 좌측이 버튼 좌측 테두리와 맞도록.
+  const undoGroupRef = useRef<HTMLDivElement>(null)
+  const redoGroupRef = useRef<HTMLDivElement>(null)
+  // 키보드 리스너는 마운트 시 한 번만 등록하고(=종목 탭에 있는 동안만, 언마운트되면 자동 해제),
+  // 매번 최신 핸들러를 부르도록 ref로 우회한다.
+  const undoRef = useRef(handleUndo)
+  undoRef.current = handleUndo
+  const redoRef = useRef(handleRedo)
+  redoRef.current = handleRedo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      // 입력창 안에서는 브라우저 기본 실행취소(텍스트 되돌리기)에 맡긴다.
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return
+      if (!(e.ctrlKey || e.metaKey)) return
+      const key = e.key.toLowerCase()
+      if (key === 'z') {
+        e.preventDefault()
+        if (e.shiftKey) redoRef.current()
+        else undoRef.current()
+      } else if (key === 'y') {
+        e.preventDefault()
+        redoRef.current()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
   // categories가 안 바뀌면 참조를 유지해야 AdminStockRow의 React.memo가 제대로 스킵된다.
   const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories])
   const categoryOptionsById = useMemo(() => new Map(categoryOptions.map(opt => [opt.id, opt])), [categoryOptions])
@@ -1239,9 +1420,13 @@ export default function AdminStockTable({
   // AdminStockRow에 props로 내려가는 콜백들 — 매 렌더마다 새 함수면 React.memo가 무력화되므로 useCallback으로 고정한다.
   const handleAssign = useCallback(
     (stockCode: string, categoryId: number) => {
+      const before = itemsRef.current.find(item => item.stockCode === stockCode)?.categoryId
       assignStockCategory.mutate({ stockCode, categoryId })
+      if (before != null && before !== categoryId) {
+        pushUndo({ type: 'category', stockCode, before, after: categoryId })
+      }
     },
-    [assignStockCategory],
+    [assignStockCategory, pushUndo],
   )
 
   const handleUpdateAlias = useCallback(
@@ -1278,12 +1463,23 @@ export default function AdminStockTable({
   // 1차→2차→3차 단계형 일괄적용 공통 로직. 각 단계는 독립된 assign 호출이라(서버 입장에선 categoryId를
   // 여러 번 덮어쓰는 흐름이지만), 다음 단계 버튼에서 계속 이어서 좁혀나갈 수 있도록 선택은 유지한다.
   const runBulkAssign = (categoryId: number, onSuccessExtra?: () => void) => {
+    const targets = [...selectedStockCodes]
+    // 실행취소용으로 각 종목의 "변경 전" 카테고리를 미리 스냅샷 — 일괄적용은 종목마다 원래 카테고리가
+    // 달랐을 수 있어서, 되돌릴 때도 종목별로 각자의 이전 값으로 복원해야 한다.
+    const beforeByStockCode = new Map(targets.map(stockCode => [stockCode, itemsRef.current.find(item => item.stockCode === stockCode)?.categoryId]))
     bulkAssignStockCategory.mutate(
-      { stockCodes: [...selectedStockCodes], categoryId },
+      { stockCodes: targets, categoryId },
       {
         onSuccess: result => {
           onSuccessExtra?.()
           const categoryName = categoryOptions.find(opt => opt.id === result.categoryId)?.name ?? ''
+          const entries = targets
+            .filter(stockCode => !result.failedStockCodes.includes(stockCode))
+            .map(stockCode => ({ stockCode, before: beforeByStockCode.get(stockCode) }))
+            .filter((entry): entry is { stockCode: string; before: number } => entry.before != null && entry.before !== categoryId)
+          if (entries.length > 0) {
+            pushUndo({ type: 'bulkCategory', categoryName, after: categoryId, entries })
+          }
           if (result.failedStockCodes.length === 0) {
             window.alert(`카테고리: ${categoryName}\n일괄 적용 완료되었습니다.`)
           } else {
@@ -1507,6 +1703,76 @@ export default function AdminStockTable({
             종목수 ({sorted.length}
             {sorted.length !== items.length ? ` / ${items.length}` : ''})
           </p>
+          <div className="flex items-center gap-2">
+            <div
+              ref={undoGroupRef}
+              className={`nes-btn flex items-stretch gap-0 border-sky-500 bg-sky-500 p-0 text-white ${undoStack.length === 0 ? 'opacity-50' : ''}`}
+            >
+              <button
+                type="button"
+                onClick={handleUndo}
+                disabled={undoStack.length === 0}
+                className="flex items-center gap-1.5 border-0 bg-transparent px-2 py-1 text-xs text-white hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white"
+                title="실행취소 (Ctrl+Z)"
+              >
+                <UndoIcon className="h-4 w-4" />
+                UNDO
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsUndoListOpen(prev => !prev)}
+                disabled={undoStack.length === 0}
+                className={`flex items-center justify-center border-0 bg-transparent px-4 py-1 hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white ${isUndoListOpen ? 'text-yellow-400' : 'text-white'}`}
+                title="실행취소 목록"
+              >
+                <ChevronDownIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <UndoRedoHistoryPopup
+              isOpen={isUndoListOpen}
+              setIsOpen={setIsUndoListOpen}
+              triggerRef={undoGroupRef}
+              actions={undoStack}
+              direction="undo"
+              items={items}
+              categoryOptionsById={categoryOptionsById}
+              onPick={handleUndoItem}
+            />
+            <div
+              ref={redoGroupRef}
+              className={`nes-btn flex items-stretch gap-0 border-sky-500 bg-sky-500 p-0 text-white ${redoStack.length === 0 ? 'opacity-50' : ''}`}
+            >
+              <button
+                type="button"
+                onClick={handleRedo}
+                disabled={redoStack.length === 0}
+                className="flex items-center gap-1.5 border-0 bg-transparent px-2 py-1 text-xs text-white hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white"
+                title="다시실행 (Ctrl+Y)"
+              >
+                <RedoIcon className="h-4 w-4" />
+                REDO
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsRedoListOpen(prev => !prev)}
+                disabled={redoStack.length === 0}
+                className={`flex items-center justify-center border-0 bg-transparent px-4 py-1 hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white ${isRedoListOpen ? 'text-yellow-400' : 'text-white'}`}
+                title="다시실행 목록"
+              >
+                <ChevronDownIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <UndoRedoHistoryPopup
+              isOpen={isRedoListOpen}
+              setIsOpen={setIsRedoListOpen}
+              triggerRef={redoGroupRef}
+              actions={redoStack}
+              direction="redo"
+              items={items}
+              categoryOptionsById={categoryOptionsById}
+              onPick={handleRedoItem}
+            />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {hasAnyFilter && (
