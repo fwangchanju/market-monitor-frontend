@@ -291,3 +291,12 @@ export const allowedIps = [
   { ip: '127.0.0.1', createdAt: now() },
   { ip: '10.0.0.5', createdAt: now() },
 ]
+
+// GET /market-map/scale 기본 응답 — thresholds를 비워둬서 커스텀 저장 전에는 오늘(기본 프리셋) 화면과
+// 동일하게 보이도록 한다. 개별 create/update/delete는 이 목업 자체를 실제로 mutate하지 않는다(다른
+// admin 핸들러들과 동일 — 페이지가 응답을 받아 로컬 colorScaleDraft를 직접 갱신하는 구조라 필요 없음).
+export const marketMapColorScale: {
+  thresholds: { id: number; thresholdPercent: number; color: string; colorLabel: string | null }[]
+} = {
+  thresholds: [],
+}

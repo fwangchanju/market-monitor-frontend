@@ -42,6 +42,7 @@ export const marketMapKeys = {
   all: ['market-map'] as const,
   // exclude 필터링이 프론트로 옮겨오면서 백엔드는 항상 전체 트리를 내려주므로, isExclude는 쿼리에서 뺐다.
   map: (market: Market, isCustom: boolean) => [...marketMapKeys.all, 'map', market, isCustom] as const,
+  scale: () => [...marketMapKeys.all, 'scale'] as const,
 }
 
 export const allowedIpKeys = {

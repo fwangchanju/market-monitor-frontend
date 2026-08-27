@@ -209,6 +209,28 @@ const MarketMapCategoryNodeSchema: z.ZodType<MarketMapCategoryNode> = z.lazy(() 
 
 export const MarketMapResponseSchema = snapshotResponseSchema(MarketMapCategoryNodeSchema)
 
+// 박스/범례 등락률 컬러 스케일의 기준값 하나(admin이 개별 CRUD하는 단위) — src/utils/marketMapColorScale.ts 참고.
+// side는 별도 필드로 두지 않고 thresholdPercent의 부호로 표현한다(음수=하락, 0=기준, 양수=상승).
+// id는 서버가 발급 — 로컬에서 막 추가해서 아직 서버에 반영 안 된 행은 id가 없다(생성 응답으로 받기 전까지).
+// colorLabel은 백엔드에서 ColorTone enum(RED/ORANGE/...)이라 대문자로 오는데, 프론트 내부(톤 프리셋
+// 버튼 이름 비교 등)는 전부 소문자 기준이라 파싱 시점에 소문자로 변환해서 그 차이를 여기서 흡수한다.
+export const MarketMapScaleThresholdSchema = z.object({
+  id: z.number(),
+  thresholdPercent: z.number(),
+  color: z.string(),
+  colorLabel: z
+    .string()
+    .nullable()
+    .transform(v => v?.toLowerCase() ?? null),
+})
+export type MarketMapScaleThreshold = z.infer<typeof MarketMapScaleThresholdSchema>
+
+// GET /market-map/scale 응답
+export const MarketMapScaleResponseSchema = z.object({
+  thresholds: z.array(MarketMapScaleThresholdSchema),
+})
+export type MarketMapScaleResponse = z.infer<typeof MarketMapScaleResponseSchema>
+
 export const ExcludedStockItemSchema = z.object({
   stockCode: z.string(),
   stockName: z.string(),

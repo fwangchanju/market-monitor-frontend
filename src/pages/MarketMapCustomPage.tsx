@@ -2,12 +2,18 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import MarketMapFilterSidebar from '@/components/MarketMapFilterSidebar'
-import MarketMapSettingsDropdown from '@/components/MarketMapSettingsDropdown'
+import MarketMapSettingsModal from '@/components/MarketMapSettingsModal'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
 import Spinner from '@/components/Spinner'
 import { ShareIcon, MaximizeIcon, MinimizeIcon } from '@/components/icons/MarketMapIcons'
 import { useMarketMap } from '@/hooks/useMarketMap'
+import { useMarketMapColorScale } from '@/hooks/useMarketMapColorScale'
+import {
+  useCreateMarketMapScaleThreshold,
+  useUpdateMarketMapScaleThreshold,
+  useDeleteMarketMapScaleThreshold,
+} from '@/hooks/useMarketMapAdmin'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useFilteredMarketMapTree } from '@/hooks/useFilteredMarketMapTree'
 import { usePersistedState } from '@/hooks/usePersistedState'
@@ -19,22 +25,20 @@ import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { registerExcludedCategory, unregisterExcludedCategory } from '@/api/marketMap'
 import { MARKET_VALUE_TIER_ASCENDING } from '@/utils/marketValueTier'
+import {
+  resolveLegendSwatches,
+  UNSET_COLOR_SCALE_THRESHOLD_COLOR,
+  type ColorScaleConfig,
+  type ColorScaleThreshold,
+} from '@/utils/marketMapColorScale'
 import type { Market, MarketMapCategoryNode, MarketMapItem, MarketValueTier } from '@/types/api'
 
 // 왼쪽 사이드바 필터 버튼 텍스트(MarketMapFilterSidebar의 FILTER_ITEMS)와 동일하게 맞춘다.
 const MARKET_LABEL: Record<Market, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ' }
 
-// 종목 박스 색상 로직(MarketMapBox.boxColorClass)과 같은 방향(0에 가까울수록 짙고 탁하게,
-// 멀어질수록 쨍하게)의 범례. 박스 쪽은 4단계지만 범례는 -3%~+3% 7칸에 맞춰 3단계로 축약했다.
-const CHANGE_RATE_LEGEND = [
-  { label: '-10%', className: 'bg-blue-500' },
-  { label: '-6%', className: 'bg-blue-600' },
-  { label: '-2%', className: 'bg-blue-700' },
-  { label: '0%', className: 'bg-gray-600' },
-  { label: '+2%', className: 'bg-red-700' },
-  { label: '+6%', className: 'bg-red-600' },
-  { label: '+10%', className: 'bg-red-500' },
-] as const
+// 조회 실패/로딩 중이거나 "색상 커스텀 사용"이 꺼져있을 때 쓰는 폴백 — thresholds가 비어있으면 어차피
+// 기본 프리셋으로 귀결된다(resolveMarketMapColor/resolveLegendSwatches 참고).
+const EMPTY_COLOR_SCALE: ColorScaleConfig = { thresholds: [] }
 
 function toDisplayGroup(node: MarketMapCategoryNode): DisplayGroup {
   return {
@@ -183,6 +187,157 @@ export default function MarketMapCustomPage() {
   const seededKeyRef = useRef<string | null>(null)
 
   const { data, isLoading, isError } = useMarketMap(market, isCustom)
+
+  // 등락률 컬러 스케일 draft — 서버 값(useMarketMapColorScale)이 도착하면 딱 한 번만 시드하고,
+  // 이후로는 어드민이 설정 드롭다운(MarketMapColorScaleSettings)에서 편집하는 draft를 그대로
+  // 트리맵/범례에 흘려보낸다. 그래서 "저장" 전에도 이 페이지가 실제로 보여주는 지도 색이 곧바로
+  // 바뀐다 — 별도의 미리보기 트리맵이 필요 없다.
+  const { data: colorScaleServerData } = useMarketMapColorScale()
+  const [colorScaleDraft, setColorScaleDraft] = useState<ColorScaleConfig | null>(null)
+  if (colorScaleServerData && colorScaleDraft === null) {
+    // 방어적 복사 — react-query 캐시가 들고 있는 참조를 그대로 draft로 물고 있지 않도록.
+    setColorScaleDraft({ thresholds: colorScaleServerData.thresholds.map(threshold => ({ ...threshold })) })
+  }
+  // "색상 커스텀 사용" 토글 — 순수 로컬(세션스토리지) 상태. draft(=저장 대상)와는 완전히 분리돼 있어서
+  // 꺼도 draft에 저장해둔 값은 건드리지 않고, 그냥 실제 지도에 넘기는 값만 빈 스케일(=기본 프리셋)로
+  // 바꿔치기한다.
+  const [colorCustomOn, setColorCustomOn] = usePersistedState('marketMapColorCustomOn', true)
+  const colorScale = colorCustomOn ? (colorScaleDraft ?? EMPTY_COLOR_SCALE) : EMPTY_COLOR_SCALE
+  // 설정 팝업 열림 상태 — 색상 추가/수정 세션이 시작되면(아래) 이 페이지가 잠깐 닫았다가, 세션이
+  // 끝나면(적용/취소) 다시 열어준다. 그래서 팝업 자체가 아니라 여기서 열림 상태를 들고 있어야 한다.
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  // 지금 좌측 사이드바 하단 패널에서 편집 중인 threshold들 — colorScaleDraft.thresholds의 인덱스 목록.
+  // edit 모드는 항상 원소 1개, add 모드는 "+"로 여러 개가 될 수 있다. 빈 배열이면 세션 없음.
+  const [colorEditIndices, setColorEditIndices] = useState<number[]>([])
+  const [colorEditMode, setColorEditMode] = useState<'add' | 'edit'>('add')
+  // 세션 시작 시점의 draft 스냅샷 — "취소"를 누르면 이걸로 되돌린다.
+  const colorEditSnapshotRef = useRef<ColorScaleConfig | null>(null)
+  const createThresholdMutation = useCreateMarketMapScaleThreshold()
+  const updateThresholdMutation = useUpdateMarketMapScaleThreshold()
+  const deleteThresholdMutation = useDeleteMarketMapScaleThreshold()
+  // "적용"이 세션 안의 여러 행을 순회하며 create/update를 여러 번 호출하는 비동기 작업이라,
+  // 개별 뮤테이션 훅의 isPending 하나만으로는 전체 진행 상태를 못 나타내서 별도로 든다.
+  const [isApplyingColorEdit, setIsApplyingColorEdit] = useState(false)
+
+  // 새로 추가되는 행은 값을 미리 채워주지 않는다 — 입력칸도, 색도 "아직 안 정한" 상태로 시작해서
+  // 사용자가 직접 임계값을 입력하고 톤을 골라야 한다.
+  const createBlankColorThreshold = (): ColorScaleThreshold => ({
+    thresholdPercent: 0,
+    color: UNSET_COLOR_SCALE_THRESHOLD_COLOR,
+    colorLabel: null,
+  })
+
+  const handleAddColorThreshold = () => {
+    if (!colorScaleDraft) return
+    colorEditSnapshotRef.current = colorScaleDraft
+    const nextThresholds = [...colorScaleDraft.thresholds, createBlankColorThreshold()]
+    setColorScaleDraft({ ...colorScaleDraft, thresholds: nextThresholds })
+    setColorEditMode('add')
+    setColorEditIndices([nextThresholds.length - 1])
+    setIsSettingsOpen(false)
+  }
+  const handleEditColorThreshold = (index: number) => {
+    if (!colorScaleDraft) return
+    colorEditSnapshotRef.current = colorScaleDraft
+    setColorEditMode('edit')
+    setColorEditIndices([index])
+    setIsSettingsOpen(false)
+  }
+  // add 모드 전용 — 값이 비어있는 새 행을 draft 끝에 추가하고, 그 인덱스를 세션에 편입시킨다.
+  const handleAddColorThresholdRow = () => {
+    if (!colorScaleDraft || colorEditIndices.length === 0) return
+    const nextThresholds = [...colorScaleDraft.thresholds, createBlankColorThreshold()]
+    setColorScaleDraft({ ...colorScaleDraft, thresholds: nextThresholds })
+    setColorEditIndices(prev => [...prev, nextThresholds.length - 1])
+  }
+  const handleChangeColorEditThreshold = (rowIndex: number, percent: number) => {
+    const targetIndex = colorEditIndices[rowIndex]
+    if (targetIndex === undefined) return
+    // 같은 임계값을 다시 지정하는 건 그 threshold를 갱신(update)하는 것으로 취급 — "적용" 시점에 정리한다.
+    setColorScaleDraft(prev =>
+      prev
+        ? { ...prev, thresholds: prev.thresholds.map((t, i) => (i === targetIndex ? { ...t, thresholdPercent: percent } : t)) }
+        : prev,
+    )
+  }
+  const handleChangeColorEditColor = (rowIndex: number, color: string, colorLabel: string | null) => {
+    const targetIndex = colorEditIndices[rowIndex]
+    if (targetIndex === undefined) return
+    setColorScaleDraft(prev =>
+      prev ? { ...prev, thresholds: prev.thresholds.map((t, i) => (i === targetIndex ? { ...t, color, colorLabel } : t)) } : prev,
+    )
+  }
+  const handleApplyColorEdit = async () => {
+    if (!colorScaleDraft || colorEditIndices.length === 0) {
+      colorEditSnapshotRef.current = null
+      setColorEditIndices([])
+      setIsSettingsOpen(true)
+      return
+    }
+    setIsApplyingColorEdit(true)
+    try {
+      // 세션에서 편집한 행들 중 임계값이 같은 게 여럿이면 나중 값으로 덮어쓴다(마지막 값이 이김) —
+      // "수정"도 결국 update와 같은 개념이라, 세션 중에 동일 임계값이 여러 번 나와도 막지 않고 여기서
+      // 한 번에 정리한다. 이때 버려지는 쪽이 이미 서버에 저장된 행(id 있음)이면, 살아남는 행이 그
+      // id를 대신 물려받아 update로 처리되게 하고 — 서로 다른 두 기존 행이 겹친 드문 경우에만 버려지는
+      // 쪽을 별도로 삭제한다(id가 있는데 다른 id로 덮어써진 경우).
+      const byThreshold = new Map<number, ColorScaleThreshold>()
+      const idsToDelete: number[] = []
+      for (const index of colorEditIndices) {
+        const entry = colorScaleDraft.thresholds[index]
+        if (!entry) continue
+        const existing = byThreshold.get(entry.thresholdPercent)
+        if (existing?.id !== undefined && entry.id !== undefined && existing.id !== entry.id) {
+          idsToDelete.push(existing.id)
+        }
+        byThreshold.set(entry.thresholdPercent, { ...entry, id: entry.id ?? existing?.id })
+      }
+      const resolvedEntries = Array.from(byThreshold.values())
+
+      const [savedEntries] = await Promise.all([
+        Promise.all(
+          resolvedEntries.map(entry => {
+            const payload = { thresholdPercent: entry.thresholdPercent, color: entry.color, colorLabel: entry.colorLabel }
+            return entry.id !== undefined
+              ? updateThresholdMutation.mutateAsync({ id: entry.id, payload })
+              : createThresholdMutation.mutateAsync(payload)
+          }),
+        ),
+        Promise.all(idsToDelete.map(id => deleteThresholdMutation.mutateAsync(id))),
+      ])
+
+      setColorScaleDraft(prev => {
+        if (!prev) return prev
+        const sessionIndexSet = new Set(colorEditIndices)
+        const untouched = prev.thresholds.filter((_, i) => !sessionIndexSet.has(i))
+        return { ...prev, thresholds: [...untouched, ...savedEntries] }
+      })
+    } finally {
+      setIsApplyingColorEdit(false)
+      colorEditSnapshotRef.current = null
+      setColorEditIndices([])
+      setIsSettingsOpen(true)
+    }
+  }
+  const handleCancelColorEdit = () => {
+    if (colorEditSnapshotRef.current) setColorScaleDraft(colorEditSnapshotRef.current)
+    colorEditSnapshotRef.current = null
+    setColorEditIndices([])
+    setIsSettingsOpen(true)
+  }
+  const handleDeleteColorThreshold = (index: number) => {
+    if (!colorScaleDraft) return
+    const target = colorScaleDraft.thresholds[index]
+    if (!target) return
+    if (!window.confirm('정말 삭제하시겠습니까?')) return
+    const next = { ...colorScaleDraft, thresholds: colorScaleDraft.thresholds.filter((_, i) => i !== index) }
+    setColorScaleDraft(next)
+    if (target.id !== undefined) deleteThresholdMutation.mutate(target.id)
+  }
+  const colorEditThresholds = colorScaleDraft
+    ? colorEditIndices.map(i => colorScaleDraft.thresholds[i]).filter((t): t is ColorScaleThreshold => t !== undefined)
+    : []
+
   const { data: marketSummaryData } = useMarketSummary()
   const marketOverview = marketSummaryData?.marketOverviews.items.find(item => item.market === market)
 
@@ -363,7 +518,7 @@ export default function MarketMapCustomPage() {
       {/* 버튼 바 — 전체화면 진입/해제와 무관하게 항상 같은 높이·구성으로 유지된다(예전엔 모드별로
           완전히 다른 JSX 두 벌을 썼는데, 전체화면 시 최상단 NavBar만 숨기는 걸로 바뀌면서 하나로 합쳤다). */}
       <div className="flex h-8 shrink-0 items-center justify-end gap-2 bg-white px-2 shadow-lg">
-        <MarketMapSettingsDropdown
+        <MarketMapSettingsModal
           isCustom={isCustom}
           onToggleCustom={handleToggleCustom}
           maxDepth={maxDepth}
@@ -394,6 +549,14 @@ export default function MarketMapCustomPage() {
           onToggleSectorFilter={() => setSectorFilterEnabled(prev => !prev)}
           excludedCategories={Array.from(excludedCategoryNames, ([categoryId, categoryName]) => ({ categoryId, categoryName }))}
           onRemoveExcludedCategory={handleRemoveExcludedCategory}
+          colorScaleDraft={colorScaleDraft}
+          colorCustomOn={colorCustomOn}
+          onChangeColorCustomOn={setColorCustomOn}
+          onAddColorThreshold={handleAddColorThreshold}
+          onEditColorThreshold={handleEditColorThreshold}
+          onDeleteColorThreshold={handleDeleteColorThreshold}
+          isOpen={isSettingsOpen}
+          onOpenChange={setIsSettingsOpen}
           compact
         />
         <button
@@ -424,7 +587,20 @@ export default function MarketMapCustomPage() {
         </button>
       </div>
       <div className="flex min-h-0 flex-1">
-        {!isFullscreen && <MarketMapFilterSidebar market={market} onMarketChange={handleMarketChange} />}
+        {!isFullscreen && (
+          <MarketMapFilterSidebar
+            market={market}
+            onMarketChange={handleMarketChange}
+            colorEditThresholds={colorEditThresholds}
+            colorEditMode={colorEditMode}
+            onChangeColorEditThreshold={handleChangeColorEditThreshold}
+            onChangeColorEditColor={handleChangeColorEditColor}
+            onAddColorEditRow={handleAddColorThresholdRow}
+            onApplyColorEdit={handleApplyColorEdit}
+            onCancelColorEdit={handleCancelColorEdit}
+            isSavingColorEdit={isApplyingColorEdit}
+          />
+        )}
         <div ref={captureRef} data-captureid={CAPTURE_ID.MARKET_MAP} className="flex min-h-0 flex-1 flex-col bg-black">
           <div className="mb-1 grid h-7 w-full shrink-0 grid-cols-[auto_1fr_auto] items-center border-2 border-black bg-black/70 px-1 text-sm font-bold text-white">
             <div className="flex items-center whitespace-nowrap">
@@ -451,8 +627,12 @@ export default function MarketMapCustomPage() {
                 </span>
               )}
               <div className="flex items-center gap-0.5">
-                {CHANGE_RATE_LEGEND.map(({ label, className }) => (
-                  <div key={label} className={`flex h-5 w-9 items-center justify-center text-[10px] ${className}`}>
+                {resolveLegendSwatches(colorScale).map(({ label, color }) => (
+                  <div
+                    key={label}
+                    style={{ backgroundColor: color }}
+                    className="flex h-5 w-9 items-center justify-center text-[10px]"
+                  >
                     {label}
                   </div>
                 ))}
@@ -527,6 +707,7 @@ export default function MarketMapCustomPage() {
               avgChangeRateDepthRange={avgChangeRateDepthRange}
               upDownCountDepthRange={upDownCountDepthRange}
               canExclude={isCustom}
+              colorScale={colorScale}
               zoomOutRequestDepth={zoomOutRequestDepth}
               onZoomOutComplete={handleZoomOutComplete}
             />

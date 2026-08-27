@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { Market } from '@/types/api'
 import { ChevronLeftIcon } from './icons/MarketMapIcons'
+import MarketMapColorThresholdEditorPanel from './MarketMapColorThresholdEditorPanel'
+import type { ColorScaleThreshold } from '@/utils/marketMapColorScale'
 
 const FILTER_ITEMS: { label: string; market?: Market }[] = [
   { label: 'KOSPI', market: 'KOSPI' },
@@ -11,17 +13,39 @@ const FILTER_ITEMS: { label: string; market?: Market }[] = [
 interface Props {
   market: Market
   onMarketChange: (market: Market) => void
+  // 색상 추가/수정 세션 — 빈 배열이면 패널 자체가 안 보인다. 지도를 가리는 설정 팝업과 달리 이
+  // 사이드바는 지도 옆에 그대로 떠있어서, 색을 조정하는 동안 실시간으로 바뀌는 지도를 같이 볼 수 있다.
+  // add 모드는 "+"로 여러 행을 동시에 편집할 수 있어서 배열, edit 모드는 항상 원소 1개.
+  colorEditThresholds: ColorScaleThreshold[]
+  colorEditMode: 'add' | 'edit'
+  onChangeColorEditThreshold: (rowIndex: number, percent: number) => void
+  onChangeColorEditColor: (rowIndex: number, color: string, colorLabel: string | null) => void
+  onAddColorEditRow: () => void
+  onApplyColorEdit: () => void
+  onCancelColorEdit: () => void
+  isSavingColorEdit: boolean
 }
 
-export default function MarketMapFilterSidebar({ market, onMarketChange }: Props) {
+export default function MarketMapFilterSidebar({
+  market,
+  onMarketChange,
+  colorEditThresholds,
+  colorEditMode,
+  onChangeColorEditThreshold,
+  onChangeColorEditColor,
+  onAddColorEditRow,
+  onApplyColorEdit,
+  onCancelColorEdit,
+  isSavingColorEdit,
+}: Props) {
   const [collapsed, setCollapsed] = useState(false)
 
   return (
     <aside
       className={`relative shrink-0 bg-[var(--surface)] text-sm transition-[width] duration-200 ${collapsed ? 'w-4' : 'w-56'}`}
     >
-      <div className={`h-full overflow-hidden transition-[width] duration-200 ${collapsed ? 'w-0' : 'w-56'}`}>
-        <div className="w-56 border-b border-gray-700 p-4">
+      <div className={`flex h-full flex-col overflow-hidden transition-[width] duration-200 ${collapsed ? 'w-0' : 'w-56'}`}>
+        <div className="w-56 shrink-0 border-b border-gray-700 p-4">
           <p className="mb-2 font-bold text-white">FILTER</p>
           <ul className="flex list-none flex-col gap-1">
             {FILTER_ITEMS.map(({ label, market: m }) => (
@@ -48,6 +72,20 @@ export default function MarketMapFilterSidebar({ market, onMarketChange }: Props
               </li>
             ))}
           </ul>
+        </div>
+        <div className="mt-auto max-h-[70vh] shrink-0 overflow-y-auto">
+          {colorEditThresholds.length > 0 && (
+            <MarketMapColorThresholdEditorPanel
+              mode={colorEditMode}
+              thresholds={colorEditThresholds}
+              onChangeThreshold={onChangeColorEditThreshold}
+              onChangeColor={onChangeColorEditColor}
+              onAddRow={onAddColorEditRow}
+              onApply={onApplyColorEdit}
+              onCancel={onCancelColorEdit}
+              isSaving={isSavingColorEdit}
+            />
+          )}
         </div>
       </div>
       <button

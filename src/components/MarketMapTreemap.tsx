@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMarketMapLayout, type DisplayGroup, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
 import MarketMapCategorySection from './MarketMapCategorySection'
+import type { ColorScaleConfig } from '@/utils/marketMapColorScale'
 
 interface Props {
   groups: DisplayGroup[]
@@ -18,6 +19,9 @@ interface Props {
   upDownCountDepthRange: [number, number] | null
   // 커스텀 모드가 아닐 때는(기본 분류 트리) 카테고리 제외 액션 자체를 제공하지 않는다.
   canExclude: boolean
+  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 박스 색칠 설정의 단일 출처(어드민 라이브 프리뷰에서는
+  // 저장 전 draft config가 그대로 여기 들어와서 드래그 중에도 실시간으로 반영된다).
+  colorScale: ColorScaleConfig
   // 0이 아닌 뎁스가 오면 그 뎁스로 진입할 때 썼던 위치로 줄어드는 애니메이션을 재생한다.
   zoomOutRequestDepth: number | null
   onZoomOutComplete: (depth: number) => void
@@ -80,6 +84,7 @@ export default function MarketMapTreemap({
   avgChangeRateDepthRange,
   upDownCountDepthRange,
   canExclude,
+  colorScale,
   zoomOutRequestDepth,
   onZoomOutComplete,
 }: Props) {
@@ -252,6 +257,7 @@ export default function MarketMapTreemap({
               avgChangeRateDepthRange={avgChangeRateDepthRange}
               upDownCountDepthRange={upDownCountDepthRange}
               canExclude={false}
+              colorScale={colorScale}
             />
           ))}
         </div>
@@ -267,6 +273,7 @@ export default function MarketMapTreemap({
             avgChangeRateDepthRange={avgChangeRateDepthRange}
             upDownCountDepthRange={upDownCountDepthRange}
             canExclude={canExclude}
+            colorScale={colorScale}
           />
         ))}
       </div>
