@@ -1,11 +1,14 @@
 import client from './client'
-import { ExcludedStockItemSchema, MarketMapResponseSchema, type Market } from '@/types/api'
+import { ExcludedStockItemSchema, MarketMapResponseSchema, MarketMapScaleResponseSchema, type Market } from '@/types/api'
 import { z } from 'zod'
 
 const excludedStockListResponseSchema = z.array(ExcludedStockItemSchema)
 
 export const getMarketMap = (market: Market, isCustom: boolean) =>
   client.get('/market-map', { params: { market, isCustom } }).then(r => MarketMapResponseSchema.parse(r.data))
+
+export const getMarketMapScale = () =>
+  client.get('/market-map/scale').then(r => MarketMapScaleResponseSchema.parse(r.data))
 
 export const getExcludedStocks = () =>
   client.get('/market-map/excluded-stocks').then(r => excludedStockListResponseSchema.parse(r.data))

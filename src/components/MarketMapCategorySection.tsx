@@ -4,6 +4,7 @@ import MarketMapBox from './MarketMapBox'
 import { categoryHeaderHeight, PADDING, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
 import { TAB_GAP, toJoEokDecimal, toPctSigned } from '@/utils/format'
 import type { MarketMapItem } from '@/types/api'
+import type { ColorScaleConfig } from '@/utils/marketMapColorScale'
 
 interface Props {
   category: LaidOutCategory
@@ -16,6 +17,8 @@ interface Props {
   upDownCountDepthRange: [number, number] | null
   // 커스텀 모드가 아닐 때는(기본 분류 트리) 카테고리 제외 액션 자체를 제공하지 않는다.
   canExclude: boolean
+  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 박스 색칠 설정의 단일 출처.
+  colorScale: ColorScaleConfig
   depth?: number
 }
 
@@ -54,6 +57,7 @@ export default function MarketMapCategorySection({
   avgChangeRateDepthRange,
   upDownCountDepthRange,
   canExclude,
+  colorScale,
   depth = 0,
 }: Props) {
   const [hover, setHover] = useState(false)
@@ -84,7 +88,7 @@ export default function MarketMapCategorySection({
       : null,
     isInDepthRange(marketValueDepthRange, depth) ? toJoEokDecimal(category.totalMarketValue / 100_000_000) : null,
   ].filter((part): part is string => part !== null)
-  const headerSuffix = headerParts.length > 0 ? ` ${headerParts.join(TAB_GAP)}` : ''
+  const headerSuffix = headerParts.length > 0 ? `${TAB_GAP}${headerParts.join(TAB_GAP)}` : ''
 
   const updateTooltipPos = (e: React.MouseEvent) => {
     setTooltipPos({
@@ -169,6 +173,7 @@ export default function MarketMapCategorySection({
           avgChangeRateDepthRange={avgChangeRateDepthRange}
           upDownCountDepthRange={upDownCountDepthRange}
           canExclude={canExclude}
+          colorScale={colorScale}
           depth={depth + 1}
         />
       ))}
@@ -182,6 +187,7 @@ export default function MarketMapCategorySection({
           height={box.height}
           tooltipAlignLeft={box.tooltipAlignLeft}
           tooltipAlignTop={box.tooltipAlignTop}
+          colorScale={colorScale}
         />
       ))}
     </div>

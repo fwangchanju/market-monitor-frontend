@@ -52,6 +52,7 @@ export const handlers = [
 
   // ── 마켓맵 ──────────────────────────────────────────────────────────
   http.get('/api/market-map', () => HttpResponse.json(snapshot(data.marketMapTree))),
+  http.get('/api/market-map/scale', () => HttpResponse.json(data.marketMapColorScale)),
   http.get('/api/market-map/excluded-stocks', () => HttpResponse.json(data.excludedStocks)),
   http.post('/api/market-map/excluded-stocks/:stockCode', ok),
   http.delete('/api/market-map/excluded-stocks/:stockCode', ok),
@@ -109,6 +110,15 @@ export const handlers = [
   }),
   http.post('/api/admin/market-map/versions/:id/restore', ok),
   http.delete('/api/admin/market-map/versions/:id', ok),
+  http.post('/api/admin/market-map/scale', async ({ request }) => {
+    const body = (await request.json()) as { thresholdPercent: number; color: string; colorLabel: string | null }
+    return HttpResponse.json({ id: Math.floor(Math.random() * 1_000_000), ...body })
+  }),
+  http.put('/api/admin/market-map/scale/:id', async ({ request, params }) => {
+    const body = (await request.json()) as { thresholdPercent: number; color: string; colorLabel: string | null }
+    return HttpResponse.json({ id: Number(params.id), ...body })
+  }),
+  http.delete('/api/admin/market-map/scale/:id', ok),
   http.get('/api/admin/market-map/stock-categories', () => HttpResponse.json(snapshot(data.adminStockCategories))),
   http.put('/api/admin/market-map/stock-categories/:stockCode', ok),
   http.patch('/api/admin/market-map/stock-categories/:stockCode/alias', ok),

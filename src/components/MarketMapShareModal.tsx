@@ -66,7 +66,7 @@ export default function MarketMapShareModal({
             type="button"
             onClick={onClose}
             aria-label="닫기"
-            className="nes-btn flex h-6 w-6 items-center justify-center border-gray-600 bg-black p-0 text-xs text-white hover:bg-gray-800"
+            className="nes-btn flex h-12 w-12 items-center justify-center border-gray-600 bg-black p-0 text-2xl text-white hover:bg-gray-800"
           >
             ✕
           </button>
