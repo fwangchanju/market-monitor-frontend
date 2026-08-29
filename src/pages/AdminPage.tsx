@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import NavBar from '@/components/NavBar'
+import SubNavBar from '@/components/SubNavBar'
 import IpSegmentInput from '@/components/IpSegmentInput'
 import PermissionDenied from '@/components/PermissionDenied'
 import Spinner from '@/components/Spinner'
@@ -19,6 +20,7 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen">
         <NavBar />
+        <SubNavBar />
         <div className="flex justify-center p-16">
           <Spinner />
         </div>
@@ -43,6 +45,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen">
       <NavBar />
+      <SubNavBar />
       <div className="p-4">
         <div className="mx-auto flex max-w-[800px] flex-col gap-4 md:flex-row">
           <div className="nes-container with-title is-dark md:w-1/2">

@@ -1,29 +1,20 @@
 import { useQueryClient } from '@tanstack/react-query'
 import type { DragEndEvent } from '@dnd-kit/core'
-import {
-  registerWatchStock,
-  registerAsPrimaryWatchStock,
-  designateAsPrimaryWatchStock,
-  unregisterWatchStock,
-  clearPrimaryWatchStock,
-} from '@/api/marketSummary'
+import { designateAsPrimaryWatchStock, unregisterWatchStock } from '@/api/marketSummary'
 import { watchStockKeys } from './queryKeys'
 
 type Source = 'main' | 'watch' | 'search'
 type Target = 'main-stock-zone' | 'watch-stock-zone'
 
+// 관심종목 신규 등록/유지 액션은 진입점 자체를 막음(search→어디든, main→watch-stock-zone) — 승격(watch→main
+// 대표지정)과 완전 해제(watch/main→zone 밖)만 남긴다.
 function resolveAction(source: Source, target: Target | undefined) {
-  if (source === 'search') {
-    if (target === 'watch-stock-zone') return registerWatchStock
-    if (target === 'main-stock-zone') return registerAsPrimaryWatchStock
-    return null
-  }
+  if (source === 'search') return null
   if (source === 'watch') {
     if (target === 'main-stock-zone') return designateAsPrimaryWatchStock
     if (target === undefined) return unregisterWatchStock
     return null
   }
-  if (target === 'watch-stock-zone') return clearPrimaryWatchStock
   if (target === undefined) return unregisterWatchStock
   return null
 }

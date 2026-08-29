@@ -6,6 +6,8 @@ export interface DisplayGroup {
   categoryId: number
   categoryName: string
   totalMarketValue: number
+  weightedAvgChangeRate: number | null
+  simpleAvgChangeRate: number | null
   items: MarketMapItem[]
   children: DisplayGroup[]
 }
@@ -24,6 +26,8 @@ export interface LaidOutCategory {
   categoryId: number
   categoryName: string
   totalMarketValue: number
+  weightedAvgChangeRate: number | null
+  simpleAvgChangeRate: number | null
   isSelf: boolean
   x: number
   y: number
@@ -40,6 +44,8 @@ interface HierarchyDatum {
   categoryId?: number
   value?: number
   totalMarketValue?: number
+  weightedAvgChangeRate?: number | null
+  simpleAvgChangeRate?: number | null
   item?: MarketMapItem
   children?: HierarchyDatum[]
 }
@@ -71,6 +77,8 @@ function toHierarchyDatum(group: DisplayGroup): HierarchyDatum {
     name: group.categoryName,
     categoryId: group.categoryId,
     totalMarketValue: group.totalMarketValue,
+    weightedAvgChangeRate: group.weightedAvgChangeRate,
+    simpleAvgChangeRate: group.simpleAvgChangeRate,
     children: [
       ...group.children.map(toHierarchyDatum),
       ...group.items.map(item => ({
@@ -147,6 +155,8 @@ export function useMarketMapLayout(
         categoryId: node.data.categoryId ?? -1,
         categoryName: node.data.name,
         totalMarketValue: node.data.totalMarketValue ?? 0,
+        weightedAvgChangeRate: node.data.weightedAvgChangeRate ?? null,
+        simpleAvgChangeRate: node.data.simpleAvgChangeRate ?? null,
         isSelf: node.data.name === selfCategoryName,
         x: nx0 - originX,
         y: ny0 - originY,

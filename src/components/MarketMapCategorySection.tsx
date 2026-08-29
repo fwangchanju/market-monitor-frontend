@@ -15,6 +15,8 @@ interface Props {
   marketValueDepthRange: [number, number] | null
   avgChangeRateDepthRange: [number, number] | null
   upDownCountDepthRange: [number, number] | null
+  // true면 가중평균 대신 산술평균을 표시(태그/툴팁).
+  avgChangeRateUseSimple: boolean
   // 커스텀 모드가 아닐 때는(기본 분류 트리) 카테고리 제외 액션 자체를 제공하지 않는다.
   canExclude: boolean
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 박스 색칠 설정의 단일 출처.
@@ -32,6 +34,15 @@ function collectCategoryItems(category: LaidOutCategory): MarketMapItem[] {
 
 function isInDepthRange(range: [number, number] | null, depth: number): boolean {
   return range !== null && depth >= range[0] && depth <= range[1]
+}
+
+function localWeightedAvgChangeRate(items: MarketMapItem[]): number {
+  const totalWeight = items.reduce((sum, item) => sum + item.totalMarketValue, 0)
+  return totalWeight > 0 ? items.reduce((sum, item) => sum + item.changeRate * item.totalMarketValue, 0) / totalWeight : 0
+}
+
+function localSimpleAvgChangeRate(items: MarketMapItem[]): number {
+  return items.length > 0 ? items.reduce((sum, item) => sum + item.changeRate, 0) / items.length : 0
 }
 
 // 헤더 높이(categoryHeaderHeight)와 같은 비율로 폰트 크기도 depth에 따라 줄인다.
@@ -56,6 +67,7 @@ export default function MarketMapCategorySection({
   marketValueDepthRange,
   avgChangeRateDepthRange,
   upDownCountDepthRange,
+  avgChangeRateUseSimple,
   canExclude,
   colorScale,
   depth = 0,
@@ -65,17 +77,18 @@ export default function MarketMapCategorySection({
   const boxRef = useRef<HTMLDivElement>(null)
 
   const items = collectCategoryItems(category)
-  // 종목 수 기준 산술평균이 아니라, 시가총액으로 가중치를 준 평균.
-  const totalWeight = items.reduce((sum, item) => sum + item.totalMarketValue, 0)
-  const avgChangeRate =
-    totalWeight > 0 ? items.reduce((sum, item) => sum + item.changeRate * item.totalMarketValue, 0) / totalWeight : 0
+  // 백엔드가 내려주는 값을 우선 쓰고, 아직 스냅샷이 없는 카테고리(기본 마켓맵, 신설 카테고리 등)만
+  // 종목 목록으로 그 자리에서 계산해 보완한다.
+  const avgChangeRate = avgChangeRateUseSimple
+    ? (category.simpleAvgChangeRate ?? localSimpleAvgChangeRate(items))
+    : (category.weightedAvgChangeRate ?? localWeightedAvgChangeRate(items))
   const advancerCount = items.filter(item => item.changeRate > 0).length
   const declinerCount = items.filter(item => item.changeRate < 0).length
   const unchangedCount = items.length - advancerCount - declinerCount
   // 호버 툴팁은 태그 텍스트와 달리 항목별로 줄바꿈해서 보여준다.
   const label = [
     category.categoryName,
-    `가중평균 등락률: ${toPctSigned(avgChangeRate)}`,
+    `${avgChangeRateUseSimple ? '산술평균' : '가중평균'} 등락률: ${toPctSigned(avgChangeRate)}`,
     `상승 ${advancerCount} 하락 ${declinerCount} 보합 ${unchangedCount}`,
     `시총: ${toJoEokDecimal(category.totalMarketValue / 100_000_000)}`,
   ].join('\n')
@@ -172,6 +185,7 @@ export default function MarketMapCategorySection({
           marketValueDepthRange={marketValueDepthRange}
           avgChangeRateDepthRange={avgChangeRateDepthRange}
           upDownCountDepthRange={upDownCountDepthRange}
+          avgChangeRateUseSimple={avgChangeRateUseSimple}
           canExclude={canExclude}
           colorScale={colorScale}
           depth={depth + 1}

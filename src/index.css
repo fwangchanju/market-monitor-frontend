@@ -60,7 +60,6 @@ html, body, #root {
 }
 
 a { color: var(--accent-light); text-decoration: none; }
-a:hover { text-decoration: underline; }
 
 /* ── Value colors ────────────────────────────────────────────────────────── */
 

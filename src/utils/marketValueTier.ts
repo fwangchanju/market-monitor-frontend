@@ -1,19 +1,19 @@
-import type { MarketValueTier } from '@/types/api'
+import type { MarketValueTierItem } from '@/types/api'
 
-// 실제 판정 기준(5천억/5조/200조)은 백엔드가 marketValueTier 필드로 계산해서 내려주므로,
-// 여기서는 화면에 보여줄 라벨/설명 문구만 관리한다. 어드민 종목관리·마켓맵 설정 양쪽에서 재사용.
-export const MARKET_VALUE_TIER_OPTIONS: { value: MarketValueTier; label: string; range: string }[] = [
-  { value: 'MEGA', label: '초대형주', range: '200조 이상' },
-  { value: 'LARGE', label: '대형주', range: '5조 이상' },
-  { value: 'MID', label: '중형주', range: '5천억 이상' },
-  { value: 'SMALL', label: '소형주', range: '5천억 미만' },
-]
+// 시가총액 구간 정의는 더 이상 프론트 하드코딩이 아니라 GET /market-map/value-tiers 조회 결과
+// (useMarketValueTiers)를 그대로 쓴다 — thresholdValue 오름차순으로 내려온다는 게 백엔드 계약.
+// 이 파일은 그 목록을 필터링에 쓰기 위한 순수 변환 함수만 모아둔다.
 
-// 시가총액 구간 슬라이더는 작은 것부터 큰 순서로 왼쪽→오른쪽에 배치한다(위 옵션 목록과는 반대 순서).
-export const MARKET_VALUE_TIER_ASCENDING: MarketValueTier[] = ['SMALL', 'MID', 'LARGE', 'MEGA']
-export const MARKET_VALUE_TIER_SHORT_LABEL: Record<MarketValueTier, string> = {
-  SMALL: '소형주',
-  MID: '중형주',
-  LARGE: '대형주',
-  MEGA: '초대형주',
+// 화면 진입 시 필터 토글의 초기 상태 — 이후 사용자가 바꾼 상태는 프론트가 직접 관리(세션스토리지)한다.
+export function defaultExcludedTierLabels(tiers: MarketValueTierItem[]): Set<string> {
+  return new Set(tiers.filter(tier => tier.isExcludedByDefault).map(tier => tier.label))
+}
+
+// 오름차순 정렬된 tiers 배열의 [minIndex, maxIndex] 구간(포함) 밖에 있는 등급만 제외 대상으로 변환한다.
+export function tierRangeToExcludedLabels(
+  tiers: MarketValueTierItem[],
+  minIndex: number,
+  maxIndex: number,
+): Set<string> {
+  return new Set(tiers.filter((_, index) => index < minIndex || index > maxIndex).map(tier => tier.label))
 }

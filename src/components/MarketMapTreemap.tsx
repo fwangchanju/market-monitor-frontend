@@ -17,6 +17,8 @@ interface Props {
   marketValueDepthRange: [number, number] | null
   avgChangeRateDepthRange: [number, number] | null
   upDownCountDepthRange: [number, number] | null
+  // true면 가중평균 대신 산술평균을 표시(태그/툴팁).
+  avgChangeRateUseSimple: boolean
   // 커스텀 모드가 아닐 때는(기본 분류 트리) 카테고리 제외 액션 자체를 제공하지 않는다.
   canExclude: boolean
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 박스 색칠 설정의 단일 출처(어드민 라이브 프리뷰에서는
@@ -83,6 +85,7 @@ export default function MarketMapTreemap({
   marketValueDepthRange,
   avgChangeRateDepthRange,
   upDownCountDepthRange,
+  avgChangeRateUseSimple,
   canExclude,
   colorScale,
   zoomOutRequestDepth,
@@ -256,6 +259,7 @@ export default function MarketMapTreemap({
               marketValueDepthRange={marketValueDepthRange}
               avgChangeRateDepthRange={avgChangeRateDepthRange}
               upDownCountDepthRange={upDownCountDepthRange}
+              avgChangeRateUseSimple={avgChangeRateUseSimple}
               canExclude={false}
               colorScale={colorScale}
             />
@@ -272,6 +276,7 @@ export default function MarketMapTreemap({
             marketValueDepthRange={marketValueDepthRange}
             avgChangeRateDepthRange={avgChangeRateDepthRange}
             upDownCountDepthRange={upDownCountDepthRange}
+            avgChangeRateUseSimple={avgChangeRateUseSimple}
             canExclude={canExclude}
             colorScale={colorScale}
           />

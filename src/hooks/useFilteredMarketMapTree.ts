@@ -1,5 +1,17 @@
 import { useMemo } from 'react'
-import type { MarketMapCategoryNode, MarketMapItem, MarketValueTier } from '@/types/api'
+import type { MarketMapCategoryNode, MarketMapItem } from '@/types/api'
+import { combineTierBreakdowns } from '@/utils/categoryTierBreakdown'
+
+// 필터링(카테고리 제외/시가총액 구간)까지 반영된 뒤에도 화면이 필요로 하는 등락률 평균 두 개를 들고
+// 있는 노드 — tierBreakdown을 매번 다시 조합하지 않도록 필터링 시점에 한 번만 계산해서 붙여둔다.
+// weightedAvgChangeRate/simpleAvgChangeRate가 null이면 스냅샷이 없거나(기본 마켓맵) 지금 선택된
+// 구간에 해당하는 종목이 하나도 없다는 뜻 — MarketMapCategorySection이 그 경우 items 기준 실시간
+// 계산으로 대체한다.
+export interface FilteredMarketMapCategoryNode extends MarketMapCategoryNode {
+  weightedAvgChangeRate: number | null
+  simpleAvgChangeRate: number | null
+  children: FilteredMarketMapCategoryNode[]
+}
 
 // 카테고리 exclude는 하위 전체로 자동 전파된다 — 제외된 노드는 자식을 아예 살펴보지 않고 통째로 버리므로,
 // 자식이 스스로 isExcluded=false여도 부모가 제외되면 같이 사라진다.
@@ -7,9 +19,9 @@ import type { MarketMapCategoryNode, MarketMapItem, MarketValueTier } from '@/ty
 function filterNodes(
   nodes: MarketMapCategoryNode[],
   excludedCategoryIds: Set<number>,
-  excludedMarketValueTiers: Set<MarketValueTier>,
-): MarketMapCategoryNode[] {
-  const result: MarketMapCategoryNode[] = []
+  excludedMarketValueTiers: Set<string>,
+): FilteredMarketMapCategoryNode[] {
+  const result: FilteredMarketMapCategoryNode[] = []
   for (const node of nodes) {
     if (excludedCategoryIds.has(node.categoryId)) continue
 
@@ -22,22 +34,34 @@ function filterNodes(
       children.reduce((sum, child) => sum + child.totalMarketValue, 0)
     if (totalMarketValue <= 0) continue
 
-    result.push({ ...node, items, children, totalMarketValue })
+    const { weightedAvg, simpleAvg } = combineTierBreakdowns(node.tierBreakdown, excludedMarketValueTiers)
+    result.push({
+      ...node,
+      items,
+      children,
+      totalMarketValue,
+      weightedAvgChangeRate: weightedAvg,
+      simpleAvgChangeRate: simpleAvg,
+    })
   }
   return result
 }
 
 // depth === maxDepth인 노드는 이 뎁스까지만 태그를 보여준다는 뜻 — 그 밑에 있던 하위 카테고리들의
 // 태그(헤더)는 없애되, 안에 있던 종목은 사라지지 않고 전부 이 노드 박스 안으로 펼쳐서 보여준다.
-function collectAllItems(node: MarketMapCategoryNode): MarketMapItem[] {
+function collectAllItems(node: FilteredMarketMapCategoryNode): MarketMapItem[] {
   const items = [...node.items]
   for (const child of node.children) items.push(...collectAllItems(child))
   return items
 }
 
 // depth는 루트로 넘어온 nodes를 1로 보는 화면 기준(= "분류 단계" 슬라이더 값과 동일 단위).
-function limitDepth(nodes: MarketMapCategoryNode[], maxDepth: number, depth = 1): MarketMapCategoryNode[] {
-  const result: MarketMapCategoryNode[] = []
+function limitDepth(
+  nodes: FilteredMarketMapCategoryNode[],
+  maxDepth: number,
+  depth = 1,
+): FilteredMarketMapCategoryNode[] {
+  const result: FilteredMarketMapCategoryNode[] = []
   for (const node of nodes) {
     if (depth >= maxDepth) {
       const items = collectAllItems(node)
@@ -56,7 +80,7 @@ function limitDepth(nodes: MarketMapCategoryNode[], maxDepth: number, depth = 1)
   return result
 }
 
-function computeMaxDepth(nodes: MarketMapCategoryNode[], depth = 1): number {
+function computeMaxDepth(nodes: FilteredMarketMapCategoryNode[], depth = 1): number {
   let max = depth
   for (const node of nodes) {
     if (node.children.length > 0) max = Math.max(max, computeMaxDepth(node.children, depth + 1))
@@ -67,7 +91,7 @@ function computeMaxDepth(nodes: MarketMapCategoryNode[], depth = 1): number {
 export function useFilteredMarketMapTree(
   rootNodes: MarketMapCategoryNode[],
   excludedCategoryIds: Set<number>,
-  excludedMarketValueTiers: Set<MarketValueTier>,
+  excludedMarketValueTiers: Set<string>,
   maxDepth: number | null,
 ) {
   const excludeTierFiltered = useMemo(

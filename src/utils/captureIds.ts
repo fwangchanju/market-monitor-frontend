@@ -2,4 +2,5 @@
 export const CAPTURE_ID = {
   MARKET_SUMMARY: 'market-summary-capture',
   MARKET_MAP: 'market-map-capture',
+  CATEGORY_CHANGE_RATE: 'category-change-rate-capture',
 } as const
