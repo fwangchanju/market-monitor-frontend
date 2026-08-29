@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useIsAdmin } from '@/hooks/useAccess'
-import { MARKET_VALUE_TIER_ASCENDING, MARKET_VALUE_TIER_SHORT_LABEL } from '@/utils/marketValueTier'
 import { SettingsIcon } from '@/components/icons/MarketMapIcons'
 import type { ColorScaleConfig, ColorScaleThreshold } from '@/utils/marketMapColorScale'
+import type { MarketValueTierItem } from '@/types/api'
 
 interface ExcludedCategory {
   categoryId: number
@@ -27,7 +27,13 @@ interface Props {
   upDownCountDepthMinIndex: number
   upDownCountDepthMaxIndex: number
   onChangeUpDownCountDepthRange: (minIndex: number, maxIndex: number) => void
-  // MARKET_VALUE_TIER_ASCENDING(소→초) 기준 인덱스. 이 구간(포함) 밖의 시가총액 등급은 마켓맵에서 제외된다.
+  // 등락률 태그/툴팁에 가중평균 대신 산술평균을 쓸지.
+  avgChangeRateUseSimple: boolean
+  onToggleAvgChangeRateUseSimple: () => void
+  // 오름차순(소→초) 정렬된 시가총액 구간 정의 — GET /market-map/value-tiers 조회 결과(useMarketValueTiers).
+  // 아직 로딩 전이면 빈 배열.
+  tiers: MarketValueTierItem[]
+  // tiers 배열 기준 인덱스. 이 구간(포함) 밖의 시가총액 등급은 마켓맵에서 제외된다.
   tierRangeMinIndex: number
   tierRangeMaxIndex: number
   onChangeTierRange: (minIndex: number, maxIndex: number) => void
@@ -99,8 +105,6 @@ function ToggleSwitch({
     </div>
   )
 }
-
-const TIER_STEPS = MARKET_VALUE_TIER_ASCENDING.length - 1
 
 // 뎁스 범위 슬라이더의 맨 왼쪽 칸(인덱스 0)은 실제 뎁스가 아니라 OFF 자리 — 두 핸들이 전부 여기 있으면
 // 완전히 꺼진 상태다. 그 오른쪽부터 1차 분류(뎁스0), 2차 분류(뎁스1), ...로 이어진다.
@@ -264,6 +268,9 @@ export default function MarketMapSettingsModal({
   upDownCountDepthMinIndex,
   upDownCountDepthMaxIndex,
   onChangeUpDownCountDepthRange,
+  avgChangeRateUseSimple,
+  onToggleAvgChangeRateUseSimple,
+  tiers,
   tierRangeMinIndex,
   tierRangeMaxIndex,
   onChangeTierRange,
@@ -417,12 +424,12 @@ export default function MarketMapSettingsModal({
                       <RangeSlider
                         minIndex={tierRangeMinIndex}
                         maxIndex={tierRangeMaxIndex}
-                        steps={TIER_STEPS}
-                        labels={MARKET_VALUE_TIER_ASCENDING.map(tier => MARKET_VALUE_TIER_SHORT_LABEL[tier])}
+                        steps={Math.max(tiers.length - 1, 1)}
+                        labels={tiers.map(tier => tier.label)}
                         minAriaLabel="최소 시가총액 구간"
                         maxAriaLabel="최대 시가총액 구간"
                         onChange={onChangeTierRange}
-                        disabled={!isCustom}
+                        disabled={!isCustom || tiers.length === 0}
                       />
                     </div>
                   </div>
@@ -458,6 +465,14 @@ export default function MarketMapSettingsModal({
                         maxAriaLabel="최대 등락률 표시 뎁스"
                         onChange={onChangeAvgChangeRateDepthRange}
                         disabled={!isCustom}
+                      />
+                    </div>
+                    <div className="mt-2">
+                      <ToggleSwitch
+                        checked={avgChangeRateUseSimple}
+                        onChange={onToggleAvgChangeRateUseSimple}
+                        label="산술평균 사용"
+                        hint="(기본: 가중평균)"
                       />
                     </div>
                   </div>

@@ -1,7 +1,7 @@
 import { useSearchParams } from 'react-router-dom'
 import { isAxiosError } from 'axios'
 import NavBar from '@/components/NavBar'
-import AdminSidebar from '@/components/AdminSidebar'
+import SubNavBar from '@/components/SubNavBar'
 import PermissionDenied from '@/components/PermissionDenied'
 import AdminCategoryTable from '@/components/AdminCategoryTable'
 import AdminStockTable from '@/components/AdminStockTable'
@@ -26,6 +26,7 @@ export default function MarketMapAdminPage() {
     return (
       <div className="flex h-screen flex-col overflow-hidden">
         <NavBar />
+        <SubNavBar />
         <div className="flex justify-center p-16">
           <Spinner />
         </div>
@@ -40,21 +41,22 @@ export default function MarketMapAdminPage() {
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <NavBar />
-      <div className="flex min-h-0 flex-1">
-        <AdminSidebar mode={mode} />
-        <div className={`flex min-h-0 flex-1 flex-col px-4 pt-2 pb-4 ${mode === 'category' ? 'overflow-y-auto' : ''}`}>
-          {mode === 'stock' ? (
-            <AdminStockTable
-              items={stockCategories?.items ?? []}
-              categories={categories ?? []}
-              snapshotTime={stockCategories?.snapshotTime ?? null}
-              onRefetchCategories={() => refetchCategories()}
-              isRefetchingCategories={isRefetchingCategories}
-            />
-          ) : (
-            <AdminCategoryTable categories={categories ?? []} />
-          )}
-        </div>
+      <SubNavBar />
+      {/* 좌측 사이드바(종목/카테고리 전환 + 버전관리 저장) 삭제 — 종목/카테고리 전환은 SubNavBar의
+          "커스텀" 탭 hover 목록으로 이동. 버전관리 저장(AdminVersionSaveSection)은 기능 검증과
+          위치 재검토가 더 필요해서 일단 뺐다 — 다시 넣을 땐 이 컴포넌트를 재사용하면 된다. */}
+      <div className={`flex min-h-0 flex-1 flex-col px-4 pt-2 pb-4 ${mode === 'category' ? 'overflow-y-auto' : ''}`}>
+        {mode === 'stock' ? (
+          <AdminStockTable
+            items={stockCategories?.items ?? []}
+            categories={categories ?? []}
+            snapshotTime={stockCategories?.snapshotTime ?? null}
+            onRefetchCategories={() => refetchCategories()}
+            isRefetchingCategories={isRefetchingCategories}
+          />
+        ) : (
+          <AdminCategoryTable categories={categories ?? []} />
+        )}
       </div>
     </div>
   )

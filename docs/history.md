@@ -80,3 +80,47 @@
 - **임계값 충돌은 막지 않고 "적용" 시점에 update로 정리** — 세션 편집 도중엔 같은 임계값이 여러 행에 있어도 그대로 두고, "적용" 직전에 `Map<thresholdPercent, ColorScaleStop>`로 훑어서 나중 값이 이기도록(overwrite) 정리한 뒤 저장. "수정도 결국 update"라는 논리와 동일하게 맞춤. (요청 임계값이 이미 저장돼 있으면 "추가"로는 아예 막고 "수정"으로만 가능하게 하는 validation은 백엔드 작업 시점에 다시 논의하기로 하고 이번 라운드엔 반영 안 함.)
 - **패널 구조 재설계**: 톤 프리셋(hue 그리드)과 명도 그라데이션 바를 행마다 따로 두지 않고 패널 최하단에 하나만 공유 — 지금 커서가 들어가 있는(포커스된) 행에만 적용됨. 회색 프리셋을 추가해 8개(4x4 그리드, 정확히 2줄)로 맞췄고, 회색은 채도 0으로 별도 처리. 패널 전체 높이는 행 개수와 무관하게 고정(24rem)이고, 행 목록 영역만 정해진 높이(~4행) 안에서 자체 스크롤됨 — 톤 프리셋/그라데이션/적용·취소 버튼 위치는 항상 고정.
 - 새 행의 미지정 상태 색값(`UNSET_COLOR_SCALE_STOP_COLOR`, 회색과 동일)은 `src/utils/marketMapColorScale.ts`에 둬서 페이지와 패널 컴포넌트가 공유(react-refresh 규칙상 컴포넌트 파일에서 상수를 export하면 안 돼서 유틸로 이동).
+
+## 카테고리 등락률 랭킹/급변 기능 — 설계만 확정, 보류 (2026-08-28)
+
+TradingView "1 DAY PERFORMANCE" 스타일로, 지정한 카테고리 레벨의 가중평균 등락률 랭킹을 바 차트로 보여주는 기능 논의. 상세 설계(스냅샷/재배정 이력, 캡션 텍스트 캐싱 등)는 market-monitor-backend의 `docs/history.md` 같은 날짜 섹션 참고 — 백엔드 위주 설계였음. 프론트 쪽만 요약:
+
+- **"지금" 기준 랭킹은 새 API 불필요** — 이미 `useMarketMap(market, isCustom)`이 `MARKET_DATA_CACHE`(staleTime/refetchInterval 60초)로 캐싱해둔 트리 데이터를 그대로 재사용하면 됨. 같은 쿼리 키로 여러 컴포넌트가 붙어도 react-query가 자동으로 공유·중복요청 제거하므로, 새 탭/섹션은 그냥 같은 훅을 불러서 지정 레벨까지 순회 → 정렬 → 렌더만 하면 됨.
+- **가중평균 등락률 계산을 백엔드로 이관하기로 함** — 지금은 `MarketMapCategorySection.tsx`가 `category.items`(원본 종목별 changeRate+시총)를 매 렌더마다 client-side로 가중평균 계산하는데, 백엔드가 캡션 텍스트(별도 세션 참고)를 만들려면 이 값을 서버에서도 계산해야 해서, `MarketMapCategoryNode` 응답에 필드로 실어 보내고 프론트는 그 값을 그대로 쓰는 쪽으로 방향을 잡음(이관되면 이 컴포넌트의 로컬 계산 로직 제거 대상). 상승/하락/보합 카운트는 이관 대상 아님 — 원본 종목 리스트는 박스 렌더링 때문에 어차피 계속 받아야 해서 그 자리에서 계산해도 무방하고, 백엔드 쪽 소비자도 없음.
+- **"직전 대비 급변" 랭킹(스냅샷+카테고리 재배정 이력 기반)은 설계만 잡고 구현 보류** — 상세는 백엔드 history.md 참고.
+- 현재 상태: 전부 설계 단계, 구현 착수 안 함.
+
+### 후속 논의 — 응답 모양, before 시점 결정, 토글 UX (2026-08-28)
+
+위 "직전 대비 급변" 랭킹을 다시 진행하기로 하면서 백엔드 세션에서 이어서 확정한 내용. 상세 계산/쿼리 설계는 백엔드 `docs/history.md` 참고, 여기는 프론트에서 알아야 할 부분만.
+
+**API 응답 모양**: `beforeItems`/`nowItems`처럼 두 리스트로 병렬로 내려주는 대신, 카테고리 아이템 하나 안에 `now`/`before`를 같이 묶어서 내려주는 걸로 확정. `before`는 직전 스냅샷이 없으면 `null`.
+
+```
+List<CategoryChangeRateItem>
+  - categoryId, categoryName
+  - now: { snapshotTime, weightedAvgChangeRate, simpleAvgChangeRate }
+  - before: { snapshotTime, weightedAvgChangeRate, simpleAvgChangeRate } | null
+```
+
+토글 두 개는 전부 프론트에서 이 하나의 리스트로 처리:
+- **가중/산술평균 토글**: `now.weightedAvgChangeRate` vs `now.simpleAvgChangeRate` 중 뭘로 정렬할지만 바꿈.
+- **현재/변화율 랭킹 토글**: 현재 랭킹은 `now.xxx` 기준 정렬, 변화율 랭킹은 프론트에서 `now.xxx - before.xxx` 계산해서 정렬.
+
+**`before` 시점 = `latestSnapshotTime - beforeMinutes`(기본 60분, 화면에서 파라미터로 조절 가능하게 할 예정)**. 이 시점에 정확히 일치하는 스냅샷이 없으면(수집 주기 5분 기준 갭이 있거나, 장 시작 직후라 그 시각 자체가 아직 없거나) `before`는 그냥 없는 것으로 처리 — 가장 가까운 다른 시점 데이터로 조용히 대체하지 않음(예: 실제로는 63분 전 데이터인데 "60분 전"이라고 잘못 라벨링하는 걸 피하기 위해). 정상 상태를 가장한 부정확한 값보다, 없으면 없다고 명확히 보여주는 쪽을 택함.
+
+**토글 UX 원칙 — 토글 상태와 실제 보여지는 데이터 종류가 어긋나면 안 됨**:
+- 등락률(현재) 토글 상태에서 그 자체 데이터가 없으면: "없음" 표시, 빈 화면. (거의 발생 안 하는 케이스)
+- 변화율(직전 대비) 토글 상태에서 `before`가 없으면: 조용히 등락률 데이터로 대체해서 보여주지 않음. 대신 알림 팝업(카테고리 변경 시 뜨는 것과 비슷한 톤) — `mm-dd HH:mm 데이터가 없습니다` (mm-dd HH:mm은 시도했던 `before` 시각) — 띄운 뒤, 팝업이 닫히면 토글 **상태 자체**를 등락률로 전환(그 화면에서 등락률 데이터를 그냥 보여주는 게 아니라, 토글의 선택값 자체를 바꿔서 "지금 등락률 랭킹을 보고 있다"는 상태와 실제 표시가 항상 일치하게 함).
+- 이 케이스는 하루 중 최초 텔레그램 발송 시각(예: 08:10) 직후처럼 `before`가 원천적으로 존재할 수 없는 상황에서 확정적으로 발생함 — 이건 구조적 제약으로 받아들이고 감추지 않기로 함(사용자 의견: "오류에 대한 인지를 내가 해야 개선을 할 수 있지, 잘못된 걸 정상인 것마냥 보여주는 것보다는").
+
+**미구현**: 위 전부 설계만 확정, 프론트/백엔드 모두 착수 전.
+
+### 프론트 구현 완료 (2026-08-29)
+
+백엔드가 `MarketMapCategoryNode`에 `weightedAvgChangeRate`/`simpleAvgChangeRate`를 실어 보내고 `/market-map/category-change-rates`를 추가한 뒤, 위 설계대로 프론트도 구현함.
+
+- **마켓맵 화면 필드 동기화**: `MarketMapCategorySection.tsx`의 로컬 가중평균 계산을 제거하고 백엔드 필드를 우선 사용하도록 변경. 다만 기본(비커스텀) 마켓맵 노드와 아직 스냅샷이 없는 신설 카테고리는 이 필드가 항상/일시적으로 `null`이라(`MarketMapCategoryNode.leaf`가 명시적으로 `null` 고정), 그 경우에만 종목 목록으로 그 자리에서 계산하는 로컬 폴백을 남겨둠 — 완전 이관 시 기본 마켓맵에서 등락률 태그가 통째로 사라지는 회귀를 피하기 위함. 가중/산술평균 표시 전환 토글은 마켓맵 설정 모달의 "등락률" 슬라이더 아래에 추가.
+- **`/category-change-rate` 신규 페이지**: `CategoryChangeRatePage.tsx` 신설, `NavBar`에 "랭킹" 탭 추가. `data-captureid="category-change-rate-capture"`로 `RenderTarget.CATEGORY_CHANGE_RATE` 캡처 셀렉터와 매칭. `categoryName`은 API 응답에 없어 `useMarketMap(market, true)`(커스텀 트리)에서 categoryId 기준으로 join.
+- **토글 2개 + before 없음 알림**: 가중/산술평균, 현재/변화율 토글 구현. 변화율 토글 상태에서 응답의 모든 항목이 `before: null`이면(설계대로 "이 시각엔 구조적으로 데이터가 없음"으로 판단) `window.alert`로 `mm-dd HH:mm 데이터가 없습니다`를 띄우고 토글을 현재로 되돌림 — 기존 `useCategoryDeleteFlow.ts`/`AdminStockTable.tsx`가 카테고리 변경 관련 알림에 쓰던 것과 동일하게 `window.alert`를 그대로 씀(별도 커스텀 모달 없음).
+- 비교 시점(beforeMinutes)은 화면 상단에서 직접 입력 가능(기본 60분).

@@ -1,10 +1,11 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import type { CategoryItem, MarketValueTier, StockCategoryListItem } from '@/types/api'
+import type { CategoryItem, MarketValueTierItem, StockCategoryListItem } from '@/types/api'
 import { toFullDateTimeLabel, toJoEokDecimal } from '@/utils/format'
-import { MARKET_VALUE_TIER_OPTIONS } from '@/utils/marketValueTier'
+import { exportRowsToExcel } from '@/utils/exportExcel'
 import { useAssignStockCategory, useBulkAssignStockCategory, useUpdateAlias } from '@/hooks/useMarketMapAdmin'
+import { useMarketValueTiers } from '@/hooks/useMarketValueTiers'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import Spinner from './Spinner'
 import { CheckIcon, ChevronDownIcon, RedoIcon, RefreshIcon, SearchIcon, UndoIcon } from './icons/MarketMapIcons'
@@ -876,15 +877,17 @@ function AdminColumnFilterButton({
 
 // 시가총액 구간 필터. 다른 컬럼 필터(AdminColumnFilterButton)와 동일하게 "기본 전체 포함,
 // 체크 해제로 제외"하는 다중선택 방식이라 대형주+중형주처럼 여러 구간을 동시에 볼 수 있다.
-// 값 종류가 고정된 4개뿐이라 검색 입력 없이 목록만 보여준다.
+// 구간 종류/개수가 고정이 아니라 GET /market-map/value-tiers 조회 결과라 검색 입력 없이 목록만 보여준다.
 function AdminMarketValueFilterButton({
+  tiers,
   excluded,
   onToggle,
   onSelectAll,
   onSelectNone,
 }: {
-  excluded: Set<MarketValueTier>
-  onToggle: (value: MarketValueTier) => void
+  tiers: MarketValueTierItem[]
+  excluded: Set<string>
+  onToggle: (value: string) => void
   onSelectAll: () => void
   onSelectNone: () => void
 }) {
@@ -927,15 +930,15 @@ function AdminMarketValueFilterButton({
             <span>전체</span>
           </label>
           <div className="pt-1">
-            {MARKET_VALUE_TIER_OPTIONS.map(opt => (
+            {tiers.map(tier => (
               <label
-                key={opt.value}
+                key={tier.id}
                 className="flex w-full cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-white hover:bg-yellow-400/50"
               >
-                <input type="checkbox" checked={!excluded.has(opt.value)} onChange={() => onToggle(opt.value)} />
+                <input type="checkbox" checked={!excluded.has(tier.label)} onChange={() => onToggle(tier.label)} />
                 <span className="flex flex-1 items-center justify-between gap-2">
-                  <span>{opt.label}</span>
-                  <span className="text-gray-500">{opt.range}</span>
+                  <span>{tier.label}</span>
+                  <span className="text-gray-500">{toJoEokDecimal(tier.thresholdValue / 100_000_000)} 이상</span>
                 </span>
               </label>
             ))}
@@ -1533,12 +1536,14 @@ export default function AdminStockTable({
     new Set(),
     { serialize: set => [...set], deserialize: raw => new Set(raw as string[]) },
   )
-  const [excludedMarketValueTiers, setExcludedMarketValueTiers] = usePersistedState<Set<MarketValueTier>>(
+  const { data: valueTiersData } = useMarketValueTiers()
+  const valueTiers = useMemo(() => valueTiersData ?? [], [valueTiersData])
+  const [excludedMarketValueTiers, setExcludedMarketValueTiers] = usePersistedState<Set<string>>(
     'adminStockTable.excludedMarketValueTiers',
     new Set(),
-    { serialize: set => [...set], deserialize: raw => new Set(raw as MarketValueTier[]) },
+    { serialize: set => [...set], deserialize: raw => new Set(raw as string[]) },
   )
-  const toggleMarketValueTier = (value: MarketValueTier) => {
+  const toggleMarketValueTier = (value: string) => {
     setExcludedMarketValueTiers(prev => {
       const next = new Set(prev)
       if (next.has(value)) next.delete(value)
@@ -1664,6 +1669,29 @@ export default function AdminStockTable({
     () => (sortDirection === 'asc' ? sortedAscending : [...sortedAscending].reverse()),
     [sortedAscending, sortDirection],
   )
+
+  // 지금 화면에 필터/정렬 적용된 상태 그대로 내려받는다 — 전체를 받고 싶으면 필터를 먼저 풀면 된다.
+  const handleExportExcel = () => {
+    const now = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+    const filename = `커스텀_종목_${timestamp}.xlsx`
+    const rows = sorted.map(item => {
+      const display = displayByStockCode.get(item.stockCode)!
+      return {
+        종목코드: item.stockCode,
+        종목명: item.stockName,
+        '표시명 (약칭)': item.alias ?? '',
+        시가총액: item.totalMarketValue ?? '',
+        마켓: display.market,
+        '거래소 분류': display.originCategoryName,
+        '1차 분류': display.parentCategoryName,
+        '2차 분류': display.midCategoryName,
+        '3차 분류': display.subCategoryName,
+      }
+    })
+    exportRowsToExcel(filename, '종목관리', rows)
+  }
 
   // 전체선택은 항상 "지금 필터링돼서 보이는" 종목만 대상으로 한다. 개별 체크는 필터가 바뀌어도 유지된다.
   const isAllVisibleSelected = sorted.length > 0 && sorted.every(item => selectedStockCodes.has(item.stockCode))
@@ -1797,6 +1825,14 @@ export default function AdminStockTable({
             <RefreshIcon className={`h-3.5 w-3.5 ${isRefetchingCategories ? 'animate-spin' : ''}`} />
             {isRefetchingCategories ? '새로고침 중...' : '새로고침'}
           </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            className="nes-btn border-green-600 bg-green-600 text-xs text-white hover:bg-green-700"
+            title="지금 화면에 보이는(필터/정렬 적용된) 목록을 엑셀로 내려받습니다"
+          >
+            엑셀 다운로드
+          </button>
           {selectedStockCodes.size > 0 && (
             <>
               <BulkAssignButton
@@ -1921,10 +1957,11 @@ export default function AdminStockTable({
                             document.body,
                           )}
                         <AdminMarketValueFilterButton
+                          tiers={valueTiers}
                           excluded={excludedMarketValueTiers}
                           onToggle={toggleMarketValueTier}
                           onSelectAll={() => setExcludedMarketValueTiers(new Set())}
-                          onSelectNone={() => setExcludedMarketValueTiers(new Set(MARKET_VALUE_TIER_OPTIONS.map(o => o.value)))}
+                          onSelectNone={() => setExcludedMarketValueTiers(new Set(valueTiers.map(t => t.label)))}
                         />
                       </div>
                     ) : (

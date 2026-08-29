@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
-import MarketMapFilterSidebar from '@/components/MarketMapFilterSidebar'
+import SubNavBar from '@/components/SubNavBar'
+import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
 import MarketMapSettingsModal from '@/components/MarketMapSettingsModal'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
@@ -24,27 +25,29 @@ import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { registerExcludedCategory, unregisterExcludedCategory } from '@/api/marketMap'
-import { MARKET_VALUE_TIER_ASCENDING } from '@/utils/marketValueTier'
+import { useMarketValueTierRange } from '@/hooks/useMarketValueTierRange'
 import {
   resolveLegendSwatches,
   UNSET_COLOR_SCALE_THRESHOLD_COLOR,
   type ColorScaleConfig,
   type ColorScaleThreshold,
 } from '@/utils/marketMapColorScale'
-import type { Market, MarketMapCategoryNode, MarketMapItem, MarketValueTier } from '@/types/api'
+import type { FilteredMarketMapCategoryNode } from '@/hooks/useFilteredMarketMapTree'
+import type { Market, MarketMapCategoryNode, MarketMapItem } from '@/types/api'
 
-// 왼쪽 사이드바 필터 버튼 텍스트(MarketMapFilterSidebar의 FILTER_ITEMS)와 동일하게 맞춘다.
 const MARKET_LABEL: Record<Market, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ' }
 
 // 조회 실패/로딩 중이거나 "색상 커스텀 사용"이 꺼져있을 때 쓰는 폴백 — thresholds가 비어있으면 어차피
 // 기본 프리셋으로 귀결된다(resolveMarketMapColor/resolveLegendSwatches 참고).
 const EMPTY_COLOR_SCALE: ColorScaleConfig = { thresholds: [] }
 
-function toDisplayGroup(node: MarketMapCategoryNode): DisplayGroup {
+function toDisplayGroup(node: FilteredMarketMapCategoryNode): DisplayGroup {
   return {
     categoryId: node.categoryId,
     categoryName: node.categoryName,
     totalMarketValue: node.totalMarketValue,
+    weightedAvgChangeRate: node.weightedAvgChangeRate,
+    simpleAvgChangeRate: node.simpleAvgChangeRate,
     items: node.items,
     children: node.children.map(toDisplayGroup),
   }
@@ -132,17 +135,17 @@ export default function MarketMapCustomPage() {
   const [avgChangeRateDepthMaxIndex, setAvgChangeRateDepthMaxIndex] = usePersistedState('marketMap.avgChangeRateDepthMaxIndex', 2)
   const [upDownCountDepthMinIndex, setUpDownCountDepthMinIndex] = usePersistedState('marketMap.upDownCountDepthMinIndex', 0)
   const [upDownCountDepthMaxIndex, setUpDownCountDepthMaxIndex] = usePersistedState('marketMap.upDownCountDepthMaxIndex', 0)
-  // MARKET_VALUE_TIER_ASCENDING(소→초) 기준 인덱스 — 이 구간(포함) 밖의 등급은 제외된다.
-  // 기본값(양끝)이면 아무것도 제외 안 함.
-  // 기본값: 중형주~초대형주만(소형주 제외) 표시.
-  const [tierRangeMinIndex, setTierRangeMinIndex] = usePersistedState(
-    'marketMap.tierRangeMinIndex',
-    MARKET_VALUE_TIER_ASCENDING.indexOf('MID'),
-  )
-  const [tierRangeMaxIndex, setTierRangeMaxIndex] = usePersistedState(
-    'marketMap.tierRangeMaxIndex',
-    MARKET_VALUE_TIER_ASCENDING.length - 1,
-  )
+  // 등락률 태그/툴팁에 가중평균 대신 산술평균을 보여줄지 — 기본은 가중평균(기존 동작과 동일).
+  const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePersistedState('marketMap.avgChangeRateUseSimple', false)
+  // 시가총액 구간 범위 필터 — 마켓맵/카테고리 랭킹 화면이 세션스토리지 키를 공유한다(useMarketValueTierRange 참고).
+  const {
+    tiers: valueTiers,
+    minIndex: tierRangeMinIndex,
+    maxIndex: tierRangeMaxIndex,
+    setMinIndex: setTierRangeMinIndex,
+    setMaxIndex: setTierRangeMaxIndex,
+    excludedMarketValueTiers,
+  } = useMarketValueTierRange(isCustom)
   const [excludedCategoryNames, setExcludedCategoryNames] = usePersistedState<Map<number, string>>(
     'marketMap.excludedCategoryNames',
     new Map(),
@@ -357,18 +360,6 @@ export default function MarketMapCustomPage() {
     [excludedCategoryNames, sectorFilterEnabled, isCustom],
   )
 
-  // 슬라이더의 두 핸들(포함) 밖에 있는 등급만 실제 필터링에 쓰는 Set으로 변환한다.
-  // 커스텀 모드가 아니면(기본 분류 트리) 시가총액 구간 필터도 무시한다 — 카테고리 제외와 동일하게 커스텀 트리 전용 기능.
-  const excludedMarketValueTiers = useMemo(
-    () =>
-      isCustom
-        ? new Set(
-            MARKET_VALUE_TIER_ASCENDING.filter((_, index) => index < tierRangeMinIndex || index > tierRangeMaxIndex),
-          )
-        : new Set<MarketValueTier>(),
-    [tierRangeMinIndex, tierRangeMaxIndex, isCustom],
-  )
-
   // 커스텀 모드가 아니면 뎁스 제한도 무시한다(기본 트리는 어차피 사실상 1뎁스).
   const { filteredRootNodes, availableMaxDepth } = useFilteredMarketMapTree(
     rootNodes,
@@ -431,6 +422,24 @@ export default function MarketMapCustomPage() {
     setMarket(next)
     reset()
   }
+
+  // SubNavBar의 "지도" 탭 위 마켓 목록에서 KOSPI/KOSDAQ를 고르면 /market-map?market=...로 이동한다.
+  // 이미 이 페이지에 있으면(같은 라우트) 리마운트 없이 searchParams만 바뀌므로 여기서 반영하고, 초기
+  // 상태 읽는 용도일 뿐 주소창에 남아있을 필요는 없어서 반영 직후 지운다.
+  useEffect(() => {
+    const param = searchParams.get('market')
+    if (param !== 'KOSPI' && param !== 'KOSDAQ') return
+    handleMarketChange(param)
+    setSearchParams(
+      prev => {
+        const next = new URLSearchParams(prev)
+        next.delete('market')
+        return next
+      },
+      { replace: true },
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- market 파라미터가 있을 때만 반응하면 됨
+  }, [searchParams])
 
   const handleToggleCustom = () => {
     setIsCustom(prev => !prev)
@@ -515,91 +524,98 @@ export default function MarketMapCustomPage() {
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden">
       {!isFullscreen && <NavBar />}
-      {/* 버튼 바 — 전체화면 진입/해제와 무관하게 항상 같은 높이·구성으로 유지된다(예전엔 모드별로
-          완전히 다른 JSX 두 벌을 썼는데, 전체화면 시 최상단 NavBar만 숨기는 걸로 바뀌면서 하나로 합쳤다). */}
-      <div className="flex h-8 shrink-0 items-center justify-end gap-2 bg-white px-2 shadow-lg">
-        <MarketMapSettingsModal
-          isCustom={isCustom}
-          onToggleCustom={handleToggleCustom}
-          maxDepth={maxDepth}
-          availableMaxDepth={availableMaxDepth}
-          onChangeMaxDepth={setMaxDepth}
-          marketValueDepthMinIndex={marketValueClampedMinIndex}
-          marketValueDepthMaxIndex={marketValueClampedMaxIndex}
-          onChangeMarketValueDepthRange={(min, max) => {
-            setMarketValueDepthMinIndex(min)
-            setMarketValueDepthMaxIndex(max)
-          }}
-          avgChangeRateDepthMinIndex={avgChangeRateClampedMinIndex}
-          avgChangeRateDepthMaxIndex={avgChangeRateClampedMaxIndex}
-          onChangeAvgChangeRateDepthRange={(min, max) => {
-            setAvgChangeRateDepthMinIndex(min)
-            setAvgChangeRateDepthMaxIndex(max)
-          }}
-          upDownCountDepthMinIndex={upDownCountClampedMinIndex}
-          upDownCountDepthMaxIndex={upDownCountClampedMaxIndex}
-          onChangeUpDownCountDepthRange={(min, max) => {
-            setUpDownCountDepthMinIndex(min)
-            setUpDownCountDepthMaxIndex(max)
-          }}
-          tierRangeMinIndex={tierRangeMinIndex}
-          tierRangeMaxIndex={tierRangeMaxIndex}
-          onChangeTierRange={handleChangeTierRange}
-          sectorFilterEnabled={sectorFilterEnabled}
-          onToggleSectorFilter={() => setSectorFilterEnabled(prev => !prev)}
-          excludedCategories={Array.from(excludedCategoryNames, ([categoryId, categoryName]) => ({ categoryId, categoryName }))}
-          onRemoveExcludedCategory={handleRemoveExcludedCategory}
-          colorScaleDraft={colorScaleDraft}
-          colorCustomOn={colorCustomOn}
-          onChangeColorCustomOn={setColorCustomOn}
-          onAddColorThreshold={handleAddColorThreshold}
-          onEditColorThreshold={handleEditColorThreshold}
-          onDeleteColorThreshold={handleDeleteColorThreshold}
-          isOpen={isSettingsOpen}
-          onOpenChange={setIsSettingsOpen}
-          compact
-        />
-        <button
-          type="button"
-          aria-label="공유"
-          className="flex h-7 w-7 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
-          onClick={() => setIsShareOpen(true)}
-        >
-          <ShareIcon className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          aria-label={isFullscreen ? '전체화면 종료' : '전체화면'}
-          className="flex h-7 w-7 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
-          onClick={() => setIsFullscreen(prev => !prev)}
-        >
-          {isFullscreen ? <MinimizeIcon className="h-4 w-4" /> : <MaximizeIcon className="h-4 w-4" />}
-        </button>
-        <button
-          type="button"
-          aria-label="F11"
-          className={`flex h-7 w-7 items-center justify-center rounded hover:bg-gray-100 hover:text-[#4f8fd6] ${
-            isNativeFullscreen ? 'text-[#4f8fd6]' : 'text-gray-700'
-          }`}
-          onClick={handleToggleNativeFullscreen}
-        >
-          <span className="inline-flex h-4 w-4 items-center justify-center text-[8px] font-bold">F11</span>
-        </button>
-      </div>
+      {/* 탭+옵션 버튼 바 — 전체화면 진입/해제와 무관하게 항상 같은 높이·구성으로 유지된다(예전엔 모드별로
+          완전히 다른 JSX 두 벌을 썼는데, 전체화면 시 최상단 바만 숨기는 걸로 바뀌면서 하나로 합쳤다). */}
+      <SubNavBar
+        actions={
+          <>
+            <MarketMapSettingsModal
+              isCustom={isCustom}
+              onToggleCustom={handleToggleCustom}
+              maxDepth={maxDepth}
+              availableMaxDepth={availableMaxDepth}
+              onChangeMaxDepth={setMaxDepth}
+              marketValueDepthMinIndex={marketValueClampedMinIndex}
+              marketValueDepthMaxIndex={marketValueClampedMaxIndex}
+              onChangeMarketValueDepthRange={(min, max) => {
+                setMarketValueDepthMinIndex(min)
+                setMarketValueDepthMaxIndex(max)
+              }}
+              avgChangeRateDepthMinIndex={avgChangeRateClampedMinIndex}
+              avgChangeRateDepthMaxIndex={avgChangeRateClampedMaxIndex}
+              onChangeAvgChangeRateDepthRange={(min, max) => {
+                setAvgChangeRateDepthMinIndex(min)
+                setAvgChangeRateDepthMaxIndex(max)
+              }}
+              upDownCountDepthMinIndex={upDownCountClampedMinIndex}
+              upDownCountDepthMaxIndex={upDownCountClampedMaxIndex}
+              onChangeUpDownCountDepthRange={(min, max) => {
+                setUpDownCountDepthMinIndex(min)
+                setUpDownCountDepthMaxIndex(max)
+              }}
+              avgChangeRateUseSimple={avgChangeRateUseSimple}
+              onToggleAvgChangeRateUseSimple={() => setAvgChangeRateUseSimple(prev => !prev)}
+              tiers={valueTiers}
+              tierRangeMinIndex={tierRangeMinIndex === -1 ? 0 : tierRangeMinIndex}
+              tierRangeMaxIndex={tierRangeMaxIndex === -1 ? Math.max(valueTiers.length - 1, 0) : tierRangeMaxIndex}
+              onChangeTierRange={handleChangeTierRange}
+              sectorFilterEnabled={sectorFilterEnabled}
+              onToggleSectorFilter={() => setSectorFilterEnabled(prev => !prev)}
+              excludedCategories={Array.from(excludedCategoryNames, ([categoryId, categoryName]) => ({ categoryId, categoryName }))}
+              onRemoveExcludedCategory={handleRemoveExcludedCategory}
+              colorScaleDraft={colorScaleDraft}
+              colorCustomOn={colorCustomOn}
+              onChangeColorCustomOn={setColorCustomOn}
+              onAddColorThreshold={handleAddColorThreshold}
+              onEditColorThreshold={handleEditColorThreshold}
+              onDeleteColorThreshold={handleDeleteColorThreshold}
+              isOpen={isSettingsOpen}
+              onOpenChange={setIsSettingsOpen}
+              compact
+            />
+            <button
+              type="button"
+              aria-label="공유"
+              className="flex h-7 w-7 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
+              onClick={() => setIsShareOpen(true)}
+            >
+              <ShareIcon className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label={isFullscreen ? '전체화면 종료' : '전체화면'}
+              className="flex h-7 w-7 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
+              onClick={() => setIsFullscreen(prev => !prev)}
+            >
+              {isFullscreen ? <MinimizeIcon className="h-4 w-4" /> : <MaximizeIcon className="h-4 w-4" />}
+            </button>
+            <button
+              type="button"
+              aria-label="F11"
+              className={`flex h-7 w-7 items-center justify-center rounded hover:bg-gray-100 hover:text-[#4f8fd6] ${
+                isNativeFullscreen ? 'text-[#4f8fd6]' : 'text-gray-700'
+              }`}
+              onClick={handleToggleNativeFullscreen}
+            >
+              <span className="inline-flex h-4 w-4 items-center justify-center text-[8px] font-bold">F11</span>
+            </button>
+          </>
+        }
+      />
       <div className="flex min-h-0 flex-1">
-        {!isFullscreen && (
-          <MarketMapFilterSidebar
-            market={market}
-            onMarketChange={handleMarketChange}
-            colorEditThresholds={colorEditThresholds}
-            colorEditMode={colorEditMode}
-            onChangeColorEditThreshold={handleChangeColorEditThreshold}
-            onChangeColorEditColor={handleChangeColorEditColor}
-            onAddColorEditRow={handleAddColorThresholdRow}
-            onApplyColorEdit={handleApplyColorEdit}
-            onCancelColorEdit={handleCancelColorEdit}
-            isSavingColorEdit={isApplyingColorEdit}
-          />
+        {!isFullscreen && colorEditThresholds.length > 0 && (
+          <div className="w-56 shrink-0 overflow-y-auto bg-[var(--surface)]">
+            <MarketMapColorThresholdEditorPanel
+              mode={colorEditMode}
+              thresholds={colorEditThresholds}
+              onChangeThreshold={handleChangeColorEditThreshold}
+              onChangeColor={handleChangeColorEditColor}
+              onAddRow={handleAddColorThresholdRow}
+              onApply={handleApplyColorEdit}
+              onCancel={handleCancelColorEdit}
+              isSaving={isApplyingColorEdit}
+            />
+          </div>
         )}
         <div ref={captureRef} data-captureid={CAPTURE_ID.MARKET_MAP} className="flex min-h-0 flex-1 flex-col bg-black">
           <div className="mb-1 grid h-7 w-full shrink-0 grid-cols-[auto_1fr_auto] items-center border-2 border-black bg-black/70 px-1 text-sm font-bold text-white">
@@ -706,6 +722,7 @@ export default function MarketMapCustomPage() {
               marketValueDepthRange={marketValueDepthRange}
               avgChangeRateDepthRange={avgChangeRateDepthRange}
               upDownCountDepthRange={upDownCountDepthRange}
+              avgChangeRateUseSimple={avgChangeRateUseSimple}
               canExclude={isCustom}
               colorScale={colorScale}
               zoomOutRequestDepth={zoomOutRequestDepth}

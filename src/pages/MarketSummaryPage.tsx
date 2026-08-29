@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import NavBar from '@/components/NavBar'
+import SubNavBar from '@/components/SubNavBar'
 import MarketOverviewSection from '@/components/MarketOverviewSection'
 import InvestorTradingSection from '@/components/InvestorTradingSection'
 import IntradayTopSection from '@/components/IntradayTopSection'
@@ -35,7 +36,8 @@ export default function MarketSummaryPage() {
 
   return (
     <div className="min-h-screen">
-      <NavBar
+      <NavBar />
+      <SubNavBar
         actions={
           <>
             <button
