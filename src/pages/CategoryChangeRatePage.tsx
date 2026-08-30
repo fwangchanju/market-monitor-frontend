@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
 import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
@@ -81,6 +82,24 @@ export default function CategoryChangeRatePage() {
   const [beforeMinutes, setBeforeMinutes] = usePersistedState('categoryChangeRate.beforeMinutes', 60)
   const [useSimpleAvg, setUseSimpleAvg] = usePersistedState('categoryChangeRate.useSimpleAvg', false)
   const [rankByDelta, setRankByDelta] = usePersistedState('categoryChangeRate.rankByDelta', false)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // 렌더러가 /category-change-rate?market=KOSDAQ로 캡처 요청할 때 쓰는 진입점 — MarketMapCustomPage와
+  // 동일한 패턴(초기 상태 반영 용도일 뿐 주소창엔 남길 필요 없어 반영 직후 지움).
+  useEffect(() => {
+    const param = searchParams.get('market')
+    if (param !== 'KOSPI' && param !== 'KOSDAQ') return
+    setMarket(param)
+    setSearchParams(
+      prev => {
+        const next = new URLSearchParams(prev)
+        next.delete('market')
+        return next
+      },
+      { replace: true },
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- market 파라미터가 있을 때만 반응하면 됨
+  }, [searchParams])
 
   const { settingsModalProps, colorEditorPanelProps } = useGlobalSettings()
   const [isShareOpen, setIsShareOpen] = useState(false)
