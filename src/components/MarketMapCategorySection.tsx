@@ -50,7 +50,7 @@ function localSimpleAvgChangeRate(items: MarketMapItem[]): number {
 // 헤더 높이(categoryHeaderHeight)와 같은 비율로 폰트 크기도 depth에 따라 줄인다.
 // 텔레그램 자동발송 이미지에서도 잘 읽히도록 헤더 높이에 거의 꽉 차는 크기로.
 function categoryHeaderFontSize(depth: number): number {
-  return Math.max(18 - depth * 3, 12)
+  return Math.max(16 - depth * 2, 12)
 }
 
 // 투명도로 옅게 하면 페이지 배경 자체가 어두워서 뒤로 비치는 색이 없어 거의 구분이 안 됐다 —
