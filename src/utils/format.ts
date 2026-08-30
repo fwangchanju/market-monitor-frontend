@@ -1,6 +1,6 @@
 // 문장 구분마다 쓰는 탭 간격 — 일반 공백은 렌더링 시 하나로 뭉개지므로, non-breaking space 4개로
 // tab처럼 보이는 간격을 낸다.
-export const TAB_GAP = '  '
+export const TAB_GAP = ' '
 
 /** 소수점 1자리 + 천 단위 콤마 */
 const withCommas1 = (value: number): string =>
