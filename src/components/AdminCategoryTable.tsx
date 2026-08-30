@@ -18,7 +18,7 @@ type Row =
   | { type: 'category'; item: CategoryItem; siblingIndex: number }
   | { type: 'add-child'; parentId: number; parentPath: string[]; depth: number }
 
-// 3차 분류(세부의 세부) 번호 표기용 원문자. 유니코드에 50까지만 있어서 그 이상은 괄호 표기로 대체.
+// 소분류(세부의 세부) 번호 표기용 원문자. 유니코드에 50까지만 있어서 그 이상은 괄호 표기로 대체.
 const CIRCLED_NUMBERS = [
   ...Array.from({ length: 20 }, (_, i) => String.fromCodePoint(0x2460 + i)), // ①~⑳ (1~20)
   ...Array.from({ length: 15 }, (_, i) => String.fromCodePoint(0x3251 + i)), // ㉑~㉟ (21~35)

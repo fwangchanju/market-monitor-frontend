@@ -42,9 +42,9 @@ const COLUMNS: { key: SortKey; header: string; width: string; align: 'center' | 
   { key: 'totalMarketValue', header: '시가총액', width: '10%', align: 'right' },
   { key: 'market', header: '마켓', width: '7%', align: 'center' },
   { key: 'originCategoryName', header: '거래소 분류', width: '11%', align: 'left' },
-  { key: 'parentCategoryName', header: '1차 분류', width: '11%', align: 'right' },
-  { key: 'midCategoryName', header: '2차 분류', width: '11%', align: 'right' },
-  { key: 'subCategoryName', header: '3차 분류', width: '11%', align: 'right' },
+  { key: 'parentCategoryName', header: '대분류', width: '11%', align: 'right' },
+  { key: 'midCategoryName', header: '중분류', width: '11%', align: 'right' },
+  { key: 'subCategoryName', header: '소분류', width: '11%', align: 'right' },
 ]
 
 const alignClass = (align: 'center' | 'left' | 'right') =>
@@ -1254,7 +1254,7 @@ const AdminStockRow = memo(function AdminStockRow({
         onEditingChange={editing => setCellEditing('category3', editing)}
         contextLabel={chain.midName ?? undefined}
         disabled={chain.midId == null}
-        disabledHint="2차 분류를 먼저 지정하세요"
+        disabledHint="중분류를 먼저 지정하세요"
       />
     </tr>
   )
@@ -1560,7 +1560,7 @@ export default function AdminStockTable({
     })
   }
 
-  // 컬럼 필터(시장/업종/1~3차 분류) + 종목명 검색 + 시가총액 구간까지 전부 한 번에 초기화.
+  // 컬럼 필터(시장/업종/1~소분류) + 종목명 검색 + 시가총액 구간까지 전부 한 번에 초기화.
   const hasAnyFilter =
     FILTER_KEYS.some(key => excludedFilters[key].size > 0) ||
     nameFilterStockCodes.size > 0 ||
@@ -1604,7 +1604,7 @@ export default function AdminStockTable({
   )
 
   // 필터 옵션 목록도 전체 items가 아니라, 다른 필터들을 통과한 종목 기준으로만 뽑는다 — 그래야 1차
-  // 분류를 필터링하면 2차/3차 분류 목록에도 그 안에 실제로 존재하는 값만 남는다.
+  // 분류를 필터링하면 2차/소분류 목록에도 그 안에 실제로 존재하는 값만 남는다.
   const filterOptionsByKey = useMemo(() => {
     const result = {} as Record<FilterKey, string[]>
     for (const key of FILTER_KEYS) {
@@ -1685,9 +1685,9 @@ export default function AdminStockTable({
         시가총액: item.totalMarketValue ?? '',
         마켓: display.market,
         '거래소 분류': display.originCategoryName,
-        '1차 분류': display.parentCategoryName,
-        '2차 분류': display.midCategoryName,
-        '3차 분류': display.subCategoryName,
+        '대분류': display.parentCategoryName,
+        '중분류': display.midCategoryName,
+        '소분류': display.subCategoryName,
       }
     })
     exportRowsToExcel(filename, '종목관리', rows)
@@ -1849,7 +1849,7 @@ export default function AdminStockTable({
                 alignRight
                 widthPx={bulkButtonWidths?.mid}
                 disabled={bulkParentId == null}
-                disabledHint="1차 분류를 먼저 일괄적용하세요"
+                disabledHint="대분류를 먼저 일괄적용하세요"
               />
               <BulkAssignButton
                 count={selectedStockCodes.size}
@@ -1858,7 +1858,7 @@ export default function AdminStockTable({
                 alignRight
                 widthPx={bulkButtonWidths?.sub}
                 disabled={bulkMidId == null}
-                disabledHint="2차 분류를 먼저 일괄적용하세요"
+                disabledHint="중분류를 먼저 일괄적용하세요"
               />
             </>
           )}

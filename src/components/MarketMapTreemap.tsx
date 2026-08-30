@@ -24,6 +24,8 @@ interface Props {
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 박스 색칠 설정의 단일 출처(어드민 라이브 프리뷰에서는
   // 저장 전 draft config가 그대로 여기 들어와서 드래그 중에도 실시간으로 반영된다).
   colorScale: ColorScaleConfig
+  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명/등락률 표시 여부를 가르는 넓이 비중(%) 기준.
+  labelMinAreaPercent: number
   // 0이 아닌 뎁스가 오면 그 뎁스로 진입할 때 썼던 위치로 줄어드는 애니메이션을 재생한다.
   zoomOutRequestDepth: number | null
   onZoomOutComplete: (depth: number) => void
@@ -88,6 +90,7 @@ export default function MarketMapTreemap({
   avgChangeRateUseSimple,
   canExclude,
   colorScale,
+  labelMinAreaPercent,
   zoomOutRequestDepth,
   onZoomOutComplete,
 }: Props) {
@@ -262,6 +265,7 @@ export default function MarketMapTreemap({
               avgChangeRateUseSimple={avgChangeRateUseSimple}
               canExclude={false}
               colorScale={colorScale}
+              labelMinAreaPercent={labelMinAreaPercent}
             />
           ))}
         </div>
@@ -279,6 +283,7 @@ export default function MarketMapTreemap({
             avgChangeRateUseSimple={avgChangeRateUseSimple}
             canExclude={canExclude}
             colorScale={colorScale}
+            labelMinAreaPercent={labelMinAreaPercent}
           />
         ))}
       </div>

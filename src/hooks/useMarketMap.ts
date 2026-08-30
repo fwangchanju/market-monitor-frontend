@@ -4,10 +4,11 @@ import { marketMapKeys } from './queryKeys'
 import { MARKET_DATA_CACHE } from './cacheConfig'
 import type { Market } from '@/types/api'
 
-export function useMarketMap(market: Market, isCustom: boolean) {
+export function useMarketMap(market: Market, isCustom: boolean, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: marketMapKeys.map(market, isCustom),
     queryFn: () => getMarketMap(market, isCustom),
+    enabled: options?.enabled ?? true,
     ...MARKET_DATA_CACHE,
   })
 }

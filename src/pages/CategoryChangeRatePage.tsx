@@ -1,15 +1,25 @@
-import { Fragment, useEffect, useMemo } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
+import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
+import GlobalSettingsSidebar from '@/components/GlobalSettingsSidebar'
+import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Spinner from '@/components/Spinner'
 import { useMarketMap } from '@/hooks/useMarketMap'
 import { useCategoryChangeRates } from '@/hooks/useCategoryChangeRates'
 import { useMarketValueTierRange } from '@/hooks/useMarketValueTierRange'
+import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { combineTierBreakdowns } from '@/utils/categoryTierBreakdown'
 import { CAPTURE_ID } from '@/utils/captureIds'
+import { ShareIcon, SettingsIcon, MaximizeIcon, MinimizeIcon } from '@/components/icons/MarketMapIcons'
+import { captureElementToClipboard } from '@/utils/captureToClipboard'
+import { captureElementToDownload } from '@/utils/captureToDownload'
 import { toMarketMapSnapshotTimeLabel, toPct, toPctSigned, signClass } from '@/utils/format'
 import type { CategoryChangeRateItem, Market, MarketMapCategoryNode } from '@/types/api'
+
+type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
+type DownloadStatus = 'idle' | 'downloading' | 'error'
 
 const MARKET_LABEL: Record<Market, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ' }
 const MIN_BEFORE_MINUTES = 5
@@ -72,6 +82,57 @@ export default function CategoryChangeRatePage() {
   const [useSimpleAvg, setUseSimpleAvg] = usePersistedState('categoryChangeRate.useSimpleAvg', false)
   const [rankByDelta, setRankByDelta] = usePersistedState('categoryChangeRate.rankByDelta', false)
 
+  const { settingsModalProps, colorEditorPanelProps } = useGlobalSettings()
+  const [isShareOpen, setIsShareOpen] = useState(false)
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
+  const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
+  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false)
+  const captureRef = useRef<HTMLDivElement>(null)
+
+  // 사용자가 F11 키나 Esc로 직접 빠져나가는 경우도 있어서 fullscreenchange 이벤트로 상태를 동기화한다.
+  useEffect(() => {
+    const handleFullscreenChange = () => setIsNativeFullscreen(document.fullscreenElement != null)
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
+  const handleToggleNativeFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      document.documentElement.requestFullscreen()
+    }
+  }
+
+  const handleCopy = async () => {
+    if (!captureRef.current) return
+    setCopyStatus('copying')
+    try {
+      await captureElementToClipboard(captureRef.current)
+      setCopyStatus('copied')
+    } catch {
+      setCopyStatus('error')
+    } finally {
+      setTimeout(() => setCopyStatus('idle'), 2000)
+    }
+  }
+
+  const handleDownload = async () => {
+    if (!captureRef.current) return
+    setDownloadStatus('downloading')
+    try {
+      await captureElementToDownload(captureRef.current, 'category-change-rate.png')
+    } catch {
+      setDownloadStatus('error')
+    } finally {
+      setTimeout(() => setDownloadStatus('idle'), 2000)
+    }
+  }
+
+  const copyLabel =
+    copyStatus === 'copying' ? 'Copying' : copyStatus === 'copied' ? 'Copied' : copyStatus === 'error' ? 'Failed' : 'Copy'
+  const downloadLabel = downloadStatus === 'error' ? 'Failed' : 'Download'
+
   const { data: rankingData, isLoading, isError } = useCategoryChangeRates(market, beforeMinutes)
   const { data: treeData } = useMarketMap(market, true)
   // 마켓맵 화면과 세션스토리지 키를 공유 — 거기서 바꾼 시가총액 구간 필터가 이 랭킹 화면에도 그대로 반영된다.
@@ -124,106 +185,159 @@ export default function CategoryChangeRatePage() {
       <SubNavBar
         actions={
           <>
-            <Segmented
-              value={market}
-              onChange={setMarket}
-              options={[
-                { value: 'KOSPI', label: 'KOSPI' },
-                { value: 'KOSDAQ', label: 'KOSDAQ' },
-              ]}
-            />
-            <Segmented
-              value={useSimpleAvg ? 'simple' : 'weighted'}
-              onChange={v => setUseSimpleAvg(v === 'simple')}
-              options={[
-                { value: 'weighted', label: '가중평균' },
-                { value: 'simple', label: '산술평균' },
-              ]}
-            />
-            <Segmented
-              value={rankByDelta ? 'delta' : 'current'}
-              onChange={v => setRankByDelta(v === 'delta')}
-              options={[
-                { value: 'current', label: '현재' },
-                { value: 'delta', label: '변화율' },
-              ]}
-            />
-            <label className="flex items-center gap-1 text-gray-600">
-              비교 시점
-              <input
-                type="number"
-                min={MIN_BEFORE_MINUTES}
-                step={5}
-                value={beforeMinutes}
-                onChange={e => setBeforeMinutes(Math.max(MIN_BEFORE_MINUTES, Number(e.target.value) || MIN_BEFORE_MINUTES))}
-                className="w-14 rounded border border-gray-300 px-1 py-0.5 text-right"
-              />
-              분 전
-            </label>
+            <button
+              type="button"
+              aria-label="설정"
+              className="flex h-7 w-7 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
+              onClick={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
+            >
+              <SettingsIcon className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="공유"
+              className="flex h-7 w-7 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
+              onClick={() => setIsShareOpen(true)}
+            >
+              <ShareIcon className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="F11"
+              className={`flex h-7 w-7 items-center justify-center rounded hover:bg-gray-100 hover:text-[#4f8fd6] ${
+                isNativeFullscreen ? 'text-[#4f8fd6]' : 'text-gray-700'
+              }`}
+              onClick={handleToggleNativeFullscreen}
+            >
+              {isNativeFullscreen ? <MinimizeIcon className="h-4 w-4" /> : <MaximizeIcon className="h-4 w-4" />}
+            </button>
           </>
         }
       />
-      <div
-        data-captureid={CAPTURE_ID.CATEGORY_CHANGE_RATE}
-        className="flex min-h-0 flex-1 flex-col overflow-hidden bg-black p-4 text-white"
-      >
-        <div className="mb-3 flex shrink-0 items-center justify-between text-sm font-bold">
-          <span>CUSTOM {MARKET_LABEL[market]} INDUSTRY</span>
-          {rankingData?.snapshotTime && (
-            <span className="text-xs font-normal text-gray-400">{toMarketMapSnapshotTimeLabel(rankingData.snapshotTime)}</span>
-          )}
-        </div>
-        {isLoading ? (
-          <div className="flex flex-1 items-center justify-center">
-            <Spinner />
-          </div>
-        ) : isError ? (
-          <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
-        ) : rankedItems.length === 0 ? (
-          <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
-        ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {/* 라벨 열은 내용에 맞춰(auto), 그래프 열은 그 옆 남는 공간을 다 쓰는 대신 이 래퍼 자체를
-                화면 폭의 일부로 제한하고 가운데 정렬해서, 결과적으로 라벨이 그래프 바로 왼쪽에 붙어있게 한다. */}
-            <div
-              className="mx-auto grid w-full max-w-2xl items-center gap-x-3 gap-y-1.5 text-xs"
-              style={{ gridTemplateColumns: 'auto 1fr' }}
-            >
-              {rankedItems.map(item => (
-                <Fragment key={item.categoryId}>
-                  <span className="whitespace-nowrap text-right">{item.categoryName}</span>
-                  <div className="flex h-5 items-center gap-1.5">
-                    <div
-                      className="h-full shrink-0 rounded-sm"
-                      style={{
-                        width: `${(Math.abs(item.value) / axisMax) * 100}%`,
-                        backgroundColor: item.value >= 0 ? 'var(--stock-up)' : 'var(--stock-down)',
-                      }}
-                    />
-                    <span className={`shrink-0 whitespace-nowrap ${signClass(item.value)}`}>{toPctSigned(item.value)}</span>
-                  </div>
-                </Fragment>
-              ))}
-              {/* 핀비즈처럼 하단에 이 그래프가 몇 퍼센트 구간인지 눈금으로 표시. */}
-              <span />
-              <div className="relative h-4 text-[10px] text-gray-500">
-                {axisTicks.map((tick, index) => (
-                  <span
-                    key={tick}
-                    className="absolute whitespace-nowrap"
-                    style={{
-                      left: `${(tick / axisMax) * 100}%`,
-                      transform: index === 0 ? 'none' : index === axisTicks.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)',
-                    }}
-                  >
-                    {toPct(tick)}
-                  </span>
-                ))}
-              </div>
-            </div>
+      <div className="flex min-h-0 flex-1">
+        {colorEditorPanelProps && (
+          <div className="w-56 shrink-0 overflow-y-auto bg-[var(--surface)]">
+            <MarketMapColorThresholdEditorPanel {...colorEditorPanelProps} />
           </div>
         )}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-black p-4 text-white">
+          {/* 실제로 공유/캡처할 영역은 이 안쪽(가운데 정렬된 max-w-2xl + 설정 사이드바)만 — 바깥 검은
+              배경까지 같이 캡처하면 그래프 양옆에 빈 공간만 많이 찍혀서 정작 그래프가 작아 보인다.
+              설정 사이드바가 열려있으면 이 wrapper가 그만큼 넓어지면서 캡처에도 같이 포함된다. */}
+          <div ref={captureRef} data-captureid={CAPTURE_ID.CATEGORY_CHANGE_RATE} className="mx-auto flex min-h-0 flex-1">
+            <div className="flex min-h-0 w-full max-w-2xl flex-1 flex-col">
+              <div className="mb-3 flex shrink-0 items-center justify-between text-sm font-bold">
+                <span>CUSTOM {MARKET_LABEL[market]} INDUSTRY</span>
+                {rankingData?.snapshotTime && (
+                  <span className="text-xs font-normal text-gray-400">{toMarketMapSnapshotTimeLabel(rankingData.snapshotTime)}</span>
+                )}
+              </div>
+              {/* 서브바에서 옮겨온 컨트롤 — 위치는 나중에 다시 정리하기로 하고 일단 여기 둔다. */}
+              <div className="mb-3 flex shrink-0 flex-wrap items-center gap-3 text-xs text-white">
+                <Segmented
+                  value={market}
+                  onChange={setMarket}
+                  options={[
+                    { value: 'KOSPI', label: 'KOSPI' },
+                    { value: 'KOSDAQ', label: 'KOSDAQ' },
+                  ]}
+                />
+                <Segmented
+                  value={useSimpleAvg ? 'simple' : 'weighted'}
+                  onChange={v => setUseSimpleAvg(v === 'simple')}
+                  options={[
+                    { value: 'weighted', label: '가중평균' },
+                    { value: 'simple', label: '산술평균' },
+                  ]}
+                />
+                <Segmented
+                  value={rankByDelta ? 'delta' : 'current'}
+                  onChange={v => setRankByDelta(v === 'delta')}
+                  options={[
+                    { value: 'current', label: '현재' },
+                    { value: 'delta', label: '변화율' },
+                  ]}
+                />
+                <label className="flex items-center gap-1 text-gray-300">
+                  비교 시점
+                  <input
+                    type="number"
+                    min={MIN_BEFORE_MINUTES}
+                    step={5}
+                    value={beforeMinutes}
+                    onChange={e => setBeforeMinutes(Math.max(MIN_BEFORE_MINUTES, Number(e.target.value) || MIN_BEFORE_MINUTES))}
+                    className="w-14 rounded border border-gray-300 px-1 py-0.5 text-right text-black"
+                  />
+                  분 전
+                </label>
+              </div>
+              {isLoading ? (
+                <div className="flex flex-1 items-center justify-center">
+                  <Spinner />
+                </div>
+              ) : isError ? (
+                <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
+              ) : rankedItems.length === 0 ? (
+                <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
+              ) : (
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  {/* 라벨 열은 내용에 맞춰(auto), 그래프 열은 그 옆 남는 공간을 다 쓴다. */}
+                  <div
+                    className="grid w-full items-center gap-x-3 gap-y-1.5 text-xs"
+                    style={{ gridTemplateColumns: 'auto 1fr' }}
+                  >
+                  {rankedItems.map(item => (
+                    <Fragment key={item.categoryId}>
+                      <span className="whitespace-nowrap text-right">{item.categoryName}</span>
+                      <div className="flex h-5 items-center gap-1.5">
+                        <div
+                          className="h-full shrink-0 rounded-sm"
+                          style={{
+                            width: `${(Math.abs(item.value) / axisMax) * 100}%`,
+                            backgroundColor: item.value >= 0 ? 'var(--stock-up)' : 'var(--stock-down)',
+                          }}
+                        />
+                        <span className={`shrink-0 whitespace-nowrap ${signClass(item.value)}`}>{toPctSigned(item.value)}</span>
+                      </div>
+                    </Fragment>
+                  ))}
+                  {/* 핀비즈처럼 하단에 이 그래프가 몇 퍼센트 구간인지 눈금으로 표시. */}
+                  <span />
+                  <div className="relative h-4 text-[10px] text-gray-500">
+                    {axisTicks.map((tick, index) => (
+                      <span
+                        key={tick}
+                        className="absolute whitespace-nowrap"
+                        style={{
+                          left: `${(tick / axisMax) * 100}%`,
+                          transform: index === 0 ? 'none' : index === axisTicks.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)',
+                        }}
+                      >
+                        {toPct(tick)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              )}
+            </div>
+            <GlobalSettingsSidebar {...settingsModalProps} />
+          </div>
+        </div>
       </div>
+
+      {isShareOpen && (
+        <MarketMapShareModal
+          onClose={() => setIsShareOpen(false)}
+          onCopy={handleCopy}
+          onDownload={handleDownload}
+          copyLabel={copyLabel}
+          downloadLabel={downloadLabel}
+          isCopying={copyStatus === 'copying'}
+          isDownloading={downloadStatus === 'downloading'}
+          captureTarget={captureRef.current}
+        />
+      )}
     </div>
   )
 }
