@@ -10,6 +10,10 @@ interface Props {
   y: number
   width: number
   height: number
+  // 이 박스가 전체 트리맵 컨테이너 넓이에서 차지하는 비중(%) — useMarketMapLayout에서 계산.
+  areaPercent: number
+  // 이 비중 미만이면 종목명/등락률을 아예 표시하지 않는다(설정 사이드바의 슬라이더로 조절).
+  labelMinAreaPercent: number
   tooltipAlignLeft: boolean
   tooltipAlignTop: boolean
   // 박스 색칠은 이 설정 하나로만 결정된다(resolveMarketMapColor) — 범례 바(MarketMapCustomPage)도
@@ -17,20 +21,26 @@ interface Props {
   colorScale: ColorScaleConfig
 }
 
-const MIN_NAME_WIDTH = 16
-const MIN_NAME_HEIGHT = 14
-const MIN_PERCENT_HEIGHT = 28
-
 function fontSizePx(width: number, height: number): number {
   return Math.max(12, Math.min(22, Math.min(width, height) / 5))
 }
 
-export default function MarketMapBox({ item, x, y, width, height, tooltipAlignLeft, tooltipAlignTop, colorScale }: Props) {
+export default function MarketMapBox({
+  item,
+  x,
+  y,
+  width,
+  height,
+  areaPercent,
+  labelMinAreaPercent,
+  tooltipAlignLeft,
+  tooltipAlignTop,
+  colorScale,
+}: Props) {
   const [hover, setHover] = useState(false)
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null)
 
-  const showName = width >= MIN_NAME_WIDTH && height >= MIN_NAME_HEIGHT
-  const showPercent = showName && height >= MIN_PERCENT_HEIGHT
+  const showLabel = areaPercent >= labelMinAreaPercent
   const fontSize = fontSizePx(width, height)
   const backgroundColor = resolveMarketMapColor(item.changeRate, colorScale)
 
@@ -60,17 +70,17 @@ export default function MarketMapBox({ item, x, y, width, height, tooltipAlignLe
       onMouseEnter={handleMouseEnter}
       onMouseMove={updateTooltipPos}
       onMouseLeave={() => setHover(false)}
-      className={`flex flex-col items-center justify-center overflow-hidden border text-white ${hover ? 'border-2 border-yellow-600' : 'border border-black/40'}`}
+      className={`flex flex-col items-center justify-center overflow-hidden text-white ${hover ? 'border-2 border-yellow-600' : 'border border-black/40'}`}
     >
-      {showName && (
-        <span className="w-full truncate px-1 text-center leading-tight" style={{ fontSize }}>
-          {item.stockName}
-        </span>
-      )}
-      {showPercent && (
-        <span className="text-center leading-tight" style={{ fontSize: fontSize * 0.85 }}>
-          {toPctSigned(item.changeRate)}
-        </span>
+      {showLabel && (
+        <>
+          <span className="w-full truncate px-1 text-center leading-tight" style={{ fontSize }}>
+            {item.stockName}
+          </span>
+          <span className="text-center leading-tight" style={{ fontSize: fontSize * 0.85 }}>
+            {toPctSigned(item.changeRate)}
+          </span>
+        </>
       )}
 
       {hover &&

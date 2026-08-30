@@ -1,12 +1,23 @@
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { isAxiosError } from 'axios'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
+import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
+import GlobalSettingsSidebar from '@/components/GlobalSettingsSidebar'
+import MarketMapShareModal from '@/components/MarketMapShareModal'
 import PermissionDenied from '@/components/PermissionDenied'
 import AdminCategoryTable from '@/components/AdminCategoryTable'
 import AdminStockTable from '@/components/AdminStockTable'
 import Spinner from '@/components/Spinner'
+import { ShareIcon, SettingsIcon, MaximizeIcon, MinimizeIcon } from '@/components/icons/MarketMapIcons'
 import { useAdminCategories, useStockCategories } from '@/hooks/useMarketMapAdmin'
+import { useGlobalSettings } from '@/hooks/useGlobalSettings'
+import { captureElementToClipboard } from '@/utils/captureToClipboard'
+import { captureElementToDownload } from '@/utils/captureToDownload'
+
+type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
+type DownloadStatus = 'idle' | 'downloading' | 'error'
 
 export default function MarketMapAdminPage() {
   const [searchParams] = useSearchParams()
@@ -19,6 +30,88 @@ export default function MarketMapAdminPage() {
     isRefetching: isRefetchingCategories,
   } = useAdminCategories()
   const { data: stockCategories } = useStockCategories()
+
+  const { settingsModalProps, colorEditorPanelProps } = useGlobalSettings({ needsTree: false })
+  const [isShareOpen, setIsShareOpen] = useState(false)
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
+  const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
+  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false)
+  const captureRef = useRef<HTMLDivElement>(null)
+
+  // 사용자가 F11 키나 Esc로 직접 빠져나가는 경우도 있어서 fullscreenchange 이벤트로 상태를 동기화한다.
+  useEffect(() => {
+    const handleFullscreenChange = () => setIsNativeFullscreen(document.fullscreenElement != null)
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
+  const handleToggleNativeFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      document.documentElement.requestFullscreen()
+    }
+  }
+
+  const handleCopy = async () => {
+    if (!captureRef.current) return
+    setCopyStatus('copying')
+    try {
+      await captureElementToClipboard(captureRef.current)
+      setCopyStatus('copied')
+    } catch {
+      setCopyStatus('error')
+    } finally {
+      setTimeout(() => setCopyStatus('idle'), 2000)
+    }
+  }
+
+  const handleDownload = async () => {
+    if (!captureRef.current) return
+    setDownloadStatus('downloading')
+    try {
+      await captureElementToDownload(captureRef.current, 'market-map-admin.png')
+    } catch {
+      setDownloadStatus('error')
+    } finally {
+      setTimeout(() => setDownloadStatus('idle'), 2000)
+    }
+  }
+
+  const copyLabel =
+    copyStatus === 'copying' ? 'Copying' : copyStatus === 'copied' ? 'Copied' : copyStatus === 'error' ? 'Failed' : 'Copy'
+  const downloadLabel = downloadStatus === 'error' ? 'Failed' : 'Download'
+
+  const actions = (
+    <>
+      <button
+        type="button"
+        aria-label="설정"
+        className="flex h-7 w-7 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
+        onClick={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
+      >
+        <SettingsIcon className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        aria-label="공유"
+        className="flex h-7 w-7 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
+        onClick={() => setIsShareOpen(true)}
+      >
+        <ShareIcon className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        aria-label="F11"
+        className={`flex h-7 w-7 items-center justify-center rounded hover:bg-gray-100 hover:text-[#4f8fd6] ${
+          isNativeFullscreen ? 'text-[#4f8fd6]' : 'text-gray-700'
+        }`}
+        onClick={handleToggleNativeFullscreen}
+      >
+        {isNativeFullscreen ? <MinimizeIcon className="h-4 w-4" /> : <MaximizeIcon className="h-4 w-4" />}
+      </button>
+    </>
+  )
 
   // 로딩 중엔 admin 여부를 아직 모르므로, 403으로 걸러지기 전까지 사이드바/테이블 같은 실제
   // 콘텐츠가 먼저 그려졌다가 사라지지 않도록 상단바+스피너만 보여준다(AdminPage.tsx와 동일 패턴).
@@ -41,23 +134,50 @@ export default function MarketMapAdminPage() {
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <NavBar />
-      <SubNavBar />
+      <SubNavBar actions={actions} />
       {/* 좌측 사이드바(종목/카테고리 전환 + 버전관리 저장) 삭제 — 종목/카테고리 전환은 SubNavBar의
           "커스텀" 탭 hover 목록으로 이동. 버전관리 저장(AdminVersionSaveSection)은 기능 검증과
           위치 재검토가 더 필요해서 일단 뺐다 — 다시 넣을 땐 이 컴포넌트를 재사용하면 된다. */}
-      <div className={`flex min-h-0 flex-1 flex-col px-4 pt-2 pb-4 ${mode === 'category' ? 'overflow-y-auto' : ''}`}>
-        {mode === 'stock' ? (
-          <AdminStockTable
-            items={stockCategories?.items ?? []}
-            categories={categories ?? []}
-            snapshotTime={stockCategories?.snapshotTime ?? null}
-            onRefetchCategories={() => refetchCategories()}
-            isRefetchingCategories={isRefetchingCategories}
-          />
-        ) : (
-          <AdminCategoryTable categories={categories ?? []} />
+      <div className="flex min-h-0 flex-1">
+        {colorEditorPanelProps && (
+          <div className="w-56 shrink-0 overflow-y-auto bg-[var(--surface)]">
+            <MarketMapColorThresholdEditorPanel {...colorEditorPanelProps} />
+          </div>
         )}
+        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 테이블+사이드바를
+            함께 감싸는 바깥 wrapper로 옮겼다 — 사이드바가 닫혀있으면 테이블만 있는 것과 동일하다. */}
+        <div ref={captureRef} className="flex min-h-0 flex-1">
+          <div
+            className={`flex min-h-0 flex-1 flex-col px-4 pt-2 pb-4 ${mode === 'category' ? 'overflow-y-auto' : ''}`}
+          >
+            {mode === 'stock' ? (
+              <AdminStockTable
+                items={stockCategories?.items ?? []}
+                categories={categories ?? []}
+                snapshotTime={stockCategories?.snapshotTime ?? null}
+                onRefetchCategories={() => refetchCategories()}
+                isRefetchingCategories={isRefetchingCategories}
+              />
+            ) : (
+              <AdminCategoryTable categories={categories ?? []} />
+            )}
+          </div>
+          <GlobalSettingsSidebar {...settingsModalProps} />
+        </div>
       </div>
+
+      {isShareOpen && (
+        <MarketMapShareModal
+          onClose={() => setIsShareOpen(false)}
+          onCopy={handleCopy}
+          onDownload={handleDownload}
+          copyLabel={copyLabel}
+          downloadLabel={downloadLabel}
+          isCopying={copyStatus === 'copying'}
+          isDownloading={downloadStatus === 'downloading'}
+          captureTarget={captureRef.current}
+        />
+      )}
     </div>
   )
 }

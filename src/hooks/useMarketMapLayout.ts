@@ -18,6 +18,10 @@ interface LaidOutStockBox {
   y: number
   width: number
   height: number
+  // 이 박스 넓이가 전체 트리맵 컨테이너 넓이에서 차지하는 비중(%) — 카테고리 뎁스와 무관하게 항상
+  // 최상위 컨테이너 기준(d3 treemap이 전체 트리를 한 좌표계에서 배치하므로, 어느 뎁스의 박스든
+  // width*height를 컨테이너 전체 width*height로 나누면 바로 이 비중이 나온다).
+  areaPercent: number
   tooltipAlignLeft: boolean
   tooltipAlignTop: boolean
 }
@@ -57,16 +61,16 @@ export function categoryHeaderHeight(depth: number): number {
   return Math.max(28 - depth * 6, 16)
 }
 // 형제 카테고리끼리의 간격 — d3 treemap의 paddingInner(카테고리 자식을 둔 노드 기준).
-// 카테고리 컴포넌트의 테두리(border-2, box-content로 바깥쪽에 그려짐)가 여기서 만든 간격을 파고들기 때문에,
-// 테두리 두께(2px)보다 커야 실제로 여백이 남는다. 정확히 같으면 옆에 테두리 없는 종목 박스가 있을 때
-// 간격이 전부 테두리에 먹혀서 다닥다닥 붙어 보인다.
-export const CATEGORY_SIBLING_GAP = 4
+export const CATEGORY_SIBLING_GAP = 8
 // 형제 종목끼리의 간격 — 자식이 전부 종목(하위 카테고리가 하나도 없음)인 노드에서만 적용된다.
-export const ITEM_SIBLING_GAP = 2
+// 종목은 border-box라 테두리가 안쪽으로 그려지므로 간격을 테두리 두께만큼만 둬도 안 겹친다.
+export const ITEM_SIBLING_GAP = 1
 // 카테고리 컴포넌트 내부 — 자기 테두리와 그 안의 자식(하위 카테고리든 종목이든)들 사이의 여백 — d3
 // treemap의 paddingOuter. MarketMapCategorySection도 이 값을 그대로 써서, 헤더 바를 자식들과
-// 같은 폭만큼 안쪽으로 들여쓴다.
-export const PADDING = 2
+// 같은 폭만큼 안쪽으로 들여쓴다. 0이라 자식이 카테고리면 그 테두리가 부모 테두리와 같은 자리에
+// 겹치는데, 형제 간격(CATEGORY_SIBLING_GAP)과 같은 이유로 문제없다(평소엔 같은 색이라 한 줄처럼
+// 보이고, hover 중인 쪽은 z-index로 항상 위에 그려짐). 상단 헤더 공간은 paddingTop으로 별도 처리.
+export const PADDING = 0
 // 최상위 카테고리의 우측/하단 테두리가 컨테이너 너비/높이의 이 비율을 넘으면, 그 안의 모든 툴팁(카테고리/종목)을
 // 각각 왼쪽/위쪽으로 뒤집는다. 실제 화면에서 툴팁이 잘리는지 보면서 이 값만 조정하면 됨
 // (0.75 = 우측(혹은 하단) 25% 구간에 걸치면 반전).
@@ -137,12 +141,15 @@ export function useMarketMapLayout(
 
       for (const child of node.children ?? []) {
         if (child.data.item) {
+          const boxWidth = (child.x1 ?? 0) - (child.x0 ?? 0)
+          const boxHeight = (child.y1 ?? 0) - (child.y0 ?? 0)
           boxes.push({
             item: child.data.item,
             x: (child.x0 ?? 0) - nx0,
             y: (child.y0 ?? 0) - ny0,
-            width: (child.x1 ?? 0) - (child.x0 ?? 0),
-            height: (child.y1 ?? 0) - (child.y0 ?? 0),
+            width: boxWidth,
+            height: boxHeight,
+            areaPercent: ((boxWidth * boxHeight) / (width * height)) * 100,
             tooltipAlignLeft,
             tooltipAlignTop,
           })

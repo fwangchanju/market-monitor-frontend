@@ -4,7 +4,7 @@ import MarketMapBox from './MarketMapBox'
 import { categoryHeaderHeight, PADDING, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
 import { TAB_GAP, toJoEokDecimal, toPctSigned } from '@/utils/format'
 import type { MarketMapItem } from '@/types/api'
-import type { ColorScaleConfig } from '@/utils/marketMapColorScale'
+import { resolveMarketMapColor, type ColorScaleConfig } from '@/utils/marketMapColorScale'
 
 interface Props {
   category: LaidOutCategory
@@ -21,6 +21,8 @@ interface Props {
   canExclude: boolean
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 박스 색칠 설정의 단일 출처.
   colorScale: ColorScaleConfig
+  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명/등락률 표시 여부를 가르는 넓이 비중(%) 기준.
+  labelMinAreaPercent: number
   depth?: number
 }
 
@@ -48,7 +50,7 @@ function localSimpleAvgChangeRate(items: MarketMapItem[]): number {
 // 헤더 높이(categoryHeaderHeight)와 같은 비율로 폰트 크기도 depth에 따라 줄인다.
 // 텔레그램 자동발송 이미지에서도 잘 읽히도록 헤더 높이에 거의 꽉 차는 크기로.
 function categoryHeaderFontSize(depth: number): number {
-  return Math.max(20 - depth * 3, 12)
+  return Math.max(18 - depth * 3, 12)
 }
 
 // 투명도로 옅게 하면 페이지 배경 자체가 어두워서 뒤로 비치는 색이 없어 거의 구분이 안 됐다 —
@@ -70,6 +72,7 @@ export default function MarketMapCategorySection({
   avgChangeRateUseSimple,
   canExclude,
   colorScale,
+  labelMinAreaPercent,
   depth = 0,
 }: Props) {
   const [hover, setHover] = useState(false)
@@ -90,7 +93,7 @@ export default function MarketMapCategorySection({
     category.categoryName,
     `${avgChangeRateUseSimple ? '산술평균' : '가중평균'} 등락률: ${toPctSigned(avgChangeRate)}`,
     `상승 ${advancerCount} 하락 ${declinerCount} 보합 ${unchangedCount}`,
-    `시총: ${toJoEokDecimal(category.totalMarketValue / 100_000_000)}`,
+    `시가총액 합: ${toJoEokDecimal(category.totalMarketValue / 100_000_000)}`,
   ].join('\n')
   // 태그는 공간이 좁아서 라벨 없이 값만 나열한다 — 표시되는 항목들 사이는 TAB_GAP으로 구분,
   // 등락 종목수 안의 상승/하락/보합 사이는 스페이스 1칸. 순서는 등락률 → 등락 종목수 → 시총(표시 설정 순서와 동일).
@@ -124,8 +127,11 @@ export default function MarketMapCategorySection({
         top: category.y,
         width: category.width,
         height: category.height,
+        // 나중에 그려지는 형제 카테고리의 테두리가 먼저 hover된 카테고리의 테두리 위를 덮지 않도록,
+        // MarketMapBox와 동일하게 hover 시 z-index를 올린다.
+        zIndex: hover ? 20 : undefined,
       }}
-      className={`box-content border-2 ${hover ? 'border-yellow-600' : 'border-black'}`}
+      className={`box-content ${hover ? 'border-2 border-yellow-600' : 'border border-black'}`}
     >
       <button
         type="button"
@@ -155,8 +161,10 @@ export default function MarketMapCategorySection({
           fontSize: categoryHeaderFontSize(depth),
           left: PADDING,
           width: `calc(100% - ${PADDING * 2}px)`,
+          // 중분류(depth 1)는 고정 헤더 색 대신, 종목 박스와 동일한 등락률 색상 스케일을 그대로 쓴다.
+          ...(depth === 1 ? { backgroundColor: resolveMarketMapColor(avgChangeRate, colorScale) } : {}),
         }}
-        className={`absolute top-0 flex items-center overflow-hidden truncate border-2 border-transparent px-1 text-left font-bold leading-none text-white ${categoryHeaderColorClass(depth)}`}
+        className={`absolute top-0 flex items-center overflow-hidden truncate border-2 border-transparent px-1 text-left font-bold leading-none ${depth === 0 ? 'text-yellow-600' : 'text-white'} ${depth === 1 ? '' : categoryHeaderColorClass(depth)}`}
       >
         {category.categoryName}
         {headerSuffix && <span className="font-normal">{headerSuffix}</span>}
@@ -188,6 +196,7 @@ export default function MarketMapCategorySection({
           avgChangeRateUseSimple={avgChangeRateUseSimple}
           canExclude={canExclude}
           colorScale={colorScale}
+          labelMinAreaPercent={labelMinAreaPercent}
           depth={depth + 1}
         />
       ))}
@@ -199,6 +208,8 @@ export default function MarketMapCategorySection({
           y={box.y}
           width={box.width}
           height={box.height}
+          areaPercent={box.areaPercent}
+          labelMinAreaPercent={labelMinAreaPercent}
           tooltipAlignLeft={box.tooltipAlignLeft}
           tooltipAlignTop={box.tooltipAlignTop}
           colorScale={colorScale}

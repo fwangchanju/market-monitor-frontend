@@ -1,6 +1,6 @@
 // 문장 구분마다 쓰는 탭 간격 — 일반 공백은 렌더링 시 하나로 뭉개지므로, non-breaking space 4개로
 // tab처럼 보이는 간격을 낸다.
-export const TAB_GAP = '    '
+export const TAB_GAP = '  '
 
 /** 소수점 1자리 + 천 단위 콤마 */
 const withCommas1 = (value: number): string =>
@@ -62,7 +62,7 @@ const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토']
 export const toMarketMapSnapshotTimeLabel = (iso: string | null): string => {
   if (!iso) return '-'
   const weekday = WEEKDAY_KO[new Date(iso).getDay()]
-  return `${iso.slice(0, 10)} (${weekday}) ${iso.slice(11, 16)} (5분 간격)`
+  return `${iso.slice(0, 10)} (${weekday}) ${iso.slice(11, 16)}`
 }
 
 /** LocalDateTime(ISO) → 'yyyy-MM-dd HH:00' (분 단위 절삭) */
