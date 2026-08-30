@@ -259,12 +259,12 @@ export default function MarketMapCustomPage() {
               <div className="flex items-center whitespace-nowrap">
                 <span
                   onClick={() => handleGoToDepth(0)}
-                  className={`text-2xl ${path.length > 0 ? 'cursor-pointer hover:text-yellow-400' : ''}`}
+                  className={`text-xl ${path.length > 0 ? 'cursor-pointer hover:text-yellow-400' : ''}`}
                 >
                   {MARKET_LABEL[market]}
                 </span>
                 {marketOverview && (
-                  <span className={`self-end text-[15px] font-normal ${signClass(marketOverview.changeRate)}`}>
+                  <span className={`text-[15px] font-normal ${signClass(marketOverview.changeRate)}`}>
                     {TAB_GAP}
                     {toIndex(marketOverview.indexValue)}
                     {TAB_GAP}
@@ -275,12 +275,12 @@ export default function MarketMapCustomPage() {
                   </span>
                 )}
               </div>
-              <span className="min-w-0 self-end whitespace-nowrap text-center text-[15px] font-normal text-gray-400">
+              <span className="min-w-0 whitespace-nowrap text-center text-[15px] font-normal text-gray-400">
                 {modeStatusText}
               </span>
               <div className="flex items-center gap-3 self-stretch">
                 {data?.snapshotTime && (
-                  <span className="self-end whitespace-nowrap text-[15px] font-normal text-white">
+                  <span className="whitespace-nowrap text-[15px] font-normal text-white">
                     {toMarketMapSnapshotTimeLabel(data.snapshotTime)}
                   </span>
                 )}
@@ -292,7 +292,7 @@ export default function MarketMapCustomPage() {
                     <div
                       key={label}
                       style={{ backgroundColor: color }}
-                      className="flex w-9 items-center justify-center text-sm"
+                      className="flex w-9 items-center justify-center text-xs"
                     >
                       {label}
                     </div>
