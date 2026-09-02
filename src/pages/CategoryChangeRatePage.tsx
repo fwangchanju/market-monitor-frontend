@@ -153,7 +153,7 @@ export default function CategoryChangeRatePage() {
   const downloadLabel = downloadStatus === 'error' ? 'Failed' : 'Download'
 
   const { data: rankingData, isLoading, isError } = useCategoryChangeRates(market, beforeMinutes)
-  const { data: treeData } = useMarketMap(market, true)
+  const { data: treeData, isLoading: isTreeLoading } = useMarketMap(market, true)
   // 마켓맵 화면과 세션스토리지 키를 공유 — 거기서 바꾼 시가총액 구간 필터가 이 랭킹 화면에도 그대로 반영된다.
   const { excludedMarketValueTiers } = useMarketValueTierRange(true)
 
@@ -243,7 +243,12 @@ export default function CategoryChangeRatePage() {
           {/* 실제로 공유/캡처할 영역은 이 안쪽(가운데 정렬된 max-w-2xl + 설정 사이드바)만 — 바깥 검은
               배경까지 같이 캡처하면 그래프 양옆에 빈 공간만 많이 찍혀서 정작 그래프가 작아 보인다.
               설정 사이드바가 열려있으면 이 wrapper가 그만큼 넓어지면서 캡처에도 같이 포함된다. */}
-          <div ref={captureRef} data-captureid={CAPTURE_ID.CATEGORY_CHANGE_RATE} className="mx-auto flex min-h-0 flex-1">
+          <div
+            ref={captureRef}
+            data-captureid={CAPTURE_ID.CATEGORY_CHANGE_RATE}
+            data-capture-ready={!isLoading && !isTreeLoading}
+            className="mx-auto flex min-h-0 flex-1"
+          >
             <div className="flex min-h-0 w-full max-w-2xl flex-1 flex-col">
               <div className="mb-3 flex shrink-0 items-center justify-between text-sm font-bold">
                 <span>CUSTOM {MARKET_LABEL[market]} INDUSTRY</span>

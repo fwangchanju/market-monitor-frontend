@@ -253,7 +253,12 @@ export default function MarketMapCustomPage() {
         )}
         {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 지도 본문+사이드바를
             함께 감싸는 바깥 wrapper로 옮겼다 — 사이드바가 닫혀있으면 지도 본문만 있는 것과 동일하다. */}
-        <div ref={captureRef} data-captureid={CAPTURE_ID.MARKET_MAP} className="flex min-h-0 flex-1">
+        <div
+          ref={captureRef}
+          data-captureid={CAPTURE_ID.MARKET_MAP}
+          data-capture-ready={!isLoading}
+          className="flex min-h-0 flex-1"
+        >
           <div className="flex min-h-0 flex-1 flex-col bg-black">
             <div className="mb-1 grid h-7 w-full shrink-0 grid-cols-[auto_1fr_auto] items-center bg-black/70 pl-1 text-sm font-bold text-white">
               <div className="flex items-center whitespace-nowrap">
