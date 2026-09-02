@@ -23,8 +23,9 @@ export function useMarketValueTierRange(enabled: boolean) {
     if (minIndex !== -1 || tiers.length === 0) return
     const excludedLabels = defaultExcludedTierLabels(tiers)
     const firstIncludedIndex = tiers.findIndex(tier => !excludedLabels.has(tier.label))
+    const lastIncludedIndex = tiers.findLastIndex(tier => !excludedLabels.has(tier.label))
     setMinIndex(firstIncludedIndex === -1 ? 0 : firstIncludedIndex)
-    setMaxIndex(tiers.length - 1)
+    setMaxIndex(lastIncludedIndex === -1 ? tiers.length - 1 : lastIncludedIndex)
   }, [tiers, minIndex, setMinIndex, setMaxIndex])
 
   const excludedMarketValueTiers = useMemo(
