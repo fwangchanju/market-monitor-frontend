@@ -25,6 +25,10 @@ function fontSizePx(width: number, height: number): number {
   return Math.max(12, Math.min(22, Math.min(width, height) / 5))
 }
 
+// 마우스 커서(손모양 아이콘)가 툴팁 첫 글자를 가리지 않도록 두는 좌우 간격 — 임의값 대신 Tailwind
+// 스페이싱 스케일의 14(spacing-14 = 3.5rem = 56px, 루트 폰트 16px 기준)에 맞춘 값.
+const TOOLTIP_OFFSET_X = 56
+
 export default function MarketMapBox({
   item,
   x,
@@ -46,7 +50,7 @@ export default function MarketMapBox({
 
   const updateTooltipPos = (e: React.MouseEvent) => {
     setTooltipPos({
-      left: e.clientX + (tooltipAlignLeft ? -12 : 12),
+      left: e.clientX + (tooltipAlignLeft ? -TOOLTIP_OFFSET_X : TOOLTIP_OFFSET_X),
       top: e.clientY + (tooltipAlignTop ? -8 : 8),
     })
   }
@@ -87,7 +91,7 @@ export default function MarketMapBox({
         tooltipPos &&
         createPortal(
           <div
-            className="pointer-events-none fixed z-[9999] w-max whitespace-nowrap rounded border border-gray-600 bg-[var(--surface)] px-2 py-1 text-left text-xs text-white shadow-lg"
+            className="pointer-events-none fixed z-[9999] w-max whitespace-nowrap rounded border border-gray-600 bg-[var(--surface)] px-2 py-1 text-left text-base text-white shadow-lg"
             style={{
               left: tooltipPos.left,
               top: tooltipPos.top,

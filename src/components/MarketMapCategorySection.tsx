@@ -4,7 +4,7 @@ import MarketMapBox from './MarketMapBox'
 import { categoryHeaderHeight, PADDING, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
 import { TAB_GAP, toJoEokDecimal, toPctSigned } from '@/utils/format'
 import type { MarketMapItem } from '@/types/api'
-import { resolveMarketMapColor, type ColorScaleConfig } from '@/utils/marketMapColorScale'
+import type { ColorScaleConfig } from '@/utils/marketMapColorScale'
 
 interface Props {
   category: LaidOutCategory
@@ -161,10 +161,8 @@ export default function MarketMapCategorySection({
           fontSize: categoryHeaderFontSize(depth),
           left: PADDING,
           width: `calc(100% - ${PADDING * 2}px)`,
-          // 중분류(depth 1)는 고정 헤더 색 대신, 종목 박스와 동일한 등락률 색상 스케일을 그대로 쓴다.
-          ...(depth === 1 ? { backgroundColor: resolveMarketMapColor(avgChangeRate, colorScale) } : {}),
         }}
-        className={`absolute top-0 flex items-center overflow-hidden truncate border-2 border-transparent px-1 text-left font-bold leading-none ${depth === 0 ? 'text-yellow-600' : 'text-white'} ${depth === 1 ? '' : categoryHeaderColorClass(depth)}`}
+        className={`absolute top-0 flex items-center overflow-hidden truncate border-2 border-transparent px-1 text-left font-bold leading-none text-yellow-600 ${categoryHeaderColorClass(depth)}`}
       >
         {category.categoryName}
         {headerSuffix && <span className="font-normal">{headerSuffix}</span>}

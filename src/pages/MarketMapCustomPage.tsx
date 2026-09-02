@@ -7,9 +7,10 @@ import GlobalSettingsSidebar from '@/components/GlobalSettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
 import Spinner from '@/components/Spinner'
-import { ShareIcon, SettingsIcon, MaximizeIcon, MinimizeIcon } from '@/components/icons/MarketMapIcons'
+import NavBarPageActions from '@/components/NavBarPageActions'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
+import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
 import { TAB_GAP, toMarketMapSnapshotTimeLabel, toIndex, toPctSigned, signClass } from '@/utils/format'
 import { useMarketSummary } from '@/hooks/useMarketSummary'
@@ -93,7 +94,7 @@ export default function MarketMapCustomPage() {
   } = useGlobalSettings()
 
   const [searchParams, setSearchParams] = useSearchParams()
-  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false)
+  const { isNativeFullscreen, handleToggleNativeFullscreen } = useNativeFullscreen()
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
@@ -166,22 +167,6 @@ export default function MarketMapCustomPage() {
     setZoomOutRequestDepth(null)
   }
 
-  // 브라우저 자체의 진짜 Fullscreen API를 토글한다. 사용자가 F11 키나 Esc로 직접 빠져나가는
-  // 경우도 있어서 fullscreenchange 이벤트로 상태를 동기화한다.
-  useEffect(() => {
-    const handleFullscreenChange = () => setIsNativeFullscreen(document.fullscreenElement != null)
-    document.addEventListener('fullscreenchange', handleFullscreenChange)
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
-  }, [])
-
-  const handleToggleNativeFullscreen = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen()
-    } else {
-      document.documentElement.requestFullscreen()
-    }
-  }
-
   const handleCopy = async () => {
     if (!captureRef.current) return
     setCopyStatus('copying')
@@ -215,34 +200,12 @@ export default function MarketMapCustomPage() {
       <NavBar />
       <SubNavBar
         actions={
-          <>
-            <button
-              type="button"
-              aria-label="설정"
-              className="flex h-7 w-7 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
-              onClick={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
-            >
-              <SettingsIcon className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              aria-label="공유"
-              className="flex h-7 w-7 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
-              onClick={() => setIsShareOpen(true)}
-            >
-              <ShareIcon className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              aria-label="F11"
-              className={`flex h-7 w-7 items-center justify-center rounded hover:bg-gray-100 hover:text-[#4f8fd6] ${
-                isNativeFullscreen ? 'text-[#4f8fd6]' : 'text-gray-700'
-              }`}
-              onClick={handleToggleNativeFullscreen}
-            >
-              {isNativeFullscreen ? <MinimizeIcon className="h-4 w-4" /> : <MaximizeIcon className="h-4 w-4" />}
-            </button>
-          </>
+          <NavBarPageActions
+            onToggleSettings={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
+            onOpenShare={() => setIsShareOpen(true)}
+            isNativeFullscreen={isNativeFullscreen}
+            onToggleFullscreen={handleToggleNativeFullscreen}
+          />
         }
       />
       <div className="flex min-h-0 flex-1">

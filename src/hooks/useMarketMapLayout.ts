@@ -61,7 +61,7 @@ export function categoryHeaderHeight(depth: number): number {
   return Math.max(28 - depth * 6, 16)
 }
 // 형제 카테고리끼리의 간격 — d3 treemap의 paddingInner(카테고리 자식을 둔 노드 기준).
-export const CATEGORY_SIBLING_GAP = 8
+export const CATEGORY_SIBLING_GAP = 5
 // 형제 종목끼리의 간격 — 자식이 전부 종목(하위 카테고리가 하나도 없음)인 노드에서만 적용된다.
 // 종목은 border-box라 테두리가 안쪽으로 그려지므로 간격을 테두리 두께만큼만 둬도 안 겹친다.
 export const ITEM_SIBLING_GAP = 1
@@ -73,8 +73,9 @@ export const ITEM_SIBLING_GAP = 1
 export const PADDING = 0
 // 최상위 카테고리의 우측/하단 테두리가 컨테이너 너비/높이의 이 비율을 넘으면, 그 안의 모든 툴팁(카테고리/종목)을
 // 각각 왼쪽/위쪽으로 뒤집는다. 실제 화면에서 툴팁이 잘리는지 보면서 이 값만 조정하면 됨
-// (0.75 = 우측(혹은 하단) 25% 구간에 걸치면 반전).
-const TOOLTIP_FLIP_EDGE_RATIO = 0.85
+// (0.75 = 우측(혹은 하단) 25% 구간에 걸치면 반전). 종목 툴팁의 좌우 오프셋을 56px로 늘리면서
+// (MarketMapBox의 TOOLTIP_OFFSET_X) 더 일찍 반전되도록 0.85 → 0.80으로 낮춤.
+const TOOLTIP_FLIP_EDGE_RATIO = 0.8
 
 function toHierarchyDatum(group: DisplayGroup): HierarchyDatum {
   return {

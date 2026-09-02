@@ -46,6 +46,15 @@ body, code, html, kbd, pre, samp {
   font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
 }
 
+/* nes.css가 html/a/button에 커스텀 픽셀아트 커서(cursor: url(...))를 지정해서 일반 마우스 포인터보다
+   훨씬 크게 보임 — 같은 선택자로 재정의해서 기본 시스템 커서로 되돌림. */
+html {
+  cursor: default;
+}
+a, button {
+  cursor: pointer;
+}
+
 /* 좁은 화면에서는 rem 기반 유틸리티(폰트/여백/간격)가 전부 이 비율로 같이 줄어듦 */
 @media (max-width: 480px) {
   :root {
