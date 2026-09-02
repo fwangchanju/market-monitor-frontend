@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { isAxiosError } from 'axios'
 import NavBar from '@/components/NavBar'
@@ -10,9 +10,10 @@ import PermissionDenied from '@/components/PermissionDenied'
 import AdminCategoryTable from '@/components/AdminCategoryTable'
 import AdminStockTable from '@/components/AdminStockTable'
 import Spinner from '@/components/Spinner'
-import { ShareIcon, SettingsIcon, MaximizeIcon, MinimizeIcon } from '@/components/icons/MarketMapIcons'
+import NavBarPageActions from '@/components/NavBarPageActions'
 import { useAdminCategories, useStockCategories } from '@/hooks/useMarketMapAdmin'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
+import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 
@@ -35,23 +36,8 @@ export default function MarketMapAdminPage() {
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
-  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false)
+  const { isNativeFullscreen, handleToggleNativeFullscreen } = useNativeFullscreen()
   const captureRef = useRef<HTMLDivElement>(null)
-
-  // 사용자가 F11 키나 Esc로 직접 빠져나가는 경우도 있어서 fullscreenchange 이벤트로 상태를 동기화한다.
-  useEffect(() => {
-    const handleFullscreenChange = () => setIsNativeFullscreen(document.fullscreenElement != null)
-    document.addEventListener('fullscreenchange', handleFullscreenChange)
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
-  }, [])
-
-  const handleToggleNativeFullscreen = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen()
-    } else {
-      document.documentElement.requestFullscreen()
-    }
-  }
 
   const handleCopy = async () => {
     if (!captureRef.current) return
@@ -83,34 +69,12 @@ export default function MarketMapAdminPage() {
   const downloadLabel = downloadStatus === 'error' ? 'Failed' : 'Download'
 
   const actions = (
-    <>
-      <button
-        type="button"
-        aria-label="설정"
-        className="flex h-7 w-7 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
-        onClick={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
-      >
-        <SettingsIcon className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        aria-label="공유"
-        className="flex h-7 w-7 items-center justify-center rounded text-gray-700 hover:bg-gray-100 hover:text-[#4f8fd6]"
-        onClick={() => setIsShareOpen(true)}
-      >
-        <ShareIcon className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        aria-label="F11"
-        className={`flex h-7 w-7 items-center justify-center rounded hover:bg-gray-100 hover:text-[#4f8fd6] ${
-          isNativeFullscreen ? 'text-[#4f8fd6]' : 'text-gray-700'
-        }`}
-        onClick={handleToggleNativeFullscreen}
-      >
-        {isNativeFullscreen ? <MinimizeIcon className="h-4 w-4" /> : <MaximizeIcon className="h-4 w-4" />}
-      </button>
-    </>
+    <NavBarPageActions
+      onToggleSettings={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
+      onOpenShare={() => setIsShareOpen(true)}
+      isNativeFullscreen={isNativeFullscreen}
+      onToggleFullscreen={handleToggleNativeFullscreen}
+    />
   )
 
   // 로딩 중엔 admin 여부를 아직 모르므로, 403으로 걸러지기 전까지 사이드바/테이블 같은 실제
