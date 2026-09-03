@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { createPortal } from 'react-dom'
+import Tooltip from './Tooltip'
+import { useTooltip } from '@/hooks/useTooltip'
 import type { MarketMapItem } from '@/types/api'
 import { toJoEok, toPctSigned, toVolume } from '@/utils/format'
 import { resolveMarketMapColor, type ColorScaleConfig } from '@/utils/marketMapColorScale'
@@ -41,24 +41,10 @@ export default function MarketMapBox({
   tooltipAlignTop,
   colorScale,
 }: Props) {
-  const [hover, setHover] = useState(false)
-  const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null)
-
   const showLabel = areaPercent >= labelMinAreaPercent
   const fontSize = fontSizePx(width, height)
   const backgroundColor = resolveMarketMapColor(item.changeRate, colorScale)
-
-  const updateTooltipPos = (e: React.MouseEvent) => {
-    setTooltipPos({
-      left: e.clientX + (tooltipAlignLeft ? -TOOLTIP_OFFSET_X : TOOLTIP_OFFSET_X),
-      top: e.clientY + (tooltipAlignTop ? -8 : 8),
-    })
-  }
-
-  const handleMouseEnter = (e: React.MouseEvent) => {
-    setHover(true)
-    updateTooltipPos(e)
-  }
+  const tooltip = useTooltip(TOOLTIP_OFFSET_X, 8, tooltipAlignLeft, tooltipAlignTop)
 
   return (
     <div
@@ -68,13 +54,13 @@ export default function MarketMapBox({
         top: y,
         width,
         height,
-        zIndex: hover ? 20 : undefined,
+        zIndex: tooltip.hover ? 20 : undefined,
         backgroundColor,
       }}
-      onMouseEnter={handleMouseEnter}
-      onMouseMove={updateTooltipPos}
-      onMouseLeave={() => setHover(false)}
-      className={`flex flex-col items-center justify-center overflow-hidden text-white ${hover ? 'border-2 border-yellow-600' : 'border border-black/40'}`}
+      onMouseEnter={tooltip.onMouseEnter}
+      onMouseMove={tooltip.onMouseMove}
+      onMouseLeave={tooltip.onMouseLeave}
+      className={`flex flex-col items-center justify-center overflow-hidden text-white ${tooltip.hover ? 'border-2 border-yellow-600' : 'border border-black/40'}`}
     >
       {showLabel && (
         <>
@@ -87,25 +73,13 @@ export default function MarketMapBox({
         </>
       )}
 
-      {hover &&
-        tooltipPos &&
-        createPortal(
-          <div
-            className="pointer-events-none fixed z-[9999] w-max whitespace-nowrap rounded border border-gray-600 bg-[var(--surface)] px-2 py-1 text-left text-base text-white shadow-lg"
-            style={{
-              left: tooltipPos.left,
-              top: tooltipPos.top,
-              transform: `translate(${tooltipAlignLeft ? '-100%' : '0'}, ${tooltipAlignTop ? '-100%' : '0'})`,
-            }}
-          >
-            <div className="font-bold">{item.stockName}</div>
-            <div>등락률: {toPctSigned(item.changeRate)}</div>
-            <div>현재가: {toVolume(item.currentPrice)}원</div>
-            <div>전일종가: {toVolume(item.lastPrice)}원</div>
-            <div>시가총액: {toJoEok(item.totalMarketValue / 100_000_000)}</div>
-          </div>,
-          document.body,
-        )}
+      <Tooltip visible={tooltip.hover} position={tooltip.position} alignLeft={tooltipAlignLeft} alignTop={tooltipAlignTop}>
+        <div className="font-bold">{item.stockName}</div>
+        <div>등락률: {toPctSigned(item.changeRate)}</div>
+        <div>현재가: {toVolume(item.currentPrice)}원</div>
+        <div>전일종가: {toVolume(item.lastPrice)}원</div>
+        <div>시가총액: {toJoEok(item.totalMarketValue / 100_000_000)}</div>
+      </Tooltip>
     </div>
   )
 }
