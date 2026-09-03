@@ -53,7 +53,11 @@ export const handlers = [
   // ── 마켓맵 ──────────────────────────────────────────────────────────
   http.get('/api/market-map', () => HttpResponse.json(snapshot(data.marketMapTree))),
   http.get('/api/market-map/value-tiers', () => HttpResponse.json(data.marketValueTiers)),
-  http.get('/api/market-map/category-change-rates', () => HttpResponse.json(snapshot(data.categoryChangeRateItems))),
+  http.get('/api/market-map/category-change-rates', ({ request }) => {
+    const market = new URL(request.url).searchParams.get('market')
+    const rankings = data.categoryChangeRateRankings.filter(r => market === 'ALL_STOCKS' || r.market === market)
+    return HttpResponse.json(snapshot(rankings))
+  }),
   http.get('/api/market-map/scale', () => HttpResponse.json(data.marketMapColorScale)),
   http.get('/api/market-map/excluded-stocks', () => HttpResponse.json(data.excludedStocks)),
   http.post('/api/market-map/excluded-stocks/:stockCode', ok),

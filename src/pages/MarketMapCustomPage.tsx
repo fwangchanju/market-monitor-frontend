@@ -18,9 +18,9 @@ import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import type { FilteredMarketMapCategoryNode } from '@/hooks/useFilteredMarketMapTree'
-import type { Market, MarketMapCategoryNode, MarketMapItem } from '@/types/api'
+import type { MarketQuery, MarketMapCategoryNode, MarketMapItem } from '@/types/api'
 
-const MARKET_LABEL: Record<Market, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ' }
+const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCKS: 'ALL STOCKS' }
 
 function toDisplayGroup(node: FilteredMarketMapCategoryNode): DisplayGroup {
   return {
@@ -134,17 +134,17 @@ export default function MarketMapCustomPage() {
     </>
   )
 
-  const handleMarketChange = (next: Market) => {
+  const handleMarketChange = (next: MarketQuery) => {
     setMarket(next)
     reset()
   }
 
-  // SubNavBar의 "지도" 탭 위 마켓 목록에서 KOSPI/KOSDAQ를 고르면 /market-map?market=...로 이동한다.
-  // 이미 이 페이지에 있으면(같은 라우트) 리마운트 없이 searchParams만 바뀌므로 여기서 반영하고, 초기
-  // 상태 읽는 용도일 뿐 주소창에 남아있을 필요는 없어서 반영 직후 지운다.
+  // SubNavBar의 "지도" 탭 위 마켓 목록에서 KOSPI/KOSDAQ/ALL_STOCKS를 고르면 /market-map?market=...로
+  // 이동한다. 이미 이 페이지에 있으면(같은 라우트) 리마운트 없이 searchParams만 바뀌므로 여기서 반영하고,
+  // 초기 상태 읽는 용도일 뿐 주소창에 남아있을 필요는 없어서 반영 직후 지운다.
   useEffect(() => {
     const param = searchParams.get('market')
-    if (param !== 'KOSPI' && param !== 'KOSDAQ') return
+    if (param !== 'KOSPI' && param !== 'KOSDAQ' && param !== 'ALL_STOCKS') return
     handleMarketChange(param)
     setSearchParams(
       prev => {

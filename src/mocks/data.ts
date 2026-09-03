@@ -218,7 +218,7 @@ export const marketMapTree = [
 // /market-map/category-change-rates 목업. now는 marketMapTree의 tierBreakdown을 그대로 재사용하고,
 // before는 단일 구간(itemCount=1, totalValue=1)으로 단순화해 "예전 가중/산술평균 값 그 자체"가 되도록
 // 구성했다 — 정확한 재현이 목적이 아니라 화면에서 자연스러운 변화율(now-before)이 나오면 충분하다.
-export const categoryChangeRateItems = [
+const categoryChangeRateItemsKospi = [
   {
     categoryId: 1,
     now: marketMapTree[0].tierBreakdown,
@@ -249,6 +249,19 @@ export const categoryChangeRateItems = [
     now: marketMapTree[1].children[0].tierBreakdown,
     before: [{ tierId: 3, tierLabel: '대형주', weightedSum: 1.5, totalValue: 1, simpleSum: 1.5, itemCount: 1 }],
   },
+]
+
+// KOSDAQ은 KOSPI와 같은 now(카테고리별 tierBreakdown)를 재사용하되, before 부호를 뒤집어서 화면상
+// 두 마켓 그래프가 시각적으로 구분되도록만 했다 — 실제 값 재현이 목적이 아니다.
+const categoryChangeRateItemsKosdaq = categoryChangeRateItemsKospi.map(item => ({
+  ...item,
+  before: item.before.map(b => ({ ...b, weightedSum: -b.weightedSum, simpleSum: -b.simpleSum })),
+}))
+
+// /market-map/category-change-rates 목업 — 백엔드 응답과 동일하게 마켓별로 그룹핑된 형태.
+export const categoryChangeRateRankings = [
+  { market: 'KOSPI' as const, items: categoryChangeRateItemsKospi },
+  { market: 'KOSDAQ' as const, items: categoryChangeRateItemsKosdaq },
 ]
 
 export const excludedStocks: { stockCode: string; stockName: string }[] = []

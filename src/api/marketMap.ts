@@ -5,19 +5,19 @@ import {
   MarketMapResponseSchema,
   MarketMapScaleResponseSchema,
   MarketValueTierListResponseSchema,
-  type Market,
+  type MarketQuery,
 } from '@/types/api'
 import { z } from 'zod'
 
 const excludedStockListResponseSchema = z.array(ExcludedStockItemSchema)
 
-export const getMarketMap = (market: Market, isCustom: boolean) =>
+export const getMarketMap = (market: MarketQuery, isCustom: boolean) =>
   client.get('/market-map', { params: { market, isCustom } }).then(r => MarketMapResponseSchema.parse(r.data))
 
 export const getMarketValueTiers = () =>
   client.get('/market-map/value-tiers').then(r => MarketValueTierListResponseSchema.parse(r.data))
 
-export const getCategoryChangeRates = (market: Market, beforeMinutes: number) =>
+export const getCategoryChangeRates = (market: MarketQuery, beforeMinutes: number) =>
   client
     .get('/market-map/category-change-rates', { params: { market, beforeMinutes } })
     .then(r => CategoryChangeRateResponseSchema.parse(r.data))

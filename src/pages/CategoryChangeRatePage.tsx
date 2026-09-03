@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
@@ -18,12 +18,11 @@ import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { toMarketMapSnapshotTimeLabel, toPct, toPctSigned, signClass } from '@/utils/format'
-import type { CategoryChangeRateItem, Market, MarketMapCategoryNode } from '@/types/api'
+import type { CategoryChangeRateItem, Market, MarketQuery, MarketMapCategoryNode } from '@/types/api'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
 
-const MARKET_LABEL: Record<Market, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ' }
 const MIN_BEFORE_MINUTES = 5
 
 function collectCategoryNames(nodes: MarketMapCategoryNode[], out: Map<number, string> = new Map()): Map<number, string> {
@@ -34,62 +33,104 @@ function collectCategoryNames(nodes: MarketMapCategoryNode[], out: Map<number, s
   return out
 }
 
-// 백엔드는 now(snapshotTime)만 내려주고 before 시각 자체는 안 내려준다 — before는 항상
-// "now.snapshotTime - beforeMinutes"로 정해지므로, 알림 문구에 쓸 그 시각도 프론트에서 직접 계산한다.
-function toBeforeMissingLabel(nowIso: string, beforeMinutes: number): string {
-  const beforeDate = new Date(new Date(nowIso).getTime() - beforeMinutes * 60_000)
-  const mm = String(beforeDate.getMonth() + 1).padStart(2, '0')
-  const dd = String(beforeDate.getDate()).padStart(2, '0')
-  const hh = String(beforeDate.getHours()).padStart(2, '0')
-  const mi = String(beforeDate.getMinutes()).padStart(2, '0')
-  return `${mm}-${dd} ${hh}:${mi}`
-}
-
 interface RankedItem {
   categoryId: number
   categoryName: string
   value: number
 }
 
-function Segmented<T extends string>({
-  value,
-  options,
-  onChange,
-}: {
-  value: T
-  options: { value: T; label: string }[]
-  onChange: (value: T) => void
-}) {
+interface RankChart {
+  rankedItems: RankedItem[]
+  axisMax: number
+  axisTicks: number[]
+}
+
+interface MarketCharts {
+  market: Market
+  current: RankChart
+  delta: RankChart
+}
+
+// 카테고리별 (id, 값) 목록을 값 내림차순 랭킹 막대그래프 데이터로 변환한다 — "현재" 그래프/"변화율"
+// 그래프 둘 다 이 함수로 각각 독립적으로 정렬·스케일을 만든다(같은 포맷, 정렬 기준값만 다름).
+function buildRankChart(entries: { categoryId: number; value: number }[], categoryNameById: Map<number, string>): RankChart {
+  const rankedItems: RankedItem[] = entries
+    .map(entry => ({ ...entry, categoryName: categoryNameById.get(entry.categoryId) ?? '' }))
+    .sort((a, b) => b.value - a.value)
+
+  const rawMaxAbsValue = Math.max(1, ...rankedItems.map(item => Math.abs(item.value)))
+  // 핀비즈처럼 축 눈금이 딱 떨어지게, 0.5%p 단위로 올림한 값을 막대 스케일과 축 눈금 양쪽에 같이 쓴다.
+  const axisMax = Math.ceil(rawMaxAbsValue * 2) / 2
+  const axisTicks = [0, 0.25, 0.5, 0.75, 1].map(ratio => axisMax * ratio)
+
+  return { rankedItems, axisMax, axisTicks }
+}
+
+// 라벨 열은 내용에 맞춰(auto), 그래프 열은 남는 공간을 다 쓴다 — "현재"/"변화율" 그래프 둘 다 동일한
+// 포맷으로 그린다. header는 그래프(막대 트랙)와 같은 열(1fr)에 그려서, 그래프가 시작하는 위치와
+// header 텍스트가 시작하는 위치가 라벨 폭과 무관하게 항상 맞도록 한다.
+function RankBars({ chart, header }: { chart: RankChart; header?: ReactNode }) {
+  if (chart.rankedItems.length === 0) {
+    return <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
+  }
   return (
-    <div className="flex overflow-hidden rounded border border-gray-300">
-      {options.map(option => (
-        <button
-          key={option.value}
-          type="button"
-          onClick={() => onChange(option.value)}
-          className={`px-2 py-0.5 text-xs ${
-            value === option.value ? 'bg-[#4f8fd6] text-white' : 'bg-white text-gray-600 hover:bg-gray-100'
-          }`}
-        >
-          {option.label}
-        </button>
+    <div className="grid w-full items-center gap-x-3 gap-y-1.5 text-xs" style={{ gridTemplateColumns: 'auto 1fr' }}>
+      <span />
+      <div className="whitespace-nowrap text-gray-400">{header ?? ' '}</div>
+      {chart.rankedItems.map(item => (
+        <Fragment key={item.categoryId}>
+          <span className="whitespace-nowrap text-right">{item.categoryName}</span>
+          {/* 퍼센트 텍스트 폭을 고정(w-14)으로 미리 비워두고, 막대는 그 나머지(flex-1) 안에서만
+              채운다 — 그래야 막대가 축 최대치에 가깝게 길어져도 텍스트가 열 밖으로 밀려나지 않는다. */}
+          <div className="flex h-5 items-center gap-1.5">
+            <div className="h-full flex-1">
+              <div
+                className="h-full rounded-sm"
+                style={{
+                  width: `${(Math.abs(item.value) / chart.axisMax) * 100}%`,
+                  backgroundColor: item.value >= 0 ? 'var(--stock-up)' : 'var(--stock-down)',
+                }}
+              />
+            </div>
+            <span className={`w-14 shrink-0 whitespace-nowrap ${signClass(item.value)}`}>{toPctSigned(item.value)}</span>
+          </div>
+        </Fragment>
       ))}
+      {/* 핀비즈처럼 하단에 이 그래프가 몇 퍼센트 구간인지 눈금으로 표시 — 막대 트랙(flex-1)과 같은
+          폭이어야 눈금 위치가 막대 길이와 정확히 맞는다. */}
+      <span />
+      <div className="flex h-4 items-center gap-1.5">
+        <div className="relative h-full flex-1 text-[10px] text-gray-500">
+          {chart.axisTicks.map((tick, tickIndex) => (
+            <span
+              key={tick}
+              className="absolute whitespace-nowrap"
+              style={{
+                left: `${(tick / chart.axisMax) * 100}%`,
+                transform:
+                  tickIndex === 0 ? 'none' : tickIndex === chart.axisTicks.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)',
+              }}
+            >
+              {toPct(tick)}
+            </span>
+          ))}
+        </div>
+        <span className="w-14 shrink-0" />
+      </div>
     </div>
   )
 }
 
 export default function CategoryChangeRatePage() {
-  const [market, setMarket] = usePersistedState<Market>('categoryChangeRate.market', 'KOSPI')
+  const [market, setMarket] = usePersistedState<MarketQuery>('categoryChangeRate.market', 'KOSPI')
   const [beforeMinutes, setBeforeMinutes] = usePersistedState('categoryChangeRate.beforeMinutes', 60)
-  const [useSimpleAvg, setUseSimpleAvg] = usePersistedState('categoryChangeRate.useSimpleAvg', false)
-  const [rankByDelta, setRankByDelta] = usePersistedState('categoryChangeRate.rankByDelta', false)
   const [searchParams, setSearchParams] = useSearchParams()
 
   // 렌더러가 /category-change-rate?market=KOSDAQ로 캡처 요청할 때 쓰는 진입점 — MarketMapCustomPage와
   // 동일한 패턴(초기 상태 반영 용도일 뿐 주소창엔 남길 필요 없어 반영 직후 지움).
   useEffect(() => {
     const param = searchParams.get('market')
-    if (param !== 'KOSPI' && param !== 'KOSDAQ') return
+    if (param !== 'KOSPI' && param !== 'KOSDAQ' && param !== 'ALL_STOCKS') return
     setMarket(param)
     setSearchParams(
       prev => {
@@ -102,7 +143,7 @@ export default function CategoryChangeRatePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- market 파라미터가 있을 때만 반응하면 됨
   }, [searchParams])
 
-  const { settingsModalProps, colorEditorPanelProps } = useGlobalSettings()
+  const { settingsModalProps, colorEditorPanelProps, avgChangeRateUseSimple } = useGlobalSettings()
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
@@ -147,42 +188,43 @@ export default function CategoryChangeRatePage() {
   // 뎁스 구분 없이 전부 나열하면 너무 많아서, 어드민 카테고리 관리 화면처럼 최상위 카테고리만 보여준다.
   const rootCategoryIds = useMemo(() => new Set((treeData?.items ?? []).map(node => node.categoryId)), [treeData])
 
-  // 변화율 토글 상태인데 이 now 시각 기준 before 스냅샷이 통째로 없으면(하루 중 최초 발송 직후처럼
-  // 구조적으로 확정 발생) 조용히 등락률로 대체하지 않고 알린 뒤 토글 상태 자체를 되돌린다.
-  useEffect(() => {
-    if (!rankByDelta || !rankingData?.snapshotTime) return
-    const hasAnyBefore = rankingData.items.some(item => item.before !== null)
-    if (hasAnyBefore) return
-    window.alert(`${toBeforeMissingLabel(rankingData.snapshotTime, beforeMinutes)} 데이터가 없습니다`)
-    setRankByDelta(false)
-  }, [rankByDelta, rankingData, beforeMinutes, setRankByDelta])
-
-  const rankedItems: RankedItem[] = useMemo(() => {
+  // 요청한 마켓(들) 각각에 대해 "현재" 그래프와 "변화율" 그래프를 독립적으로 계산한다 — 백엔드가 이미
+  // 요청한 마켓만 걸러서 주므로(단일 마켓이면 1개, ALL_STOCKS면 KOSPI/KOSDAQ 2개) 여기선 그대로 순회만
+  // 한다. 지도의 All Stocks와 다르게 마켓을 하나로 합치지 않고 각각 별도 그래프로 보여준다.
+  const marketCharts: MarketCharts[] = useMemo(() => {
     // now/before는 구간별 원시 합계 리스트라, 지금 선택된(제외되지 않은) 구간만 골라 합산한 뒤
     // 마지막에 한 번만 나눈다 — 이미 나뉜 구간별 평균끼리 다시 평균내면 틀리기 때문.
-    const resolveValue = (item: CategoryChangeRateItem): number | null => {
-      const now = combineTierBreakdowns(item.now, excludedMarketValueTiers)
-      const nowValue = useSimpleAvg ? now.simpleAvg : now.weightedAvg
-      if (nowValue === null) return null
-      if (!rankByDelta) return nowValue
-      if (!item.before) return null
-      const before = combineTierBreakdowns(item.before, excludedMarketValueTiers)
-      const beforeValue = useSimpleAvg ? before.simpleAvg : before.weightedAvg
-      if (beforeValue === null) return null
-      return nowValue - beforeValue
+    const resolveAvg = (breakdowns: CategoryChangeRateItem['now']): number | null => {
+      const combined = combineTierBreakdowns(breakdowns, excludedMarketValueTiers)
+      return avgChangeRateUseSimple ? combined.simpleAvg : combined.weightedAvg
     }
-    return (rankingData?.items ?? [])
-      .filter(item => rootCategoryIds.has(item.categoryId))
-      .map(item => ({ categoryId: item.categoryId, value: resolveValue(item) }))
-      .filter((item): item is { categoryId: number; value: number } => item.value !== null)
-      .map(item => ({ ...item, categoryName: categoryNameById.get(item.categoryId) ?? '' }))
-      .sort((a, b) => b.value - a.value)
-  }, [rankingData, useSimpleAvg, rankByDelta, categoryNameById, rootCategoryIds, excludedMarketValueTiers])
 
-  const rawMaxAbsValue = Math.max(1, ...rankedItems.map(item => Math.abs(item.value)))
-  // 핀비즈처럼 축 눈금이 딱 떨어지게, 0.5%p 단위로 올림한 값을 막대 스케일과 축 눈금 양쪽에 같이 쓴다.
-  const axisMax = Math.ceil(rawMaxAbsValue * 2) / 2
-  const axisTicks = [0, 0.25, 0.5, 0.75, 1].map(ratio => axisMax * ratio)
+    return (rankingData?.items ?? []).map(marketRanking => {
+      const rootItems = marketRanking.items.filter(item => rootCategoryIds.has(item.categoryId))
+
+      const currentEntries = rootItems
+        .map(item => {
+          const value = resolveAvg(item.now)
+          return value === null ? null : { categoryId: item.categoryId, value }
+        })
+        .filter((entry): entry is { categoryId: number; value: number } => entry !== null)
+
+      const deltaEntries = rootItems
+        .map(item => {
+          const value = resolveAvg(item.now)
+          const beforeValue = item.before ? resolveAvg(item.before) : null
+          if (value === null || beforeValue === null) return null
+          return { categoryId: item.categoryId, value: value - beforeValue }
+        })
+        .filter((entry): entry is { categoryId: number; value: number } => entry !== null)
+
+      return {
+        market: marketRanking.market,
+        current: buildRankChart(currentEntries, categoryNameById),
+        delta: buildRankChart(deltaEntries, categoryNameById),
+      }
+    })
+  }, [rankingData, avgChangeRateUseSimple, categoryNameById, rootCategoryIds, excludedMarketValueTiers])
 
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden">
@@ -211,53 +253,14 @@ export default function CategoryChangeRatePage() {
             ref={captureRef}
             data-captureid={CAPTURE_ID.CATEGORY_CHANGE_RATE}
             data-capture-ready={!isLoading && !isTreeLoading}
-            className="mx-auto flex min-h-0 flex-1"
+            className="flex min-h-0 flex-1 justify-center"
           >
-            <div className="flex min-h-0 w-full max-w-2xl flex-1 flex-col">
+            <div className="flex min-h-0 w-full max-w-5xl flex-1 flex-col">
               <div className="mb-3 flex shrink-0 items-center justify-between text-sm font-bold">
-                <span>CUSTOM {MARKET_LABEL[market]} INDUSTRY</span>
+                <span>Custom Sector</span>
                 {rankingData?.snapshotTime && (
                   <span className="text-xs font-normal text-gray-400">{toMarketMapSnapshotTimeLabel(rankingData.snapshotTime)}</span>
                 )}
-              </div>
-              {/* 서브바에서 옮겨온 컨트롤 — 위치는 나중에 다시 정리하기로 하고 일단 여기 둔다. */}
-              <div className="mb-3 flex shrink-0 flex-wrap items-center gap-3 text-xs text-white">
-                <Segmented
-                  value={market}
-                  onChange={setMarket}
-                  options={[
-                    { value: 'KOSPI', label: 'KOSPI' },
-                    { value: 'KOSDAQ', label: 'KOSDAQ' },
-                  ]}
-                />
-                <Segmented
-                  value={useSimpleAvg ? 'simple' : 'weighted'}
-                  onChange={v => setUseSimpleAvg(v === 'simple')}
-                  options={[
-                    { value: 'weighted', label: '가중평균' },
-                    { value: 'simple', label: '산술평균' },
-                  ]}
-                />
-                <Segmented
-                  value={rankByDelta ? 'delta' : 'current'}
-                  onChange={v => setRankByDelta(v === 'delta')}
-                  options={[
-                    { value: 'current', label: '현재' },
-                    { value: 'delta', label: '변화율' },
-                  ]}
-                />
-                <label className="flex items-center gap-1 text-gray-300">
-                  비교 시점
-                  <input
-                    type="number"
-                    min={MIN_BEFORE_MINUTES}
-                    step={5}
-                    value={beforeMinutes}
-                    onChange={e => setBeforeMinutes(Math.max(MIN_BEFORE_MINUTES, Number(e.target.value) || MIN_BEFORE_MINUTES))}
-                    className="w-14 rounded border border-gray-300 px-1 py-0.5 text-right text-black"
-                  />
-                  분 전
-                </label>
               </div>
               {isLoading ? (
                 <div className="flex flex-1 items-center justify-center">
@@ -265,48 +268,42 @@ export default function CategoryChangeRatePage() {
                 </div>
               ) : isError ? (
                 <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
-              ) : rankedItems.length === 0 ? (
+              ) : marketCharts.length === 0 ? (
                 <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
               ) : (
                 <div className="min-h-0 flex-1 overflow-y-auto">
-                  {/* 라벨 열은 내용에 맞춰(auto), 그래프 열은 그 옆 남는 공간을 다 쓴다. */}
-                  <div
-                    className="grid w-full items-center gap-x-3 gap-y-1.5 text-xs"
-                    style={{ gridTemplateColumns: 'auto 1fr' }}
-                  >
-                  {rankedItems.map(item => (
-                    <Fragment key={item.categoryId}>
-                      <span className="whitespace-nowrap text-right">{item.categoryName}</span>
-                      <div className="flex h-5 items-center gap-1.5">
-                        <div
-                          className="h-full shrink-0 rounded-sm"
-                          style={{
-                            width: `${(Math.abs(item.value) / axisMax) * 100}%`,
-                            backgroundColor: item.value >= 0 ? 'var(--stock-up)' : 'var(--stock-down)',
-                          }}
+                  {marketCharts.map((chart, chartIndex) => (
+                    <div key={chart.market} className={chartIndex > 0 ? 'mt-6' : undefined}>
+                      {/* 마켓이 여러 개(ALL_STOCKS)일 때만 마켓명을 붙인다 — 단일 마켓 선택 시엔 위쪽
+                          헤더(Custom Sector)가 이미 그 역할을 한다. */}
+                      {marketCharts.length > 1 && <div className="mb-1.5 text-sm font-bold text-gray-300">{chart.market}</div>}
+                      {/* 현재 그래프(왼쪽)/변화율 그래프(오른쪽)를 나란히 배치. "N분 전 기준" 캡션은
+                          delta 쪽 RankBars의 header로 넘겨서, 그래프(막대 트랙) 시작 위치와 캡션 시작
+                          위치가 라벨 폭과 무관하게 항상 맞도록 한다. */}
+                      <div className="grid grid-cols-2 gap-x-8">
+                        <RankBars chart={chart.current} />
+                        <RankBars
+                          chart={chart.delta}
+                          header={
+                            <span className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                min={MIN_BEFORE_MINUTES}
+                                step={5}
+                                value={beforeMinutes}
+                                onChange={e =>
+                                  setBeforeMinutes(Math.max(MIN_BEFORE_MINUTES, Number(e.target.value) || MIN_BEFORE_MINUTES))
+                                }
+                                className="w-9 rounded border border-transparent bg-transparent px-0.5 py-0.5 text-right text-gray-400 [appearance:textfield] focus:border-gray-500 focus:bg-white focus:text-black focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                              />
+                              분 전 기준
+                            </span>
+                          }
                         />
-                        <span className={`shrink-0 whitespace-nowrap ${signClass(item.value)}`}>{toPctSigned(item.value)}</span>
                       </div>
-                    </Fragment>
+                    </div>
                   ))}
-                  {/* 핀비즈처럼 하단에 이 그래프가 몇 퍼센트 구간인지 눈금으로 표시. */}
-                  <span />
-                  <div className="relative h-4 text-[10px] text-gray-500">
-                    {axisTicks.map((tick, index) => (
-                      <span
-                        key={tick}
-                        className="absolute whitespace-nowrap"
-                        style={{
-                          left: `${(tick / axisMax) * 100}%`,
-                          transform: index === 0 ? 'none' : index === axisTicks.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)',
-                        }}
-                      >
-                        {toPct(tick)}
-                      </span>
-                    ))}
-                  </div>
                 </div>
-              </div>
               )}
             </div>
             <GlobalSettingsSidebar {...settingsModalProps} />

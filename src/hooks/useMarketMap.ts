@@ -2,9 +2,9 @@ import { useQuery } from '@tanstack/react-query'
 import { getMarketMap } from '@/api/marketMap'
 import { marketMapKeys } from './queryKeys'
 import { MARKET_DATA_CACHE } from './cacheConfig'
-import type { Market } from '@/types/api'
+import type { MarketQuery } from '@/types/api'
 
-export function useMarketMap(market: Market, isCustom: boolean, options?: { enabled?: boolean }) {
+export function useMarketMap(market: MarketQuery, isCustom: boolean, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: marketMapKeys.map(market, isCustom),
     queryFn: () => getMarketMap(market, isCustom),

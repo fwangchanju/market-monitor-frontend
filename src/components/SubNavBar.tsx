@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useIsAdmin } from '@/hooks/useAccess'
+import type { MarketQuery } from '@/types/api'
 
 const BASE_LINKS = [
   { to: '/market-summary', label: '요약' },
@@ -9,12 +10,30 @@ const BASE_LINKS = [
 ]
 const ADMIN_LINK = { to: '/admin/market-map', label: '커스텀' }
 
-// "지도" 탭 위에 마우스를 올리면 뜨는 마켓 목록 — market이 없으면(All Stocks) 아직 지원 안 해서 비활성.
-const MARKET_LIST_ITEMS: { label: string; market?: 'KOSPI' | 'KOSDAQ' }[] = [
+// "지도"/"섹터" 탭 위에 마우스를 올리면 뜨는 마켓 목록 — 두 탭 다 같은 목록이고 이동할 경로(basePath)만
+// 다르다.
+const MARKET_LIST_ITEMS: { label: string; market: MarketQuery }[] = [
   { label: 'KOSPI', market: 'KOSPI' },
   { label: 'KOSDAQ', market: 'KOSDAQ' },
-  { label: 'All Stocks' },
+  { label: 'All Stocks', market: 'ALL_STOCKS' },
 ]
+
+// 글자가 안 잘리도록 가장 긴 라벨("All Stocks") 기준으로 폭이 자동으로 늘어난다(w-max).
+function MarketDropdownItems({ basePath }: { basePath: string }) {
+  return (
+    <>
+      {MARKET_LIST_ITEMS.map(({ label, market }) => (
+        <Link
+          key={label}
+          to={`${basePath}?market=${market}`}
+          className="px-3 py-1 text-left text-lg font-normal whitespace-nowrap text-white hover:bg-gray-800"
+        >
+          {label}
+        </Link>
+      ))}
+    </>
+  )
+}
 
 // "커스텀" 탭 위에 마우스를 올리면 뜨는 목록 — 어드민 종목/카테고리 관리 전환(예전엔 좌측 사이드바).
 const ADMIN_MODE_LIST_ITEMS: { label: string; mode: 'stock' | 'category' }[] = [
@@ -54,29 +73,10 @@ export default function SubNavBar({ actions }: Props) {
     <div className="flex h-8 shrink-0 items-center justify-between gap-3 bg-[#333333] px-3 text-xs shadow-lg">
       <div className="flex h-8 items-center gap-3">
         {links.map(link =>
-          link.to === '/market-map' ? (
+          link.to === '/market-map' || link.to === '/category-change-rate' ? (
+            // 클릭하면 그냥 기본값(KOSPI)으로 이동하고, 마켓을 올려두면 여기서 골라 바로 그 마켓으로 들어갈 수 있다.
             <TabWithDropdown key={link.to} to={link.to} label={link.label} active={location.pathname === link.to}>
-              {/* 클릭하면 그냥 지도(기본값 KOSPI)로 이동하고, 마켓을 올려두면 여기서 골라 바로 그 마켓
-                  지도로 들어갈 수 있다. 글자가 안 잘리도록 가장 긴 라벨("All Stocks") 기준으로
-                  폭이 자동으로 늘어난다(w-max). */}
-              {MARKET_LIST_ITEMS.map(({ label, market }) =>
-                market ? (
-                  <Link
-                    key={label}
-                    to={`/market-map?market=${market}`}
-                    className="px-3 py-1 text-left text-lg font-normal whitespace-nowrap text-white hover:bg-gray-800"
-                  >
-                    {label}
-                  </Link>
-                ) : (
-                  <span
-                    key={label}
-                    className="cursor-not-allowed px-3 py-1 text-left text-lg font-normal whitespace-nowrap text-gray-500"
-                  >
-                    {label}
-                  </span>
-                ),
-              )}
+              <MarketDropdownItems basePath={link.to} />
             </TabWithDropdown>
           ) : link.to === '/admin/market-map' ? (
             <TabWithDropdown key={link.to} to={link.to} label={link.label} active={location.pathname === link.to}>
