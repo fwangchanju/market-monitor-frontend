@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useRef } from 'react'
 import MarketMapBox from './MarketMapBox'
+import Tooltip from './Tooltip'
+import { useTooltip } from '@/hooks/useTooltip'
 import { categoryHeaderHeight, PADDING, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
 import { TAB_GAP, toJoEokDecimal, toPctSigned } from '@/utils/format'
 import type { MarketMapItem } from '@/types/api'
@@ -53,6 +54,10 @@ function categoryHeaderFontSize(depth: number): number {
   return Math.max(16 - depth * 2, 12)
 }
 
+// 마우스 커서(손모양 아이콘)가 툴팁 첫 글자를 가리지 않도록 두는 좌우 간격 — 종목 박스 툴팁과
+// 동일한 간격(56px)을 쓰지만, 이 컴포넌트 전용 값으로 별도 관리한다(MarketMapBox.tsx에서 import하지 않음).
+const TOOLTIP_OFFSET_X = 56
+
 // 투명도로 옅게 하면 페이지 배경 자체가 어두워서 뒤로 비치는 색이 없어 거의 구분이 안 됐다 —
 // 배경과 무관하게 확실히 보이도록 불투명한 순수 무채색(파란기 없는 진짜 검정~회색)을 뎁스가
 // 깊어질수록 점점 밝게 나열한다. Tailwind의 gray-600(파란기 도는 회색, 등락률 0%에 이미 씀)과
@@ -75,9 +80,8 @@ export default function MarketMapCategorySection({
   labelMinAreaPercent,
   depth = 0,
 }: Props) {
-  const [hover, setHover] = useState(false)
-  const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null)
   const boxRef = useRef<HTMLDivElement>(null)
+  const tooltip = useTooltip(TOOLTIP_OFFSET_X, 8, category.tooltipAlignLeft, category.tooltipAlignTop)
 
   const items = collectCategoryItems(category)
   // 백엔드가 내려주는 값을 우선 쓰고, 아직 스냅샷이 없는 카테고리(기본 마켓맵, 신설 카테고리 등)만
@@ -88,13 +92,6 @@ export default function MarketMapCategorySection({
   const advancerCount = items.filter(item => item.changeRate > 0).length
   const declinerCount = items.filter(item => item.changeRate < 0).length
   const unchangedCount = items.length - advancerCount - declinerCount
-  // 호버 툴팁은 태그 텍스트와 달리 항목별로 줄바꿈해서 보여준다.
-  const label = [
-    category.categoryName,
-    `${avgChangeRateUseSimple ? '산술평균' : '가중평균'} 등락률: ${toPctSigned(avgChangeRate)}`,
-    `상승 ${advancerCount} 하락 ${declinerCount} 보합 ${unchangedCount}`,
-    `시가총액 합: ${toJoEokDecimal(category.totalMarketValue / 100_000_000)}`,
-  ].join('\n')
   // 태그는 공간이 좁아서 라벨 없이 값만 나열한다 — 표시되는 항목들 사이는 TAB_GAP으로 구분,
   // 등락 종목수 안의 상승/하락/보합 사이는 스페이스 1칸. 순서는 등락률 → 등락 종목수 → 시총(표시 설정 순서와 동일).
   const headerParts = [
@@ -105,18 +102,6 @@ export default function MarketMapCategorySection({
     isInDepthRange(marketValueDepthRange, depth) ? toJoEokDecimal(category.totalMarketValue / 100_000_000) : null,
   ].filter((part): part is string => part !== null)
   const headerSuffix = headerParts.length > 0 ? `${TAB_GAP}${headerParts.join(TAB_GAP)}` : ''
-
-  const updateTooltipPos = (e: React.MouseEvent) => {
-    setTooltipPos({
-      left: e.clientX + (category.tooltipAlignLeft ? -12 : 12),
-      top: e.clientY + (category.tooltipAlignTop ? -8 : 8),
-    })
-  }
-
-  const handleMouseEnter = (e: React.MouseEvent) => {
-    setHover(true)
-    updateTooltipPos(e)
-  }
 
   return (
     <div
@@ -129,9 +114,9 @@ export default function MarketMapCategorySection({
         height: category.height,
         // 나중에 그려지는 형제 카테고리의 테두리가 먼저 hover된 카테고리의 테두리 위를 덮지 않도록,
         // MarketMapBox와 동일하게 hover 시 z-index를 올린다.
-        zIndex: hover ? 20 : undefined,
+        zIndex: tooltip.hover ? 20 : undefined,
       }}
-      className={`box-content ${hover ? 'border-2 border-yellow-600' : 'border border-black'}`}
+      className={`box-content ${tooltip.hover ? 'border-2 border-yellow-600' : 'border border-black'}`}
     >
       <button
         type="button"
@@ -153,35 +138,35 @@ export default function MarketMapCategorySection({
                 onOpenExcludeMenu(category.categoryId, category.categoryName, e)
               }
         }
-        onMouseEnter={handleMouseEnter}
-        onMouseMove={updateTooltipPos}
-        onMouseLeave={() => setHover(false)}
+        onMouseEnter={tooltip.onMouseEnter}
+        onMouseMove={tooltip.onMouseMove}
+        onMouseLeave={tooltip.onMouseLeave}
         style={{
           height: categoryHeaderHeight(depth),
           fontSize: categoryHeaderFontSize(depth),
           left: PADDING,
           width: `calc(100% - ${PADDING * 2}px)`,
         }}
-        className={`absolute top-0 flex items-center overflow-hidden truncate border-2 border-transparent px-1 text-left font-bold leading-none text-yellow-600 ${categoryHeaderColorClass(depth)}`}
+        className={`absolute top-0 flex items-center overflow-hidden truncate border-2 border-transparent px-1 text-left font-bold leading-none ${depth === 0 ? 'text-yellow-600' : 'text-white'} ${categoryHeaderColorClass(depth)}`}
       >
         {category.categoryName}
         {headerSuffix && <span className="font-normal">{headerSuffix}</span>}
       </button>
-      {hover &&
-        tooltipPos &&
-        createPortal(
-          <div
-            className="pointer-events-none fixed z-[9999] w-max whitespace-pre-line rounded border border-gray-600 bg-[var(--surface)] px-2 py-1 text-left text-xs text-white shadow-lg"
-            style={{
-              left: tooltipPos.left,
-              top: tooltipPos.top,
-              transform: `translate(${category.tooltipAlignLeft ? '-100%' : '0'}, ${category.tooltipAlignTop ? '-100%' : '0'})`,
-            }}
-          >
-            {label}
-          </div>,
-          document.body,
-        )}
+      <Tooltip
+        visible={tooltip.hover}
+        position={tooltip.position}
+        alignLeft={category.tooltipAlignLeft}
+        alignTop={category.tooltipAlignTop}
+      >
+        <div className="font-bold">{category.categoryName}</div>
+        <div>
+          {avgChangeRateUseSimple ? '산술평균' : '가중평균'} 등락률: {toPctSigned(avgChangeRate)}
+        </div>
+        <div>
+          상승 {advancerCount} 하락 {declinerCount} 보합 {unchangedCount}
+        </div>
+        <div>시가총액 합: {toJoEokDecimal(category.totalMarketValue / 100_000_000)}</div>
+      </Tooltip>
       {category.subCategories.map(sub => (
         <MarketMapCategorySection
           key={sub.categoryName}

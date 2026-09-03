@@ -68,9 +68,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // — 둘 다 0(OFF)이면 꺼짐. 실제 뎁스 범위로 변환한 값은 각각의 DepthRange를 통해서만 하위로 내려보낸다.
   const [marketValueDepthMinIndex, setMarketValueDepthMinIndex] = usePersistedState('marketMap.marketValueDepthMinIndex', 0)
   const [marketValueDepthMaxIndex, setMarketValueDepthMaxIndex] = usePersistedState('marketMap.marketValueDepthMaxIndex', 0)
-  // 기본값: 대분류만 켜짐(렌더러가 캡처하는 기본 화면에 등락률이 보이도록).
-  const [avgChangeRateDepthMinIndex, setAvgChangeRateDepthMinIndex] = usePersistedState('marketMap.avgChangeRateDepthMinIndex', 1)
-  const [avgChangeRateDepthMaxIndex, setAvgChangeRateDepthMaxIndex] = usePersistedState('marketMap.avgChangeRateDepthMaxIndex', 1)
+  // 기본값: 중분류만 켜짐(렌더러가 캡처하는 기본 화면에 등락률이 보이도록).
+  const [avgChangeRateDepthMinIndex, setAvgChangeRateDepthMinIndex] = usePersistedState('marketMap.avgChangeRateDepthMinIndex', 2)
+  const [avgChangeRateDepthMaxIndex, setAvgChangeRateDepthMaxIndex] = usePersistedState('marketMap.avgChangeRateDepthMaxIndex', 2)
   const [upDownCountDepthMinIndex, setUpDownCountDepthMinIndex] = usePersistedState('marketMap.upDownCountDepthMinIndex', 0)
   const [upDownCountDepthMaxIndex, setUpDownCountDepthMaxIndex] = usePersistedState('marketMap.upDownCountDepthMaxIndex', 0)
   // 등락률 태그/툴팁에 가중평균 대신 산술평균을 보여줄지 — 기본은 가중평균(기존 동작과 동일).
