@@ -3,7 +3,7 @@ import { z } from 'zod'
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 타입 추출 전용, 실제 파싱엔 안 씀
-const MarketQuerySchema = z.enum(['KOSPI', 'KOSDAQ', 'COMBINED'])
+const MarketQuerySchema = z.enum(['KOSPI', 'KOSDAQ', 'ALL_STOCKS'])
 export type MarketQuery = z.infer<typeof MarketQuerySchema>
 
 export const MarketSchema = z.enum(['KOSPI', 'KOSDAQ'])
@@ -244,7 +244,15 @@ export const CategoryChangeRateItemSchema = z.object({
 })
 export type CategoryChangeRateItem = z.infer<typeof CategoryChangeRateItemSchema>
 
-export const CategoryChangeRateResponseSchema = snapshotResponseSchema(CategoryChangeRateItemSchema)
+export const CategoryChangeRateMarketRankingSchema = z.object({
+  market: MarketSchema,
+  items: z.array(CategoryChangeRateItemSchema),
+})
+export type CategoryChangeRateMarketRanking = z.infer<typeof CategoryChangeRateMarketRankingSchema>
+
+// snapshotTime은 요청한 마켓들이 공통으로 가진 최신 시각 하나 — ALL_STOCKS면 KOSPI/KOSDAQ이 같은 시각
+// 기준으로 나란히 나온다(마켓별로 제각각인 시각을 보여주지 않는다). 단일 마켓 조회면 항목 1개짜리 배열.
+export const CategoryChangeRateResponseSchema = snapshotResponseSchema(CategoryChangeRateMarketRankingSchema)
 
 // 박스/범례 등락률 컬러 스케일의 기준값 하나(admin이 개별 CRUD하는 단위) — src/utils/marketMapColorScale.ts 참고.
 // side는 별도 필드로 두지 않고 thresholdPercent의 부호로 표현한다(음수=하락, 0=기준, 양수=상승).

@@ -7,7 +7,7 @@ import Spinner from './Spinner'
 import TabSelector from './TabSelector'
 import WidgetSection from './WidgetSection'
 
-const MARKETS: MarketQuery[] = ['KOSPI', 'KOSDAQ', 'COMBINED']
+const MARKETS: MarketQuery[] = ['KOSPI', 'KOSDAQ', 'ALL_STOCKS']
 const INVESTORS: IntradayInvestor[] = ['FOREIGN_TOTAL', 'FOREIGNER', 'INSTITUTION', 'PENSION_FUND', 'TRUST']
 const RANKINGS: IntradayRanking[] = ['NET_BUY', 'NET_SELL']
 

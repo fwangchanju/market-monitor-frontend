@@ -110,7 +110,7 @@ export const toJoEokDecimal = (eokValue: number): string => {
 
 /** 시장명 한글 */
 export const marketLabel = (market: string): string => {
-  if (market === 'COMBINED') return '통합'
+  if (market === 'ALL_STOCKS') return '통합'
   return market
 }
 

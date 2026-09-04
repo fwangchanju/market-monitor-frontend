@@ -12,7 +12,7 @@ import {
   type ColorScaleConfig,
   type ColorScaleThreshold,
 } from '@/utils/marketMapColorScale'
-import type { Market, MarketMapCategoryNode } from '@/types/api'
+import type { MarketQuery, MarketMapCategoryNode } from '@/types/api'
 
 // 조회 실패/로딩 중이거나 "색상 커스텀 사용"이 꺼져있을 때 쓰는 폴백 — thresholds가 비어있으면 어차피
 // 기본 프리셋으로 귀결된다(resolveMarketMapColor/resolveLegendSwatches 참고).
@@ -62,7 +62,7 @@ function findCategoryPath(nodes: MarketMapCategoryNode[], targetId: number, ance
 // 내용 자체는 어느 페이지에서 열든 동일하게 보인다.
 export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const needsTree = options?.needsTree ?? true
-  const [market, setMarket] = usePersistedState<Market>('marketMap.market', 'KOSPI')
+  const [market, setMarket] = usePersistedState<MarketQuery>('marketMap.market', 'KOSPI')
   const [isCustom, setIsCustom] = usePersistedState('marketMap.isCustom', true)
   // 세 표시 옵션(시가총액 합/등락률 평균/등락 종목수) 모두 슬라이더 인덱스 기준(0=OFF, 1=뎁스0, 2=뎁스1, ...)
   // — 둘 다 0(OFF)이면 꺼짐. 실제 뎁스 범위로 변환한 값은 각각의 DepthRange를 통해서만 하위로 내려보낸다.
