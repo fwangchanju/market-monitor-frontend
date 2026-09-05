@@ -22,6 +22,12 @@ import {
 } from '@/api/marketMapAdmin'
 import { marketMapAdminKeys } from './queryKeys'
 import { STATIC_REFERENCE_CACHE, INFREQUENT_DATA_CACHE } from './cacheConfig'
+import type { StockCategoryListItem } from '@/types/api'
+
+interface StockCategoryListResponse {
+  snapshotTime: string | null
+  items: StockCategoryListItem[]
+}
 
 export function useAdminCategories() {
   return useQuery({
@@ -129,12 +135,30 @@ export function useDeleteVersion() {
   })
 }
 
+// 서버 재조회 대신 캐시에 있는 그 종목의 categoryId만 직접 패치한다 — 화면에 보이는 대/중/소분류는
+// categoryId를 카테고리 트리에서 찾아 렌더 시점에 계산하므로 이 필드만 바꿔도 바로 정확히 반영된다.
+// 재조회(invalidate)를 하면 필터링 중이던 목록에서 방금 바꾼 종목이 새 카테고리 기준으로 곧장
+// 걸러져 사라져버리는 문제가 있었다 — 목록 자체(필터링된 종목 집합)를 다시 계산하는 건 필터 조건을
+// 바꾸거나 명시적으로 새로고침할 때만 일어나야 한다.
+function patchStockCategoryId(
+  queryClient: ReturnType<typeof useQueryClient>,
+  stockCodes: string[],
+  categoryId: number,
+) {
+  const stockCodeSet = new Set(stockCodes)
+  queryClient.setQueryData<StockCategoryListResponse>(marketMapAdminKeys.stockCategories(), old =>
+    old
+      ? { ...old, items: old.items.map(item => (stockCodeSet.has(item.stockCode) ? { ...item, categoryId } : item)) }
+      : old,
+  )
+}
+
 export function useAssignStockCategory() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ stockCode, categoryId }: { stockCode: string; categoryId: number }) =>
       assignStockCategory(stockCode, categoryId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.stockCategories() }),
+    onSuccess: (_data, { stockCode, categoryId }) => patchStockCategoryId(queryClient, [stockCode], categoryId),
   })
 }
 
@@ -143,7 +167,7 @@ export function useBulkAssignStockCategory() {
   return useMutation({
     mutationFn: ({ stockCodes, categoryId }: { stockCodes: string[]; categoryId: number }) =>
       bulkAssignStockCategory(stockCodes, categoryId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.stockCategories() }),
+    onSuccess: (_data, { stockCodes, categoryId }) => patchStockCategoryId(queryClient, stockCodes, categoryId),
   })
 }
 

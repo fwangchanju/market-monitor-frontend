@@ -130,7 +130,9 @@ export default function MarketMapTreemap({
     return () => observer.disconnect()
   }, [])
 
-  const categories = useMarketMapLayout(groups, selfCategoryName, size.width, size.height)
+  // "동일 가중" 토글(avgChangeRateUseSimple) — 켜지면 박스 크기도 시가총액이 아니라 종목 개수
+  // 비례로 균등하게 그린다(useMarketMapLayout 참고).
+  const categories = useMarketMapLayout(groups, selfCategoryName, size.width, size.height, avgChangeRateUseSimple)
 
   const handleOpenExcludeMenu = (categoryId: number, categoryName: string, e: React.MouseEvent) => {
     setContextMenu({ categoryId, categoryName, left: e.clientX, top: e.clientY })

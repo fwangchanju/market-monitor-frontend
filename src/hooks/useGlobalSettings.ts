@@ -18,10 +18,7 @@ import type { MarketQuery, MarketMapCategoryNode } from '@/types/api'
 // 기본 프리셋으로 귀결된다(resolveMarketMapColor/resolveLegendSwatches 참고).
 const EMPTY_COLOR_SCALE: ColorScaleConfig = { thresholds: [] }
 
-// 슬라이더 인덱스(0=OFF, 1=뎁스0, 2=뎁스1, ...)를 실제 뎁스 범위로 변환한다. max가 OFF(0)에 있으면 완전히 꺼짐.
-function toDepthRange(minIndex: number, maxIndex: number): [number, number] | null {
-  return maxIndex > 0 ? [Math.max(minIndex - 1, 0), maxIndex - 1] : null
-}
+export type DepthMetric = 'avgChangeRate' | 'upDownCount' | 'marketValue'
 
 // categoryId -> "상위 - 하위" 형태의 전체 경로. "이 섹터가 제외 목록에 있는지"만 관리하고,
 // 실제로 화면에서 걸러낼지는 별도의 sectorFilterEnabled 마스터 스위치가 결정한다.
@@ -50,7 +47,7 @@ function findCategoryPath(nodes: MarketMapCategoryNode[], targetId: number, ance
   return null
 }
 
-// "설정" 사이드바(GlobalSettingsSidebar) + 색상 구간 편집 패널이 필요로 하는 상태/로직 전부를
+// "설정" 사이드바(SettingsSidebar) + 색상 구간 편집 패널이 필요로 하는 상태/로직 전부를
 // 여기 한 곳에 모아둔다 — 세션스토리지 키를 그대로 공유해서 어느 페이지에서 열어도 같은 값을 보고
 // 편집한다(지도/섹터 페이지뿐 아니라 아직 이 옵션이 실제로 영향 안 주는 페이지에서 열어도 동일).
 // 페이지별로 서로 다른 옵션을 보여줘야 할 필요가 생기면 그때 이 훅을 쪼개면 된다.
@@ -64,15 +61,18 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const needsTree = options?.needsTree ?? true
   const [market, setMarket] = usePersistedState<MarketQuery>('marketMap.market', 'KOSPI')
   const [isCustom, setIsCustom] = usePersistedState('marketMap.isCustom', true)
-  // 세 표시 옵션(시가총액 합/등락률 평균/등락 종목수) 모두 슬라이더 인덱스 기준(0=OFF, 1=뎁스0, 2=뎁스1, ...)
-  // — 둘 다 0(OFF)이면 꺼짐. 실제 뎁스 범위로 변환한 값은 각각의 DepthRange를 통해서만 하위로 내려보낸다.
-  const [marketValueDepthMinIndex, setMarketValueDepthMinIndex] = usePersistedState('marketMap.marketValueDepthMinIndex', 0)
-  const [marketValueDepthMaxIndex, setMarketValueDepthMaxIndex] = usePersistedState('marketMap.marketValueDepthMaxIndex', 0)
-  // 기본값: 중분류만 켜짐(렌더러가 캡처하는 기본 화면에 등락률이 보이도록).
-  const [avgChangeRateDepthMinIndex, setAvgChangeRateDepthMinIndex] = usePersistedState('marketMap.avgChangeRateDepthMinIndex', 2)
-  const [avgChangeRateDepthMaxIndex, setAvgChangeRateDepthMaxIndex] = usePersistedState('marketMap.avgChangeRateDepthMaxIndex', 2)
-  const [upDownCountDepthMinIndex, setUpDownCountDepthMinIndex] = usePersistedState('marketMap.upDownCountDepthMinIndex', 0)
-  const [upDownCountDepthMaxIndex, setUpDownCountDepthMaxIndex] = usePersistedState('marketMap.upDownCountDepthMaxIndex', 0)
+  // 시가총액 합/등락률 평균/등락 종목수 태그를 셋 다 동시에 켤 수 있었는데, 한꺼번에 여러 개가 뜨면
+  // 카테고리 헤더가 너무 정신없어서 라디오처럼 하나만 켤 수 있게 바꿨다 — 뎁스 범위 슬라이더도 셋의
+  // 내용(스텝/라벨)이 완전히 같으니 하나만 두고, 그 슬라이더가 지금 어느 지표에 적용되는지만
+  // activeDepthMetric으로 고른다(null = 전부 꺼짐). 인덱스는 뎁스에 직접 대응(0=대분류, 1=중분류, ...)
+  // — 예전처럼 별도 OFF 칸을 안 둔다(꺼짐은 activeDepthMetric=null로 표현).
+  const [activeDepthMetric, setActiveDepthMetric] = usePersistedState<DepthMetric | null>(
+    'marketMap.activeDepthMetric',
+    'avgChangeRate',
+  )
+  // 기본값: 중분류(index 1) — 렌더러가 캡처하는 기본 화면에 등락률이 보이도록.
+  const [depthMetricMinIndex, setDepthMetricMinIndex] = usePersistedState('marketMap.depthMetricMinIndex', 1)
+  const [depthMetricMaxIndex, setDepthMetricMaxIndex] = usePersistedState('marketMap.depthMetricMaxIndex', 1)
   // 등락률 태그/툴팁에 가중평균 대신 산술평균을 보여줄지 — 기본은 가중평균(기존 동작과 동일).
   const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePersistedState('marketMap.avgChangeRateUseSimple', false)
   // 종목 박스가 전체 트리맵 넓이에서 이 비중(%) 미만이면 종목명/등락률을 표시하지 않는다(카테고리 헤더와는 무관).
@@ -129,28 +129,20 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     isCustom ? maxDepth : null,
   )
 
-  // 데이터가 얕아서(예: 기본값 2인데 실제 뎁스가 1까지밖에 없음) 저장된 범위가 availableMaxDepth를
-  // 넘어설 수 있다 — 이럴 땐 어중간하게 줄여서 보여주는 대신 아예 OFF로 취급한다("분류 차수 범위"
-  // 단일 슬라이더처럼 최대치로 줄여 보여주는 것과는 다른 정책). 실제 뎁스 범위 계산은 물론, 슬라이더에
-  // 내려보내는 값도 이 값으로 통일해야 슬라이더 내부 드래그/클릭 판정도 어긋나지 않는다.
-  const clampDepthRange = (minIndex: number, maxIndex: number): [number, number] =>
-    maxIndex > availableMaxDepth ? [0, 0] : [minIndex, maxIndex]
-  const [marketValueClampedMinIndex, marketValueClampedMaxIndex] = clampDepthRange(
-    marketValueDepthMinIndex,
-    marketValueDepthMaxIndex,
-  )
-  const [avgChangeRateClampedMinIndex, avgChangeRateClampedMaxIndex] = clampDepthRange(
-    avgChangeRateDepthMinIndex,
-    avgChangeRateDepthMaxIndex,
-  )
-  const [upDownCountClampedMinIndex, upDownCountClampedMaxIndex] = clampDepthRange(
-    upDownCountDepthMinIndex,
-    upDownCountDepthMaxIndex,
-  )
+  // 데이터가 얕아서(예: 기본값 중분류인데 실제 뎁스가 대분류까지밖에 없음) 저장된 범위가
+  // availableMaxDepth를 넘어설 수 있다 — 이럴 땐 어중간하게 줄여서 보여주는 대신 아예 꺼진 것으로
+  // 취급한다. 슬라이더에 내려보내는 값도 이 값으로 통일해야 슬라이더 내부 드래그/클릭 판정도
+  // 어긋나지 않는다.
+  const depthMetricClampedMinIndex = Math.min(depthMetricMinIndex, depthMetricMaxIndex)
+  const depthMetricClampedMaxIndex = depthMetricMaxIndex
+  const isDepthMetricRangeValid = depthMetricClampedMaxIndex < availableMaxDepth
 
-  const marketValueDepthRange = toDepthRange(marketValueClampedMinIndex, marketValueClampedMaxIndex)
-  const avgChangeRateDepthRange = toDepthRange(avgChangeRateClampedMinIndex, avgChangeRateClampedMaxIndex)
-  const upDownCountDepthRange = toDepthRange(upDownCountClampedMinIndex, upDownCountClampedMaxIndex)
+  const activeDepthRange: [number, number] | null =
+    activeDepthMetric !== null && isDepthMetricRangeValid ? [depthMetricClampedMinIndex, depthMetricClampedMaxIndex] : null
+
+  const marketValueDepthRange = activeDepthMetric === 'marketValue' ? activeDepthRange : null
+  const avgChangeRateDepthRange = activeDepthMetric === 'avgChangeRate' ? activeDepthRange : null
+  const upDownCountDepthRange = activeDepthMetric === 'upDownCount' ? activeDepthRange : null
 
   // 등락률 컬러 스케일 draft — 서버 값(useMarketMapColorScale)이 도착하면 딱 한 번만 시드하고,
   // 이후로는 어드민이 설정 팝업에서 편집하는 draft를 그대로 트리맵/범례에 흘려보낸다. 그래서 "저장"
@@ -322,23 +314,13 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     maxDepth,
     availableMaxDepth,
     onChangeMaxDepth: setMaxDepth,
-    marketValueDepthMinIndex: marketValueClampedMinIndex,
-    marketValueDepthMaxIndex: marketValueClampedMaxIndex,
-    onChangeMarketValueDepthRange: (min: number, max: number) => {
-      setMarketValueDepthMinIndex(min)
-      setMarketValueDepthMaxIndex(max)
-    },
-    avgChangeRateDepthMinIndex: avgChangeRateClampedMinIndex,
-    avgChangeRateDepthMaxIndex: avgChangeRateClampedMaxIndex,
-    onChangeAvgChangeRateDepthRange: (min: number, max: number) => {
-      setAvgChangeRateDepthMinIndex(min)
-      setAvgChangeRateDepthMaxIndex(max)
-    },
-    upDownCountDepthMinIndex: upDownCountClampedMinIndex,
-    upDownCountDepthMaxIndex: upDownCountClampedMaxIndex,
-    onChangeUpDownCountDepthRange: (min: number, max: number) => {
-      setUpDownCountDepthMinIndex(min)
-      setUpDownCountDepthMaxIndex(max)
+    activeDepthMetric,
+    onChangeActiveDepthMetric: setActiveDepthMetric,
+    depthMetricMinIndex: depthMetricClampedMinIndex,
+    depthMetricMaxIndex: depthMetricClampedMaxIndex,
+    onChangeDepthMetricRange: (min: number, max: number) => {
+      setDepthMetricMinIndex(min)
+      setDepthMetricMaxIndex(max)
     },
     avgChangeRateUseSimple,
     onToggleAvgChangeRateUseSimple: () => setAvgChangeRateUseSimple(prev => !prev),
@@ -396,10 +378,15 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     avgChangeRateDepthRange,
     upDownCountDepthRange,
     avgChangeRateUseSimple,
+    excludedMarketValueTiers,
     boxLabelMinAreaPercent,
     colorScale,
     legendSwatches,
     excludedCategoryNames,
+    // 커스텀 모드+섹터 기준 스위치가 둘 다 켜져있을 때만 실제로 적용되는 최종 제외 대상 ID 집합
+    // (filteredRootNodes를 만들 때 쓰는 것과 동일한 값) — 트리를 직접 그리지 않고 카테고리 ID
+    // 기준으로만 걸러내면 되는 페이지(카테고리 랭킹 등)를 위해 내보낸다.
+    excludedCategoryIds,
     handleExcludeCategory,
     handleRemoveExcludedCategory,
   }

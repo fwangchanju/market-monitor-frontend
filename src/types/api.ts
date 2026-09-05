@@ -3,7 +3,7 @@ import { z } from 'zod'
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 타입 추출 전용, 실제 파싱엔 안 씀
-const MarketQuerySchema = z.enum(['KOSPI', 'KOSDAQ', 'ALL_STOCKS'])
+const MarketQuerySchema = z.enum(['KOSPI', 'KOSDAQ', 'ALL_STOCK'])
 export type MarketQuery = z.infer<typeof MarketQuerySchema>
 
 export const MarketSchema = z.enum(['KOSPI', 'KOSDAQ'])
@@ -250,7 +250,7 @@ export const CategoryChangeRateMarketRankingSchema = z.object({
 })
 export type CategoryChangeRateMarketRanking = z.infer<typeof CategoryChangeRateMarketRankingSchema>
 
-// snapshotTime은 요청한 마켓들이 공통으로 가진 최신 시각 하나 — ALL_STOCKS면 KOSPI/KOSDAQ이 같은 시각
+// snapshotTime은 요청한 마켓들이 공통으로 가진 최신 시각 하나 — ALL_STOCK면 KOSPI/KOSDAQ이 같은 시각
 // 기준으로 나란히 나온다(마켓별로 제각각인 시각을 보여주지 않는다). 단일 마켓 조회면 항목 1개짜리 배열.
 export const CategoryChangeRateResponseSchema = snapshotResponseSchema(CategoryChangeRateMarketRankingSchema)
 

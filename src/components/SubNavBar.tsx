@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useIsAdmin } from '@/hooks/useAccess'
+import { FONT_NAV_TAB } from '@/components/FontStyle'
 import type { MarketQuery } from '@/types/api'
 
 const BASE_LINKS = [
@@ -15,10 +16,10 @@ const ADMIN_LINK = { to: '/admin/market-map', label: '커스텀' }
 const MARKET_LIST_ITEMS: { label: string; market: MarketQuery }[] = [
   { label: 'KOSPI', market: 'KOSPI' },
   { label: 'KOSDAQ', market: 'KOSDAQ' },
-  { label: 'All Stocks', market: 'ALL_STOCKS' },
+  { label: 'ALL STOCK', market: 'ALL_STOCK' },
 ]
 
-// 글자가 안 잘리도록 가장 긴 라벨("All Stocks") 기준으로 폭이 자동으로 늘어난다(w-max).
+// 글자가 안 잘리도록 가장 긴 라벨("ALL STOCK") 기준으로 폭이 자동으로 늘어난다(w-max).
 function MarketDropdownItems({ basePath }: { basePath: string }) {
   return (
     <>
@@ -52,10 +53,10 @@ interface Props {
 function TabWithDropdown({ to, label, active, children }: { to: string; label: string; active: boolean; children: ReactNode }) {
   return (
     <div className="group relative flex h-8 items-center">
-      <Link to={to} className={`whitespace-nowrap text-xl font-bold ${active ? 'text-[#4f8fd6]' : 'text-gray-400 group-hover:text-white'}`}>
+      <Link to={to} className={`${FONT_NAV_TAB} whitespace-nowrap ${active ? 'text-[#4f8fd6]' : 'text-gray-400 group-hover:text-white'}`}>
         {label}
       </Link>
-      <div className="absolute left-0 top-full z-30 hidden w-max flex-col bg-[#333333] py-1 shadow-lg group-hover:flex">{children}</div>
+      <div className="absolute left-0 top-full z-30 hidden w-max flex-col bg-zinc-900 py-1 shadow-lg group-hover:flex">{children}</div>
     </div>
   )
 }
@@ -67,10 +68,10 @@ export default function SubNavBar({ actions }: Props) {
   const links = isAdmin ? [...BASE_LINKS, ADMIN_LINK] : BASE_LINKS
 
   const linkClassName = (to: string) =>
-    `whitespace-nowrap text-xl font-bold ${location.pathname === to ? 'text-[#4f8fd6]' : 'text-gray-400 hover:text-white'}`
+    `${FONT_NAV_TAB} whitespace-nowrap ${location.pathname === to ? 'text-[#4f8fd6]' : 'text-gray-400 hover:text-white'}`
 
   return (
-    <div className="flex h-8 shrink-0 items-center justify-between gap-3 bg-[#333333] px-3 text-xs shadow-lg">
+    <div className="flex h-8 shrink-0 items-center justify-between gap-3 bg-zinc-900 px-3 text-xs shadow-lg">
       <div className="flex h-8 items-center gap-3">
         {links.map(link =>
           link.to === '/market-map' || link.to === '/category-change-rate' ? (
