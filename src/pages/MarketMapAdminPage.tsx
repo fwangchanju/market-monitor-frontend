@@ -4,7 +4,7 @@ import { isAxiosError } from 'axios'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
 import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
-import GlobalSettingsSidebar from '@/components/GlobalSettingsSidebar'
+import SettingsSidebar from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import PermissionDenied from '@/components/PermissionDenied'
 import AdminCategoryTable from '@/components/AdminCategoryTable'
@@ -138,7 +138,7 @@ export default function MarketMapAdminPage() {
                 <AdminCategoryTable categories={categories ?? []} />
               )}
             </div>
-            <GlobalSettingsSidebar {...settingsModalProps} />
+            <SettingsSidebar {...settingsModalProps} pageLabel="커스텀" />
           </div>
         </div>
       </div>

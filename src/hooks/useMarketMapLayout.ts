@@ -77,7 +77,14 @@ export const PADDING = 0
 // (MarketMapBox의 TOOLTIP_OFFSET_X) 더 일찍 반전되도록 0.85 → 0.80으로 낮춤.
 const TOOLTIP_FLIP_EDGE_RATIO = 0.8
 
-function toHierarchyDatum(group: DisplayGroup): HierarchyDatum {
+// equalWeight(설정의 "동일 가중" 토글)가 켜지면 종목마다 실제 시가총액 대신 동일한 상수 값을 줘서,
+// 트리맵 박스 크기가 시가총액이 아니라 카테고리별 "종목 개수" 비례로 나오게 한다(어떤 상수를 쓰든
+// 트리맵은 형제 간 상대 비율만 보므로 결과는 같다). 정렬 순서(큰 시가총액이 앞에 오는 것)까지 같이
+// 무의미해지지 않도록, sum에 쓰는 value와는 별개로 원본 totalMarketValue를 항상 같이 실어서
+// 정렬은 항상 실제 값 기준으로 한다.
+const EQUAL_WEIGHT_VALUE = 1
+
+function toHierarchyDatum(group: DisplayGroup, equalWeight: boolean): HierarchyDatum {
   return {
     name: group.categoryName,
     categoryId: group.categoryId,
@@ -85,10 +92,11 @@ function toHierarchyDatum(group: DisplayGroup): HierarchyDatum {
     weightedAvgChangeRate: group.weightedAvgChangeRate,
     simpleAvgChangeRate: group.simpleAvgChangeRate,
     children: [
-      ...group.children.map(toHierarchyDatum),
+      ...group.children.map(child => toHierarchyDatum(child, equalWeight)),
       ...group.items.map(item => ({
         name: item.stockName,
-        value: Math.max(item.totalMarketValue, 0),
+        value: equalWeight ? EQUAL_WEIGHT_VALUE : Math.max(item.totalMarketValue, 0),
+        totalMarketValue: item.totalMarketValue,
         item,
       })),
     ],
@@ -100,18 +108,19 @@ export function useMarketMapLayout(
   selfCategoryName: string | null,
   width: number,
   height: number,
+  equalWeight: boolean,
 ): LaidOutCategory[] {
   return useMemo(() => {
     if (width <= 0 || height <= 0 || groups.length === 0) return []
 
     const data: HierarchyDatum = {
       name: 'root',
-      children: groups.map(toHierarchyDatum),
+      children: groups.map(group => toHierarchyDatum(group, equalWeight)),
     }
 
     const hierarchyRoot = hierarchy(data)
       .sum(d => d.value ?? 0)
-      .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
+      .sort((a, b) => (b.data.totalMarketValue ?? 0) - (a.data.totalMarketValue ?? 0))
 
     const totalValue = hierarchyRoot.value ?? 0
     if (totalValue <= 0) return []
@@ -182,5 +191,5 @@ export function useMarketMapLayout(
       const tooltipAlignTop = (categoryNode.y1 ?? 0) > height * TOOLTIP_FLIP_EDGE_RATIO
       return toLaidOutCategory(categoryNode, 0, 0, tooltipAlignLeft, tooltipAlignTop)
     })
-  }, [groups, selfCategoryName, width, height])
+  }, [groups, selfCategoryName, width, height, equalWeight])
 }

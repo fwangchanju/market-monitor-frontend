@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { captureElementToDataUrl } from '@/utils/captureToPreview'
-import { DownloadIcon } from '@/components/icons/MarketMapIcons'
+import { DownloadIcon, RefreshIcon } from '@/components/icons/MarketMapIcons'
 import Spinner from '@/components/Spinner'
 
 interface Props {
@@ -94,32 +94,43 @@ export default function MarketMapShareModal({
             </div>
           )}
         </div>
-        <div className="mt-4 flex shrink-0 items-center justify-between gap-4">
+        {/* Download/Close 글자 길이가 서로 달라서 flex justify-between으로는 가운데 칸(복사 상태
+            표시)이 컨테이너 정중앙에 오지 않는다 — 3칸 그리드로 나눠 각 칸 안에서만 정렬하면
+            가운데 칸은 항상 정중앙, 양끝 버튼은 항상 컨테이너 가장자리에 붙는다. 가운데 칸(복사 상태
+            표시)은 조건부로 아예 렌더링 안 될 때가 있는데, 그때 grid auto-placement에 맡기면 실제
+            존재하는 자식 수만큼만 순서대로 칸을 채워서 Close가 3번 칸이 아니라 2번(가운데) 칸으로
+            당겨져 버린다 — 그래서 각 버튼에 col-start를 명시해 항상 고정된 칸에 놓이게 한다. */}
+        <div className="mt-4 grid shrink-0 grid-cols-3 items-center gap-4">
           <button
             type="button"
             onClick={onDownload}
             disabled={isDownloading}
-            className="nes-btn flex items-center gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800"
+            className="nes-btn col-start-1 flex items-center justify-self-start gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800"
           >
             {isDownloading ? <Spinner className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
             {downloadLabel}
           </button>
           {isCopying ? (
-            <p className="flex items-center gap-2 rounded border border-gray-600 bg-black px-3 py-1.5 text-sm text-white shadow-lg">
+            <p className="nes-btn col-start-2 flex items-center justify-self-center gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white shadow-lg">
               <Spinner className="h-4 w-4" />
               클립보드에 복사 중...
             </p>
           ) : (
             showCopiedNotice && (
-              <p className="rounded border border-sky-500 bg-sky-500 px-3 py-1.5 text-sm text-white shadow-lg">
+              <button
+                type="button"
+                onClick={onCopy}
+                className="nes-btn col-start-2 flex items-center justify-self-center gap-2 border-sky-500 bg-sky-500 px-3 py-1.5 text-sm text-white shadow-lg hover:bg-sky-600"
+              >
+                <RefreshIcon className="h-4 w-4" />
                 클립보드에 복사되었습니다
-              </p>
+              </button>
             )
           )}
           <button
             type="button"
             onClick={onClose}
-            className="nes-btn flex items-center gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800"
+            className="nes-btn col-start-3 flex items-center justify-self-end gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800"
           >
             Close
           </button>

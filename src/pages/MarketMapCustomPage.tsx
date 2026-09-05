@@ -3,7 +3,13 @@ import { useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
 import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
-import GlobalSettingsSidebar from '@/components/GlobalSettingsSidebar'
+import SettingsSidebar, {
+  SettingsCustomModeSection,
+  SettingsEqualWeightSection,
+  SettingsDisplayRangeSection,
+  SettingsExcludeSection,
+  SettingsColorSection,
+} from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
 import Spinner from '@/components/Spinner'
@@ -21,7 +27,7 @@ import { captureElementToDownload } from '@/utils/captureToDownload'
 import type { FilteredMarketMapCategoryNode } from '@/hooks/useFilteredMarketMapTree'
 import type { MarketQuery, MarketMapCategoryNode, MarketMapItem } from '@/types/api'
 
-const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCKS: 'ALL STOCKS' }
+const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
 
 function toDisplayGroup(node: FilteredMarketMapCategoryNode): DisplayGroup {
   return {
@@ -121,17 +127,16 @@ export default function MarketMapCustomPage() {
   const rawCurrentNode = findRawNodeByPath(rootNodes, path)
   const totalItemCount = collectRawItems(rawCurrentNode ? [rawCurrentNode] : rootNodes).length
 
-  // 상단 바 표시: 커스텀 모드 on/off를 점등 표시로, 텍스트는 종목 수 하나만 고정 출력.
+  // 상단 바 표시: 커스텀 모드 on/off를 점등 표시로. 종목 수는 옵션 사이드바의 커스텀 모드 토글
+  // 옆으로 옮겨서, 여기서는 켜짐/꺼짐 상태만 보여준다.
   const modeStatusText = (
     <>
       <span
         className={`mr-1.5 inline-block h-2 w-2 rounded-full ${
-          isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-600'
+          isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-400'
         }`}
       />
-      <span className={isCustom ? 'text-white' : undefined}>
-        커스텀 모드 ({visibleItems.length}/{totalItemCount}종목)
-      </span>
+      <span className="text-gray-400">커스텀 모드</span>
     </>
   )
 
@@ -140,12 +145,12 @@ export default function MarketMapCustomPage() {
     reset()
   }
 
-  // SubNavBar의 "지도" 탭 위 마켓 목록에서 KOSPI/KOSDAQ/ALL_STOCKS를 고르면 /market-map?market=...로
+  // SubNavBar의 "지도" 탭 위 마켓 목록에서 KOSPI/KOSDAQ/ALL_STOCK를 고르면 /market-map?market=...로
   // 이동한다. 이미 이 페이지에 있으면(같은 라우트) 리마운트 없이 searchParams만 바뀌므로 여기서 반영하고,
   // 초기 상태 읽는 용도일 뿐 주소창에 남아있을 필요는 없어서 반영 직후 지운다.
   useEffect(() => {
     const param = searchParams.get('market')
-    if (param !== 'KOSPI' && param !== 'KOSDAQ' && param !== 'ALL_STOCKS') return
+    if (param !== 'KOSPI' && param !== 'KOSDAQ' && param !== 'ALL_STOCK') return
     handleMarketChange(param)
     setSearchParams(
       prev => {
@@ -230,7 +235,7 @@ export default function MarketMapCustomPage() {
                 onClick={() => handleGoToDepth(0)}
                 className={`${FONT_BAR_TITLE} ${path.length > 0 ? 'cursor-pointer hover:text-yellow-400' : ''}`}
               >
-                {MARKET_LABEL[market]}
+                {MARKET_LABEL[market]} Map
               </span>
               {marketOverview && (
                 <span className={`${FONT_BAR_MARKET_INDEX} ${signClass(marketOverview.changeRate)}`}>
@@ -249,7 +254,7 @@ export default function MarketMapCustomPage() {
             </span>
             <div className="flex items-center gap-3 self-stretch">
               {data?.snapshotTime && (
-                <span className={`${FONT_BAR_TIME} whitespace-nowrap text-white`}>
+                <span className={`${FONT_BAR_TIME} whitespace-nowrap text-gray-400`}>
                   {toMarketMapSnapshotTimeLabel(data.snapshotTime)}
                 </span>
               )}
@@ -290,7 +295,7 @@ export default function MarketMapCustomPage() {
                     const isHighlighted = breadcrumbHoverIndex !== null && breadcrumbHoverIndex >= segmentIndex
                     return (
                       <span key={index} data-breadcrumb-index={segmentIndex} className="flex items-center gap-1">
-                        <span className={isHighlighted ? 'text-yellow-400' : ''}>-</span>
+                        <span className={isHighlighted ? 'text-yellow-400' : ''}>&gt;</span>
                         {isLastPath ? (
                           // 지금 보고 있는 카테고리라 클릭해도 아무 동작이 없어야 하므로, 버블링을 막아
                           // 바 전체의 onClick(goToDepth(0))으로 전체 화면으로 빠지지 않게 한다.
@@ -343,14 +348,21 @@ export default function MarketMapCustomPage() {
                 />
               )}
             </div>
-            {/* 지도 페이지에서만 커스텀 모드 토글이 드릴다운 경로도 같이 초기화해야 한다. */}
-            <GlobalSettingsSidebar
-              {...settingsModalProps}
-              onToggleCustom={() => {
-                settingsModalProps.onToggleCustom()
-                reset()
-              }}
-            />
+            <SettingsSidebar {...settingsModalProps} pageLabel="지도">
+              {/* 지도 페이지에서만 커스텀 모드 토글이 드릴다운 경로도 같이 초기화해야 한다. */}
+              <SettingsCustomModeSection
+                {...settingsModalProps}
+                onToggleCustom={() => {
+                  settingsModalProps.onToggleCustom()
+                  reset()
+                }}
+                stockCountLabel={`${visibleItems.length}/${totalItemCount}종목`}
+              />
+              <SettingsEqualWeightSection {...settingsModalProps} />
+              <SettingsDisplayRangeSection {...settingsModalProps} />
+              <SettingsExcludeSection {...settingsModalProps} />
+              <SettingsColorSection {...settingsModalProps} />
+            </SettingsSidebar>
           </div>
         </div>
       </div>

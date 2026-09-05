@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
 import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
-import GlobalSettingsSidebar from '@/components/GlobalSettingsSidebar'
+import SettingsSidebar from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketOverviewSection from '@/components/MarketOverviewSection'
 import InvestorTradingSection from '@/components/InvestorTradingSection'
@@ -87,7 +87,7 @@ export default function MarketSummaryPage() {
             {/* 요약 페이지는 아직 이 바에 담을 내용이 없어서, 지도 페이지의 시간 표시 위치(우측 끝)만
                 그대로 가져와 시간만 보여준다. */}
             {marketSummaryData?.marketOverviews.snapshotTime && (
-              <span className={`${FONT_BAR_TIME} whitespace-nowrap text-white`}>
+              <span className={`${FONT_BAR_TIME} whitespace-nowrap text-gray-400`}>
                 {toMarketMapSnapshotTimeLabel(marketSummaryData.marketOverviews.snapshotTime)}
               </span>
             )}
@@ -106,7 +106,7 @@ export default function MarketSummaryPage() {
                 </div>
               </div>
             </div>
-            <GlobalSettingsSidebar {...settingsModalProps} />
+            <SettingsSidebar {...settingsModalProps} pageLabel="요약" />
           </div>
         </div>
       </div>

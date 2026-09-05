@@ -16,10 +16,10 @@ const ADMIN_LINK = { to: '/admin/market-map', label: '커스텀' }
 const MARKET_LIST_ITEMS: { label: string; market: MarketQuery }[] = [
   { label: 'KOSPI', market: 'KOSPI' },
   { label: 'KOSDAQ', market: 'KOSDAQ' },
-  { label: 'All Stocks', market: 'ALL_STOCKS' },
+  { label: 'ALL STOCK', market: 'ALL_STOCK' },
 ]
 
-// 글자가 안 잘리도록 가장 긴 라벨("All Stocks") 기준으로 폭이 자동으로 늘어난다(w-max).
+// 글자가 안 잘리도록 가장 긴 라벨("ALL STOCK") 기준으로 폭이 자동으로 늘어난다(w-max).
 function MarketDropdownItems({ basePath }: { basePath: string }) {
   return (
     <>

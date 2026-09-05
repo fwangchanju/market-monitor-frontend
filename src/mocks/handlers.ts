@@ -55,7 +55,7 @@ export const handlers = [
   http.get('/api/market-map/value-tiers', () => HttpResponse.json(data.marketValueTiers)),
   http.get('/api/market-map/category-change-rates', ({ request }) => {
     const market = new URL(request.url).searchParams.get('market')
-    const rankings = data.categoryChangeRateRankings.filter(r => market === 'ALL_STOCKS' || r.market === market)
+    const rankings = data.categoryChangeRateRankings.filter(r => market === 'ALL_STOCK' || r.market === market)
     return HttpResponse.json(snapshot(rankings))
   }),
   http.get('/api/market-map/scale', () => HttpResponse.json(data.marketMapColorScale)),
