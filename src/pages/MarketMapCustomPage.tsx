@@ -8,6 +8,7 @@ import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
 import Spinner from '@/components/Spinner'
 import NavBarPageActions from '@/components/NavBarPageActions'
+import { FONT_BAR_TITLE, FONT_BAR_MARKET_INDEX, FONT_BAR_MODE_STATUS, FONT_BAR_TIME, FONT_BAR_LEGEND } from '@/components/FontStyle'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
@@ -214,144 +215,143 @@ export default function MarketMapCustomPage() {
             <MarketMapColorThresholdEditorPanel {...colorEditorPanelProps} />
           </div>
         )}
-        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 지도 본문+사이드바를
-            함께 감싸는 바깥 wrapper로 옮겼다 — 사이드바가 닫혀있으면 지도 본문만 있는 것과 동일하다. */}
+        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 세 번째 바(고정) +
+            지도 본문/사이드바(밀리는 영역) 전체를 감싸는 바깥 wrapper로 둔다 — 세 번째 바는 옵션
+            사이드바가 열려도 밀리지 않지만, 캡처에는 계속 포함되어야 하므로 이 위치에 있어야 한다. */}
         <div
           ref={captureRef}
           data-captureid={CAPTURE_ID.MARKET_MAP}
           data-capture-ready={!isLoading}
-          className="flex min-h-0 flex-1"
+          className="flex min-h-0 flex-1 flex-col bg-black"
         >
-          <div className="flex min-h-0 flex-1 flex-col bg-black">
-            <div className="mb-1 grid h-7 w-full shrink-0 grid-cols-[auto_1fr_auto] items-center bg-black/70 pl-1 text-sm font-bold text-white">
-              <div className="flex items-center whitespace-nowrap">
-                <span
-                  onClick={() => handleGoToDepth(0)}
-                  className={`text-xl ${path.length > 0 ? 'cursor-pointer hover:text-yellow-400' : ''}`}
-                >
-                  {MARKET_LABEL[market]}
-                </span>
-                {marketOverview && (
-                  <span className={`text-[15px] font-normal ${signClass(marketOverview.changeRate)}`}>
-                    {TAB_GAP}
-                    {toIndex(marketOverview.indexValue)}
-                    {TAB_GAP}
-                    {marketOverview.changeValue > 0 ? '▲' : marketOverview.changeValue < 0 ? '▼' : ''}
-                    {toIndex(Math.abs(marketOverview.changeValue))}
-                    {TAB_GAP}
-                    {toPctSigned(marketOverview.changeRate)}
-                  </span>
-                )}
-              </div>
-              <span className="min-w-0 whitespace-nowrap text-center text-[15px] font-normal text-gray-400">
-                {modeStatusText}
+          <div className="grid h-7 w-full shrink-0 grid-cols-[auto_1fr_auto] items-center bg-black/70 pl-1 text-sm font-bold text-white">
+            <div className="flex items-center whitespace-nowrap">
+              <span
+                onClick={() => handleGoToDepth(0)}
+                className={`${FONT_BAR_TITLE} ${path.length > 0 ? 'cursor-pointer hover:text-yellow-400' : ''}`}
+              >
+                {MARKET_LABEL[market]}
               </span>
-              <div className="flex items-center gap-3 self-stretch">
-                {data?.snapshotTime && (
-                  <span className="whitespace-nowrap text-[15px] font-normal text-white">
-                    {toMarketMapSnapshotTimeLabel(data.snapshotTime)}
-                  </span>
-                )}
-                {/* self-stretch + items-stretch: 이 칸의 실제 높이가 좌측 마켓명(text-2xl) 줄높이 때문에
-                    h-7보다 커질 수 있어서, 고정 높이 대신 실제 행 높이에 맞춰 늘어나야 스와치 위아래로
-                    검은 배경이 남지 않는다. */}
-                <div className="flex items-stretch self-stretch">
-                  {legendSwatches.map(({ label, color }) => (
-                    <div
-                      key={label}
-                      style={{ backgroundColor: color }}
-                      className="flex w-9 items-center justify-center text-xs"
-                    >
-                      {label}
-                    </div>
-                  ))}
-                </div>
+              {marketOverview && (
+                <span className={`${FONT_BAR_MARKET_INDEX} ${signClass(marketOverview.changeRate)}`}>
+                  {TAB_GAP}
+                  {toIndex(marketOverview.indexValue)}
+                  {TAB_GAP}
+                  {marketOverview.changeValue > 0 ? '▲' : marketOverview.changeValue < 0 ? '▼' : ''}
+                  {toIndex(Math.abs(marketOverview.changeValue))}
+                  {TAB_GAP}
+                  {toPctSigned(marketOverview.changeRate)}
+                </span>
+              )}
+            </div>
+            <span className={`${FONT_BAR_MODE_STATUS} min-w-0 whitespace-nowrap text-center text-gray-400`}>
+              {modeStatusText}
+            </span>
+            <div className="flex items-center gap-3 self-stretch">
+              {data?.snapshotTime && (
+                <span className={`${FONT_BAR_TIME} whitespace-nowrap text-white`}>
+                  {toMarketMapSnapshotTimeLabel(data.snapshotTime)}
+                </span>
+              )}
+              {/* self-stretch + items-stretch: 이 칸의 실제 높이가 좌측 마켓명(text-xl) 줄높이 때문에
+                  h-7보다 커질 수 있어서, 고정 높이 대신 실제 행 높이에 맞춰 늘어나야 스와치 위아래로
+                  검은 배경이 남지 않는다. */}
+              <div className="flex items-stretch self-stretch">
+                {legendSwatches.map(({ label, color }) => (
+                  <div key={label} style={{ backgroundColor: color }} className="flex w-9 items-center justify-center">
+                    <span className={FONT_BAR_LEGEND}>{label}</span>
+                  </div>
+                ))}
               </div>
             </div>
-            {path.length > 0 && (
-              // mouseenter/leave 대신 mousemove로 실시간으로 "지금 커서 아래 요소"를 다시 계산한다.
-              // 구간 사이 하이픈/여백처럼 자체 핸들러가 없는 지점을 지나가도 강조가 예전 값에 멈춰있지
-              // 않도록(스테일 하이라이트 방지), 그리고 실제 마우스가 움직인 경우에만 값이 바뀌므로
-              // 클릭 직후 레이아웃이 바뀌면서 커서 아래에 새 버튼이 나타나 생기는 유령 hover도 막아준다.
-              <div
-                onClick={() => handleGoToDepth(0)}
-                onMouseMove={e => {
-                  const target = e.target instanceof Element ? e.target.closest<HTMLElement>('[data-breadcrumb-index]') : null
-                  setBreadcrumbHoverIndex(target ? Number(target.dataset.breadcrumbIndex) : 0)
-                }}
-                onMouseLeave={() => setBreadcrumbHoverIndex(null)}
-                className="mb-1 flex h-7 w-full shrink-0 cursor-pointer items-center gap-1 truncate bg-black/70 px-1 text-sm font-bold text-white"
-              >
-                <span data-breadcrumb-index={0} className={breadcrumbHoverIndex !== null ? 'text-yellow-400' : ''}>
-                  {MARKET_LABEL[market]}
-                </span>
-                {path.map((name, index) => {
-                  const segmentIndex = index + 1
-                  const isLastPath = index === path.length - 1
-                  const isHighlighted = breadcrumbHoverIndex !== null && breadcrumbHoverIndex >= segmentIndex
-                  return (
-                    <span key={index} data-breadcrumb-index={segmentIndex} className="flex items-center gap-1">
-                      <span className={isHighlighted ? 'text-yellow-400' : ''}>-</span>
-                      {isLastPath ? (
-                        // 지금 보고 있는 카테고리라 클릭해도 아무 동작이 없어야 하므로, 버블링을 막아
-                        // 바 전체의 onClick(goToDepth(0))으로 전체 화면으로 빠지지 않게 한다.
-                        <span onClick={e => e.stopPropagation()} className={isHighlighted ? 'text-yellow-400' : ''}>
-                          {name}
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={e => {
-                            e.stopPropagation()
-                            handleGoToDepth(segmentIndex)
-                          }}
-                          style={{ fontFamily: 'inherit' }}
-                          className={`border-0 bg-transparent p-0 text-sm font-bold ${isHighlighted ? 'text-yellow-400' : 'text-white'}`}
-                        >
-                          {name}
-                        </button>
-                      )}
-                    </span>
-                  )
-                })}
-              </div>
-            )}
-            {isLoading ? (
-              <div className="flex flex-1 items-center justify-center">
-                <Spinner />
-              </div>
-            ) : isError ? (
-              <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
-            ) : groups.length === 0 ? (
-              <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
-            ) : (
-              <MarketMapTreemap
-                groups={groups}
-                selfCategoryName={currentNode?.categoryName ?? null}
-                depth={path.length}
-                onSelectCategory={enterCategory}
-                onExcludeCategory={handleExcludeCategory}
-                heightClassName="min-h-0 flex-1"
-                marketValueDepthRange={marketValueDepthRange}
-                avgChangeRateDepthRange={avgChangeRateDepthRange}
-                upDownCountDepthRange={upDownCountDepthRange}
-                avgChangeRateUseSimple={avgChangeRateUseSimple}
-                canExclude={isCustom}
-                colorScale={colorScale}
-                labelMinAreaPercent={boxLabelMinAreaPercent}
-                zoomOutRequestDepth={zoomOutRequestDepth}
-                onZoomOutComplete={handleZoomOutComplete}
-              />
-            )}
           </div>
-          {/* 지도 페이지에서만 커스텀 모드 토글이 드릴다운 경로도 같이 초기화해야 한다. */}
-          <GlobalSettingsSidebar
-            {...settingsModalProps}
-            onToggleCustom={() => {
-              settingsModalProps.onToggleCustom()
-              reset()
-            }}
-          />
+          <div className="flex min-h-0 flex-1">
+            <div className="flex min-h-0 flex-1 flex-col bg-black">
+              {path.length > 0 && (
+                // mouseenter/leave 대신 mousemove로 실시간으로 "지금 커서 아래 요소"를 다시 계산한다.
+                // 구간 사이 하이픈/여백처럼 자체 핸들러가 없는 지점을 지나가도 강조가 예전 값에 멈춰있지
+                // 않도록(스테일 하이라이트 방지), 그리고 실제 마우스가 움직인 경우에만 값이 바뀌므로
+                // 클릭 직후 레이아웃이 바뀌면서 커서 아래에 새 버튼이 나타나 생기는 유령 hover도 막아준다.
+                <div
+                  onClick={() => handleGoToDepth(0)}
+                  onMouseMove={e => {
+                    const target = e.target instanceof Element ? e.target.closest<HTMLElement>('[data-breadcrumb-index]') : null
+                    setBreadcrumbHoverIndex(target ? Number(target.dataset.breadcrumbIndex) : 0)
+                  }}
+                  onMouseLeave={() => setBreadcrumbHoverIndex(null)}
+                  className="flex h-7 w-full shrink-0 cursor-pointer items-center gap-1 truncate bg-black/70 px-1 text-sm font-bold text-white"
+                >
+                  <span data-breadcrumb-index={0} className={breadcrumbHoverIndex !== null ? 'text-yellow-400' : ''}>
+                    {MARKET_LABEL[market]}
+                  </span>
+                  {path.map((name, index) => {
+                    const segmentIndex = index + 1
+                    const isLastPath = index === path.length - 1
+                    const isHighlighted = breadcrumbHoverIndex !== null && breadcrumbHoverIndex >= segmentIndex
+                    return (
+                      <span key={index} data-breadcrumb-index={segmentIndex} className="flex items-center gap-1">
+                        <span className={isHighlighted ? 'text-yellow-400' : ''}>-</span>
+                        {isLastPath ? (
+                          // 지금 보고 있는 카테고리라 클릭해도 아무 동작이 없어야 하므로, 버블링을 막아
+                          // 바 전체의 onClick(goToDepth(0))으로 전체 화면으로 빠지지 않게 한다.
+                          <span onClick={e => e.stopPropagation()} className={isHighlighted ? 'text-yellow-400' : ''}>
+                            {name}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={e => {
+                              e.stopPropagation()
+                              handleGoToDepth(segmentIndex)
+                            }}
+                            style={{ fontFamily: 'inherit' }}
+                            className={`border-0 bg-transparent p-0 text-sm font-bold ${isHighlighted ? 'text-yellow-400' : 'text-white'}`}
+                          >
+                            {name}
+                          </button>
+                        )}
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
+              {isLoading ? (
+                <div className="flex flex-1 items-center justify-center">
+                  <Spinner />
+                </div>
+              ) : isError ? (
+                <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
+              ) : groups.length === 0 ? (
+                <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
+              ) : (
+                <MarketMapTreemap
+                  groups={groups}
+                  selfCategoryName={currentNode?.categoryName ?? null}
+                  depth={path.length}
+                  onSelectCategory={enterCategory}
+                  onExcludeCategory={handleExcludeCategory}
+                  heightClassName="min-h-0 flex-1"
+                  marketValueDepthRange={marketValueDepthRange}
+                  avgChangeRateDepthRange={avgChangeRateDepthRange}
+                  upDownCountDepthRange={upDownCountDepthRange}
+                  avgChangeRateUseSimple={avgChangeRateUseSimple}
+                  canExclude={isCustom}
+                  colorScale={colorScale}
+                  labelMinAreaPercent={boxLabelMinAreaPercent}
+                  zoomOutRequestDepth={zoomOutRequestDepth}
+                  onZoomOutComplete={handleZoomOutComplete}
+                />
+              )}
+            </div>
+            {/* 지도 페이지에서만 커스텀 모드 토글이 드릴다운 경로도 같이 초기화해야 한다. */}
+            <GlobalSettingsSidebar
+              {...settingsModalProps}
+              onToggleCustom={() => {
+                settingsModalProps.onToggleCustom()
+                reset()
+              }}
+            />
+          </div>
         </div>
       </div>
 

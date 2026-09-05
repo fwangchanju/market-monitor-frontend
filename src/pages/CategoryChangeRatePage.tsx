@@ -13,6 +13,7 @@ import { usePersistedState } from '@/hooks/usePersistedState'
 import { combineTierBreakdowns } from '@/utils/categoryTierBreakdown'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import NavBarPageActions from '@/components/NavBarPageActions'
+import { FONT_BAR_TITLE, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload } from '@/utils/captureToDownload'
@@ -242,23 +243,31 @@ export default function CategoryChangeRatePage() {
             <MarketMapColorThresholdEditorPanel {...colorEditorPanelProps} />
           </div>
         )}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-black p-4 text-white">
-          {/* 실제로 공유/캡처할 영역은 이 안쪽(가운데 정렬된 max-w-2xl + 설정 사이드바)만 — 바깥 검은
-              배경까지 같이 캡처하면 그래프 양옆에 빈 공간만 많이 찍혀서 정작 그래프가 작아 보인다.
-              설정 사이드바가 열려있으면 이 wrapper가 그만큼 넓어지면서 캡처에도 같이 포함된다. */}
-          <div
-            ref={captureRef}
-            data-captureid={CAPTURE_ID.CATEGORY_CHANGE_RATE}
-            data-capture-ready={!isLoading && !isTreeLoading}
-            className="flex min-h-0 flex-1 justify-center"
-          >
-            <div className="flex min-h-0 w-full max-w-5xl flex-1 flex-col">
-              <div className="mb-3 flex shrink-0 items-center justify-between text-sm font-bold">
-                <span>Custom Sector</span>
-                {rankingData?.snapshotTime && (
-                  <span className="text-xs font-normal text-gray-400">{toMarketMapSnapshotTimeLabel(rankingData.snapshotTime)}</span>
-                )}
-              </div>
+        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 세 번째 바(고정) +
+            본문/사이드바(밀리는 영역) 전체를 감싸는 바깥 wrapper로 둔다 — 지도/요약 페이지와 동일한 구조.
+            바(bar3)는 다른 페이지처럼 여백 없이 붙어야 해서, p-4는 바 바깥이 아니라 아래 실제 차트
+            콘텐츠에만 준다(사이드바는 그대로 가장자리에 붙게). */}
+        <div
+          ref={captureRef}
+          data-captureid={CAPTURE_ID.CATEGORY_CHANGE_RATE}
+          data-capture-ready={!isLoading && !isTreeLoading}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden bg-black text-white"
+        >
+          <div className="flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
+            <div className="flex items-center whitespace-nowrap">
+              <span className={FONT_BAR_TITLE}>Custom Sector</span>
+            </div>
+            {rankingData?.snapshotTime && (
+              <span className={`${FONT_BAR_TIME} whitespace-nowrap text-white`}>
+                {toMarketMapSnapshotTimeLabel(rankingData.snapshotTime)}
+              </span>
+            )}
+          </div>
+          {/* 지도/어드민 페이지와 동일하게 본문이 화면을 꽉 채우는 형태 — 가운데 정렬/폭 제한을 없애서
+              설정 사이드바가 열려도 본문이 밀리는 게 자연스럽게 느껴지도록 한다(밀림 자체는 다른
+              페이지와 동일한 flex 구조이고, 콘텐츠가 항상 남는 공간을 꽉 채우기만 하면 된다). */}
+          <div className="flex min-h-0 flex-1">
+            <div className="flex min-h-0 w-full flex-1 flex-col p-4">
               {isLoading ? (
                 <div className="flex flex-1 items-center justify-center">
                   <Spinner />

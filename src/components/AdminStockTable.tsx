@@ -18,6 +18,10 @@ interface Props {
   // 다시 불러오고 싶을 때 쓰는 버튼용 — 전체 새로고침(필터 초기화)을 피하기 위함.
   onRefetchCategories: () => void
   isRefetchingCategories: boolean
+  // 종목수/실행취소·다시실행/필터/엑셀 등 툴바를 이 컨테이너로 포털링한다 — 페이지 공통 세 번째 바
+  // 안에 그려야 해서, 이 컴포넌트 안에서 직접 렌더링하지 않고 부모(MarketMapAdminPage)가 그 바 안에
+  // 마련해준 DOM 노드로 옮겨 그린다. 상태/핸들러는 전부 이 컴포넌트에 그대로 남아있다.
+  toolbarContainer: HTMLElement | null
 }
 
 type SortKey =
@@ -665,7 +669,7 @@ function BulkAssignButton({
         type="button"
         onClick={handleClick}
         style={widthPx != null ? { width: widthPx } : undefined}
-        className="nes-btn border-sky-500 bg-sky-500 text-xs text-white hover:bg-sky-600"
+        className="nes-btn border-sky-500 bg-sky-500 px-2 py-0.5 text-xs text-white hover:bg-sky-600"
       >
         일괄변경 ({count})
       </button>
@@ -1266,6 +1270,7 @@ export default function AdminStockTable({
   snapshotTime,
   onRefetchCategories,
   isRefetchingCategories,
+  toolbarContainer,
 }: Props) {
   const [sortKey, setSortKey] = usePersistedState<SortKey>('adminStockTable.sortKey', 'totalMarketValue')
   const [sortDirection, setSortDirection] = usePersistedState<SortDirection>('adminStockTable.sortDirection', 'desc')
@@ -1639,7 +1644,36 @@ export default function AdminStockTable({
     setExcludedFilters(prev => ({ ...prev, [key]: new Set(filterOptionsByKey[key].filter(v => v !== value)) }))
   }
 
-  const filtered = useMemo(() => items.filter(item => matchesFilters(item)), [items, matchesFilters])
+  // 화면에 보여줄 종목의 "집합"은 필터 조건(excludedFilters/nameFilterStockCodes/excludedMarketValueTiers)이
+  // 바뀔 때만 다시 계산한다 — items 자체가 바뀌어도(카테고리 변경으로 캐시가 패치돼도) 자동으로
+  // 다시 걸러내지 않는다. 그래야 필터링된 목록을 보면서 카테고리를 바꿔도 방금 바꾼 종목이 목록에서
+  // 갑자기 사라지지 않는다. 필터 조건을 직접 바꾸거나(토글/전체선택/전체해제/종목명 검색 등) "전체
+  // 필터 해제"를 누르면 그 시점 기준 items(itemsRef)로 다시 걸러진다. 각 행 자체의 표시값(카테고리
+  // 등)은 items가 그대로 반영되므로 최신 상태로 보인다 — 여기서 고정하는 건 "포함 여부"뿐이다.
+  const [visibleStockCodes, setVisibleStockCodes] = useState<Set<string> | null>(null)
+  // 마운트 시점엔 items가 아직 도착 전(빈 배열)일 수 있어서, "필터 조건 변화" 이펙트가 그 순간의
+  // itemsRef.current로 잘못 계산해버리면 안 된다 — visibleStockCodes 자체(빈 Set이라도 null이 아님)로
+  // 판정하면 그 이후로는 items가 도착해도 절대 다시 채워지지 않는다. 그래서 "실제로 한 번이라도 items가
+  // 있는 상태에서 계산했는지"는 이 ref로 따로 추적한다.
+  const hasComputedVisibleRef = useRef(false)
+  useEffect(() => {
+    if (itemsRef.current.length === 0) return
+    hasComputedVisibleRef.current = true
+    setVisibleStockCodes(new Set(itemsRef.current.filter(item => matchesFilters(item)).map(item => item.stockCode)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- items 변화는 의도적으로 무시하고 필터 조건 변화에만 반응
+  }, [excludedFilters, nameFilterStockCodes, excludedMarketValueTiers])
+  // items가 마운트 이후 뒤늦게(비동기로) 처음 도착했을 때 한 번만 채워준다 — 그 이후 items 변경
+  // (카테고리 수정 등)은 위 이펙트와 마찬가지로 무시해야 하므로 hasComputedVisibleRef로 한 번만 실행되게 막는다.
+  useEffect(() => {
+    if (hasComputedVisibleRef.current || items.length === 0) return
+    hasComputedVisibleRef.current = true
+    setVisibleStockCodes(new Set(items.filter(item => matchesFilters(item)).map(item => item.stockCode)))
+  }, [items, matchesFilters])
+
+  const filtered = useMemo(
+    () => (visibleStockCodes ? items.filter(item => visibleStockCodes.has(item.stockCode)) : []),
+    [items, visibleStockCodes],
+  )
 
   // 필터에 걸려서 화면에서 사라진 종목은 선택도 같이 해제한다 — 안 보이는 종목이 일괄변경에
   // 딸려 들어가는 걸 막기 위함. filtered가 실제로 바뀔 때(=필터 조작 시)만 실행되므로 체크박스/hover
@@ -1723,9 +1757,10 @@ export default function AdminStockTable({
   const paddingBottom =
     virtualRows.length > 0 ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end : 0
 
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="mb-2 flex min-h-[38px] shrink-0 items-center justify-between px-2">
+  // 세 번째 바(페이지 공통 상태/옵션 바) 높이(h-7=28px)에 맞춰야 해서, nes.css 기본 버튼 패딩(6px 8px)보다
+  // 좁게 오버라이드한다 — 그 외 로직/상태는 전부 그대로다.
+  const toolbar = (
+    <div className="flex h-full min-h-0 w-full items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <p className="text-sm font-bold text-white">
             종목수 ({sorted.length}
@@ -1740,7 +1775,7 @@ export default function AdminStockTable({
                 type="button"
                 onClick={handleUndo}
                 disabled={undoStack.length === 0}
-                className="flex items-center gap-1.5 border-0 bg-transparent px-2 py-1 text-xs text-white hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white"
+                className="flex items-center gap-1.5 border-0 bg-transparent px-2 py-0.5 text-xs text-white hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white"
                 title="실행취소 (Ctrl+Z)"
               >
                 <UndoIcon className="h-4 w-4" />
@@ -1750,7 +1785,7 @@ export default function AdminStockTable({
                 type="button"
                 onClick={() => setIsUndoListOpen(prev => !prev)}
                 disabled={undoStack.length === 0}
-                className={`flex items-center justify-center border-0 bg-transparent px-4 py-1 hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white ${isUndoListOpen ? 'text-yellow-400' : 'text-white'}`}
+                className={`flex items-center justify-center border-0 bg-transparent px-3 py-0.5 hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white ${isUndoListOpen ? 'text-yellow-400' : 'text-white'}`}
                 title="실행취소 목록"
               >
                 <ChevronDownIcon className="h-3.5 w-3.5" />
@@ -1774,7 +1809,7 @@ export default function AdminStockTable({
                 type="button"
                 onClick={handleRedo}
                 disabled={redoStack.length === 0}
-                className="flex items-center gap-1.5 border-0 bg-transparent px-2 py-1 text-xs text-white hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white"
+                className="flex items-center gap-1.5 border-0 bg-transparent px-2 py-0.5 text-xs text-white hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white"
                 title="다시실행 (Ctrl+Y)"
               >
                 <RedoIcon className="h-4 w-4" />
@@ -1784,7 +1819,7 @@ export default function AdminStockTable({
                 type="button"
                 onClick={() => setIsRedoListOpen(prev => !prev)}
                 disabled={redoStack.length === 0}
-                className={`flex items-center justify-center border-0 bg-transparent px-4 py-1 hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white ${isRedoListOpen ? 'text-yellow-400' : 'text-white'}`}
+                className={`flex items-center justify-center border-0 bg-transparent px-3 py-0.5 hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white ${isRedoListOpen ? 'text-yellow-400' : 'text-white'}`}
                 title="다시실행 목록"
               >
                 <ChevronDownIcon className="h-3.5 w-3.5" />
@@ -1809,7 +1844,7 @@ export default function AdminStockTable({
               <button
                 type="button"
                 onClick={handleClearAllFilters}
-                className="nes-btn border-sky-500 bg-sky-500 text-xs text-white hover:bg-sky-600"
+                className="nes-btn border-sky-500 bg-sky-500 px-2 py-0.5 text-xs text-white hover:bg-sky-600"
               >
                 전체 필터 해제
               </button>
@@ -1819,7 +1854,7 @@ export default function AdminStockTable({
             type="button"
             onClick={onRefetchCategories}
             disabled={isRefetchingCategories}
-            className="nes-btn flex items-center gap-1 border-sky-500 bg-sky-500 text-xs text-white hover:bg-sky-600 disabled:opacity-50"
+            className="nes-btn flex items-center gap-1 border-sky-500 bg-sky-500 px-2 py-0.5 text-xs text-white hover:bg-sky-600 disabled:opacity-50"
             title="다른 탭에서 추가/변경한 카테고리를 반영합니다 (필터는 유지됨)"
           >
             <RefreshIcon className={`h-3.5 w-3.5 ${isRefetchingCategories ? 'animate-spin' : ''}`} />
@@ -1828,7 +1863,7 @@ export default function AdminStockTable({
           <button
             type="button"
             onClick={handleExportExcel}
-            className="nes-btn border-green-600 bg-green-600 text-xs text-white hover:bg-green-700"
+            className="nes-btn border-green-600 bg-green-600 px-2 py-0.5 text-xs text-white hover:bg-green-700"
             title="지금 화면에 보이는(필터/정렬 적용된) 목록을 엑셀로 내려받습니다"
           >
             엑셀 다운로드
@@ -1863,7 +1898,12 @@ export default function AdminStockTable({
             </>
           )}
         </div>
-      </div>
+    </div>
+  )
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      {toolbarContainer && createPortal(toolbar, toolbarContainer)}
       {/* 스크롤해도 테두리가 사라지지 않도록, 테두리는 스크롤되지 않는 이 바깥 wrapper에 둔다
           (예전엔 <table> 자체에 테두리가 있어서, sticky 헤더가 위로 지나가는 동안 테이블 진짜 위쪽
           테두리가 같이 스크롤돼 사라지고, 맨 아래 테두리도 끝까지 스크롤해야만 보이는 문제가 있었다). */}

@@ -23,6 +23,11 @@ type DownloadStatus = 'idle' | 'downloading' | 'error'
 export default function MarketMapAdminPage() {
   const [searchParams] = useSearchParams()
   const mode = searchParams.get('mode') === 'category' ? 'category' : 'stock'
+  // AdminStockTable의 툴바(종목수/실행취소·다시실행/필터/엑셀 등)를 이 DOM 노드로 포털링해서 세
+  // 번째 바 안에 그린다 — useRef 대신 useState인 이유는, ref 콜백이 커밋 단계에서 실행되므로
+  // useState로 받아야 그 노드가 준비된 뒤 리렌더가 한 번 더 일어나 AdminStockTable에 null이 아닌
+  // 실제 노드가 확실히 전달된다.
+  const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
   const {
     data: categories,
     error: categoriesError,
@@ -108,25 +113,33 @@ export default function MarketMapAdminPage() {
             <MarketMapColorThresholdEditorPanel {...colorEditorPanelProps} />
           </div>
         )}
-        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 테이블+사이드바를
-            함께 감싸는 바깥 wrapper로 옮겼다 — 사이드바가 닫혀있으면 테이블만 있는 것과 동일하다. */}
-        <div ref={captureRef} className="flex min-h-0 flex-1">
-          <div
-            className={`flex min-h-0 flex-1 flex-col px-4 pt-2 pb-4 ${mode === 'category' ? 'overflow-y-auto' : ''}`}
-          >
-            {mode === 'stock' ? (
-              <AdminStockTable
-                items={stockCategories?.items ?? []}
-                categories={categories ?? []}
-                snapshotTime={stockCategories?.snapshotTime ?? null}
-                onRefetchCategories={() => refetchCategories()}
-                isRefetchingCategories={isRefetchingCategories}
-              />
-            ) : (
-              <AdminCategoryTable categories={categories ?? []} />
-            )}
+        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 세 번째 바(고정) +
+            테이블/사이드바(밀리는 영역) 전체를 감싸는 바깥 wrapper로 둔다 — 다른 페이지와 동일한 구조. */}
+        <div ref={captureRef} className="flex min-h-0 flex-1 flex-col bg-black">
+          <div className="flex h-7 w-full shrink-0 items-center bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
+            {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다.
+                카테고리 모드일 땐 그런 툴바 자체가 없어서 빈 채로 둔다. */}
+            {mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 flex-1 items-center" />}
           </div>
-          <GlobalSettingsSidebar {...settingsModalProps} />
+          <div className="flex min-h-0 flex-1">
+            <div
+              className={`flex min-h-0 flex-1 flex-col px-4 pt-2 pb-4 ${mode === 'category' ? 'overflow-y-auto' : ''}`}
+            >
+              {mode === 'stock' ? (
+                <AdminStockTable
+                  items={stockCategories?.items ?? []}
+                  categories={categories ?? []}
+                  snapshotTime={stockCategories?.snapshotTime ?? null}
+                  onRefetchCategories={() => refetchCategories()}
+                  isRefetchingCategories={isRefetchingCategories}
+                  toolbarContainer={toolbarContainer}
+                />
+              ) : (
+                <AdminCategoryTable categories={categories ?? []} />
+              )}
+            </div>
+            <GlobalSettingsSidebar {...settingsModalProps} />
+          </div>
         </div>
       </div>
 

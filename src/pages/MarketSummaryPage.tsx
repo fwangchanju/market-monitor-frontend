@@ -12,8 +12,11 @@ import IndexContributionSection from '@/components/IndexContributionSection'
 import ShortSellingHistorySection from '@/components/ShortSellingHistorySection'
 import ProgramTradingHistorySection from '@/components/ProgramTradingHistorySection'
 import NavBarPageActions from '@/components/NavBarPageActions'
+import { FONT_BAR_TIME } from '@/components/FontStyle'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
+import { useMarketSummary } from '@/hooks/useMarketSummary'
+import { toMarketMapSnapshotTimeLabel } from '@/utils/format'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 
@@ -27,6 +30,7 @@ export default function MarketSummaryPage() {
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
   const { isNativeFullscreen, handleToggleNativeFullscreen } = useNativeFullscreen()
   const captureRef = useRef<HTMLDivElement>(null)
+  const { data: marketSummaryData } = useMarketSummary()
 
   const handleCopy = async () => {
     if (!captureRef.current) return
@@ -76,23 +80,34 @@ export default function MarketSummaryPage() {
             <MarketMapColorThresholdEditorPanel {...colorEditorPanelProps} />
           </div>
         )}
-        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 본문+사이드바를
-            함께 감싸는 바깥 wrapper로 옮겼다 — 사이드바가 닫혀있으면 본문만 있는 것과 동일하다. */}
-        <div ref={captureRef} className="flex min-h-0 flex-1">
-          <div className="flex-1 p-4">
-            <div className="mx-auto max-w-[1400px]">
-              <div className="mt-4 grid grid-cols-1 gap-4">
-                <MarketOverviewSection />
-                <IndexContributionSection />
-                <InvestorTradingSection />
-                <ProgramTradingSection />
-                <IntradayTopSection />
-                <ShortSellingHistorySection />
-                <ProgramTradingHistorySection />
+        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 세 번째 바(고정) +
+            본문/사이드바(밀리는 영역) 전체를 감싸는 바깥 wrapper로 둔다 — 지도 페이지와 동일한 구조. */}
+        <div ref={captureRef} className="flex min-h-0 flex-1 flex-col bg-black">
+          <div className="flex h-7 w-full shrink-0 items-center justify-end bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
+            {/* 요약 페이지는 아직 이 바에 담을 내용이 없어서, 지도 페이지의 시간 표시 위치(우측 끝)만
+                그대로 가져와 시간만 보여준다. */}
+            {marketSummaryData?.marketOverviews.snapshotTime && (
+              <span className={`${FONT_BAR_TIME} whitespace-nowrap text-white`}>
+                {toMarketMapSnapshotTimeLabel(marketSummaryData.marketOverviews.snapshotTime)}
+              </span>
+            )}
+          </div>
+          <div className="flex min-h-0 flex-1">
+            <div className="flex-1 bg-black">
+              <div className="mx-auto max-w-[1400px]">
+                <div className="mt-4 grid grid-cols-1 gap-4">
+                  <MarketOverviewSection />
+                  <IndexContributionSection />
+                  <InvestorTradingSection />
+                  <ProgramTradingSection />
+                  <IntradayTopSection />
+                  <ShortSellingHistorySection />
+                  <ProgramTradingHistorySection />
+                </div>
               </div>
             </div>
+            <GlobalSettingsSidebar {...settingsModalProps} />
           </div>
-          <GlobalSettingsSidebar {...settingsModalProps} />
         </div>
       </div>
 

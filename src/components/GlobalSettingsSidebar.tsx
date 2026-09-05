@@ -315,7 +315,7 @@ export default function GlobalSettingsSidebar({
 
   return (
     // 슬라이더 자체 폭(max-w-[16rem])의 약 1.3배 — 실제 지도 너비를 덜 뺏도록 사이드바를 좁게 유지한다.
-    <div className="flex w-80 shrink-0 flex-col overflow-hidden border-l border-gray-700 bg-[var(--surface)]">
+    <div className="flex w-80 shrink-0 flex-col overflow-hidden border border-yellow-600 bg-zinc-900">
       <div className="flex shrink-0 items-center justify-between border-b border-gray-700 p-4">
         <p className="flex h-7 items-center text-lg font-bold leading-none text-white">설정</p>
         <button
@@ -329,7 +329,7 @@ export default function GlobalSettingsSidebar({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 text-sm">
-        <div className="sticky top-0 z-10 -mx-4 border-b border-gray-700 bg-[var(--surface)] px-4 pt-4 pb-3">
+        <div className="sticky top-0 z-10 -mx-4 border-b border-gray-700 bg-zinc-900 px-4 pt-4 pb-3">
           <ToggleSwitch checked={isCustom} onChange={onToggleCustom} label="커스텀 모드" labelClassName="text-lg" />
         </div>
         <div className="pt-8 text-white">
@@ -434,7 +434,7 @@ export default function GlobalSettingsSidebar({
                 value={boxLabelMinAreaPercent}
                 onChange={e => onChangeBoxLabelMinAreaPercent(Math.min(0.3, Math.max(0.01, Number(e.target.value) || 0.01)))}
                 disabled={!isCustom}
-                className="w-14 shrink-0 rounded border border-gray-600 bg-black px-1 py-0.5 text-right text-white disabled:cursor-not-allowed"
+                className="w-14 shrink-0 rounded border border-gray-600 bg-zinc-900 px-1 py-0.5 text-right text-white disabled:cursor-not-allowed"
               />
               <span className="shrink-0 text-gray-400">%</span>
               <input

@@ -21,6 +21,7 @@ export default function MarketMapShareModal({
   downloadLabel,
   isDownloading,
   copyLabel,
+  isCopying,
   captureTarget,
 }: Props) {
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
@@ -103,10 +104,17 @@ export default function MarketMapShareModal({
             {isDownloading ? <Spinner className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
             {downloadLabel}
           </button>
-          {showCopiedNotice && (
-            <p className="rounded border border-sky-500 bg-sky-500 px-3 py-1.5 text-sm text-white shadow-lg">
-              클립보드에 복사되었습니다
+          {isCopying ? (
+            <p className="flex items-center gap-2 rounded border border-gray-600 bg-black px-3 py-1.5 text-sm text-white shadow-lg">
+              <Spinner className="h-4 w-4" />
+              클립보드에 복사 중...
             </p>
+          ) : (
+            showCopiedNotice && (
+              <p className="rounded border border-sky-500 bg-sky-500 px-3 py-1.5 text-sm text-white shadow-lg">
+                클립보드에 복사되었습니다
+              </p>
+            )
           )}
           <button
             type="button"
