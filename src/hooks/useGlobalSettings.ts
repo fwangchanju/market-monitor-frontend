@@ -396,6 +396,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     avgChangeRateDepthRange,
     upDownCountDepthRange,
     avgChangeRateUseSimple,
+    excludedMarketValueTiers,
     boxLabelMinAreaPercent,
     colorScale,
     legendSwatches,

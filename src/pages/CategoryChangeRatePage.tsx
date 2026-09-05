@@ -8,7 +8,6 @@ import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Spinner from '@/components/Spinner'
 import { useMarketMap } from '@/hooks/useMarketMap'
 import { useCategoryChangeRates } from '@/hooks/useCategoryChangeRates'
-import { useMarketValueTierRange } from '@/hooks/useMarketValueTierRange'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { combineTierBreakdowns } from '@/utils/categoryTierBreakdown'
@@ -143,7 +142,7 @@ export default function CategoryChangeRatePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- market 파라미터가 있을 때만 반응하면 됨
   }, [searchParams])
 
-  const { settingsModalProps, colorEditorPanelProps, avgChangeRateUseSimple } = useGlobalSettings()
+  const { settingsModalProps, colorEditorPanelProps, avgChangeRateUseSimple, excludedMarketValueTiers } = useGlobalSettings()
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
@@ -181,8 +180,6 @@ export default function CategoryChangeRatePage() {
 
   const { data: rankingData, isLoading, isError } = useCategoryChangeRates(market, beforeMinutes)
   const { data: treeData, isLoading: isTreeLoading } = useMarketMap(market, true)
-  // 마켓맵 화면과 세션스토리지 키를 공유 — 거기서 바꾼 시가총액 구간 필터가 이 랭킹 화면에도 그대로 반영된다.
-  const { excludedMarketValueTiers } = useMarketValueTierRange(true)
 
   const categoryNameById = useMemo(() => collectCategoryNames(treeData?.items ?? []), [treeData])
   // 뎁스 구분 없이 전부 나열하면 너무 많아서, 어드민 카테고리 관리 화면처럼 최상위 카테고리만 보여준다.
