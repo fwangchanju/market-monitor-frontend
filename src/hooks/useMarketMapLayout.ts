@@ -54,11 +54,20 @@ interface HierarchyDatum {
   children?: HierarchyDatum[]
 }
 
-// 뎁스가 깊어질수록(세부 카테고리, 세부의 세부...) 헤더를 점점 작게 — MarketMapCategorySection의
-// 실제 렌더링 높이도 이 함수를 그대로 써서 레이아웃 계산과 화면이 어긋나지 않게 한다.
+// 대분류/중분류/소분류 순서로 점점 작게 — 그 이하 뎁스는 소분류와 동일(마지막 값 반복).
+const CATEGORY_HEADER_FONT_SIZES = [15, 12, 10]
 // depth는 화면에 보이는 최상위 카테고리를 0으로 하는 렌더링 기준 depth.
+export function categoryHeaderFontSize(depth: number): number {
+  return CATEGORY_HEADER_FONT_SIZES[Math.min(depth, CATEGORY_HEADER_FONT_SIZES.length - 1)]
+}
+
+// 헤더 높이는 폰트 크기에 항상 비례한다 — 원래 대분류 폰트가 16px일 때 높이가 28px이었던 비율(1.75배)을
+// 그대로 기준 삼아, 지금 폰트 크기(CATEGORY_HEADER_FONT_SIZES)가 얼마든 그 비율만큼의 높이를 준다. 폰트
+// 크기를 바꾸면 높이도 자동으로 같은 비율로 줄어들거나 커지는 구조. MarketMapCategorySection의 실제
+// 렌더링 높이도 이 함수를 그대로 써서 레이아웃 계산과 화면이 어긋나지 않게 한다.
+const CATEGORY_HEADER_HEIGHT_RATIO = 28 / 16
 export function categoryHeaderHeight(depth: number): number {
-  return Math.max(28 - depth * 6, 16)
+  return Math.round(categoryHeaderFontSize(depth) * CATEGORY_HEADER_HEIGHT_RATIO)
 }
 // 형제 카테고리끼리의 간격 — d3 treemap의 paddingInner(카테고리 자식을 둔 노드 기준).
 export const CATEGORY_SIBLING_GAP = 5
@@ -134,7 +143,17 @@ export function useMarketMapLayout(
         (node.children ?? []).every(child => child.data.item) ? ITEM_SIBLING_GAP : CATEGORY_SIBLING_GAP,
       )
       // d3 계층에서 node.depth===0은 화면에 안 보이는 합성 root라, 화면 기준 depth로 맞추려면 -1.
-      .paddingTop(node => (node.depth > 0 && !node.data.item ? categoryHeaderHeight(node.depth - 1) : 0))
+      // selfCategoryName(드릴다운으로 들어온 자기 자신)은 헤더를 안 그리므로(MarketMapCategorySection
+      // 참고 — breadcrumb과 중복이라 뺐다) 그 몫의 공간도 안 비워두고, 그 아래 자손들은 전부 한 뎁스씩
+      // 앞당겨서(자기 자신이 아예 없는 것처럼) 헤더 높이를 매긴다 — selfCategoryName이 있으면 항상
+      // 이 트리 전체가 그 자기 자신 하나 밑에 있으므로(드릴다운 중엔 groups가 항상 원소 1개) 전역적으로
+      // 한 번만 보정하면 된다.
+      .paddingTop(node => {
+        if (node.depth === 0 || node.data.item) return 0
+        if (node.data.name === selfCategoryName) return 0
+        const renderDepth = node.depth - 1 - (selfCategoryName !== null ? 1 : 0)
+        return categoryHeaderHeight(renderDepth)
+      })
       .round(true)(hierarchyRoot)
 
     const toLaidOutCategory = (

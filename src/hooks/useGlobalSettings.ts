@@ -20,6 +20,10 @@ const EMPTY_COLOR_SCALE: ColorScaleConfig = { thresholds: [] }
 
 export type DepthMetric = 'avgChangeRate' | 'upDownCount' | 'marketValue'
 
+// 트리맵 종목 박스에 이름/등락률 중 뭘 보여줄지 — 슬라이더 인덱스로 저장(0/1/2).
+export type StockLabelMode = 'nameOnly' | 'rateOnly' | 'both'
+const STOCK_LABEL_MODES: StockLabelMode[] = ['nameOnly', 'rateOnly', 'both']
+
 // categoryId -> "상위 - 하위" 형태의 전체 경로. "이 섹터가 제외 목록에 있는지"만 관리하고,
 // 실제로 화면에서 걸러낼지는 별도의 sectorFilterEnabled 마스터 스위치가 결정한다.
 function seedExcludedCategoryNames(
@@ -79,6 +83,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePersistedState('marketMap.avgChangeRateUseSimple', true)
   // 종목 박스가 전체 트리맵 넓이에서 이 비중(%) 미만이면 종목명/등락률을 표시하지 않는다(카테고리 헤더와는 무관).
   const [boxLabelMinAreaPercent, setBoxLabelMinAreaPercent] = usePersistedState('marketMap.boxLabelMinAreaPercent', 0.1)
+  // 종목 박스에 이름만/등락률만/둘 다 보여줄지 — 기본은 둘 다(기존 동작 유지).
+  const [stockLabelModeIndex, setStockLabelModeIndex] = usePersistedState('marketMap.stockLabelModeIndex', 2)
+  const stockLabelMode = STOCK_LABEL_MODES[stockLabelModeIndex]
   // 시가총액 구간 범위 필터 — 마켓맵/카테고리 랭킹 화면이 세션스토리지 키를 공유한다(useMarketValueTierRange 참고).
   const {
     tiers: valueTiers,
@@ -123,12 +130,10 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const excludedCategoryIds =
     isCustom && sectorFilterEnabled ? new Set(excludedCategoryNames.keys()) : new Set<number>()
 
-  // 커스텀 모드가 아니면 뎁스 제한도 무시한다(기본 트리는 어차피 사실상 1뎁스).
   const { filteredRootNodes, availableMaxDepth } = useFilteredMarketMapTree(
     rootNodes,
     excludedCategoryIds,
     excludedMarketValueTiers,
-    isCustom ? maxDepth : null,
   )
 
   // 데이터가 얕아서(예: 기본값 중분류인데 실제 뎁스가 대분류까지밖에 없음) 저장된 범위가
@@ -328,6 +333,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     onToggleAvgChangeRateUseSimple: () => setAvgChangeRateUseSimple(prev => !prev),
     boxLabelMinAreaPercent,
     onChangeBoxLabelMinAreaPercent: setBoxLabelMinAreaPercent,
+    stockLabelModeIndex,
+    onChangeStockLabelModeIndex: setStockLabelModeIndex,
     tiers: valueTiers,
     tierRangeMinIndex: tierRangeMinIndex === -1 ? 0 : tierRangeMinIndex,
     tierRangeMaxIndex: tierRangeMaxIndex === -1 ? Math.max(valueTiers.length - 1, 0) : tierRangeMaxIndex,
@@ -376,12 +383,16 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     rootNodes,
     filteredRootNodes,
     availableMaxDepth,
+    // 뎁스 제한을 "지금 보고 있는 위치" 기준으로 다시 적용하는 건 페이지(MarketMapCustomPage)의
+    // 몫이라 원본 설정값을 그대로 내보낸다 — isCustom이 아닐 때 무시하는 것도 페이지에서 처리한다.
+    maxDepth,
     marketValueDepthRange,
     avgChangeRateDepthRange,
     upDownCountDepthRange,
     avgChangeRateUseSimple,
     excludedMarketValueTiers,
     boxLabelMinAreaPercent,
+    stockLabelMode,
     colorScale,
     legendSwatches,
     excludedCategoryNames,

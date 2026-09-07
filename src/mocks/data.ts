@@ -151,7 +151,8 @@ export const marketMapTree = [
           { tierId: 4, tierLabel: '초대형주', weightedSum: 504_000_000_000_000, totalValue: 420_000_000_000_000, simpleSum: 1.2, itemCount: 1 },
         ],
         items: [
-          { stockCode: '005930', stockName: '삼성전자', lastPrice: 71000, totalMarketValue: 420_000_000_000_000, marketValueTier: '초대형주', changeRate: 1.2, currentPrice: 71000, snapshotTime: now() },
+          // alias 예시 — 박스 라벨은 "삼전"으로, 팝업(툴팁)은 원래 이름 "삼성전자"로 보여야 한다.
+          { stockCode: '005930', stockName: '삼성전자', alias: '삼전', lastPrice: 71000, totalMarketValue: 420_000_000_000_000, marketValueTier: '초대형주', changeRate: 1.2, currentPrice: 71000, snapshotTime: now() },
         ],
         children: [],
       },
@@ -164,7 +165,7 @@ export const marketMapTree = [
           { tierId: 4, tierLabel: '초대형주', weightedSum: -104_000_000_000_000, totalValue: 130_000_000_000_000, simpleSum: -0.8, itemCount: 1 },
         ],
         items: [
-          { stockCode: '000660', stockName: 'SK하이닉스', lastPrice: 178000, totalMarketValue: 130_000_000_000_000, marketValueTier: '초대형주', changeRate: -0.8, currentPrice: 178000, snapshotTime: now() },
+          { stockCode: '000660', stockName: 'SK하이닉스', alias: null, lastPrice: 178000, totalMarketValue: 130_000_000_000_000, marketValueTier: '초대형주', changeRate: -0.8, currentPrice: 178000, snapshotTime: now() },
         ],
         children: [],
       },
@@ -179,7 +180,7 @@ export const marketMapTree = [
       { tierId: 3, tierLabel: '대형주', weightedSum: -78_600_000_000_000, totalValue: 122_000_000_000_000, simpleSum: 0.6, itemCount: 2 },
     ],
     items: [
-      { stockCode: '373220', stockName: 'LG에너지솔루션', lastPrice: 398000, totalMarketValue: 93_000_000_000_000, marketValueTier: '대형주', changeRate: -1.5, currentPrice: 398000, snapshotTime: now() },
+      { stockCode: '373220', stockName: 'LG에너지솔루션', alias: null, lastPrice: 398000, totalMarketValue: 93_000_000_000_000, marketValueTier: '대형주', changeRate: -1.5, currentPrice: 398000, snapshotTime: now() },
     ],
     children: [
       {
@@ -191,7 +192,7 @@ export const marketMapTree = [
           { tierId: 3, tierLabel: '대형주', weightedSum: 60_900_000_000_000, totalValue: 29_000_000_000_000, simpleSum: 2.1, itemCount: 1 },
         ],
         items: [
-          { stockCode: '051910', stockName: 'LG화학', lastPrice: 412000, totalMarketValue: 29_000_000_000_000, marketValueTier: '대형주', changeRate: 2.1, currentPrice: 412000, snapshotTime: now() },
+          { stockCode: '051910', stockName: 'LG화학', alias: null, lastPrice: 412000, totalMarketValue: 29_000_000_000_000, marketValueTier: '대형주', changeRate: 2.1, currentPrice: 412000, snapshotTime: now() },
         ],
         children: [],
       },
@@ -207,8 +208,8 @@ export const marketMapTree = [
       { tierId: 2, tierLabel: '중형주', weightedSum: 61_200_000_000_000, totalValue: 18_000_000_000_000, simpleSum: 3.4, itemCount: 1 },
     ],
     items: [
-      { stockCode: '035420', stockName: 'NAVER', lastPrice: 198000, totalMarketValue: 32_000_000_000_000, marketValueTier: '대형주', changeRate: 0.3, currentPrice: 198000, snapshotTime: now() },
-      { stockCode: '035720', stockName: '카카오', lastPrice: 41500, totalMarketValue: 18_000_000_000_000, marketValueTier: '중형주', changeRate: 3.4, currentPrice: 41500, snapshotTime: now() },
+      { stockCode: '035420', stockName: 'NAVER', alias: null, lastPrice: 198000, totalMarketValue: 32_000_000_000_000, marketValueTier: '대형주', changeRate: 0.3, currentPrice: 198000, snapshotTime: now() },
+      { stockCode: '035720', stockName: '카카오', alias: null, lastPrice: 41500, totalMarketValue: 18_000_000_000_000, marketValueTier: '중형주', changeRate: 3.4, currentPrice: 41500, snapshotTime: now() },
     ],
     children: [],
   },

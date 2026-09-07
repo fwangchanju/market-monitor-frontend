@@ -108,6 +108,10 @@ export const toJoEokDecimal = (eokValue: number): string => {
   return `${roundedToSipEok.toFixed(1)}억`
 }
 
+/** 등락률 평균 방식 라벨 — "동일 가중" 토글(avgChangeRateUseSimple) On/Off에 따라 종목별 산술평균/
+ * 시가총액 가중평균 중 뭘 쓰는지 화면마다(마켓맵 카테고리 팝업, 섹터 랭킹 그래프) 동일한 문구로 표시. */
+export const avgChangeRateLabel = (useSimple: boolean): string => (useSimple ? '동일 가중 등락률' : '시가총액 가중 등락률')
+
 /** 시장명 한글 */
 export const marketLabel = (market: string): string => {
   if (market === 'ALL_STOCK') return '통합'

@@ -185,6 +185,8 @@ export const MarketValueTierListResponseSchema = z.array(MarketValueTierItemSche
 const MarketMapItemSchema = z.object({
   stockCode: z.string(),
   stockName: z.string(),
+  // 배정된 약칭 — 없으면 null. 박스 라벨 등 alias를 우선해야 하는 표시는 "alias ?? stockName"으로 계산한다.
+  alias: z.string().nullable(),
   currentPrice: z.number(),     // 현재가, 원
   lastPrice: z.number(),        // 전일종가, 원
   totalMarketValue: z.number(), // 원

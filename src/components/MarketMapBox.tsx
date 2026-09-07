@@ -3,6 +3,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import type { MarketMapItem } from '@/types/api'
 import { toJoEok, toPctSigned, toVolume } from '@/utils/format'
 import { resolveMarketMapColor, type ColorScaleConfig } from '@/utils/marketMapColorScale'
+import type { StockLabelMode } from '@/hooks/useGlobalSettings'
 
 interface Props {
   item: MarketMapItem
@@ -14,6 +15,9 @@ interface Props {
   areaPercent: number
   // 이 비중 미만이면 종목명/등락률을 아예 표시하지 않는다(설정 사이드바의 슬라이더로 조절).
   labelMinAreaPercent: number
+  // 박스에 종목명만/등락률만/둘 다 보여줄지(설정 사이드바의 "종목 박스 표시 내용" 슬라이더) — 위 넓이
+  // 기준을 넘어 실제로 보여줄 때(showLabel=true)만 적용된다. 툴팁 내용에는 영향 없음.
+  stockLabelMode: StockLabelMode
   tooltipAlignLeft: boolean
   tooltipAlignTop: boolean
   // 박스 색칠은 이 설정 하나로만 결정된다(resolveMarketMapColor) — 범례 바(MarketMapCustomPage)도
@@ -37,11 +41,14 @@ export default function MarketMapBox({
   height,
   areaPercent,
   labelMinAreaPercent,
+  stockLabelMode,
   tooltipAlignLeft,
   tooltipAlignTop,
   colorScale,
 }: Props) {
   const showLabel = areaPercent >= labelMinAreaPercent
+  const showName = stockLabelMode !== 'rateOnly'
+  const showRate = stockLabelMode !== 'nameOnly'
   const fontSize = fontSizePx(width, height)
   const backgroundColor = resolveMarketMapColor(item.changeRate, colorScale)
   const tooltip = useTooltip(TOOLTIP_OFFSET_X, 8, tooltipAlignLeft, tooltipAlignTop)
@@ -64,21 +71,25 @@ export default function MarketMapBox({
     >
       {showLabel && (
         <>
-          <span className="w-full truncate px-1 text-center leading-tight" style={{ fontSize }}>
-            {item.stockName}
-          </span>
-          <span className="text-center leading-tight" style={{ fontSize: fontSize * 0.85 }}>
-            {toPctSigned(item.changeRate)}
-          </span>
+          {showName && (
+            <span className="w-full truncate px-1 text-center leading-tight" style={{ fontSize }}>
+              {item.alias ?? item.stockName}
+            </span>
+          )}
+          {showRate && (
+            <span className="text-center leading-tight" style={{ fontSize: fontSize * 0.85 }}>
+              {toPctSigned(item.changeRate)}
+            </span>
+          )}
         </>
       )}
 
       <Tooltip visible={tooltip.hover} position={tooltip.position} alignLeft={tooltipAlignLeft} alignTop={tooltipAlignTop}>
         <div className="font-bold">{item.stockName}</div>
-        <div>등락률: {toPctSigned(item.changeRate)}</div>
-        <div>현재가: {toVolume(item.currentPrice)}원</div>
-        <div>전일종가: {toVolume(item.lastPrice)}원</div>
-        <div>시가총액: {toJoEok(item.totalMarketValue / 100_000_000)}</div>
+        <div> 등락률: {toPctSigned(item.changeRate)}</div>
+        <div> 현재가: {toVolume(item.currentPrice)}원</div>
+        <div> 전일종가: {toVolume(item.lastPrice)}원</div>
+        <div> 시가총액: {toJoEok(item.totalMarketValue / 100_000_000)}</div>
       </Tooltip>
     </div>
   )

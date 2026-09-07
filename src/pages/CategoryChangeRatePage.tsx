@@ -23,7 +23,7 @@ import { FONT_BAR_TITLE, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload } from '@/utils/captureToDownload'
-import { toMarketMapSnapshotTimeLabel, signClass } from '@/utils/format'
+import { toMarketMapSnapshotTimeLabel, signClass, avgChangeRateLabel } from '@/utils/format'
 import { resolveMarketMapColor, type ColorScaleConfig } from '@/utils/marketMapColorScale'
 import type { CategoryTierBreakdown, MarketQuery, MarketMapCategoryNode } from '@/types/api'
 
@@ -100,16 +100,25 @@ function RankBars({
     return <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
   }
   return (
-    <div className="grid w-full items-center gap-x-3 gap-y-1.5 text-xs" style={{ gridTemplateColumns: 'auto 1fr' }}>
+    // min-h-0: flex 아이템 기본값(min-height:auto)을 눌러서 부모가 준 높이보다 작게도 줄어들 수 있게
+    // 한다(콘텐츠가 더 크면 그만큼 넘쳐서 조상의 overflow-y-auto가 스크롤 처리) — align-self:stretch
+    // (flex 기본값)로 실제 높이는 부모 flex 행 높이를 그대로 받는다. content-between으로 헤더/눈금
+    // 행은 위아래 끝에 붙이고 종목 행들 사이 간격만 넓혀서, 카테고리 수가 적어도 컨테이너 높이를 채운다.
+    <div
+      className="grid h-full min-h-0 w-full flex-1 content-between items-center gap-x-3 gap-y-1.5 text-xs"
+      style={{ gridTemplateColumns: 'auto 1fr' }}
+    >
       <span />
       <div className="whitespace-nowrap text-gray-400">{header ?? ' '}</div>
       {chart.rankedItems.map(item => (
         <Fragment key={item.categoryId}>
           <span className="whitespace-nowrap text-right">{item.categoryName}</span>
-          {/* 퍼센트 텍스트 폭을 고정(w-14)으로 미리 비워두고, 막대는 그 나머지(flex-1) 안에서만
-              채운다 — 그래야 막대가 축 최대치에 가깝게 길어져도 텍스트가 열 밖으로 밀려나지 않는다. */}
+          {/* 퍼센트 텍스트를 막대 트랙(flex-1) 안에 막대 끝 위치(left: pct%)로 떠 있게 배치한다 —
+              막대가 길어질수록 텍스트도 같이 따라간다. 오른쪽 w-14는 막대가 축 최대치까지 길어져도
+              텍스트가 열 밖으로 밀려나지 않도록 미리 비워두는 여백(눈금 행의 w-14와 동일한 목적) —
+              보이는 내용은 없고 폭만 차지한다. */}
           <div className="flex h-5 items-center gap-1.5">
-            <div className="h-full flex-1">
+            <div className="relative h-full flex-1">
               <div
                 className="h-full rounded-sm"
                 style={{
@@ -117,8 +126,14 @@ function RankBars({
                   backgroundColor: resolveMarketMapColor(item.value, colorScale),
                 }}
               />
+              <span
+                className={`absolute top-0 flex h-full items-center pl-1.5 font-bold whitespace-nowrap ${signClass(item.value)}`}
+                style={{ left: `${(Math.abs(item.value) / chart.axisMax) * 100}%` }}
+              >
+                {toChartValueLabel(item.value, unit)}
+              </span>
             </div>
-            <span className={`w-14 shrink-0 whitespace-nowrap ${signClass(item.value)}`}>{toChartValueLabel(item.value, unit)}</span>
+            <span className="w-14 shrink-0" />
           </div>
         </Fragment>
       ))}
@@ -334,12 +349,19 @@ export default function CategoryChangeRatePage() {
               ) : charts.current.rankedItems.length === 0 && charts.delta.rankedItems.length === 0 ? (
                 <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
               ) : (
-                <div className="min-h-0 flex-1 overflow-y-auto">
-                  {/* 현재 그래프(왼쪽)/변화율 그래프(오른쪽)를 나란히 배치. "N분 전 대비" 캡션은
-                      delta 쪽 RankBars의 header로 넘겨서, 그래프(막대 트랙) 시작 위치와 캡션 시작
-                      위치가 라벨 폭과 무관하게 항상 맞도록 한다. */}
-                  <div className="grid grid-cols-2 gap-x-8">
-                    <RankBars chart={charts.current} colorScale={colorScale} />
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                  {/* 현재 그래프(왼쪽)/변화율 그래프(오른쪽)를 나란히 배치. "시가총액 가중/동일 가중 등락률"·
+                      "N분 전 대비" 캡션은 각각 RankBars의 header로 넘겨서, 그래프(막대 트랙) 시작 위치와
+                      캡션 시작 위치가 라벨 폭과 무관하게 항상 맞도록 한다. 바깥을 flex-col + min-h-0로
+                      만들어 RankBars(그리드)가 실제 남는 높이를 그대로 받게 하고, RankBars 안에서
+                      content-between으로 행 사이 여백을 균등 분배해 화면/공유 캡처 양쪽에서 그래프가
+                      컨테이너 높이를 꽉 채우게 한다(카테고리 수가 많아 다 못 채우면 자연스럽게 스크롤). */}
+                  <div className="flex min-h-0 flex-1 gap-x-8">
+                    <RankBars
+                      chart={charts.current}
+                      colorScale={colorScale}
+                      header={avgChangeRateLabel(avgChangeRateUseSimple)}
+                    />
                     <RankBars
                       chart={charts.delta}
                       unit="%p"
