@@ -25,7 +25,8 @@ import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { toMarketMapSnapshotTimeLabel, signClass, avgChangeRateLabel } from '@/utils/format'
 import { resolveMarketMapColor, type ColorScaleConfig } from '@/utils/marketMapColorScale'
-import type { CategoryTierBreakdown, MarketQuery, MarketMapCategoryNode } from '@/types/api'
+import { useMarketSummary } from '@/hooks/useMarketSummary'
+import type { CategoryTierBreakdown, Market, MarketQuery, MarketMapCategoryNode } from '@/types/api'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
@@ -34,6 +35,12 @@ const MIN_BEFORE_MINUTES = 5
 
 // 지도 페이지(MarketMapCustomPage)와 동일한 마켓 라벨 표기.
 const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
+// 지수 등락률 참조 막대에 붙는 한글 라벨 — ALL_STOCK은 단일 지수가 없어 대상에서 제외된다.
+const MARKET_INDEX_LABEL_KO: Record<Market, string> = { KOSPI: '코스피', KOSDAQ: '코스닥' }
+// 실제 카테고리 id(양수)와 겹치지 않는 음수 sentinel — 지수 참조 막대 전용 categoryId(React key로도 씀).
+const MARKET_INDEX_CATEGORY_ID = -1
+// 지도 페이지에서 최상위 뎁스 카테고리를 노란 글자로 표시하는 것과 같은 "기준" 색상 — 참조 막대도 동일하게 맞춘다.
+const MARKET_INDEX_BAR_COLOR = '#eab308'
 
 function collectCategoryNames(nodes: MarketMapCategoryNode[], out: Map<number, string> = new Map()): Map<number, string> {
   for (const node of nodes) {
@@ -47,6 +54,8 @@ interface RankedItem {
   categoryId: number
   categoryName: string
   value: number
+  // 지수 등락률 참조 막대 표시용 — 일반 카테고리 막대와 색을 다르게 칠하는 데만 쓴다.
+  isReference?: boolean
 }
 
 interface RankChart {
@@ -57,9 +66,12 @@ interface RankChart {
 
 // 카테고리별 (id, 값) 목록을 값 내림차순 랭킹 막대그래프 데이터로 변환한다 — "현재" 그래프/"변화율"
 // 그래프 둘 다 이 함수로 각각 독립적으로 정렬·스케일을 만든다(같은 포맷, 정렬 기준값만 다름).
-function buildRankChart(entries: { categoryId: number; value: number }[], categoryNameById: Map<number, string>): RankChart {
+function buildRankChart(
+  entries: { categoryId: number; value: number; categoryName?: string; isReference?: boolean }[],
+  categoryNameById: Map<number, string>,
+): RankChart {
   const rankedItems: RankedItem[] = entries
-    .map(entry => ({ ...entry, categoryName: categoryNameById.get(entry.categoryId) ?? '' }))
+    .map(entry => ({ ...entry, categoryName: entry.categoryName ?? categoryNameById.get(entry.categoryId) ?? '' }))
     .sort((a, b) => b.value - a.value)
 
   const rawMaxAbsValue = Math.max(1, ...rankedItems.map(item => Math.abs(item.value)))
@@ -102,28 +114,32 @@ function RankBars({
   return (
     // min-h-0: flex 아이템 기본값(min-height:auto)을 눌러서 부모가 준 높이보다 작게도 줄어들 수 있게
     // 한다(콘텐츠가 더 크면 그만큼 넘쳐서 조상의 overflow-y-auto가 스크롤 처리) — align-self:stretch
-    // (flex 기본값)로 실제 높이는 부모 flex 행 높이를 그대로 받는다. content-between으로 헤더/눈금
-    // 행은 위아래 끝에 붙이고 종목 행들 사이 간격만 넓혀서, 카테고리 수가 적어도 컨테이너 높이를 채운다.
+    // (flex 기본값)로 실제 높이는 부모 flex 행 높이를 그대로 받는다. content-start + 고정 gap-y로 행
+    // 간격을 일정하게 유지한다 — 예전엔 content-between으로 컨테이너 높이를 항상 꽉 채웠지만, 카테고리
+    // 수가 적을 때 간격이 지나치게 벌어져서 고정 간격 방식으로 바꿨다(카테고리가 많으면 그대로 넘쳐서
+    // 조상의 overflow-y-auto가 스크롤 처리).
     <div
-      className="grid h-full min-h-0 w-full flex-1 content-between items-center gap-x-3 gap-y-1.5 text-xs"
+      className="grid h-full min-h-0 w-full flex-1 content-start items-center gap-x-3 gap-y-2 text-[15px]"
       style={{ gridTemplateColumns: 'auto 1fr' }}
     >
       <span />
       <div className="whitespace-nowrap text-gray-400">{header ?? ' '}</div>
       {chart.rankedItems.map(item => (
         <Fragment key={item.categoryId}>
-          <span className="whitespace-nowrap text-right">{item.categoryName}</span>
+          <span className={`whitespace-nowrap text-right ${item.isReference ? 'font-bold text-yellow-500' : ''}`}>
+            {item.categoryName}
+          </span>
           {/* 퍼센트 텍스트를 막대 트랙(flex-1) 안에 막대 끝 위치(left: pct%)로 떠 있게 배치한다 —
-              막대가 길어질수록 텍스트도 같이 따라간다. 오른쪽 w-14는 막대가 축 최대치까지 길어져도
-              텍스트가 열 밖으로 밀려나지 않도록 미리 비워두는 여백(눈금 행의 w-14와 동일한 목적) —
-              보이는 내용은 없고 폭만 차지한다. */}
-          <div className="flex h-5 items-center gap-1.5">
+              막대가 길어질수록 텍스트도 같이 따라간다. 오른쪽 w-[70px]는 막대가 축 최대치까지 길어져도
+              텍스트가 열 밖으로 밀려나지 않도록 미리 비워두는 여백(눈금 행의 w-[70px]와 동일한 목적,
+              15px 폰트 기준으로 폭을 넉넉히 잡음) — 보이는 내용은 없고 폭만 차지한다. */}
+          <div className="flex h-[25px] items-center gap-1.5">
             <div className="relative h-full flex-1">
               <div
                 className="h-full rounded-sm"
                 style={{
                   width: `${(Math.abs(item.value) / chart.axisMax) * 100}%`,
-                  backgroundColor: resolveMarketMapColor(item.value, colorScale),
+                  backgroundColor: item.isReference ? MARKET_INDEX_BAR_COLOR : resolveMarketMapColor(item.value, colorScale),
                 }}
               />
               <span
@@ -133,7 +149,7 @@ function RankBars({
                 {toChartValueLabel(item.value, unit)}
               </span>
             </div>
-            <span className="w-14 shrink-0" />
+            <span className="w-[70px] shrink-0" />
           </div>
         </Fragment>
       ))}
@@ -229,6 +245,10 @@ export default function CategoryChangeRatePage() {
 
   const { data: rankingData, isLoading, isError } = useCategoryChangeRates(market, beforeMinutes)
   const { data: treeData, isLoading: isTreeLoading } = useMarketMap(market, true)
+  // 지도 페이지 최상단의 지수 등락률과 동일한 소스 — market이 ALL_STOCK이면 단일 지수가 없어
+  // marketOverview가 없고, "현재" 그래프에도 참조 막대가 자연히 빠진다(지도 페이지와 동일한 동작).
+  const { data: marketSummaryData } = useMarketSummary()
+  const marketOverview = marketSummaryData?.marketOverviews.items.find(item => item.market === market)
 
   const categoryNameById = useMemo(() => collectCategoryNames(treeData?.items ?? []), [treeData])
   // 뎁스 구분 없이 전부 나열하면 너무 많아서, 어드민 카테고리 관리 화면처럼 최상위 카테고리만 보여준다.
@@ -281,6 +301,20 @@ export default function CategoryChangeRatePage() {
       })
       .filter((entry): entry is { categoryId: number; value: number } => entry !== null)
 
+    // 지수 등락률은 "현재"(절대 등락률, %) 그래프에만 의미가 있다 — "변화율"(%p) 그래프는 N분 전
+    // 대비 차이라 지수 쪽도 같은 기준의 과거값이 필요한데 지금은 그 값을 안 갖고 있어서 뺀다.
+    const currentEntriesWithIndex = marketOverview
+      ? [
+          ...currentEntries,
+          {
+            categoryId: MARKET_INDEX_CATEGORY_ID,
+            value: marketOverview.changeRate,
+            categoryName: MARKET_INDEX_LABEL_KO[marketOverview.market],
+            isReference: true,
+          },
+        ]
+      : currentEntries
+
     const deltaEntries = rootItems
       .map(item => {
         const value = resolveAvg(item.now)
@@ -291,10 +325,10 @@ export default function CategoryChangeRatePage() {
       .filter((entry): entry is { categoryId: number; value: number } => entry !== null)
 
     return {
-      current: buildRankChart(currentEntries, categoryNameById),
+      current: buildRankChart(currentEntriesWithIndex, categoryNameById),
       delta: buildRankChart(deltaEntries, categoryNameById),
     }
-  }, [rankingData, avgChangeRateUseSimple, categoryNameById, rootCategoryIds, excludedMarketValueTiers])
+  }, [rankingData, avgChangeRateUseSimple, categoryNameById, rootCategoryIds, excludedMarketValueTiers, marketOverview])
 
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden">
@@ -353,9 +387,9 @@ export default function CategoryChangeRatePage() {
                   {/* 현재 그래프(왼쪽)/변화율 그래프(오른쪽)를 나란히 배치. "시가총액 가중/동일 가중 등락률"·
                       "N분 전 대비" 캡션은 각각 RankBars의 header로 넘겨서, 그래프(막대 트랙) 시작 위치와
                       캡션 시작 위치가 라벨 폭과 무관하게 항상 맞도록 한다. 바깥을 flex-col + min-h-0로
-                      만들어 RankBars(그리드)가 실제 남는 높이를 그대로 받게 하고, RankBars 안에서
-                      content-between으로 행 사이 여백을 균등 분배해 화면/공유 캡처 양쪽에서 그래프가
-                      컨테이너 높이를 꽉 채우게 한다(카테고리 수가 많아 다 못 채우면 자연스럽게 스크롤). */}
+                      만들어 RankBars(그리드)가 실제 남는 높이를 그대로 받게 하고, RankBars 안에서는
+                      content-start + 고정 gap-y로 행 간격을 일정하게 유지한다(카테고리 수가 많아 다 못
+                      채우면 자연스럽게 스크롤). */}
                   <div className="flex min-h-0 flex-1 gap-x-8">
                     <RankBars
                       chart={charts.current}
