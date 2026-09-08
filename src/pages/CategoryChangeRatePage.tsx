@@ -12,6 +12,7 @@ import SettingsSidebar, {
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Spinner from '@/components/Spinner'
+import NumberStepperInput from '@/components/NumberStepperInput'
 import { useMarketMap } from '@/hooks/useMarketMap'
 import { useCategoryChangeRates } from '@/hooks/useCategoryChangeRates'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
@@ -31,6 +32,7 @@ type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
 
 const MIN_BEFORE_MINUTES = 5
+const BEFORE_MINUTES_PRESETS = [15, 30, 60]
 
 // 지도 페이지(MarketMapCustomPage)와 동일한 마켓 라벨 표기.
 const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
@@ -177,7 +179,7 @@ function RankBars({
 
 export default function CategoryChangeRatePage() {
   const [market, setMarket] = usePersistedState<MarketQuery>('categoryChangeRate.market', 'KOSPI')
-  const [beforeMinutes, setBeforeMinutes] = usePersistedState('categoryChangeRate.beforeMinutes', 60)
+  const [beforeMinutes, setBeforeMinutes] = usePersistedState('categoryChangeRate.beforeMinutes', 30)
   const [searchParams, setSearchParams] = useSearchParams()
 
   // 렌더러가 /category-change-rate?market=KOSDAQ로 캡처 요청할 때 쓰는 진입점 — MarketMapCustomPage와
@@ -387,9 +389,9 @@ export default function CategoryChangeRatePage() {
                       캡션 시작 위치가 라벨 폭과 무관하게 항상 맞도록 한다. 바깥을 flex-col + min-h-0로
                       만들어 RankBars(그리드)가 실제 남는 높이를 그대로 받게 하고, RankBars 안에서
                       content-between으로 행 사이 여백을 균등 분배해 컨테이너 높이를 꽉 채운다(카테고리
-                      수가 많아 다 못 채우면 자연스럽게 스크롤). px-[25%]로 좌우 바깥쪽에 폭 기준 1/4씩
+                      수가 많아 다 못 채우면 자연스럽게 스크롤). px-[10%]로 좌우 바깥쪽에 폭 기준 10%씩
                       여백을 둬서 막대가 화면 양 끝까지 닿지 않게 한다. */}
-                  <div className="flex min-h-0 flex-1 gap-x-8 px-[25%]">
+                  <div className="flex min-h-0 flex-1 gap-x-8 px-[10%]">
                     <RankBars
                       chart={charts.current}
                       colorScale={colorScale}
@@ -400,19 +402,47 @@ export default function CategoryChangeRatePage() {
                       unit="%p"
                       colorScale={colorScale}
                       header={
-                        <span className="inline-flex items-center gap-1">
-                          <input
-                            type="number"
-                            min={MIN_BEFORE_MINUTES}
-                            step={5}
-                            value={beforeMinutes}
-                            onChange={e =>
-                              setBeforeMinutes(Math.max(MIN_BEFORE_MINUTES, Number(e.target.value) || MIN_BEFORE_MINUTES))
-                            }
-                            className="w-9 rounded border border-transparent bg-transparent px-0.5 py-0.5 text-right text-gray-400 [appearance:textfield] focus:border-gray-500 focus:bg-white focus:text-black focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                          />
-                          분 전 대비
-                        </span>
+                        // "N분 전 대비" 바로가기(15/30/60분)를 그 줄 바로 위, 같은 왼쪽 기준선에 두려고
+                        // flex-col + items-start로 감싼다 — 별도 줄로 빼서 좌표를 따로 맞추는 대신, 같은
+                        // 열(header 셀) 안에 쌓으면 왼쪽 정렬이 항상 자동으로 맞는다.
+                        <div className="flex flex-col items-start gap-1">
+                          <div className="flex items-center gap-3" role="radiogroup" aria-label="N분 전 대비 바로가기">
+                            {BEFORE_MINUTES_PRESETS.map(minutes => (
+                              <button
+                                key={minutes}
+                                type="button"
+                                role="radio"
+                                aria-checked={beforeMinutes === minutes}
+                                onClick={() => setBeforeMinutes(minutes)}
+                                className="inline-flex items-center gap-1 border-0 bg-transparent text-[11px] text-gray-400 outline-none hover:text-white"
+                              >
+                                {/* 커스텀 모드 점등 표시(SubNavBar)와 동일한 초록 발광 스타일 — 선택 상태를
+                                    "불이 들어온다"는 느낌으로 통일한다. */}
+                                <span
+                                  className={`h-2.5 w-2.5 rounded-full border ${
+                                    beforeMinutes === minutes
+                                      ? 'border-green-500 bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]'
+                                      : 'border-gray-500'
+                                  }`}
+                                />
+                                {minutes}분
+                              </button>
+                            ))}
+                          </div>
+                          <span className="inline-flex items-center gap-1">
+                            {/* 데이터가 5분 간격으로만 존재해서(CollectionScheduler) 5의 배수가 아닌 값은
+                                애초에 조회가 불가능하다 — validate로 커밋 자체를 막아서 화면에서 미리 걸러낸다. */}
+                            <NumberStepperInput
+                              value={beforeMinutes}
+                              onCommit={setBeforeMinutes}
+                              min={MIN_BEFORE_MINUTES}
+                              step={5}
+                              validate={v => (v % 5 === 0 ? v : null)}
+                              className="w-9 rounded border border-transparent bg-transparent px-0.5 py-0.5 text-right text-gray-400 focus:border-gray-500 focus:bg-white focus:text-black focus:outline-none"
+                            />
+                            분 전 대비
+                          </span>
+                        </div>
                       }
                     />
                   </div>
