@@ -25,7 +25,6 @@ import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { toMarketMapSnapshotTimeLabel, signClass, avgChangeRateLabel } from '@/utils/format'
 import { resolveMarketMapColor, type ColorScaleConfig } from '@/utils/marketMapColorScale'
-import { useMarketSummary } from '@/hooks/useMarketSummary'
 import type { CategoryTierBreakdown, Market, MarketQuery, MarketMapCategoryNode } from '@/types/api'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
@@ -245,10 +244,6 @@ export default function CategoryChangeRatePage() {
 
   const { data: rankingData, isLoading, isError } = useCategoryChangeRates(market, beforeMinutes)
   const { data: treeData, isLoading: isTreeLoading } = useMarketMap(market, true)
-  // 지도 페이지 최상단의 지수 등락률과 동일한 소스 — market이 ALL_STOCK이면 단일 지수가 없어
-  // marketOverview가 없고, "현재" 그래프에도 참조 막대가 자연히 빠진다(지도 페이지와 동일한 동작).
-  const { data: marketSummaryData } = useMarketSummary()
-  const marketOverview = marketSummaryData?.marketOverviews.items.find(item => item.market === market)
 
   const categoryNameById = useMemo(() => collectCategoryNames(treeData?.items ?? []), [treeData])
   // 뎁스 구분 없이 전부 나열하면 너무 많아서, 어드민 카테고리 관리 화면처럼 최상위 카테고리만 보여준다.
@@ -303,17 +298,22 @@ export default function CategoryChangeRatePage() {
 
     // 지수 등락률은 "현재"(절대 등락률, %) 그래프에만 의미가 있다 — "변화율"(%p) 그래프는 N분 전
     // 대비 차이라 지수 쪽도 같은 기준의 과거값이 필요한데 지금은 그 값을 안 갖고 있어서 뺀다.
-    const currentEntriesWithIndex = marketOverview
-      ? [
-          ...currentEntries,
-          {
-            categoryId: MARKET_INDEX_CATEGORY_ID,
-            value: marketOverview.changeRate,
-            categoryName: MARKET_INDEX_LABEL_KO[marketOverview.market],
-            isReference: true,
-          },
-        ]
-      : currentEntries
+    // rankingData.items는 마켓별 랭킹 하나씩이라, market이 ALL_STOCK이면 어느 항목의 market도 'ALL_STOCK'과
+    // 같지 않아 자연히 못 찾는다(지도 페이지가 ALL_STOCK일 때 지수를 안 보여주는 것과 동일한 동작) —
+    // indexChangeRate는 랭킹과 정확히 같은 시각 기준이라 스냅샷 시점 어긋남이 없다.
+    const indexRanking = rankingData?.items.find(item => item.market === market)
+    const currentEntriesWithIndex =
+      indexRanking?.indexChangeRate != null
+        ? [
+            ...currentEntries,
+            {
+              categoryId: MARKET_INDEX_CATEGORY_ID,
+              value: indexRanking.indexChangeRate,
+              categoryName: MARKET_INDEX_LABEL_KO[indexRanking.market],
+              isReference: true,
+            },
+          ]
+        : currentEntries
 
     const deltaEntries = rootItems
       .map(item => {
@@ -328,7 +328,7 @@ export default function CategoryChangeRatePage() {
       current: buildRankChart(currentEntriesWithIndex, categoryNameById),
       delta: buildRankChart(deltaEntries, categoryNameById),
     }
-  }, [rankingData, avgChangeRateUseSimple, categoryNameById, rootCategoryIds, excludedMarketValueTiers, marketOverview])
+  }, [rankingData, avgChangeRateUseSimple, categoryNameById, rootCategoryIds, excludedMarketValueTiers, market])
 
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden">

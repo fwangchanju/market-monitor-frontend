@@ -20,7 +20,6 @@ import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
 import { TAB_GAP, toMarketMapSnapshotTimeLabel, toIndex, toPctSigned, signClass } from '@/utils/format'
-import { useMarketSummary } from '@/hooks/useMarketSummary'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
@@ -114,8 +113,9 @@ export default function MarketMapCustomPage() {
   const [zoomOutRequestDepth, setZoomOutRequestDepth] = useState<number | null>(null)
   const captureRef = useRef<HTMLDivElement>(null)
 
-  const { data: marketSummaryData } = useMarketSummary()
-  const marketOverview = marketSummaryData?.marketOverviews.items.find(item => item.market === market)
+  // data(useMarketMap 응답)에 이미 같은 스냅샷 시각 기준의 지수 개요가 함께 온다 — market이 ALL_STOCK이면
+  // 단일 지수값이 없어 marketOverview가 null.
+  const marketOverview = data?.marketOverview
 
   const { path, currentNode, currentSiblings, enterCategory, goToDepth, reset } = useMarketMapDrilldown(filteredRootNodes)
   // path가 바뀌면(어떤 방식의 이동이든) 이전 hover 상태를 무조건 지운다 — 안 그러면 브레드크럼 바가
