@@ -113,12 +113,10 @@ function RankBars({
   return (
     // min-h-0: flex 아이템 기본값(min-height:auto)을 눌러서 부모가 준 높이보다 작게도 줄어들 수 있게
     // 한다(콘텐츠가 더 크면 그만큼 넘쳐서 조상의 overflow-y-auto가 스크롤 처리) — align-self:stretch
-    // (flex 기본값)로 실제 높이는 부모 flex 행 높이를 그대로 받는다. content-start + 고정 gap-y로 행
-    // 간격을 일정하게 유지한다 — 예전엔 content-between으로 컨테이너 높이를 항상 꽉 채웠지만, 카테고리
-    // 수가 적을 때 간격이 지나치게 벌어져서 고정 간격 방식으로 바꿨다(카테고리가 많으면 그대로 넘쳐서
-    // 조상의 overflow-y-auto가 스크롤 처리).
+    // (flex 기본값)로 실제 높이는 부모 flex 행 높이를 그대로 받는다. content-between으로 헤더/눈금
+    // 행은 위아래 끝에 붙이고 종목 행들 사이 간격만 넓혀서, 카테고리 수가 적어도 컨테이너 높이를 채운다.
     <div
-      className="grid h-full min-h-0 w-full flex-1 content-start items-center gap-x-3 gap-y-2 text-[15px]"
+      className="grid h-full min-h-0 w-full flex-1 content-between items-center gap-x-3 gap-y-2 text-[15px]"
       style={{ gridTemplateColumns: 'auto 1fr' }}
     >
       <span />
@@ -387,10 +385,11 @@ export default function CategoryChangeRatePage() {
                   {/* 현재 그래프(왼쪽)/변화율 그래프(오른쪽)를 나란히 배치. "시가총액 가중/동일 가중 등락률"·
                       "N분 전 대비" 캡션은 각각 RankBars의 header로 넘겨서, 그래프(막대 트랙) 시작 위치와
                       캡션 시작 위치가 라벨 폭과 무관하게 항상 맞도록 한다. 바깥을 flex-col + min-h-0로
-                      만들어 RankBars(그리드)가 실제 남는 높이를 그대로 받게 하고, RankBars 안에서는
-                      content-start + 고정 gap-y로 행 간격을 일정하게 유지한다(카테고리 수가 많아 다 못
-                      채우면 자연스럽게 스크롤). */}
-                  <div className="flex min-h-0 flex-1 gap-x-8">
+                      만들어 RankBars(그리드)가 실제 남는 높이를 그대로 받게 하고, RankBars 안에서
+                      content-between으로 행 사이 여백을 균등 분배해 컨테이너 높이를 꽉 채운다(카테고리
+                      수가 많아 다 못 채우면 자연스럽게 스크롤). px-[25%]로 좌우 바깥쪽에 폭 기준 1/4씩
+                      여백을 둬서 막대가 화면 양 끝까지 닿지 않게 한다. */}
+                  <div className="flex min-h-0 flex-1 gap-x-8 px-[25%]">
                     <RankBars
                       chart={charts.current}
                       colorScale={colorScale}

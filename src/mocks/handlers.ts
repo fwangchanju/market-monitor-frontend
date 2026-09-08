@@ -51,7 +51,12 @@ export const handlers = [
   ),
 
   // ── 마켓맵 ──────────────────────────────────────────────────────────
-  http.get('/api/market-map', () => HttpResponse.json(snapshot(data.marketMapTree))),
+  // marketOverview는 market이 단일 마켓일 때만(ALL_STOCK이면 단일 지수값이 없어 null) — 실제 백엔드와 동일.
+  http.get('/api/market-map', ({ request }) => {
+    const market = new URL(request.url).searchParams.get('market')
+    const marketOverview = data.marketOverviews.find(o => o.market === market) ?? null
+    return HttpResponse.json({ ...snapshot(data.marketMapTree), marketOverview })
+  }),
   http.get('/api/market-map/value-tiers', () => HttpResponse.json(data.marketValueTiers)),
   http.get('/api/market-map/category-change-rates', ({ request }) => {
     const market = new URL(request.url).searchParams.get('market')
