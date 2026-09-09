@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useMarketMapLayout, type DisplayGroup, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
 import MarketMapCategorySection from './MarketMapCategorySection'
 import type { ColorScaleConfig } from '@/utils/marketMapColorScale'
+import type { StockLabelMode } from '@/hooks/useGlobalSettings'
 
 interface Props {
   groups: DisplayGroup[]
@@ -26,6 +27,8 @@ interface Props {
   colorScale: ColorScaleConfig
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명/등락률 표시 여부를 가르는 넓이 비중(%) 기준.
   labelMinAreaPercent: number
+  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명만/등락률만/둘 다 보여줄지.
+  stockLabelMode: StockLabelMode
   // 0이 아닌 뎁스가 오면 그 뎁스로 진입할 때 썼던 위치로 줄어드는 애니메이션을 재생한다.
   zoomOutRequestDepth: number | null
   onZoomOutComplete: (depth: number) => void
@@ -91,6 +94,7 @@ export default function MarketMapTreemap({
   canExclude,
   colorScale,
   labelMinAreaPercent,
+  stockLabelMode,
   zoomOutRequestDepth,
   onZoomOutComplete,
 }: Props) {
@@ -268,6 +272,7 @@ export default function MarketMapTreemap({
               canExclude={false}
               colorScale={colorScale}
               labelMinAreaPercent={labelMinAreaPercent}
+              stockLabelMode={stockLabelMode}
             />
           ))}
         </div>
@@ -286,6 +291,7 @@ export default function MarketMapTreemap({
             canExclude={canExclude}
             colorScale={colorScale}
             labelMinAreaPercent={labelMinAreaPercent}
+            stockLabelMode={stockLabelMode}
           />
         ))}
       </div>

@@ -12,6 +12,7 @@ import SettingsSidebar, {
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Spinner from '@/components/Spinner'
+import NumberStepperInput from '@/components/NumberStepperInput'
 import { useMarketMap } from '@/hooks/useMarketMap'
 import { useCategoryChangeRates } from '@/hooks/useCategoryChangeRates'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
@@ -23,17 +24,24 @@ import { FONT_BAR_TITLE, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload } from '@/utils/captureToDownload'
-import { toMarketMapSnapshotTimeLabel, signClass } from '@/utils/format'
+import { toMarketMapSnapshotTimeLabel, signClass, avgChangeRateLabel } from '@/utils/format'
 import { resolveMarketMapColor, type ColorScaleConfig } from '@/utils/marketMapColorScale'
-import type { CategoryTierBreakdown, MarketQuery, MarketMapCategoryNode } from '@/types/api'
+import type { CategoryTierBreakdown, Market, MarketQuery, MarketMapCategoryNode } from '@/types/api'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
 
 const MIN_BEFORE_MINUTES = 5
+const BEFORE_MINUTES_PRESETS = [15, 30, 60]
 
 // 지도 페이지(MarketMapCustomPage)와 동일한 마켓 라벨 표기.
 const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
+// 지수 등락률 참조 막대에 붙는 한글 라벨 — ALL_STOCK은 단일 지수가 없어 대상에서 제외된다.
+const MARKET_INDEX_LABEL_KO: Record<Market, string> = { KOSPI: '코스피', KOSDAQ: '코스닥' }
+// 실제 카테고리 id(양수)와 겹치지 않는 음수 sentinel — 지수 참조 막대 전용 categoryId(React key로도 씀).
+const MARKET_INDEX_CATEGORY_ID = -1
+// 지도 페이지에서 최상위 뎁스 카테고리를 노란 글자로 표시하는 것과 같은 "기준" 색상 — 참조 막대도 동일하게 맞춘다.
+const MARKET_INDEX_BAR_COLOR = '#eab308'
 
 function collectCategoryNames(nodes: MarketMapCategoryNode[], out: Map<number, string> = new Map()): Map<number, string> {
   for (const node of nodes) {
@@ -47,6 +55,8 @@ interface RankedItem {
   categoryId: number
   categoryName: string
   value: number
+  // 지수 등락률 참조 막대 표시용 — 일반 카테고리 막대와 색을 다르게 칠하는 데만 쓴다.
+  isReference?: boolean
 }
 
 interface RankChart {
@@ -57,9 +67,12 @@ interface RankChart {
 
 // 카테고리별 (id, 값) 목록을 값 내림차순 랭킹 막대그래프 데이터로 변환한다 — "현재" 그래프/"변화율"
 // 그래프 둘 다 이 함수로 각각 독립적으로 정렬·스케일을 만든다(같은 포맷, 정렬 기준값만 다름).
-function buildRankChart(entries: { categoryId: number; value: number }[], categoryNameById: Map<number, string>): RankChart {
+function buildRankChart(
+  entries: { categoryId: number; value: number; categoryName?: string; isReference?: boolean }[],
+  categoryNameById: Map<number, string>,
+): RankChart {
   const rankedItems: RankedItem[] = entries
-    .map(entry => ({ ...entry, categoryName: categoryNameById.get(entry.categoryId) ?? '' }))
+    .map(entry => ({ ...entry, categoryName: entry.categoryName ?? categoryNameById.get(entry.categoryId) ?? '' }))
     .sort((a, b) => b.value - a.value)
 
   const rawMaxAbsValue = Math.max(1, ...rankedItems.map(item => Math.abs(item.value)))
@@ -100,25 +113,42 @@ function RankBars({
     return <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
   }
   return (
-    <div className="grid w-full items-center gap-x-3 gap-y-1.5 text-xs" style={{ gridTemplateColumns: 'auto 1fr' }}>
+    // min-h-0: flex 아이템 기본값(min-height:auto)을 눌러서 부모가 준 높이보다 작게도 줄어들 수 있게
+    // 한다(콘텐츠가 더 크면 그만큼 넘쳐서 조상의 overflow-y-auto가 스크롤 처리) — align-self:stretch
+    // (flex 기본값)로 실제 높이는 부모 flex 행 높이를 그대로 받는다. content-between으로 헤더/눈금
+    // 행은 위아래 끝에 붙이고 종목 행들 사이 간격만 넓혀서, 카테고리 수가 적어도 컨테이너 높이를 채운다.
+    <div
+      className="grid h-full min-h-0 w-full flex-1 content-between items-center gap-x-3 gap-y-2 text-[15px]"
+      style={{ gridTemplateColumns: 'auto 1fr' }}
+    >
       <span />
       <div className="whitespace-nowrap text-gray-400">{header ?? ' '}</div>
       {chart.rankedItems.map(item => (
         <Fragment key={item.categoryId}>
-          <span className="whitespace-nowrap text-right">{item.categoryName}</span>
-          {/* 퍼센트 텍스트 폭을 고정(w-14)으로 미리 비워두고, 막대는 그 나머지(flex-1) 안에서만
-              채운다 — 그래야 막대가 축 최대치에 가깝게 길어져도 텍스트가 열 밖으로 밀려나지 않는다. */}
-          <div className="flex h-5 items-center gap-1.5">
-            <div className="h-full flex-1">
+          <span className={`whitespace-nowrap text-right ${item.isReference ? 'font-bold text-yellow-500' : ''}`}>
+            {item.categoryName}
+          </span>
+          {/* 퍼센트 텍스트를 막대 트랙(flex-1) 안에 막대 끝 위치(left: pct%)로 떠 있게 배치한다 —
+              막대가 길어질수록 텍스트도 같이 따라간다. 오른쪽 w-[70px]는 막대가 축 최대치까지 길어져도
+              텍스트가 열 밖으로 밀려나지 않도록 미리 비워두는 여백(눈금 행의 w-[70px]와 동일한 목적,
+              15px 폰트 기준으로 폭을 넉넉히 잡음) — 보이는 내용은 없고 폭만 차지한다. */}
+          <div className="flex h-[25px] items-center gap-1.5">
+            <div className="relative h-full flex-1">
               <div
                 className="h-full rounded-sm"
                 style={{
                   width: `${(Math.abs(item.value) / chart.axisMax) * 100}%`,
-                  backgroundColor: resolveMarketMapColor(item.value, colorScale),
+                  backgroundColor: item.isReference ? MARKET_INDEX_BAR_COLOR : resolveMarketMapColor(item.value, colorScale),
                 }}
               />
+              <span
+                className={`absolute top-0 flex h-full items-center pl-1.5 font-bold whitespace-nowrap ${signClass(item.value)}`}
+                style={{ left: `${(Math.abs(item.value) / chart.axisMax) * 100}%` }}
+              >
+                {toChartValueLabel(item.value, unit)}
+              </span>
             </div>
-            <span className={`w-14 shrink-0 whitespace-nowrap ${signClass(item.value)}`}>{toChartValueLabel(item.value, unit)}</span>
+            <span className="w-[70px] shrink-0" />
           </div>
         </Fragment>
       ))}
@@ -149,7 +179,7 @@ function RankBars({
 
 export default function CategoryChangeRatePage() {
   const [market, setMarket] = usePersistedState<MarketQuery>('categoryChangeRate.market', 'KOSPI')
-  const [beforeMinutes, setBeforeMinutes] = usePersistedState('categoryChangeRate.beforeMinutes', 60)
+  const [beforeMinutes, setBeforeMinutes] = usePersistedState('categoryChangeRate.beforeMinutes', 30)
   const [searchParams, setSearchParams] = useSearchParams()
 
   // 렌더러가 /category-change-rate?market=KOSDAQ로 캡처 요청할 때 쓰는 진입점 — MarketMapCustomPage와
@@ -266,6 +296,25 @@ export default function CategoryChangeRatePage() {
       })
       .filter((entry): entry is { categoryId: number; value: number } => entry !== null)
 
+    // 지수 등락률은 "현재"(절대 등락률, %) 그래프에만 의미가 있다 — "변화율"(%p) 그래프는 N분 전
+    // 대비 차이라 지수 쪽도 같은 기준의 과거값이 필요한데 지금은 그 값을 안 갖고 있어서 뺀다.
+    // rankingData.items는 마켓별 랭킹 하나씩이라, market이 ALL_STOCK이면 어느 항목의 market도 'ALL_STOCK'과
+    // 같지 않아 자연히 못 찾는다(지도 페이지가 ALL_STOCK일 때 지수를 안 보여주는 것과 동일한 동작) —
+    // indexChangeRate는 랭킹과 정확히 같은 시각 기준이라 스냅샷 시점 어긋남이 없다.
+    const indexRanking = rankingData?.items.find(item => item.market === market)
+    const currentEntriesWithIndex =
+      indexRanking?.indexChangeRate != null
+        ? [
+            ...currentEntries,
+            {
+              categoryId: MARKET_INDEX_CATEGORY_ID,
+              value: indexRanking.indexChangeRate,
+              categoryName: MARKET_INDEX_LABEL_KO[indexRanking.market],
+              isReference: true,
+            },
+          ]
+        : currentEntries
+
     const deltaEntries = rootItems
       .map(item => {
         const value = resolveAvg(item.now)
@@ -276,10 +325,10 @@ export default function CategoryChangeRatePage() {
       .filter((entry): entry is { categoryId: number; value: number } => entry !== null)
 
     return {
-      current: buildRankChart(currentEntries, categoryNameById),
+      current: buildRankChart(currentEntriesWithIndex, categoryNameById),
       delta: buildRankChart(deltaEntries, categoryNameById),
     }
-  }, [rankingData, avgChangeRateUseSimple, categoryNameById, rootCategoryIds, excludedMarketValueTiers])
+  }, [rankingData, avgChangeRateUseSimple, categoryNameById, rootCategoryIds, excludedMarketValueTiers, market])
 
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden">
@@ -334,30 +383,66 @@ export default function CategoryChangeRatePage() {
               ) : charts.current.rankedItems.length === 0 && charts.delta.rankedItems.length === 0 ? (
                 <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
               ) : (
-                <div className="min-h-0 flex-1 overflow-y-auto">
-                  {/* 현재 그래프(왼쪽)/변화율 그래프(오른쪽)를 나란히 배치. "N분 전 대비" 캡션은
-                      delta 쪽 RankBars의 header로 넘겨서, 그래프(막대 트랙) 시작 위치와 캡션 시작
-                      위치가 라벨 폭과 무관하게 항상 맞도록 한다. */}
-                  <div className="grid grid-cols-2 gap-x-8">
-                    <RankBars chart={charts.current} colorScale={colorScale} />
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                  {/* 현재 그래프(왼쪽)/변화율 그래프(오른쪽)를 나란히 배치. "시가총액 가중/동일 가중 등락률"·
+                      "N분 전 대비" 캡션은 각각 RankBars의 header로 넘겨서, 그래프(막대 트랙) 시작 위치와
+                      캡션 시작 위치가 라벨 폭과 무관하게 항상 맞도록 한다. 바깥을 flex-col + min-h-0로
+                      만들어 RankBars(그리드)가 실제 남는 높이를 그대로 받게 하고, RankBars 안에서
+                      content-between으로 행 사이 여백을 균등 분배해 컨테이너 높이를 꽉 채운다(카테고리
+                      수가 많아 다 못 채우면 자연스럽게 스크롤). px-[10%]로 좌우 바깥쪽에 폭 기준 10%씩
+                      여백을 둬서 막대가 화면 양 끝까지 닿지 않게 한다. */}
+                  <div className="flex min-h-0 flex-1 gap-x-8 px-[10%]">
+                    <RankBars
+                      chart={charts.current}
+                      colorScale={colorScale}
+                      header={avgChangeRateLabel(avgChangeRateUseSimple)}
+                    />
                     <RankBars
                       chart={charts.delta}
                       unit="%p"
                       colorScale={colorScale}
                       header={
-                        <span className="inline-flex items-center gap-1">
-                          <input
-                            type="number"
-                            min={MIN_BEFORE_MINUTES}
-                            step={5}
-                            value={beforeMinutes}
-                            onChange={e =>
-                              setBeforeMinutes(Math.max(MIN_BEFORE_MINUTES, Number(e.target.value) || MIN_BEFORE_MINUTES))
-                            }
-                            className="w-9 rounded border border-transparent bg-transparent px-0.5 py-0.5 text-right text-gray-400 [appearance:textfield] focus:border-gray-500 focus:bg-white focus:text-black focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                          />
-                          분 전 대비
-                        </span>
+                        // "N분 전 대비" 바로가기(15/30/60분)를 그 줄 바로 위, 같은 왼쪽 기준선에 두려고
+                        // flex-col + items-start로 감싼다 — 별도 줄로 빼서 좌표를 따로 맞추는 대신, 같은
+                        // 열(header 셀) 안에 쌓으면 왼쪽 정렬이 항상 자동으로 맞는다.
+                        <div className="flex flex-col items-start gap-1">
+                          <div className="flex items-center gap-3" role="radiogroup" aria-label="N분 전 대비 바로가기">
+                            {BEFORE_MINUTES_PRESETS.map(minutes => (
+                              <button
+                                key={minutes}
+                                type="button"
+                                role="radio"
+                                aria-checked={beforeMinutes === minutes}
+                                onClick={() => setBeforeMinutes(minutes)}
+                                className="inline-flex items-center gap-1 border-0 bg-transparent text-[11px] text-gray-400 outline-none hover:text-white"
+                              >
+                                {/* 커스텀 모드 점등 표시(SubNavBar)와 동일한 초록 발광 스타일 — 선택 상태를
+                                    "불이 들어온다"는 느낌으로 통일한다. */}
+                                <span
+                                  className={`h-2.5 w-2.5 rounded-full border ${
+                                    beforeMinutes === minutes
+                                      ? 'border-green-500 bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]'
+                                      : 'border-gray-500'
+                                  }`}
+                                />
+                                {minutes}분
+                              </button>
+                            ))}
+                          </div>
+                          <span className="inline-flex items-center gap-1">
+                            {/* 데이터가 5분 간격으로만 존재해서(CollectionScheduler) 5의 배수가 아닌 값은
+                                애초에 조회가 불가능하다 — validate로 커밋 자체를 막아서 화면에서 미리 걸러낸다. */}
+                            <NumberStepperInput
+                              value={beforeMinutes}
+                              onCommit={setBeforeMinutes}
+                              min={MIN_BEFORE_MINUTES}
+                              step={5}
+                              validate={v => (v % 5 === 0 ? v : null)}
+                              className="w-9 rounded border border-transparent bg-transparent px-0.5 py-0.5 text-right text-gray-400 focus:border-gray-500 focus:bg-white focus:text-black focus:outline-none"
+                            />
+                            분 전 대비
+                          </span>
+                        </div>
                       }
                     />
                   </div>

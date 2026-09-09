@@ -2,10 +2,11 @@ import { useRef } from 'react'
 import MarketMapBox from './MarketMapBox'
 import Tooltip from './Tooltip'
 import { useTooltip } from '@/hooks/useTooltip'
-import { categoryHeaderHeight, PADDING, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
-import { TAB_GAP, toJoEokDecimal, toPctSigned } from '@/utils/format'
+import { categoryHeaderFontSize, categoryHeaderHeight, PADDING, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
+import { TAB_GAP, avgChangeRateLabel, toJoEokDecimal, toPctSigned } from '@/utils/format'
 import type { MarketMapItem } from '@/types/api'
 import type { ColorScaleConfig } from '@/utils/marketMapColorScale'
+import type { StockLabelMode } from '@/hooks/useGlobalSettings'
 
 interface Props {
   category: LaidOutCategory
@@ -24,6 +25,8 @@ interface Props {
   colorScale: ColorScaleConfig
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명/등락률 표시 여부를 가르는 넓이 비중(%) 기준.
   labelMinAreaPercent: number
+  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명만/등락률만/둘 다 보여줄지.
+  stockLabelMode: StockLabelMode
   depth?: number
 }
 
@@ -46,12 +49,6 @@ function localWeightedAvgChangeRate(items: MarketMapItem[]): number {
 
 function localSimpleAvgChangeRate(items: MarketMapItem[]): number {
   return items.length > 0 ? items.reduce((sum, item) => sum + item.changeRate, 0) / items.length : 0
-}
-
-// 헤더 높이(categoryHeaderHeight)와 같은 비율로 폰트 크기도 depth에 따라 줄인다.
-// 텔레그램 자동발송 이미지에서도 잘 읽히도록 헤더 높이에 거의 꽉 차는 크기로.
-function categoryHeaderFontSize(depth: number): number {
-  return Math.max(16 - depth * 2, 12)
 }
 
 // 마우스 커서(손모양 아이콘)가 툴팁 첫 글자를 가리지 않도록 두는 좌우 간격 — 종목 박스 툴팁과
@@ -78,6 +75,7 @@ export default function MarketMapCategorySection({
   canExclude,
   colorScale,
   labelMinAreaPercent,
+  stockLabelMode,
   depth = 0,
 }: Props) {
   const boxRef = useRef<HTMLDivElement>(null)
@@ -118,55 +116,55 @@ export default function MarketMapCategorySection({
       }}
       className={`box-content ${tooltip.hover ? 'border-2 border-yellow-600' : 'border border-black'}`}
     >
-      <button
-        type="button"
-        onClick={
-          category.isSelf
-            ? undefined
-            : e => {
-                const rect = boxRef.current?.getBoundingClientRect()
-                onSelectCategory(category.categoryName, rect ?? e.currentTarget.getBoundingClientRect())
-                // 클릭 후에도 이 버튼에 포커스가 남아서 브라우저 기본 포커스 링이 계속 보이는 걸 방지.
-                e.currentTarget.blur()
-              }
-        }
-        onContextMenu={
-          category.isSelf || !canExclude
-            ? undefined
-            : e => {
-                e.preventDefault()
-                onOpenExcludeMenu(category.categoryId, category.categoryName, e)
-              }
-        }
-        onMouseEnter={tooltip.onMouseEnter}
-        onMouseMove={tooltip.onMouseMove}
-        onMouseLeave={tooltip.onMouseLeave}
-        style={{
-          height: categoryHeaderHeight(depth),
-          fontSize: categoryHeaderFontSize(depth),
-          left: PADDING,
-          width: `calc(100% - ${PADDING * 2}px)`,
-        }}
-        className={`absolute top-0 flex items-center overflow-hidden truncate border-2 border-transparent px-1 text-left font-bold leading-none ${depth === 0 ? 'text-yellow-600' : 'text-white'} ${categoryHeaderColorClass(depth)}`}
-      >
-        {category.categoryName}
-        {headerSuffix && <span className="font-normal">{headerSuffix}</span>}
-      </button>
-      <Tooltip
-        visible={tooltip.hover}
-        position={tooltip.position}
-        alignLeft={category.tooltipAlignLeft}
-        alignTop={category.tooltipAlignTop}
-      >
-        <div className="font-bold">{category.categoryName}</div>
-        <div>
-          {avgChangeRateUseSimple ? '산술평균' : '가중평균'} 등락률: {toPctSigned(avgChangeRate)}
-        </div>
-        <div>
-          상승 {advancerCount} 하락 {declinerCount} 보합 {unchangedCount}
-        </div>
-        <div>시가총액 합: {toJoEokDecimal(category.totalMarketValue / 100_000_000)}</div>
-      </Tooltip>
+      {/* isSelf(드릴다운으로 들어온 자기 자신)는 헤더 태그를 안 그린다 — breadcrumb에 이미
+          "KOSPI > 반도체"처럼 같은 이름이 떠 있어서 중복이기 때문(useMarketMapLayout의 paddingTop도
+          이 카테고리 몫의 헤더 공간을 아예 안 비워둔다). 그 대신 실제 하위 카테고리들이 이 자리를 이어받아
+          맨 위(depth 0) 취급을 받는다(아래 subCategories map의 depth 전달 참고). */}
+      {!category.isSelf && (
+        <>
+          <button
+            type="button"
+            onClick={e => {
+              const rect = boxRef.current?.getBoundingClientRect()
+              onSelectCategory(category.categoryName, rect ?? e.currentTarget.getBoundingClientRect())
+              // 클릭 후에도 이 버튼에 포커스가 남아서 브라우저 기본 포커스 링이 계속 보이는 걸 방지.
+              e.currentTarget.blur()
+            }}
+            onContextMenu={
+              !canExclude
+                ? undefined
+                : e => {
+                    e.preventDefault()
+                    onOpenExcludeMenu(category.categoryId, category.categoryName, e)
+                  }
+            }
+            onMouseEnter={tooltip.onMouseEnter}
+            onMouseMove={tooltip.onMouseMove}
+            onMouseLeave={tooltip.onMouseLeave}
+            style={{
+              height: categoryHeaderHeight(depth),
+              fontSize: categoryHeaderFontSize(depth),
+              left: PADDING,
+              width: `calc(100% - ${PADDING * 2}px)`,
+            }}
+            className={`absolute top-0 flex items-center overflow-hidden truncate border-2 border-transparent px-1 text-left font-bold leading-none ${depth === 0 ? 'text-yellow-600' : 'text-white'} ${categoryHeaderColorClass(depth)}`}
+          >
+            {category.categoryName}
+            {headerSuffix && <span className="font-normal">{headerSuffix}</span>}
+          </button>
+          <Tooltip
+            visible={tooltip.hover}
+            position={tooltip.position}
+            alignLeft={category.tooltipAlignLeft}
+            alignTop={category.tooltipAlignTop}
+          >
+            <div className="font-bold">{category.categoryName}</div>
+            <div> {avgChangeRateLabel(avgChangeRateUseSimple)}: {toPctSigned(avgChangeRate)}</div>
+            <div> 상승 {advancerCount} 하락 {declinerCount} 보합 {unchangedCount}</div>
+            <div> 시가총액 합: {toJoEokDecimal(category.totalMarketValue / 100_000_000)}</div>
+          </Tooltip>
+        </>
+      )}
       {category.subCategories.map(sub => (
         <MarketMapCategorySection
           key={sub.categoryName}
@@ -180,7 +178,8 @@ export default function MarketMapCategorySection({
           canExclude={canExclude}
           colorScale={colorScale}
           labelMinAreaPercent={labelMinAreaPercent}
-          depth={depth + 1}
+          stockLabelMode={stockLabelMode}
+          depth={category.isSelf ? depth : depth + 1}
         />
       ))}
       {category.boxes.map(box => (
@@ -193,6 +192,7 @@ export default function MarketMapCategorySection({
           height={box.height}
           areaPercent={box.areaPercent}
           labelMinAreaPercent={labelMinAreaPercent}
+          stockLabelMode={stockLabelMode}
           tooltipAlignLeft={box.tooltipAlignLeft}
           tooltipAlignTop={box.tooltipAlignTop}
           colorScale={colorScale}

@@ -61,6 +61,9 @@ const DEPTH_METRIC_OPTIONS: { key: DepthMetric; label: string }[] = [
   { key: 'marketValue', label: '시가총액 합' },
 ]
 
+// 종목 박스 표시 내용 슬라이더 라벨 — 인덱스가 곧 STOCK_LABEL_MODES(useGlobalSettings)의 인덱스.
+const STOCK_LABEL_MODE_LABELS = ['종목명', '등락률', '전체']
+
 // 양쪽 끝에 핸들이 있으면 전체 구간 다 보여주고, 핸들을 안쪽으로 옮기면 그 구간(포함) 밖은 제외된다.
 // 두 핸들은 서로를 지나칠 수 없다(겹치는 건 허용 — 그러면 그 한 칸만 표시).
 function RangeSlider({
@@ -198,6 +201,50 @@ function RangeSlider({
   )
 }
 
+// 핸들 하나로 딱 하나의 칸만 고르는 슬라이더 — RangeSlider와 달리 범위가 아니라 단일 값(예: 종목
+// 박스 표시 내용)을 고를 때 쓴다. 눈금 라벨 배치 방식은 RangeSlider와 동일(라벨 폭과 무관하게 위치 고정).
+function SingleValueSlider({
+  index,
+  labels,
+  ariaLabel,
+  onChange,
+  disabled = false,
+}: {
+  index: number
+  labels: string[]
+  ariaLabel: string
+  onChange: (index: number) => void
+  disabled?: boolean
+}) {
+  const steps = Math.max(labels.length - 1, 1)
+  return (
+    <div>
+      <input
+        type="range"
+        min={0}
+        max={steps}
+        step={1}
+        value={index}
+        aria-label={ariaLabel}
+        onChange={e => onChange(Number(e.target.value))}
+        disabled={disabled}
+        className="w-full accent-[#4f8fd6] disabled:cursor-not-allowed"
+      />
+      <div className="relative mt-1 h-4 text-xs text-gray-400">
+        {labels.map((label, labelIndex) => (
+          <span
+            key={label}
+            className="absolute -translate-x-1/2 whitespace-nowrap"
+            style={{ left: `${(labelIndex / steps) * 100}%` }}
+          >
+            {label}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function colorThresholdLabel(threshold: ColorScaleThreshold): string {
   if (threshold.thresholdPercent === 0) return '0% (기준)'
   return `${threshold.thresholdPercent > 0 ? '+' : ''}${threshold.thresholdPercent}%`
@@ -251,6 +298,8 @@ export function SettingsDisplayRangeSection({
   depthMetricMinIndex,
   depthMetricMaxIndex,
   onChangeDepthMetricRange,
+  stockLabelModeIndex,
+  onChangeStockLabelModeIndex,
   boxLabelMinAreaPercent,
   onChangeBoxLabelMinAreaPercent,
   tiers,
@@ -271,6 +320,9 @@ export function SettingsDisplayRangeSection({
   depthMetricMinIndex: number
   depthMetricMaxIndex: number
   onChangeDepthMetricRange: (minIndex: number, maxIndex: number) => void
+  // 종목 박스에 이름만(0)/등락률만(1)/둘 다(2) 보여줄지 — STOCK_LABEL_MODE_OPTIONS 인덱스.
+  stockLabelModeIndex: number
+  onChangeStockLabelModeIndex: (index: number) => void
   // 종목 박스가 전체 트리맵 넓이에서 이 비중(%) 미만이면 종목명/등락률을 표시하지 않는다.
   boxLabelMinAreaPercent: number
   onChangeBoxLabelMinAreaPercent: (value: number) => void
@@ -284,7 +336,19 @@ export function SettingsDisplayRangeSection({
 }) {
   const depthValue = Math.min(maxDepth ?? availableMaxDepth, availableMaxDepth)
   const isDepthDisabled = !isCustom || availableMaxDepth <= 1
-  const depthMetricLabels = Array.from({ length: availableMaxDepth }, (_, index) => DEPTH_LABELS[index] ?? `${index + 1}차 분류`)
+  // 맨 앞 "끄기" 칸(offIndex=0) + 대분류/중분류/소분류... 뎁스 라벨. 슬라이더 인덱스는 뎁스값보다 1 큼.
+  const depthMetricLabels = [
+    '끄기',
+    ...Array.from({ length: availableMaxDepth }, (_, index) => DEPTH_LABELS[index] ?? `${index + 1}차 분류`),
+  ]
+
+  // tiers/tierRangeMinIndex·MaxIndex는 오름차순(소형주→초대형주) 기준을 그대로 유지하고, 화면에
+  // 그릴 때만 좌우를 뒤집는다(초대형주가 왼쪽) — 저장값/다른 화면(카테고리 랭킹)과 공유하는 인덱스
+  // 의미는 안 바뀐다.
+  const tierSteps = Math.max(tiers.length - 1, 1)
+  const tierDisplayLabels = [...tiers].reverse().map(tier => tier.label)
+  const tierDisplayMinIndex = tierSteps - tierRangeMaxIndex
+  const tierDisplayMaxIndex = tierSteps - tierRangeMinIndex
 
   return (
     <div className="pt-8 text-white">
@@ -293,13 +357,15 @@ export function SettingsDisplayRangeSection({
         <span className="text-white">시가총액</span>
         <div className="mt-2 max-w-[16rem]">
           <RangeSlider
-            minIndex={tierRangeMinIndex}
-            maxIndex={tierRangeMaxIndex}
-            steps={Math.max(tiers.length - 1, 1)}
-            labels={tiers.map(tier => tier.label)}
+            minIndex={tierDisplayMinIndex}
+            maxIndex={tierDisplayMaxIndex}
+            steps={tierSteps}
+            labels={tierDisplayLabels}
             minAriaLabel="최소 시가총액 구간"
             maxAriaLabel="최대 시가총액 구간"
-            onChange={onChangeTierRange}
+            onChange={(newDisplayMin, newDisplayMax) => {
+              onChangeTierRange(tierSteps - newDisplayMax, tierSteps - newDisplayMin)
+            }}
             disabled={!isCustom || tiers.length === 0}
           />
         </div>
@@ -325,13 +391,14 @@ export function SettingsDisplayRangeSection({
       </div>
       <div className={`mt-3 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
         {/* 라디오 버튼 대신 텍스트 자체를 눌러서 고른다 — 누른 텍스트가 켜지고 기존에 켜져있던 텍스트는
-            꺼진다. 셋 다 내용(스텝/라벨)이 같은 슬라이더 하나를 공유해서, 지금 고른 지표에만 적용한다. */}
+            꺼진다. 셋 다 내용(스텝/라벨)이 같은 슬라이더 하나를 공유해서, 지금 고른 지표에만 적용한다.
+            버튼은 "어느 지표를 보여줄지"만 고르고, 켜고 끄는 건 아래 슬라이더의 "끄기" 칸으로만 한다. */}
         <div className="flex flex-wrap items-center gap-3">
           {DEPTH_METRIC_OPTIONS.map(opt => (
             <button
               key={opt.key}
               type="button"
-              onClick={() => onChangeActiveDepthMetric(activeDepthMetric === opt.key ? null : opt.key)}
+              onClick={() => onChangeActiveDepthMetric(opt.key)}
               disabled={!isCustom}
               className={`border-0 bg-transparent p-0 disabled:cursor-not-allowed ${
                 activeDepthMetric === opt.key ? 'text-white' : 'text-gray-500 hover:text-gray-300'
@@ -343,14 +410,33 @@ export function SettingsDisplayRangeSection({
         </div>
         <div className="mt-2 max-w-[16rem]">
           <RangeSlider
-            minIndex={depthMetricMinIndex}
-            maxIndex={depthMetricMaxIndex}
-            steps={Math.max(availableMaxDepth - 1, 1)}
+            minIndex={activeDepthMetric === null ? 0 : depthMetricMinIndex + 1}
+            maxIndex={activeDepthMetric === null ? 0 : depthMetricMaxIndex + 1}
+            steps={availableMaxDepth}
             labels={depthMetricLabels}
             minAriaLabel="최소 표시 뎁스"
             maxAriaLabel="최대 표시 뎁스"
-            onChange={onChangeDepthMetricRange}
-            disabled={!isCustom || activeDepthMetric === null}
+            offIndex={0}
+            onChange={(newMin, newMax) => {
+              if (newMin === 0 && newMax === 0) {
+                onChangeActiveDepthMetric(null)
+                return
+              }
+              onChangeDepthMetricRange(newMin - 1, newMax - 1)
+            }}
+            disabled={!isCustom}
+          />
+        </div>
+      </div>
+      <div className={`mt-3 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
+        <span className="text-white">종목 박스 표시 내용</span>
+        <div className="mt-2 max-w-[16rem]">
+          <SingleValueSlider
+            index={stockLabelModeIndex}
+            labels={STOCK_LABEL_MODE_LABELS}
+            ariaLabel="종목 박스 표시 내용"
+            onChange={onChangeStockLabelModeIndex}
+            disabled={!isCustom}
           />
         </div>
       </div>

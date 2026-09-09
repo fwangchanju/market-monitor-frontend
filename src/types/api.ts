@@ -185,6 +185,8 @@ export const MarketValueTierListResponseSchema = z.array(MarketValueTierItemSche
 const MarketMapItemSchema = z.object({
   stockCode: z.string(),
   stockName: z.string(),
+  // 배정된 약칭 — 없으면 null. 박스 라벨 등 alias를 우선해야 하는 표시는 "alias ?? stockName"으로 계산한다.
+  alias: z.string().nullable(),
   currentPrice: z.number(),     // 현재가, 원
   lastPrice: z.number(),        // 전일종가, 원
   totalMarketValue: z.number(), // 원
@@ -232,7 +234,14 @@ const MarketMapCategoryNodeSchema: z.ZodType<MarketMapCategoryNode> = z.lazy(() 
   }),
 )
 
-export const MarketMapResponseSchema = snapshotResponseSchema(MarketMapCategoryNodeSchema)
+// SnapshotResponse<T>를 그대로 안 쓴 이유: marketOverview는 트리 items와 별개인 마켓 전체 단위 값
+// 하나라, 여러 엔드포인트가 공유하는 제네릭 래퍼에 이 필드만을 위해 얹을 수 없다(백엔드 MarketMapResponse
+// 참고). market이 ALL_STOCK처럼 마켓 여럿을 합친 조회면 단일 지수값이 없어 null.
+export const MarketMapResponseSchema = z.object({
+  snapshotTime: z.string().nullable(),
+  items: z.array(MarketMapCategoryNodeSchema),
+  marketOverview: MarketOverviewItemSchema.nullable(),
+})
 
 // ─── Market map category change-rate ranking (/market-map/category-change-rates) ─────
 
@@ -247,6 +256,9 @@ export type CategoryChangeRateItem = z.infer<typeof CategoryChangeRateItemSchema
 export const CategoryChangeRateMarketRankingSchema = z.object({
   market: MarketSchema,
   items: z.array(CategoryChangeRateItemSchema),
+  // 랭킹과 같은 시각의 마켓 지수 등락률(지도 페이지 최상단과 동일 소스) — 그 시각에 지수 스냅샷이
+  // 없으면(수집 부분 실패 등) null. 조용히 다른 시각 값으로 대체하지 않는다.
+  indexChangeRate: z.number().nullable(),
 })
 export type CategoryChangeRateMarketRanking = z.infer<typeof CategoryChangeRateMarketRankingSchema>
 

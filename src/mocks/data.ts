@@ -151,7 +151,8 @@ export const marketMapTree = [
           { tierId: 4, tierLabel: '초대형주', weightedSum: 504_000_000_000_000, totalValue: 420_000_000_000_000, simpleSum: 1.2, itemCount: 1 },
         ],
         items: [
-          { stockCode: '005930', stockName: '삼성전자', lastPrice: 71000, totalMarketValue: 420_000_000_000_000, marketValueTier: '초대형주', changeRate: 1.2, currentPrice: 71000, snapshotTime: now() },
+          // alias 예시 — 박스 라벨은 "삼전"으로, 팝업(툴팁)은 원래 이름 "삼성전자"로 보여야 한다.
+          { stockCode: '005930', stockName: '삼성전자', alias: '삼전', lastPrice: 71000, totalMarketValue: 420_000_000_000_000, marketValueTier: '초대형주', changeRate: 1.2, currentPrice: 71000, snapshotTime: now() },
         ],
         children: [],
       },
@@ -164,7 +165,7 @@ export const marketMapTree = [
           { tierId: 4, tierLabel: '초대형주', weightedSum: -104_000_000_000_000, totalValue: 130_000_000_000_000, simpleSum: -0.8, itemCount: 1 },
         ],
         items: [
-          { stockCode: '000660', stockName: 'SK하이닉스', lastPrice: 178000, totalMarketValue: 130_000_000_000_000, marketValueTier: '초대형주', changeRate: -0.8, currentPrice: 178000, snapshotTime: now() },
+          { stockCode: '000660', stockName: 'SK하이닉스', alias: null, lastPrice: 178000, totalMarketValue: 130_000_000_000_000, marketValueTier: '초대형주', changeRate: -0.8, currentPrice: 178000, snapshotTime: now() },
         ],
         children: [],
       },
@@ -179,7 +180,7 @@ export const marketMapTree = [
       { tierId: 3, tierLabel: '대형주', weightedSum: -78_600_000_000_000, totalValue: 122_000_000_000_000, simpleSum: 0.6, itemCount: 2 },
     ],
     items: [
-      { stockCode: '373220', stockName: 'LG에너지솔루션', lastPrice: 398000, totalMarketValue: 93_000_000_000_000, marketValueTier: '대형주', changeRate: -1.5, currentPrice: 398000, snapshotTime: now() },
+      { stockCode: '373220', stockName: 'LG에너지솔루션', alias: null, lastPrice: 398000, totalMarketValue: 93_000_000_000_000, marketValueTier: '대형주', changeRate: -1.5, currentPrice: 398000, snapshotTime: now() },
     ],
     children: [
       {
@@ -191,7 +192,7 @@ export const marketMapTree = [
           { tierId: 3, tierLabel: '대형주', weightedSum: 60_900_000_000_000, totalValue: 29_000_000_000_000, simpleSum: 2.1, itemCount: 1 },
         ],
         items: [
-          { stockCode: '051910', stockName: 'LG화학', lastPrice: 412000, totalMarketValue: 29_000_000_000_000, marketValueTier: '대형주', changeRate: 2.1, currentPrice: 412000, snapshotTime: now() },
+          { stockCode: '051910', stockName: 'LG화학', alias: null, lastPrice: 412000, totalMarketValue: 29_000_000_000_000, marketValueTier: '대형주', changeRate: 2.1, currentPrice: 412000, snapshotTime: now() },
         ],
         children: [],
       },
@@ -207,11 +208,25 @@ export const marketMapTree = [
       { tierId: 2, tierLabel: '중형주', weightedSum: 61_200_000_000_000, totalValue: 18_000_000_000_000, simpleSum: 3.4, itemCount: 1 },
     ],
     items: [
-      { stockCode: '035420', stockName: 'NAVER', lastPrice: 198000, totalMarketValue: 32_000_000_000_000, marketValueTier: '대형주', changeRate: 0.3, currentPrice: 198000, snapshotTime: now() },
-      { stockCode: '035720', stockName: '카카오', lastPrice: 41500, totalMarketValue: 18_000_000_000_000, marketValueTier: '중형주', changeRate: 3.4, currentPrice: 41500, snapshotTime: now() },
+      { stockCode: '035420', stockName: 'NAVER', alias: null, lastPrice: 198000, totalMarketValue: 32_000_000_000_000, marketValueTier: '대형주', changeRate: 0.3, currentPrice: 198000, snapshotTime: now() },
+      { stockCode: '035720', stockName: '카카오', alias: null, lastPrice: 41500, totalMarketValue: 18_000_000_000_000, marketValueTier: '중형주', changeRate: 3.4, currentPrice: 41500, snapshotTime: now() },
     ],
     children: [],
   },
+  // 섹터 페이지가 화면을 꽉 채운 모습을 확인하기 위한 추가 대분류 — 실제 WICS 대분류 개수(15개 안팎)에
+  // 맞춰 늘렸다. 종목/트리맵 박스 상세는 필요 없어 items는 비워두고 tierBreakdown만 채운다.
+  { categoryId: 7, categoryName: '자동차', totalMarketValue: 40_000_000_000_000, isExcluded: false, tierBreakdown: [{ tierId: 3, tierLabel: '대형주', weightedSum: 0.85, totalValue: 1, simpleSum: 0.85, itemCount: 1 }], items: [], children: [] },
+  { categoryId: 8, categoryName: '철강', totalMarketValue: 18_000_000_000_000, isExcluded: false, tierBreakdown: [{ tierId: 2, tierLabel: '중형주', weightedSum: -0.65, totalValue: 1, simpleSum: -0.65, itemCount: 1 }], items: [], children: [] },
+  { categoryId: 9, categoryName: '제약', totalMarketValue: 22_000_000_000_000, isExcluded: false, tierBreakdown: [{ tierId: 2, tierLabel: '중형주', weightedSum: 2.1, totalValue: 1, simpleSum: 2.1, itemCount: 1 }], items: [], children: [] },
+  { categoryId: 10, categoryName: '금융', totalMarketValue: 60_000_000_000_000, isExcluded: false, tierBreakdown: [{ tierId: 4, tierLabel: '초대형주', weightedSum: 0.15, totalValue: 1, simpleSum: 0.15, itemCount: 1 }], items: [], children: [] },
+  { categoryId: 11, categoryName: '통신', totalMarketValue: 15_000_000_000_000, isExcluded: false, tierBreakdown: [{ tierId: 3, tierLabel: '대형주', weightedSum: -0.3, totalValue: 1, simpleSum: -0.3, itemCount: 1 }], items: [], children: [] },
+  { categoryId: 12, categoryName: '조선', totalMarketValue: 12_000_000_000_000, isExcluded: false, tierBreakdown: [{ tierId: 2, tierLabel: '중형주', weightedSum: 1.4, totalValue: 1, simpleSum: 1.4, itemCount: 1 }], items: [], children: [] },
+  { categoryId: 13, categoryName: '건설', totalMarketValue: 9_000_000_000_000, isExcluded: false, tierBreakdown: [{ tierId: 2, tierLabel: '중형주', weightedSum: -1.1, totalValue: 1, simpleSum: -1.1, itemCount: 1 }], items: [], children: [] },
+  { categoryId: 14, categoryName: '유통', totalMarketValue: 11_000_000_000_000, isExcluded: false, tierBreakdown: [{ tierId: 2, tierLabel: '중형주', weightedSum: 0.55, totalValue: 1, simpleSum: 0.55, itemCount: 1 }], items: [], children: [] },
+  { categoryId: 15, categoryName: '보험', totalMarketValue: 14_000_000_000_000, isExcluded: false, tierBreakdown: [{ tierId: 2, tierLabel: '중형주', weightedSum: 0.95, totalValue: 1, simpleSum: 0.95, itemCount: 1 }], items: [], children: [] },
+  { categoryId: 16, categoryName: '은행', totalMarketValue: 25_000_000_000_000, isExcluded: false, tierBreakdown: [{ tierId: 3, tierLabel: '대형주', weightedSum: -0.25, totalValue: 1, simpleSum: -0.25, itemCount: 1 }], items: [], children: [] },
+  { categoryId: 17, categoryName: '운송', totalMarketValue: 10_000_000_000_000, isExcluded: false, tierBreakdown: [{ tierId: 2, tierLabel: '중형주', weightedSum: 1.75, totalValue: 1, simpleSum: 1.75, itemCount: 1 }], items: [], children: [] },
+  { categoryId: 18, categoryName: '미디어/엔터', totalMarketValue: 7_000_000_000_000, isExcluded: false, tierBreakdown: [{ tierId: 2, tierLabel: '중형주', weightedSum: -0.85, totalValue: 1, simpleSum: -0.85, itemCount: 1 }], items: [], children: [] },
 ]
 
 // marketMapTree의 categoryId(1~6)와 동일한 카테고리 기준 now/before 구간별 원시 합계 —
@@ -249,6 +264,18 @@ const categoryChangeRateItemsKospi = [
     now: marketMapTree[1].children[0].tierBreakdown,
     before: [{ tierId: 3, tierLabel: '대형주', weightedSum: 1.5, totalValue: 1, simpleSum: 1.5, itemCount: 1 }],
   },
+  { categoryId: 7, now: marketMapTree[3].tierBreakdown, before: [{ tierId: 3, tierLabel: '대형주', weightedSum: 0.4, totalValue: 1, simpleSum: 0.4, itemCount: 1 }] },
+  { categoryId: 8, now: marketMapTree[4].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: -0.2, totalValue: 1, simpleSum: -0.2, itemCount: 1 }] },
+  { categoryId: 9, now: marketMapTree[5].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: 1.5, totalValue: 1, simpleSum: 1.5, itemCount: 1 }] },
+  { categoryId: 10, now: marketMapTree[6].tierBreakdown, before: [{ tierId: 4, tierLabel: '초대형주', weightedSum: 0.05, totalValue: 1, simpleSum: 0.05, itemCount: 1 }] },
+  { categoryId: 11, now: marketMapTree[7].tierBreakdown, before: [{ tierId: 3, tierLabel: '대형주', weightedSum: -0.1, totalValue: 1, simpleSum: -0.1, itemCount: 1 }] },
+  { categoryId: 12, now: marketMapTree[8].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: 0.9, totalValue: 1, simpleSum: 0.9, itemCount: 1 }] },
+  { categoryId: 13, now: marketMapTree[9].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: -0.5, totalValue: 1, simpleSum: -0.5, itemCount: 1 }] },
+  { categoryId: 14, now: marketMapTree[10].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: 0.35, totalValue: 1, simpleSum: 0.35, itemCount: 1 }] },
+  { categoryId: 15, now: marketMapTree[11].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: 0.5, totalValue: 1, simpleSum: 0.5, itemCount: 1 }] },
+  { categoryId: 16, now: marketMapTree[12].tierBreakdown, before: [{ tierId: 3, tierLabel: '대형주', weightedSum: -0.05, totalValue: 1, simpleSum: -0.05, itemCount: 1 }] },
+  { categoryId: 17, now: marketMapTree[13].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: 1.2, totalValue: 1, simpleSum: 1.2, itemCount: 1 }] },
+  { categoryId: 18, now: marketMapTree[14].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: -0.6, totalValue: 1, simpleSum: -0.6, itemCount: 1 }] },
 ]
 
 // KOSDAQ은 KOSPI와 같은 now(카테고리별 tierBreakdown)를 재사용하되, before 부호를 뒤집어서 화면상
@@ -259,9 +286,10 @@ const categoryChangeRateItemsKosdaq = categoryChangeRateItemsKospi.map(item => (
 }))
 
 // /market-map/category-change-rates 목업 — 백엔드 응답과 동일하게 마켓별로 그룹핑된 형태.
+// indexChangeRate는 marketOverviews의 같은 마켓 changeRate를 그대로 재사용(실제로도 같은 스냅샷 시각 기준).
 export const categoryChangeRateRankings = [
-  { market: 'KOSPI' as const, items: categoryChangeRateItemsKospi },
-  { market: 'KOSDAQ' as const, items: categoryChangeRateItemsKosdaq },
+  { market: 'KOSPI' as const, items: categoryChangeRateItemsKospi, indexChangeRate: marketOverviews[0].changeRate },
+  { market: 'KOSDAQ' as const, items: categoryChangeRateItemsKosdaq, indexChangeRate: marketOverviews[1].changeRate },
 ]
 
 export const excludedStocks: { stockCode: string; stockName: string }[] = []

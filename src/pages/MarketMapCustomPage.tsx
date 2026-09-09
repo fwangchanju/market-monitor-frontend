@@ -20,11 +20,10 @@ import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
 import { TAB_GAP, toMarketMapSnapshotTimeLabel, toIndex, toPctSigned, signClass } from '@/utils/format'
-import { useMarketSummary } from '@/hooks/useMarketSummary'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
-import type { FilteredMarketMapCategoryNode } from '@/hooks/useFilteredMarketMapTree'
+import { limitDepth, type FilteredMarketMapCategoryNode } from '@/hooks/useFilteredMarketMapTree'
 import type { MarketQuery, MarketMapCategoryNode, MarketMapItem } from '@/types/api'
 
 const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
@@ -90,11 +89,13 @@ export default function MarketMapCustomPage() {
     isError,
     rootNodes,
     filteredRootNodes,
+    maxDepth,
     marketValueDepthRange,
     avgChangeRateDepthRange,
     upDownCountDepthRange,
     avgChangeRateUseSimple,
     boxLabelMinAreaPercent,
+    stockLabelMode,
     colorScale,
     legendSwatches,
     handleExcludeCategory,
@@ -112,8 +113,9 @@ export default function MarketMapCustomPage() {
   const [zoomOutRequestDepth, setZoomOutRequestDepth] = useState<number | null>(null)
   const captureRef = useRef<HTMLDivElement>(null)
 
-  const { data: marketSummaryData } = useMarketSummary()
-  const marketOverview = marketSummaryData?.marketOverviews.items.find(item => item.market === market)
+  // data(useMarketMap 응답)에 이미 같은 스냅샷 시각 기준의 지수 개요가 함께 온다 — market이 ALL_STOCK이면
+  // 단일 지수값이 없어 marketOverview가 null.
+  const marketOverview = data?.marketOverview
 
   const { path, currentNode, currentSiblings, enterCategory, goToDepth, reset } = useMarketMapDrilldown(filteredRootNodes)
   // path가 바뀌면(어떤 방식의 이동이든) 이전 hover 상태를 무조건 지운다 — 안 그러면 브레드크럼 바가
@@ -121,7 +123,15 @@ export default function MarketMapCustomPage() {
   // 세그먼트에 적용돼버린다(마우스가 실제로 그 위에 있지 않은데도).
   useEffect(() => setBreadcrumbHoverIndex(null), [path])
 
-  const groups: DisplayGroup[] = currentNode ? [toDisplayGroup(currentNode)] : currentSiblings.map(toDisplayGroup)
+  // "업종 분류 레벨" 뎁스 제한을 "지금 보고 있는 위치"(currentNode, 없으면 최상위) 기준으로 매번 새로
+  // 적용한다 — 진짜 루트 기준 절대값이 아니라, 어디로 드릴다운하든 거기서부터 다시 N단계가 보이는
+  // 상대값이어야 한다(그래야 뎁스 제한 때문에 드릴다운 경로가 끊기거나 더 깊이 진입해도 항상 똑같이
+  // 얕게만 보이는 문제가 없다). 커스텀 모드가 아니면 뎁스 제한 자체를 무시한다.
+  const effectiveMaxDepth = isCustom ? maxDepth : null
+  const displaySiblings = effectiveMaxDepth != null ? limitDepth(currentSiblings, effectiveMaxDepth) : currentSiblings
+  const displayNode =
+    currentNode && effectiveMaxDepth != null ? (limitDepth([currentNode], effectiveMaxDepth)[0] ?? currentNode) : currentNode
+  const groups: DisplayGroup[] = displayNode ? [toDisplayGroup(displayNode)] : displaySiblings.map(toDisplayGroup)
   const visibleItems = collectItems(groups)
   // 지금 뎁스(path) 기준으로, 카테고리 제외/시가총액 구간 필터를 적용하기 전 원본 트리에 있는 전체 종목 수.
   const rawCurrentNode = findRawNodeByPath(rootNodes, path)
@@ -343,6 +353,7 @@ export default function MarketMapCustomPage() {
                   canExclude={isCustom}
                   colorScale={colorScale}
                   labelMinAreaPercent={boxLabelMinAreaPercent}
+                  stockLabelMode={stockLabelMode}
                   zoomOutRequestDepth={zoomOutRequestDepth}
                   onZoomOutComplete={handleZoomOutComplete}
                 />
