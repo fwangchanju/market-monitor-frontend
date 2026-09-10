@@ -229,53 +229,67 @@ export const marketMapTree = [
   { categoryId: 18, categoryName: '미디어/엔터', totalMarketValue: 7_000_000_000_000, isExcluded: false, tierBreakdown: [{ tierId: 2, tierLabel: '중형주', weightedSum: -0.85, totalValue: 1, simpleSum: -0.85, itemCount: 1 }], items: [], children: [] },
 ]
 
-// marketMapTree의 categoryId(1~6)와 동일한 카테고리 기준 now/before 구간별 원시 합계 —
-// /market-map/category-change-rates 목업. now는 marketMapTree의 tierBreakdown을 그대로 재사용하고,
-// before는 단일 구간(itemCount=1, totalValue=1)으로 단순화해 "예전 가중/산술평균 값 그 자체"가 되도록
-// 구성했다 — 정확한 재현이 목적이 아니라 화면에서 자연스러운 변화율(now-before)이 나오면 충분하다.
+// marketMapTree의 categoryId(1~18)와 동일한 카테고리 기준 now/before 구간별 원시 합계 —
+// /market-map/category-change-rates 목업. now/categoryName/depth는 marketMapTree의 해당 노드를 그대로
+// 참조해서, 트리가 바뀌어도 여기서 손으로 다시 맞출 일이 없게 했다(0은 최상위, 1은 marketMapTree의
+// children). before는 단일 구간(itemCount=1, totalValue=1)으로 단순화해 "예전 가중/산술평균 값 그
+// 자체"가 되도록 구성했다 — 정확한 재현이 목적이 아니라 화면에서 자연스러운 변화율(now-before)이
+// 나오면 충분하다.
 const categoryChangeRateItemsKospi = [
   {
     categoryId: 1,
+    categoryName: marketMapTree[0].categoryName,
+    depth: 0,
     now: marketMapTree[0].tierBreakdown,
     before: [{ tierId: 4, tierLabel: '초대형주', weightedSum: 0.5, totalValue: 1, simpleSum: 0.1, itemCount: 1 }],
   },
   {
     categoryId: 2,
+    categoryName: marketMapTree[1].categoryName,
+    depth: 0,
     now: marketMapTree[1].tierBreakdown,
     before: [{ tierId: 3, tierLabel: '대형주', weightedSum: -0.9, totalValue: 1, simpleSum: -0.2, itemCount: 1 }],
   },
   {
     categoryId: 3,
+    categoryName: marketMapTree[2].categoryName,
+    depth: 0,
     now: marketMapTree[2].tierBreakdown,
     before: [{ tierId: 3, tierLabel: '대형주', weightedSum: 1.0, totalValue: 1, simpleSum: 1.2, itemCount: 1 }],
   },
   {
     categoryId: 4,
+    categoryName: marketMapTree[0].children[0].categoryName,
+    depth: 1,
     now: marketMapTree[0].children[0].tierBreakdown,
     before: [{ tierId: 4, tierLabel: '초대형주', weightedSum: 0.9, totalValue: 1, simpleSum: 0.9, itemCount: 1 }],
   },
   {
     categoryId: 5,
+    categoryName: marketMapTree[0].children[1].categoryName,
+    depth: 1,
     now: marketMapTree[0].children[1].tierBreakdown,
     before: [{ tierId: 4, tierLabel: '초대형주', weightedSum: -0.5, totalValue: 1, simpleSum: -0.5, itemCount: 1 }],
   },
   {
     categoryId: 6,
+    categoryName: marketMapTree[1].children[0].categoryName,
+    depth: 1,
     now: marketMapTree[1].children[0].tierBreakdown,
     before: [{ tierId: 3, tierLabel: '대형주', weightedSum: 1.5, totalValue: 1, simpleSum: 1.5, itemCount: 1 }],
   },
-  { categoryId: 7, now: marketMapTree[3].tierBreakdown, before: [{ tierId: 3, tierLabel: '대형주', weightedSum: 0.4, totalValue: 1, simpleSum: 0.4, itemCount: 1 }] },
-  { categoryId: 8, now: marketMapTree[4].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: -0.2, totalValue: 1, simpleSum: -0.2, itemCount: 1 }] },
-  { categoryId: 9, now: marketMapTree[5].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: 1.5, totalValue: 1, simpleSum: 1.5, itemCount: 1 }] },
-  { categoryId: 10, now: marketMapTree[6].tierBreakdown, before: [{ tierId: 4, tierLabel: '초대형주', weightedSum: 0.05, totalValue: 1, simpleSum: 0.05, itemCount: 1 }] },
-  { categoryId: 11, now: marketMapTree[7].tierBreakdown, before: [{ tierId: 3, tierLabel: '대형주', weightedSum: -0.1, totalValue: 1, simpleSum: -0.1, itemCount: 1 }] },
-  { categoryId: 12, now: marketMapTree[8].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: 0.9, totalValue: 1, simpleSum: 0.9, itemCount: 1 }] },
-  { categoryId: 13, now: marketMapTree[9].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: -0.5, totalValue: 1, simpleSum: -0.5, itemCount: 1 }] },
-  { categoryId: 14, now: marketMapTree[10].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: 0.35, totalValue: 1, simpleSum: 0.35, itemCount: 1 }] },
-  { categoryId: 15, now: marketMapTree[11].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: 0.5, totalValue: 1, simpleSum: 0.5, itemCount: 1 }] },
-  { categoryId: 16, now: marketMapTree[12].tierBreakdown, before: [{ tierId: 3, tierLabel: '대형주', weightedSum: -0.05, totalValue: 1, simpleSum: -0.05, itemCount: 1 }] },
-  { categoryId: 17, now: marketMapTree[13].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: 1.2, totalValue: 1, simpleSum: 1.2, itemCount: 1 }] },
-  { categoryId: 18, now: marketMapTree[14].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: -0.6, totalValue: 1, simpleSum: -0.6, itemCount: 1 }] },
+  { categoryId: 7, categoryName: marketMapTree[3].categoryName, depth: 0, now: marketMapTree[3].tierBreakdown, before: [{ tierId: 3, tierLabel: '대형주', weightedSum: 0.4, totalValue: 1, simpleSum: 0.4, itemCount: 1 }] },
+  { categoryId: 8, categoryName: marketMapTree[4].categoryName, depth: 0, now: marketMapTree[4].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: -0.2, totalValue: 1, simpleSum: -0.2, itemCount: 1 }] },
+  { categoryId: 9, categoryName: marketMapTree[5].categoryName, depth: 0, now: marketMapTree[5].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: 1.5, totalValue: 1, simpleSum: 1.5, itemCount: 1 }] },
+  { categoryId: 10, categoryName: marketMapTree[6].categoryName, depth: 0, now: marketMapTree[6].tierBreakdown, before: [{ tierId: 4, tierLabel: '초대형주', weightedSum: 0.05, totalValue: 1, simpleSum: 0.05, itemCount: 1 }] },
+  { categoryId: 11, categoryName: marketMapTree[7].categoryName, depth: 0, now: marketMapTree[7].tierBreakdown, before: [{ tierId: 3, tierLabel: '대형주', weightedSum: -0.1, totalValue: 1, simpleSum: -0.1, itemCount: 1 }] },
+  { categoryId: 12, categoryName: marketMapTree[8].categoryName, depth: 0, now: marketMapTree[8].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: 0.9, totalValue: 1, simpleSum: 0.9, itemCount: 1 }] },
+  { categoryId: 13, categoryName: marketMapTree[9].categoryName, depth: 0, now: marketMapTree[9].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: -0.5, totalValue: 1, simpleSum: -0.5, itemCount: 1 }] },
+  { categoryId: 14, categoryName: marketMapTree[10].categoryName, depth: 0, now: marketMapTree[10].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: 0.35, totalValue: 1, simpleSum: 0.35, itemCount: 1 }] },
+  { categoryId: 15, categoryName: marketMapTree[11].categoryName, depth: 0, now: marketMapTree[11].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: 0.5, totalValue: 1, simpleSum: 0.5, itemCount: 1 }] },
+  { categoryId: 16, categoryName: marketMapTree[12].categoryName, depth: 0, now: marketMapTree[12].tierBreakdown, before: [{ tierId: 3, tierLabel: '대형주', weightedSum: -0.05, totalValue: 1, simpleSum: -0.05, itemCount: 1 }] },
+  { categoryId: 17, categoryName: marketMapTree[13].categoryName, depth: 0, now: marketMapTree[13].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: 1.2, totalValue: 1, simpleSum: 1.2, itemCount: 1 }] },
+  { categoryId: 18, categoryName: marketMapTree[14].categoryName, depth: 0, now: marketMapTree[14].tierBreakdown, before: [{ tierId: 2, tierLabel: '중형주', weightedSum: -0.6, totalValue: 1, simpleSum: -0.6, itemCount: 1 }] },
 ]
 
 // KOSDAQ은 KOSPI와 같은 now(카테고리별 tierBreakdown)를 재사용하되, before 부호를 뒤집어서 화면상

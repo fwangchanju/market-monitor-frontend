@@ -247,8 +247,12 @@ export const MarketMapResponseSchema = z.object({
 
 export const CategoryChangeRateItemSchema = z.object({
   categoryId: z.number(),
+  categoryName: z.string(),
+  // 0이면 최상위(대분류) 카테고리 — depth === 0과 hasNoParent()는 동치(백엔드 근거).
+  depth: z.number(),
   now: z.array(CategoryTierBreakdownSchema),
-  // 60분 전 시점 데이터가 없으면(장 시작 직후 등) null — 조용히 다른 시점으로 대체하지 않는다.
+  // 요청한 beforeMinutes분 전 시점 데이터가 없으면(장 시작 직후 등) null — 조용히 다른 시점으로
+  // 대체하지 않는다.
   before: z.array(CategoryTierBreakdownSchema).nullable(),
 })
 export type CategoryChangeRateItem = z.infer<typeof CategoryChangeRateItemSchema>
