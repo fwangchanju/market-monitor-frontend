@@ -13,7 +13,6 @@ import SettingsSidebar, {
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Spinner from '@/components/Spinner'
 import NumberStepperInput from '@/components/NumberStepperInput'
-import { useMarketMap } from '@/hooks/useMarketMap'
 import { useCategoryChangeRates } from '@/hooks/useCategoryChangeRates'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
@@ -26,7 +25,7 @@ import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { toMarketMapSnapshotTimeLabel, signClass, avgChangeRateLabel } from '@/utils/format'
 import { resolveMarketMapColor, type ColorScaleConfig } from '@/utils/marketMapColorScale'
-import type { CategoryTierBreakdown, Market, MarketQuery, MarketMapCategoryNode } from '@/types/api'
+import type { CategoryTierBreakdown, Market, MarketQuery } from '@/types/api'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
@@ -42,14 +41,6 @@ const MARKET_INDEX_LABEL_KO: Record<Market, string> = { KOSPI: '코스피', KOSD
 const MARKET_INDEX_CATEGORY_ID = -1
 // 지도 페이지에서 최상위 뎁스 카테고리를 노란 글자로 표시하는 것과 같은 "기준" 색상 — 참조 막대도 동일하게 맞춘다.
 const MARKET_INDEX_BAR_COLOR = '#eab308'
-
-function collectCategoryNames(nodes: MarketMapCategoryNode[], out: Map<number, string> = new Map()): Map<number, string> {
-  for (const node of nodes) {
-    out.set(node.categoryId, node.categoryName)
-    collectCategoryNames(node.children, out)
-  }
-  return out
-}
 
 interface RankedItem {
   categoryId: number
@@ -182,21 +173,33 @@ export default function CategoryChangeRatePage() {
   const [beforeMinutes, setBeforeMinutes] = usePersistedState('categoryChangeRate.beforeMinutes', 30)
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // 렌더러가 /category-change-rate?market=KOSDAQ로 캡처 요청할 때 쓰는 진입점 — MarketMapCustomPage와
-  // 동일한 패턴(초기 상태 반영 용도일 뿐 주소창엔 남길 필요 없어 반영 직후 지움).
+  // 렌더러가 /category-change-rate?market=KOSDAQ&beforeMinutes=15로 캡처 요청할 때 쓰는 진입점 —
+  // MarketMapCustomPage와 동일한 패턴(초기 상태 반영 용도일 뿐 주소창엔 남길 필요 없어 반영 직후
+  // 지움). 두 파라미터는 서로 독립적으로 판정한다 — 하나가 없거나 잘못됐다고 다른 하나까지 무시하면
+  // 안 된다. 실제로 소비한(유효했던) 파라미터만 주소에서 지운다.
   useEffect(() => {
-    const param = searchParams.get('market')
-    if (param !== 'KOSPI' && param !== 'KOSDAQ' && param !== 'ALL_STOCK') return
-    setMarket(param)
+    const marketParam = searchParams.get('market')
+    const isValidMarket = marketParam === 'KOSPI' || marketParam === 'KOSDAQ' || marketParam === 'ALL_STOCK'
+    if (isValidMarket) setMarket(marketParam)
+
+    // 양의 정수가 아니면 무시하고 기존 값을 쓴다. 화면의 N분 전 대비 입력(NumberStepperInput)이
+    // 5의 배수만 커밋하도록 제한돼 있어(수집 주기가 5분 간격) 여기서도 같은 조건을 맞춘다.
+    const beforeMinutesParam = searchParams.get('beforeMinutes')
+    const parsedBeforeMinutes = beforeMinutesParam === null ? NaN : Number(beforeMinutesParam)
+    const isValidBeforeMinutes = Number.isInteger(parsedBeforeMinutes) && parsedBeforeMinutes > 0 && parsedBeforeMinutes % 5 === 0
+    if (isValidBeforeMinutes) setBeforeMinutes(parsedBeforeMinutes)
+
+    if (!isValidMarket && !isValidBeforeMinutes) return
     setSearchParams(
       prev => {
         const next = new URLSearchParams(prev)
-        next.delete('market')
+        if (isValidMarket) next.delete('market')
+        if (isValidBeforeMinutes) next.delete('beforeMinutes')
         return next
       },
       { replace: true },
     )
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- market 파라미터가 있을 때만 반응하면 됨
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 파라미터가 있을 때만 반응하면 됨
   }, [searchParams])
 
   const {
@@ -243,15 +246,33 @@ export default function CategoryChangeRatePage() {
   const downloadLabel = downloadStatus === 'error' ? 'Failed' : 'Download'
 
   const { data: rankingData, isLoading, isError } = useCategoryChangeRates(market, beforeMinutes)
-  const { data: treeData, isLoading: isTreeLoading } = useMarketMap(market, true)
 
-  const categoryNameById = useMemo(() => collectCategoryNames(treeData?.items ?? []), [treeData])
-  // 뎁스 구분 없이 전부 나열하면 너무 많아서, 어드민 카테고리 관리 화면처럼 최상위 카테고리만 보여준다.
-  // 설정 사이드바의 "제외 설정"(섹터 기준)에 걸린 카테고리는 지도 페이지와 동일하게 그래프에서도 뺀다.
-  const rootCategoryIds = useMemo(
-    () => new Set((treeData?.items ?? []).map(node => node.categoryId).filter(id => !excludedCategoryIds.has(id))),
-    [treeData, excludedCategoryIds],
-  )
+  // 카테고리 이름을 랭킹 응답에서 직접 얻는다 — 이전에는 useMarketMap으로 트리를 별도 조회해서 얻었지만,
+  // 응답에 categoryName이 실리면서 더 이상 필요 없다(depth == 0과 hasNoParent()가 동치라는 근거는
+  // 백엔드 work-plan 참고, 별도 확인 절차는 두지 않는다).
+  const categoryNameById = useMemo(() => {
+    const map = new Map<number, string>()
+    for (const marketRanking of rankingData?.items ?? []) {
+      for (const item of marketRanking.items) {
+        map.set(item.categoryId, item.categoryName)
+      }
+    }
+    return map
+  }, [rankingData])
+
+  // 뎁스 구분 없이 전부 나열하면 너무 많아서, 어드민 카테고리 관리 화면처럼 최상위(depth 0) 카테고리만
+  // 보여준다. 마지막 줄이 그 필터 — 설정 사이드바의 "제외 설정"(섹터 기준)에 걸린 카테고리는 지도
+  // 페이지와 동일하게 여기서 그래프 대상에서도 뺀다.
+  const rootCategoryIds = useMemo(() => {
+    const ids = new Set<number>()
+    for (const marketRanking of rankingData?.items ?? []) {
+      for (const item of marketRanking.items) {
+        if (item.depth === 0) ids.add(item.categoryId)
+      }
+    }
+    for (const excludedId of excludedCategoryIds) ids.delete(excludedId)
+    return ids
+  }, [rankingData, excludedCategoryIds])
 
   // 마켓별로 따로 그래프를 그리지 않고, 지도 페이지의 ALL STOCK와 동일하게 KOSPI/KOSDAQ을 하나로
   // 합쳐서 "현재"/"변화율" 그래프 각각 하나씩만 계산한다. KOSPI 종목과 KOSDAQ 종목은 겹치지 않으므로,
@@ -356,7 +377,7 @@ export default function CategoryChangeRatePage() {
         <div
           ref={captureRef}
           data-captureid={CAPTURE_ID.CATEGORY_CHANGE_RATE}
-          data-capture-ready={!isLoading && !isTreeLoading}
+          data-capture-ready={!isLoading}
           className="flex min-h-0 flex-1 flex-col overflow-hidden bg-black text-white"
         >
           <div className="flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
