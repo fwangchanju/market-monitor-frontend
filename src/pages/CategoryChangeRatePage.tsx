@@ -156,7 +156,7 @@ function RankBars({
 
 export default function CategoryChangeRatePage() {
   const [market, setMarket] = usePersistedState<MarketQuery>('categoryChangeRate.market', 'KOSPI')
-  const [beforeMinutes, setBeforeMinutes] = usePersistedState('categoryChangeRate.beforeMinutes', 30)
+  const [beforeMinutes, setBeforeMinutes] = usePersistedState('categoryChangeRate.beforeMinutes', 15)
   const [searchParams, setSearchParams] = useSearchParams()
 
   // 렌더러가 /category-change-rate?market=KOSDAQ&beforeMinutes=15로 캡처 요청할 때 쓰는 진입점 —
