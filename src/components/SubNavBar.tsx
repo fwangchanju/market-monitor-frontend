@@ -37,9 +37,10 @@ function MarketDropdownItems({ basePath }: { basePath: string }) {
 }
 
 // "커스텀" 탭 위에 마우스를 올리면 뜨는 목록 — 어드민 종목/카테고리 관리 전환(예전엔 좌측 사이드바).
+// 카테고리가 기본 모드(MarketMapAdminPage 참고)라 목록도 카테고리를 먼저 보여준다.
 const ADMIN_MODE_LIST_ITEMS: { label: string; mode: 'stock' | 'category' }[] = [
-  { label: '종목', mode: 'stock' },
   { label: '카테고리', mode: 'category' },
+  { label: '종목', mode: 'stock' },
 ]
 
 interface Props {

@@ -257,12 +257,21 @@ export const CategoryChangeRateItemSchema = z.object({
 })
 export type CategoryChangeRateItem = z.infer<typeof CategoryChangeRateItemSchema>
 
+// 랭킹과 같은 시각의 마켓 지수 등락률 현재/이전 짝(지도 페이지 최상단과 동일 소스). 그 시각에 지수
+// 스냅샷이 없으면(수집 부분 실패 등) index 자체가 null. index가 있으면 now는 항상 값이 있고, before만
+// null일 수 있다(장 시작 직후, 수집 gap). 조용히 다른 시각 값으로 대체하지 않는다.
+export const MarketIndexChangeRateSchema = z.object({
+  now: z.number(),
+  before: z.number().nullable(),
+})
+
 export const CategoryChangeRateMarketRankingSchema = z.object({
   market: MarketSchema,
   items: z.array(CategoryChangeRateItemSchema),
-  // 랭킹과 같은 시각의 마켓 지수 등락률(지도 페이지 최상단과 동일 소스) — 그 시각에 지수 스냅샷이
-  // 없으면(수집 부분 실패 등) null. 조용히 다른 시각 값으로 대체하지 않는다.
-  indexChangeRate: z.number().nullable(),
+  index: MarketIndexChangeRateSchema.nullable().optional(),
+  // 백엔드가 아직 옛 응답 모양(index 대신 indexChangeRate)을 내려주는 동안의 폴백. 백엔드 배포가
+  // 끝나면 별도 PR로 뺀다.
+  indexChangeRate: z.number().nullable().optional(),
 })
 export type CategoryChangeRateMarketRanking = z.infer<typeof CategoryChangeRateMarketRankingSchema>
 

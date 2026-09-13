@@ -113,7 +113,15 @@ function RankBars({
       style={{ gridTemplateColumns: 'auto 1fr' }}
     >
       <span />
-      <div className="whitespace-nowrap text-gray-400">{header ?? ' '}</div>
+      {/* min-h-[49px]: "변화율" 헤더(15/30/60분 라디오 줄 + N분 전 대비 입력 줄, 두 줄)의 실측 높이.
+          "현재" 헤더는 캡션 한 줄이라 그대로 두면 이 행이 더 짧아지고, 그 아래 카테고리 막대 행들이
+          그래프마다 다른 높이에서 시작한다(content-between이 남는 세로 공간을 행 높이 기준으로
+          나눠 갖기 때문). 짧은 쪽에 같은 최소 높이를 줘야 두 그래프의 첫 막대 행이 같은 위치에서
+          시작한다. 이 셀만 flex items-end로 텍스트를 박스 하단에 붙인다(그리드 전체의
+          items-center는 셀 자체 위치만 다루고, 셀 안 텍스트가 위쪽에 붙는 것까진 못 막는다) —
+          "동일 가중 등락률" 캡션이 라디오 버튼 줄이 아니라 그 아래 "N분 전 대비" 줄과 같은 높이에
+          오게 하려는 것이다(두 줄 다 15px 기준이라 텍스트 높이가 같음). */}
+      <div className="flex min-h-[49px] items-end whitespace-nowrap text-gray-400">{header ?? ' '}</div>
       {chart.rankedItems.map(item => (
         <Fragment key={item.categoryId}>
           <span className={`whitespace-nowrap text-right ${item.isReference ? 'font-bold text-yellow-500' : ''}`}>
@@ -317,20 +325,29 @@ export default function CategoryChangeRatePage() {
       })
       .filter((entry): entry is { categoryId: number; value: number } => entry !== null)
 
-    // 지수 등락률은 "현재"(절대 등락률, %) 그래프에만 의미가 있다 — "변화율"(%p) 그래프는 N분 전
-    // 대비 차이라 지수 쪽도 같은 기준의 과거값이 필요한데 지금은 그 값을 안 갖고 있어서 뺀다.
     // rankingData.items는 마켓별 랭킹 하나씩이라, market이 ALL_STOCK이면 어느 항목의 market도 'ALL_STOCK'과
     // 같지 않아 자연히 못 찾는다(지도 페이지가 ALL_STOCK일 때 지수를 안 보여주는 것과 동일한 동작) —
-    // indexChangeRate는 랭킹과 정확히 같은 시각 기준이라 스냅샷 시점 어긋남이 없다.
+    // index는 랭킹과 정확히 같은 시각 기준이라 스냅샷 시점 어긋남이 없다.
     const indexRanking = rankingData?.items.find(item => item.market === market)
+    // 백엔드가 아직 옛 응답 모양(indexChangeRate)을 내려주는 동안의 폴백 — 그 구간에는 before가 없어
+    // "변화율" 지수 바가 안 뜬다. 지금 화면과 동일한 동작이다. categoryName까지 여기서 같이 확정해서
+    // 두 호출부가 indexRanking을 직접 참조하지 않게 한다.
+    const indexBar = (() => {
+      if (indexRanking == null) return null
+      const value =
+        indexRanking.index ??
+        (indexRanking.indexChangeRate != null ? { now: indexRanking.indexChangeRate, before: null } : null)
+      return value == null ? null : { ...value, categoryName: MARKET_INDEX_LABEL_KO[indexRanking.market] }
+    })()
+
     const currentEntriesWithIndex =
-      indexRanking?.indexChangeRate != null
+      indexBar != null
         ? [
             ...currentEntries,
             {
               categoryId: MARKET_INDEX_CATEGORY_ID,
-              value: indexRanking.indexChangeRate,
-              categoryName: MARKET_INDEX_LABEL_KO[indexRanking.market],
+              value: indexBar.now,
+              categoryName: indexBar.categoryName,
               isReference: true,
             },
           ]
@@ -345,9 +362,22 @@ export default function CategoryChangeRatePage() {
       })
       .filter((entry): entry is { categoryId: number; value: number } => entry !== null)
 
+    const deltaEntriesWithIndex =
+      indexBar?.before != null
+        ? [
+            ...deltaEntries,
+            {
+              categoryId: MARKET_INDEX_CATEGORY_ID,
+              value: indexBar.now - indexBar.before,
+              categoryName: indexBar.categoryName,
+              isReference: true,
+            },
+          ]
+        : deltaEntries
+
     return {
       current: buildRankChart(currentEntriesWithIndex, categoryNameById),
-      delta: buildRankChart(deltaEntries, categoryNameById),
+      delta: buildRankChart(deltaEntriesWithIndex, categoryNameById),
     }
   }, [rankingData, avgChangeRateUseSimple, categoryNameById, rootCategoryIds, excludedMarketValueTiers, market])
 

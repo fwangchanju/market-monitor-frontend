@@ -22,7 +22,9 @@ type DownloadStatus = 'idle' | 'downloading' | 'error'
 
 export default function MarketMapAdminPage() {
   const [searchParams] = useSearchParams()
-  const mode = searchParams.get('mode') === 'category' ? 'category' : 'stock'
+  // mode 파라미터 없이 "커스텀" 탭 자체를 클릭했을 때는 카테고리 페이지로 간다(SubNavBar의
+  // ADMIN_MODE_LIST_ITEMS와 동일하게 카테고리를 기본으로 취급).
+  const mode = searchParams.get('mode') === 'stock' ? 'stock' : 'category'
   // AdminStockTable의 툴바(종목수/실행취소·다시실행/필터/엑셀 등)를 이 DOM 노드로 포털링해서 세
   // 번째 바 안에 그린다 — useRef 대신 useState인 이유는, ref 콜백이 커밋 단계에서 실행되므로
   // useState로 받아야 그 노드가 준비된 뒤 리렌더가 한 번 더 일어나 AdminStockTable에 null이 아닌

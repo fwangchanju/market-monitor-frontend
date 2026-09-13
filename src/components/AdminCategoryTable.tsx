@@ -5,6 +5,7 @@ import { useCreateCategory, useRenameCategory } from '@/hooks/useMarketMapAdmin'
 import { useCategoryDeleteFlow } from '@/hooks/useCategoryDeleteFlow'
 import { useCategoryDragEnd } from '@/hooks/useCategoryDragEnd'
 import { halfOverlapCollisionDetection } from '@/utils/dndCollision'
+import { charTier } from '@/utils/koreanSort'
 
 interface Props {
   categories: CategoryItem[]
@@ -26,14 +27,6 @@ const CIRCLED_NUMBERS = [
 ]
 function toCircledNumber(n: number): string {
   return CIRCLED_NUMBERS[n - 1] ?? `(${n})`
-}
-
-// 특수문자 < 숫자 < 영어 < 한글 순으로 묶고, 그룹 내에서는 이름순 정렬.
-function charTier(ch: string): number {
-  if (/[0-9]/.test(ch)) return 1
-  if (/[a-zA-Z]/.test(ch)) return 2
-  if (/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(ch)) return 3
-  return 0
 }
 
 function compareCategoryName(a: CategoryItem, b: CategoryItem): number {
@@ -396,7 +389,6 @@ export default function AdminCategoryTable({ categories }: Props) {
                     <tr>
                       <td className="py-0.5 text-left">
                         <div className="group/create flex items-center gap-2">
-                          <span className="shrink-0 text-gray-400">0.</span>
                           <input
                             type="text"
                             value={newName}
