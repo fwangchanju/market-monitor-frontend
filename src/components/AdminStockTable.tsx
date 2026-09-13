@@ -976,7 +976,10 @@ function AdminStockNameFilterButton({
   const optionRefs = useRef(new Map<number, HTMLButtonElement>())
   const isFiltered = selected.size > 0
 
-  const position = usePopupPosition(isOpen, setIsOpen, buttonRef, popupRef, () => inputRef.current?.focus(), 0.8, true)
+  // 종목명은 왼쪽에서 두 번째(폭 10%) 컬럼이라 오른쪽으로 열어도 화면 밖으로 안 잘린다 — 다른
+  // 필터(대분류/소분류 등 우측 컬럼)와 달리 alignRight 없이 기본값(왼쪽 정렬)으로 연다. alignRight로
+  // 열면 팝업이 버튼 왼쪽, 즉 종목명 컬럼 자체 위로 펼쳐져서 표 안 실제 종목명을 가린다.
+  const position = usePopupPosition(isOpen, setIsOpen, buttonRef, popupRef, () => inputRef.current?.focus(), 0.8, false)
 
   const trimmed = query.trim().toLowerCase()
   const matches = trimmed
