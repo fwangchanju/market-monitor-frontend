@@ -286,7 +286,7 @@ export default function MarketMapCustomPage() {
                   {MARKET_LABEL[market]}
                 </span>
                 {marketOverview && (
-                  <span className={`${FONT_BAR_MARKET_INDEX} text-blue-600`}>
+                  <span className={`${FONT_BAR_MARKET_INDEX} text-blue-700`}>
                     {toIndex(marketOverview.indexValue)}
                     {TAB_GAP}
                     {marketOverview.changeValue > 0 ? '▲' : marketOverview.changeValue < 0 ? '▼' : ''}

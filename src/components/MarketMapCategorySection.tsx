@@ -5,7 +5,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { categoryHeaderFontSize, categoryHeaderHeight, PADDING, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
 import { TAB_GAP, avgChangeRateLabel, toJoEokDecimal, toPctSigned } from '@/utils/format'
 import type { MarketMapItem } from '@/types/api'
-import type { ColorScaleConfig } from '@/utils/marketMapColorScale'
+import { MARKET_INDEX_REFERENCE_COLOR, type ColorScaleConfig } from '@/utils/marketMapColorScale'
 import type { StockLabelMode } from '@/hooks/useGlobalSettings'
 
 interface Props {
@@ -149,8 +149,9 @@ export default function MarketMapCategorySection({
               fontSize: categoryHeaderFontSize(depth),
               left: PADDING,
               width: `calc(100% - ${PADDING * 2}px)`,
+              color: depth === 0 ? MARKET_INDEX_REFERENCE_COLOR : undefined,
             }}
-            className={`absolute top-0 flex items-center overflow-hidden truncate border-2 border-transparent px-1 text-left font-bold leading-none ${depth === 0 ? 'text-yellow-600' : 'text-white'} ${categoryHeaderColorClass(depth)}`}
+            className={`absolute top-0 flex items-center overflow-hidden truncate border-2 border-transparent px-1 text-left font-bold leading-none ${depth === 0 ? '' : 'text-white'} ${categoryHeaderColorClass(depth)}`}
           >
             {category.categoryName}
             {headerSuffix && <span className="font-normal">{headerSuffix}</span>}

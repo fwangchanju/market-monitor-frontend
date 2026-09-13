@@ -26,7 +26,7 @@ import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { toMarketMapSnapshotTimeLabel, signClass, avgChangeRateLabel } from '@/utils/format'
-import { resolveMarketMapColor, type ColorScaleConfig } from '@/utils/marketMapColorScale'
+import { resolveMarketMapColor, MARKET_INDEX_REFERENCE_COLOR, type ColorScaleConfig } from '@/utils/marketMapColorScale'
 import type { CategoryTierBreakdown, Market, MarketQuery } from '@/types/api'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
@@ -41,7 +41,7 @@ const MARKET_INDEX_LABEL_KO: Record<Market, string> = { KOSPI: '코스피', KOSD
 // 실제 카테고리 id(양수)와 겹치지 않는 음수 sentinel — 지수 참조 막대 전용 categoryId(React key로도 씀).
 const MARKET_INDEX_CATEGORY_ID = -1
 // 지도 페이지에서 최상위 뎁스 카테고리를 노란 글자로 표시하는 것과 같은 "기준" 색상 — 참조 막대도 동일하게 맞춘다.
-const MARKET_INDEX_BAR_COLOR = '#eab308'
+const MARKET_INDEX_BAR_COLOR = MARKET_INDEX_REFERENCE_COLOR
 
 interface RankedItem {
   categoryId: number
@@ -108,9 +108,12 @@ function RankBars({
       <span />
       {/* "현재"/"변화율" 헤더 둘 다 한 줄이라(라디오 줄 뒤에 "전 대비"만 붙이고 입력 줄은 없앰),
           별도 최소 높이 없이도 두 그래프의 첫 막대 행이 같은 위치에서 시작한다. 지도 페이지
-          대분류 카테고리 헤더와 같은 폰트 크기(categoryHeaderFontSize(0) === 15px)·색상(text-yellow-600)을
-          그대로 써서 두 페이지의 헤더 텍스트를 맞춘다. */}
-      <div className="flex items-center whitespace-nowrap text-yellow-600" style={{ fontSize: categoryHeaderFontSize(0) }}>
+          대분류 카테고리 헤더와 같은 폰트 크기(categoryHeaderFontSize(0) === 15px)·색상
+          (MARKET_INDEX_REFERENCE_COLOR)을 그대로 써서 두 페이지의 헤더 텍스트를 맞춘다. */}
+      <div
+        className="flex items-center whitespace-nowrap"
+        style={{ fontSize: categoryHeaderFontSize(0), color: MARKET_INDEX_REFERENCE_COLOR }}
+      >
         {header ?? ' '}
       </div>
       {/* before 데이터가 없어 rankedItems가 비어도 위 헤더(15/30/60분 라디오 등)는 계속 조작할 수
@@ -123,7 +126,10 @@ function RankBars({
       )}
       {chart.rankedItems.map(item => (
         <Fragment key={item.categoryId}>
-          <span className={`whitespace-nowrap text-right ${item.isReference ? 'font-bold text-yellow-500' : ''}`}>
+          <span
+            className={`whitespace-nowrap text-right ${item.isReference ? 'font-bold' : ''}`}
+            style={item.isReference ? { color: MARKET_INDEX_REFERENCE_COLOR } : undefined}
+          >
             {item.categoryName}
           </span>
           {/* 퍼센트 텍스트를 막대 트랙(flex-1) 안에 막대 끝 위치(left: pct%)로 떠 있게 배치한다 —
