@@ -113,7 +113,12 @@ function RankBars({
       style={{ gridTemplateColumns: 'auto 1fr' }}
     >
       <span />
-      <div className="whitespace-nowrap text-gray-400">{header ?? ' '}</div>
+      {/* min-h-[49px]: "변화율" 헤더(15/30/60분 라디오 줄 + N분 전 대비 입력 줄, 두 줄)의 실측 높이.
+          "현재" 헤더는 캡션 한 줄이라 그대로 두면 이 행이 더 짧아지고, 그 아래 카테고리 막대 행들이
+          그래프마다 다른 높이에서 시작한다(content-between이 남는 세로 공간을 행 높이 기준으로
+          나눠 갖기 때문). 짧은 쪽에 같은 최소 높이를 줘서 grid의 items-center로 가운데 정렬되게 하면
+          두 그래프의 첫 막대 행이 같은 위치에서 시작한다. */}
+      <div className="min-h-[49px] whitespace-nowrap text-gray-400">{header ?? ' '}</div>
       {chart.rankedItems.map(item => (
         <Fragment key={item.categoryId}>
           <span className={`whitespace-nowrap text-right ${item.isReference ? 'font-bold text-yellow-500' : ''}`}>
