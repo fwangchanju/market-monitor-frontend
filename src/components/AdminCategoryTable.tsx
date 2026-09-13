@@ -389,7 +389,6 @@ export default function AdminCategoryTable({ categories }: Props) {
                     <tr>
                       <td className="py-0.5 text-left">
                         <div className="group/create flex items-center gap-2">
-                          <span className="shrink-0 text-gray-400">0.</span>
                           <input
                             type="text"
                             value={newName}
