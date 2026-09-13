@@ -28,6 +28,24 @@
   font-weight: 700;
   font-display: swap;
 }
+@font-face {
+  font-family: 'Gmarket Sans';
+  src: url('/fonts/gmarket-sans-light.woff2') format('woff2');
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Gmarket Sans';
+  src: url('/fonts/gmarket-sans-medium.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Gmarket Sans';
+  src: url('/fonts/gmarket-sans-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
 
 :root {
   --bg: #0f1117;
@@ -37,13 +55,17 @@
   --stock-down: #42a5f5;
   --negative: #ef5350;
   --accent-light: #7986cb;
-  font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
+  /* Gmarket Sans는 300/500/700 굵기만 있어서, font-weight: 400(normal)을 쓰면 CSS 폰트
+     매칭 규칙에 따라 같은 패밀리 안에서 가장 가까운 굵기(500)로 자동 매핑된다 — 다른
+     패밀리로 폴백되는 게 아니다. Gmarket Sans에 없는 문자(글리프 자체가 없는 경우)만
+     Pretendard로 폴백된다. */
+  font-family: 'Gmarket Sans', 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
   line-height: 1.5;
 }
 
 /* nes.css가 body/html 등에 직접 font-family를 지정해서 :root만으로는 안 덮어써짐 — 같은 선택자로 재정의 */
 body, code, html, kbd, pre, samp {
-  font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
+  font-family: 'Gmarket Sans', 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
 }
 
 /* nes.css가 html/a/button에 커스텀 픽셀아트 커서(cursor: url(...))를 지정해서 일반 마우스 포인터보다
