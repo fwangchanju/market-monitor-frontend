@@ -116,9 +116,12 @@ function RankBars({
       {/* min-h-[49px]: "변화율" 헤더(15/30/60분 라디오 줄 + N분 전 대비 입력 줄, 두 줄)의 실측 높이.
           "현재" 헤더는 캡션 한 줄이라 그대로 두면 이 행이 더 짧아지고, 그 아래 카테고리 막대 행들이
           그래프마다 다른 높이에서 시작한다(content-between이 남는 세로 공간을 행 높이 기준으로
-          나눠 갖기 때문). 짧은 쪽에 같은 최소 높이를 줘서 grid의 items-center로 가운데 정렬되게 하면
-          두 그래프의 첫 막대 행이 같은 위치에서 시작한다. */}
-      <div className="min-h-[49px] whitespace-nowrap text-gray-400">{header ?? ' '}</div>
+          나눠 갖기 때문). 짧은 쪽에 같은 최소 높이를 줘야 두 그래프의 첫 막대 행이 같은 위치에서
+          시작한다. 이 셀만 flex items-end로 텍스트를 박스 하단에 붙인다(그리드 전체의
+          items-center는 셀 자체 위치만 다루고, 셀 안 텍스트가 위쪽에 붙는 것까진 못 막는다) —
+          "동일 가중 등락률" 캡션이 라디오 버튼 줄이 아니라 그 아래 "N분 전 대비" 줄과 같은 높이에
+          오게 하려는 것이다(두 줄 다 15px 기준이라 텍스트 높이가 같음). */}
+      <div className="flex min-h-[49px] items-end whitespace-nowrap text-gray-400">{header ?? ' '}</div>
       {chart.rankedItems.map(item => (
         <Fragment key={item.categoryId}>
           <span className={`whitespace-nowrap text-right ${item.isReference ? 'font-bold text-yellow-500' : ''}`}>
