@@ -49,7 +49,7 @@ export default function MarketMapBox({
   tooltipAlignTop,
   colorScale,
 }: Props) {
-  const showLabel = areaPercent >= labelMinAreaPercent
+  const showLabel = stockLabelMode !== 'off' && areaPercent >= labelMinAreaPercent
   const showName = stockLabelMode !== 'rateOnly'
   const showRate = stockLabelMode !== 'nameOnly'
   const fontSize = fontSizePx(width, height)

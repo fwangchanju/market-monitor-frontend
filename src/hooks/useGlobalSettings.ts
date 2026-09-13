@@ -20,9 +20,9 @@ const EMPTY_COLOR_SCALE: ColorScaleConfig = { thresholds: [] }
 
 export type DepthMetric = 'avgChangeRate' | 'upDownCount' | 'marketValue'
 
-// 트리맵 종목 박스에 이름/등락률 중 뭘 보여줄지 — 슬라이더 인덱스로 저장(0/1/2).
-export type StockLabelMode = 'nameOnly' | 'rateOnly' | 'both'
-const STOCK_LABEL_MODES: StockLabelMode[] = ['nameOnly', 'rateOnly', 'both']
+// 트리맵 종목 박스에 이름/등락률 중 뭘 보여줄지 — 슬라이더 인덱스로 저장(0~3). off는 둘 다 안 보여준다.
+export type StockLabelMode = 'off' | 'nameOnly' | 'rateOnly' | 'both'
+const STOCK_LABEL_MODES: StockLabelMode[] = ['off', 'nameOnly', 'rateOnly', 'both']
 
 // categoryId -> "상위 - 하위" 형태의 전체 경로. "이 섹터가 제외 목록에 있는지"만 관리하고,
 // 실제로 화면에서 걸러낼지는 별도의 sectorFilterEnabled 마스터 스위치가 결정한다.
@@ -83,12 +83,13 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePersistedState('marketMap.avgChangeRateUseSimple', true)
   // 종목 박스가 전체 트리맵 넓이에서 이 비중(%) 미만이면 종목명/등락률을 표시하지 않는다(카테고리 헤더와는 무관).
   const [boxLabelMinAreaPercent, setBoxLabelMinAreaPercent] = usePersistedState('marketMap.boxLabelMinAreaPercent', 0.1)
-  // 종목 박스에 이름만/등락률만/둘 다 보여줄지 — 기본은 둘 다(기존 동작 유지).
-  const [stockLabelModeIndex, setStockLabelModeIndex] = usePersistedState('marketMap.stockLabelModeIndex', 2)
+  // 종목 박스에 이름만/등락률만/둘 다/끄기 중 뭘 보여줄지 — 기본은 둘 다(기존 동작 유지, 배열 앞에
+  // "끄기"가 추가되면서 both의 인덱스가 2에서 3으로 밀림).
+  const [stockLabelModeIndex, setStockLabelModeIndex] = usePersistedState('marketMap.stockLabelModeIndex', 3)
   const stockLabelMode = STOCK_LABEL_MODES[stockLabelModeIndex]
   // 지도 페이지에 표시되는 모든 등락률(%)의 소수점 자릿수 — 인덱스가 그대로 자릿수(0=정수, 1=소수
-  // 1자리, 2=소수 2자리). 기본값 2(소수 2자리)가 기존 toPctSigned의 고정 2자리 동작과 동일하다.
-  const [decimalPlacesIndex, setDecimalPlacesIndex] = usePersistedState('marketMap.decimalPlacesIndex', 2)
+  // 1자리, 2=소수 2자리). 기본값 1(소수 1자리).
+  const [decimalPlacesIndex, setDecimalPlacesIndex] = usePersistedState('marketMap.decimalPlacesIndex', 1)
   const decimalPlaces = decimalPlacesIndex
   // 시가총액 구간 범위 필터 — 마켓맵/카테고리 랭킹 화면이 세션스토리지 키를 공유한다(useMarketValueTierRange 참고).
   const {

@@ -231,4 +231,18 @@ a { color: var(--accent-light); text-decoration: none; }
   margin: 0;
 }
 
+/* ── 옵션 사이드바 중제목 번호 ────────────────────────────────────────────────
+   JSX에 "1.", "2." 같은 숫자를 직접 박아두면 페이지마다 섹션 순서가 다르고 항목이 추가/삭제될 때마다
+   전부 손으로 다시 매겨야 한다 — 대신 CSS 카운터로 DOM에 실제로 렌더된(조건부로 안 보이면 자동으로
+   스킵되는) 중제목 순서를 브라우저가 자동으로 번호 매기게 한다(자바의 for문 i++ 카운터와 같은 개념을
+   CSS로 구현한 것). 사이드바 스크롤 컨테이너에서 counter-reset으로 카운터를 0으로 두고, 각 중제목에
+   .settings-section-num을 붙이면 그 요소가 나타날 때마다 자동으로 1씩 증가한 값을 앞에 붙여준다. */
+.settings-section-list {
+  counter-reset: settings-section;
+}
+.settings-section-num::before {
+  counter-increment: settings-section;
+  content: counter(settings-section) ". ";
+}
+
 }

@@ -88,7 +88,7 @@ export default function MarketSummaryPage() {
           {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서 창을 좁혀도 사이드바(w-80)가 항상 같은
               폭을 유지하게 한다(지도/섹터 페이지와 동일). */}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className="flex h-7 w-full shrink-0 items-end justify-end bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
+            <div className="flex h-7 w-full shrink-0 items-center justify-end bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
               {/* 요약 페이지는 아직 이 바에 담을 내용이 없어서, 지도 페이지의 시간 표시 위치(우측 끝)만
                   그대로 가져와 시간만 보여준다. */}
               {marketSummaryData?.marketOverviews.snapshotTime && (

@@ -3,7 +3,6 @@ import { useIsAdmin } from '@/hooks/useAccess'
 import type { DepthMetric } from '@/hooks/useGlobalSettings'
 import type { ColorScaleConfig, ColorScaleThreshold, LegendSwatch } from '@/utils/marketMapColorScale'
 import { FONT_BAR_LEGEND } from '@/components/FontStyle'
-import NumberStepperInput from '@/components/NumberStepperInput'
 import type { MarketValueTierItem } from '@/types/api'
 
 interface ExcludedCategory {
@@ -22,6 +21,7 @@ function ToggleSwitch({
   bold = false,
   labelClassName = '',
   hideLabel = false,
+  forceLabelWhite = false,
 }: {
   checked: boolean
   onChange: () => void
@@ -35,13 +35,21 @@ function ToggleSwitch({
   // true면 라벨을 화면에 그리지 않고 스위치만 그린다(접근성용 aria-label은 label을 그대로 씀) —
   // 바깥에서 이미 같은 텍스트를 제목(예: "색상 범위")으로 보여주고 있어 중복 표시를 피할 때 쓴다.
   hideLabel?: boolean
+  // true면 checked=false여도 라벨을 회색으로 옅게 하지 않고 흰색으로 그린다 — "동일 가중/시총 가중"처럼
+  // OFF가 "꺼짐(비활성)"이 아니라 "다른 선택지가 켜짐"을 뜻하는 경우, label 자체가 항상 지금 선택된
+  // 쪽을 나타내므로 checked 여부와 무관하게 항상 강조돼야 한다.
+  forceLabelWhite?: boolean
 }) {
   // 라벨(+보조 콘텐츠)은 왼쪽에 모으고, 스위치는 justify-between으로 항상 이 줄의 우측 끝에 붙인다.
   return (
     <div className={`flex items-center justify-between gap-2 ${disabled ? 'opacity-40' : ''}`}>
       {!hideLabel && (
         <span className="flex min-w-0 items-center gap-2">
-          <span className={`${labelClassName} ${bold ? 'font-bold' : ''} ${checked ? 'text-white' : 'text-gray-500'}`}>{label}</span>
+          <span
+            className={`${labelClassName} ${bold ? 'font-bold' : ''} ${forceLabelWhite || checked ? 'text-white' : 'text-gray-500'}`}
+          >
+            {label}
+          </span>
           {labelSuffix}
           {hint && <span className="text-[10.5px] text-gray-500">{hint}</span>}
         </span>
@@ -74,7 +82,7 @@ const DEPTH_METRIC_OPTIONS: { key: DepthMetric; label: string }[] = [
 ]
 
 // 종목 박스 표시 내용 슬라이더 라벨 — 인덱스가 곧 STOCK_LABEL_MODES(useGlobalSettings)의 인덱스.
-const STOCK_LABEL_MODE_LABELS = ['종목명', '등락률', '모두']
+const STOCK_LABEL_MODE_LABELS = ['끄기', '종목명', '등락률', '모두']
 
 // 등락률 자리수 슬라이더 라벨 — 인덱스 그대로 소수점 자릿수(toPctSigned의 decimalPlaces 인자, 0=정수).
 const DECIMAL_PLACES_LABELS = ['정수', '소수1자리', '소수2자리']
@@ -296,20 +304,39 @@ export function SettingsCustomModeSection({
         checked={isCustom}
         onChange={onToggleCustom}
         label="커스텀 모드"
-        labelClassName="text-base"
+        labelClassName="text-base settings-section-num"
         labelSuffix={stockCountLabel ? <span className="text-sm text-gray-400">{stockCountLabel}</span> : undefined}
       />
       {showEqualWeightToggle && (
         <div className="mt-3">
-          <ToggleSwitch
-            checked={avgChangeRateUseSimple}
-            onChange={onToggleAvgChangeRateUseSimple}
-            label="동일 가중"
-            labelClassName="text-base"
+          <EqualWeightToggleSwitch
+            avgChangeRateUseSimple={avgChangeRateUseSimple}
+            onToggleAvgChangeRateUseSimple={onToggleAvgChangeRateUseSimple}
           />
         </div>
       )}
     </div>
+  )
+}
+
+// 스위치(원래 방식)는 그대로 두고, 라벨만 "지금 켜진 쪽"을 앞(흰색·번호 포함)에, "꺼진 쪽"을 뒤(회색)에
+// 붙여서 둘 다 보여준다 — 클릭 대상은 여전히 스위치 하나뿐이고 라벨은 상태 표시 전용이다.
+function EqualWeightToggleSwitch({
+  avgChangeRateUseSimple,
+  onToggleAvgChangeRateUseSimple,
+}: {
+  avgChangeRateUseSimple: boolean
+  onToggleAvgChangeRateUseSimple: () => void
+}) {
+  return (
+    <ToggleSwitch
+      checked={avgChangeRateUseSimple}
+      onChange={onToggleAvgChangeRateUseSimple}
+      label={avgChangeRateUseSimple ? '동일 가중' : '시총 가중'}
+      labelClassName="text-base settings-section-num"
+      labelSuffix={<span className="text-gray-500">{avgChangeRateUseSimple ? '시총 가중' : '동일 가중'}</span>}
+      forceLabelWhite
+    />
   )
 }
 
@@ -322,17 +349,15 @@ export function SettingsEqualWeightSection({
 }) {
   return (
     <div className="pt-4 text-white">
-      <ToggleSwitch
-        checked={avgChangeRateUseSimple}
-        onChange={onToggleAvgChangeRateUseSimple}
-        label="동일 가중"
-        labelClassName="text-base"
+      <EqualWeightToggleSwitch
+        avgChangeRateUseSimple={avgChangeRateUseSimple}
+        onToggleAvgChangeRateUseSimple={onToggleAvgChangeRateUseSimple}
       />
     </div>
   )
 }
 
-export function SettingsDisplayRangeSection({
+export function SettingsCategoryLevelSection({
   isCustom,
   maxDepth,
   availableMaxDepth,
@@ -349,12 +374,12 @@ export function SettingsDisplayRangeSection({
   decimalPlacesIndex,
   onChangeDecimalPlacesIndex,
   showDecimalPlaces = false,
-  tiers,
-  tierRangeMinIndex,
-  tierRangeMaxIndex,
-  onChangeTierRange,
+  showDivider = true,
 }: {
   isCustom: boolean
+  // "업종 분류" 위에 구분선(border-t)을 그릴지 — 스티키 커스텀모드 블록(또는 동일 가중) 바로 다음에
+  // 올 때는 그 자체로 이미 구분되므로 false로 끈다. "종목"은 "업종 분류" 바로 다음이라 항상 그린다.
+  showDivider?: boolean
   // null이면 제한 없음(=availableMaxDepth 전체 다 보여줌). 슬라이더가 다룰 수 있는 실제 상한은
   // 지금 트리(exclude/tier 필터링까지 반영된)의 최대 뎁스라 따로 내려받는다.
   maxDepth: number | null
@@ -367,7 +392,7 @@ export function SettingsDisplayRangeSection({
   depthMetricMinIndex: number
   depthMetricMaxIndex: number
   onChangeDepthMetricRange: (minIndex: number, maxIndex: number) => void
-  // 종목 박스에 이름만(0)/등락률만(1)/둘 다(2) 보여줄지 — STOCK_LABEL_MODE_OPTIONS 인덱스.
+  // 종목 박스에 끄기(0)/이름만(1)/등락률만(2)/둘 다(3) 보여줄지 — STOCK_LABEL_MODE_OPTIONS 인덱스.
   stockLabelModeIndex: number
   onChangeStockLabelModeIndex: (index: number) => void
   // 종목 박스가 전체 트리맵 넓이에서 이 비중(%) 미만이면 종목명/등락률을 표시하지 않는다.
@@ -380,13 +405,6 @@ export function SettingsDisplayRangeSection({
   // 등락률(%) 표시에 쓰이는 설정이라 지도 페이지에서만 켠다(섹터는 그래프 자체 소수점 포맷을 따로
   // 쓰므로 기본 false로 숨긴다).
   showDecimalPlaces?: boolean
-  // 오름차순(소→초) 정렬된 시가총액 구간 정의 — GET /market-map/value-tiers 조회 결과(useMarketValueTiers).
-  // 아직 로딩 전이면 빈 배열.
-  tiers: MarketValueTierItem[]
-  // tiers 배열 기준 인덱스. 이 구간(포함) 밖의 시가총액 등급은 마켓맵에서 제외된다.
-  tierRangeMinIndex: number
-  tierRangeMaxIndex: number
-  onChangeTierRange: (minIndex: number, maxIndex: number) => void
 }) {
   const depthValue = Math.min(maxDepth ?? availableMaxDepth, availableMaxDepth)
   const isDepthDisabled = !isCustom || availableMaxDepth <= 1
@@ -396,21 +414,14 @@ export function SettingsDisplayRangeSection({
     ...Array.from({ length: availableMaxDepth }, (_, index) => DEPTH_LABELS[index] ?? `${index + 1}차 분류`),
   ]
 
-  // tiers/tierRangeMinIndex·MaxIndex는 오름차순(소형주→초대형주) 기준을 그대로 유지하고, 화면에
-  // 그릴 때만 좌우를 뒤집는다(초대형주가 왼쪽) — 저장값/다른 화면(카테고리 랭킹)과 공유하는 인덱스
-  // 의미는 안 바뀐다.
-  const tierSteps = Math.max(tiers.length - 1, 1)
-  const tierDisplayLabels = [...tiers].reverse().map(tier => tier.label)
-  const tierDisplayMinIndex = tierSteps - tierRangeMaxIndex
-  const tierDisplayMaxIndex = tierSteps - tierRangeMinIndex
-
   return (
-    <div className="pt-8 text-white">
-      {/* "업종 분류" 중제목 — "표시 범위"보다 위로 옮겨졌다(원래 순서는 나중에 표시 범위 전체가 더
-          아래로 이동할 예정이라 그때 자연스럽게 맞음). 아래 커스텀 모드 스티키 블록의 구분선과 같은
-          스타일(border-b)로 이 그룹만 따로 감싸서 표시 범위와 시각적으로 분리한다. */}
-      <div className="border-b border-gray-700 pb-4">
-        <p className="text-base">업종 분류</p>
+    <div className="text-white">
+      {/* 구분선(border-t)은 항상 "다음에 오는 섹션"이 자기 앞에 그린다 — 앞 섹션이 border-b를 겹쳐
+          그리면 두 섹션이 바뀔 때(페이지마다 순서가 다름) 구분선이 두 줄이 되거나 아예 없어지는
+          문제가 있었다. showDivider=false는 바로 위가 스티키 커스텀모드 블록(또는 동일 가중)이라
+          이미 그 자체로 구분되는 경우에만 쓴다. */}
+      <div className={showDivider ? 'mt-6 border-t border-gray-700 pt-8' : 'pt-8'}>
+        <p className="settings-section-num text-base">업종 분류</p>
         <div className={`mt-2 pl-2 text-sm ${isDepthDisabled ? 'opacity-40' : ''}`}>
           {/* N/M 숫자 표시 대신, 등락률 지표 슬라이더와 같은 "끄기/대분류/중분류/소분류..." 눈금
               라벨을 슬라이더 하단에 둔다 — 다만 "끄기" 실제 동작(뎁스 제한 자체를 끄는 것)은 아직
@@ -467,9 +478,9 @@ export function SettingsDisplayRangeSection({
         </div>
       </div>
       {/* "종목" 중제목 — "종목 박스 표기", "종목 텍스트 표시 기준", (지도 페이지 한정) "소수점 아래
-          표시"를 하위 속성으로 묶는다. */}
-      <div className="mt-4 border-b border-gray-700 pb-4">
-        <p className="text-base">종목</p>
+          표시"를 하위 속성으로 묶는다. "업종 분류" 바로 다음이라 구분선은 항상 그린다. */}
+      <div className="mt-6 border-t border-gray-700 pt-8">
+        <p className="settings-section-num text-base">종목</p>
         <div className={`mt-2 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
           <span className="block max-w-[16rem] text-center text-white">종목 박스 표기</span>
           <div className="mt-2 max-w-[16rem]">
@@ -483,25 +494,12 @@ export function SettingsDisplayRangeSection({
           </div>
         </div>
         <div className={`mt-3 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
-          {/* 입력박스는 토글 줄과 같은 레이아웃(라벨 왼쪽, 입력은 오른쪽 끝)으로 라벨 옆에 두고,
-              슬라이더는 그 아래 한 줄로 따로 둔다 — 입력박스와 자리를 안 나누니 슬라이더 폭이
-              max-w-[16rem] 전체로 늘어난다. 0.01 단위라 부동소수 오차가 누적될 수 있어 validate로
-              소수 2자리까지만 반올림한다. */}
-          <div className="flex max-w-[16rem] items-center justify-between gap-2">
-            <span className="text-white">종목 텍스트 표시 기준</span>
-            <div className="flex shrink-0 items-center gap-1">
-              <NumberStepperInput
-                value={boxLabelMinAreaPercent}
-                onCommit={onChangeBoxLabelMinAreaPercent}
-                min={0.01}
-                max={0.3}
-                step={0.01}
-                validate={v => Math.round(v * 100) / 100}
-                disabled={!isCustom}
-                className="w-14 rounded border border-gray-600 bg-zinc-900 px-1 py-0.5 text-right text-white disabled:cursor-not-allowed"
-              />
-              <span className="text-gray-400">%</span>
-            </div>
+          {/* 퍼센티지 값은 우측 끝에 옅은 회색으로 — 그 값이 없다고 치면 라벨만 가운데 정렬된 것처럼
+              보이도록, 라벨을 flex-1로 남는 공간에서 가운데 정렬한다("업종 분류 레벨" + N/M 배지와
+              동일한 패턴). 값 변경은 아래 슬라이더로만 한다. */}
+          <div className="flex max-w-[16rem] items-center">
+            <span className="flex-1 text-center text-white">종목 텍스트 표시 기준</span>
+            <span className="text-gray-400">{boxLabelMinAreaPercent.toFixed(2)}%</span>
           </div>
           <div className="mt-2 max-w-[16rem]">
             <input
@@ -531,7 +529,41 @@ export function SettingsDisplayRangeSection({
           </div>
         )}
       </div>
-      <p className="mt-4 text-base">표시 범위</p>
+    </div>
+  )
+}
+
+export function SettingsMarketValueSection({
+  isCustom,
+  tiers,
+  tierRangeMinIndex,
+  tierRangeMaxIndex,
+  onChangeTierRange,
+  showDivider = true,
+}: {
+  isCustom: boolean
+  // 오름차순(소→초) 정렬된 시가총액 구간 정의 — GET /market-map/value-tiers 조회 결과(useMarketValueTiers).
+  // 아직 로딩 전이면 빈 배열.
+  tiers: MarketValueTierItem[]
+  // tiers 배열 기준 인덱스. 이 구간(포함) 밖의 시가총액 등급은 마켓맵에서 제외된다.
+  tierRangeMinIndex: number
+  tierRangeMaxIndex: number
+  onChangeTierRange: (minIndex: number, maxIndex: number) => void
+  // 위에 구분선(border-t)을 그릴지 — 스티키 커스텀모드 블록 바로 다음에 올 때(지도 페이지)는
+  // false로 꺼서 이중 구분선을 피한다.
+  showDivider?: boolean
+}) {
+  // tiers/tierRangeMinIndex·MaxIndex는 오름차순(소형주→초대형주) 기준을 그대로 유지하고, 화면에
+  // 그릴 때만 좌우를 뒤집는다(초대형주가 왼쪽) — 저장값/다른 화면(카테고리 랭킹)과 공유하는 인덱스
+  // 의미는 안 바뀐다.
+  const tierSteps = Math.max(tiers.length - 1, 1)
+  const tierDisplayLabels = [...tiers].reverse().map(tier => tier.label)
+  const tierDisplayMinIndex = tierSteps - tierRangeMaxIndex
+  const tierDisplayMaxIndex = tierSteps - tierRangeMinIndex
+
+  return (
+    <div className={showDivider ? 'mt-6 border-t border-gray-700 pt-8 text-white' : 'pt-8 text-white'}>
+      <p className="settings-section-num text-base">표시 범위</p>
       <div className={`mt-2 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
         <span className="block max-w-[16rem] text-center text-white">시가총액</span>
         <div className="mt-2 max-w-[16rem]">
@@ -575,7 +607,7 @@ export function SettingsExcludeSection({
           checked={sectorFilterEnabled}
           onChange={onToggleSectorFilter}
           label="제외 범위"
-          labelClassName="text-base"
+          labelClassName="text-base settings-section-num"
           disabled={!isCustom}
         />
         {isCustom && (
@@ -647,7 +679,7 @@ export function SettingsColorSection({
     <div className="mt-6 border-t border-gray-700 pt-8 text-white">
       {/* "색상 커스텀 모드" 토글을 별도 줄로 두지 않고, 제목("색상 범위") 바로 우측에 스위치만 붙인다. */}
       <div className="flex items-center justify-between">
-        <p className="text-base">색상 범위</p>
+        <p className="settings-section-num text-base">색상 범위</p>
         <ToggleSwitch
           checked={colorCustomOn}
           onChange={() => onChangeColorCustomOn(!colorCustomOn)}
@@ -737,7 +769,7 @@ export default function SettingsSidebar({ pageLabel, isOpen, onOpenChange, child
           ✕
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 text-sm">{children}</div>
+      <div className="settings-section-list min-h-0 flex-1 overflow-y-auto px-4 pb-8 text-sm">{children}</div>
     </div>
   )
 }

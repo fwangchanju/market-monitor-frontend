@@ -6,7 +6,8 @@ import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThres
 import SettingsSidebar, {
   SettingsCustomModeSection,
   SettingsEqualWeightSection,
-  SettingsDisplayRangeSection,
+  SettingsCategoryLevelSection,
+  SettingsMarketValueSection,
   SettingsExcludeSection,
   SettingsColorSection,
 } from '@/components/SettingsSidebar'
@@ -403,13 +404,13 @@ export default function CategoryChangeRatePage() {
               항상 같은 폭을 유지하게 한다(지도 페이지와 동일) — 내부 그래프가 넘치면 이 컬럼
               안에서만 처리된다. */}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className="relative flex h-7 w-full shrink-0 items-end justify-between bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
+            <div className="relative flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
               <div className="flex items-center whitespace-nowrap">
                 <span className={FONT_BAR_TITLE}>{MARKET_LABEL[market]}</span>
               </div>
               {/* 지도 페이지와 동일하게 바 전체 폭 기준 절대 중앙에 고정 — 좌/우 칸 폭에 영향받지 않는다. */}
               <span
-                className={`${FONT_BAR_MODE_STATUS} absolute bottom-0 left-1/2 -translate-x-1/2 whitespace-nowrap text-gray-400`}
+                className={`${FONT_BAR_MODE_STATUS} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-gray-400`}
               >
                 {modeStatusText}
               </span>
@@ -491,7 +492,8 @@ export default function CategoryChangeRatePage() {
           <SettingsSidebar {...settingsModalProps} pageLabel="섹터">
             <SettingsCustomModeSection {...settingsModalProps} />
             <SettingsEqualWeightSection {...settingsModalProps} />
-            <SettingsDisplayRangeSection {...settingsModalProps} />
+            <SettingsCategoryLevelSection {...settingsModalProps} showDivider={false} />
+            <SettingsMarketValueSection {...settingsModalProps} />
             <SettingsExcludeSection {...settingsModalProps} />
             <SettingsColorSection {...settingsModalProps} />
           </SettingsSidebar>

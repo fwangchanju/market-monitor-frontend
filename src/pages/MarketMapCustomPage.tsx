@@ -5,7 +5,8 @@ import SubNavBar from '@/components/SubNavBar'
 import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
 import SettingsSidebar, {
   SettingsCustomModeSection,
-  SettingsDisplayRangeSection,
+  SettingsMarketValueSection,
+  SettingsCategoryLevelSection,
   SettingsExcludeSection,
   SettingsColorSection,
 } from '@/components/SettingsSidebar'
@@ -276,8 +277,8 @@ export default function MarketMapCustomPage() {
             {/* relative + absolute 중앙 배치: 커스텀 모드 표시를 grid 가운데 열로 두면 좌/우 칸의
                 콘텐츠 폭(마켓명·지수, 시간)이 달라질 때마다 가운데 열 자체의 중심이 바뀌어서 바
                 전체 기준으로는 중앙이 아니게 된다 — 바 전체 폭 기준 절대 중앙에 고정한다. */}
-            <div className="relative flex h-7 w-full shrink-0 items-end justify-between bg-black/70 pl-1 text-sm font-bold text-white">
-              <div className="flex items-end gap-2 whitespace-nowrap">
+            <div className="relative flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
+              <div className="flex items-center gap-2 whitespace-nowrap">
                 <span
                   onClick={() => handleGoToDepth(0)}
                   className={`${FONT_BAR_TITLE} ${path.length > 0 ? 'cursor-pointer hover:text-yellow-400' : ''}`}
@@ -296,7 +297,7 @@ export default function MarketMapCustomPage() {
                 )}
               </div>
               <span
-                className={`${FONT_BAR_MODE_STATUS} absolute bottom-0 left-1/2 -translate-x-1/2 whitespace-nowrap text-gray-400`}
+                className={`${FONT_BAR_MODE_STATUS} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-gray-400`}
               >
                 {modeStatusText}
               </span>
@@ -402,8 +403,9 @@ export default function MarketMapCustomPage() {
               stockCountLabel={`${visibleItems.length}/${totalItemCount}종목`}
               showEqualWeightToggle
             />
-            <SettingsDisplayRangeSection {...settingsModalProps} showDecimalPlaces />
+            <SettingsMarketValueSection {...settingsModalProps} showDivider={false} />
             <SettingsExcludeSection {...settingsModalProps} />
+            <SettingsCategoryLevelSection {...settingsModalProps} showDecimalPlaces />
             <SettingsColorSection {...settingsModalProps} />
           </SettingsSidebar>
         </div>
