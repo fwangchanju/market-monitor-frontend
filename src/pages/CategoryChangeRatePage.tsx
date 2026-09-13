@@ -322,19 +322,24 @@ export default function CategoryChangeRatePage() {
     // index는 랭킹과 정확히 같은 시각 기준이라 스냅샷 시점 어긋남이 없다.
     const indexRanking = rankingData?.items.find(item => item.market === market)
     // 백엔드가 아직 옛 응답 모양(indexChangeRate)을 내려주는 동안의 폴백 — 그 구간에는 before가 없어
-    // "변화율" 지수 바가 안 뜬다. 지금 화면과 동일한 동작이다.
-    const index =
-      indexRanking?.index ??
-      (indexRanking?.indexChangeRate != null ? { now: indexRanking.indexChangeRate, before: null } : null)
+    // "변화율" 지수 바가 안 뜬다. 지금 화면과 동일한 동작이다. categoryName까지 여기서 같이 확정해서
+    // 두 호출부가 indexRanking을 직접 참조하지 않게 한다.
+    const indexBar = (() => {
+      if (indexRanking == null) return null
+      const value =
+        indexRanking.index ??
+        (indexRanking.indexChangeRate != null ? { now: indexRanking.indexChangeRate, before: null } : null)
+      return value == null ? null : { ...value, categoryName: MARKET_INDEX_LABEL_KO[indexRanking.market] }
+    })()
 
     const currentEntriesWithIndex =
-      index != null
+      indexBar != null
         ? [
             ...currentEntries,
             {
               categoryId: MARKET_INDEX_CATEGORY_ID,
-              value: index.now,
-              categoryName: MARKET_INDEX_LABEL_KO[indexRanking!.market],
+              value: indexBar.now,
+              categoryName: indexBar.categoryName,
               isReference: true,
             },
           ]
@@ -350,13 +355,13 @@ export default function CategoryChangeRatePage() {
       .filter((entry): entry is { categoryId: number; value: number } => entry !== null)
 
     const deltaEntriesWithIndex =
-      index?.before != null
+      indexBar?.before != null
         ? [
             ...deltaEntries,
             {
               categoryId: MARKET_INDEX_CATEGORY_ID,
-              value: index.now - index.before,
-              categoryName: MARKET_INDEX_LABEL_KO[indexRanking!.market],
+              value: indexBar.now - indexBar.before,
+              categoryName: indexBar.categoryName,
               isReference: true,
             },
           ]
