@@ -15,16 +15,19 @@
 export const FONT_NAV_TAB = 'text-xl font-bold'
 
 // 세 번째 바(페이지별 상태/옵션 바) — 제목(마켓명, "Custom Sector" 등 페이지 대표 라벨). 20px, bold.
-export const FONT_BAR_TITLE = 'text-xl font-bold'
+// leading-none: 기본 line-height(1.5)를 쓰면 text-xl의 줄 높이가 정확히 바 높이(h-7=28px)와 같아져서
+// items-end로 하단 정렬해도 글자 위아래에 남는 여백이 똑같아 시각적으로 아무 차이가 없다 — 줄 높이를
+// 글자 크기에 딱 맞게 줄여야 바 하단선에 실제로 붙어 보인다(모드 상태/시간 텍스트도 동일한 이유로 맞춤).
+export const FONT_BAR_TITLE = 'text-xl leading-none font-bold'
 
 // 세 번째 바 — 지수/등락폭/등락률. 15px, normal.
-export const FONT_BAR_MARKET_INDEX = 'text-[15px] font-normal'
+export const FONT_BAR_MARKET_INDEX = 'text-[15px] leading-none font-normal'
 
 // 세 번째 바 — 모드 상태 텍스트(예: 커스텀 모드). 15px, normal.
-export const FONT_BAR_MODE_STATUS = 'text-[15px] font-normal'
+export const FONT_BAR_MODE_STATUS = 'text-[15px] leading-none font-normal'
 
 // 세 번째 바 — 시간(스냅샷 시각). 15px, normal.
-export const FONT_BAR_TIME = 'text-[15px] font-normal'
+export const FONT_BAR_TIME = 'text-[15px] leading-none font-normal'
 
 // 세 번째 바 — 범례. 12px, bold.
 export const FONT_BAR_LEGEND = 'text-xs font-bold'

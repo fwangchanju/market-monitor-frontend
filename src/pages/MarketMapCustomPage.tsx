@@ -5,7 +5,6 @@ import SubNavBar from '@/components/SubNavBar'
 import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
 import SettingsSidebar, {
   SettingsCustomModeSection,
-  SettingsEqualWeightSection,
   SettingsDisplayRangeSection,
   SettingsExcludeSection,
   SettingsColorSection,
@@ -14,19 +13,38 @@ import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
 import Spinner from '@/components/Spinner'
 import NavBarPageActions from '@/components/NavBarPageActions'
-import { FONT_BAR_TITLE, FONT_BAR_MARKET_INDEX, FONT_BAR_MODE_STATUS, FONT_BAR_TIME, FONT_BAR_LEGEND } from '@/components/FontStyle'
+import { CalendarIcon } from '@/components/icons/MarketMapIcons'
+import { FONT_BAR_TITLE, FONT_BAR_MARKET_INDEX, FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
-import { TAB_GAP, toMarketMapSnapshotTimeLabel, toIndex, toPctSigned, signClass } from '@/utils/format'
+import { TAB_GAP, toMarketMapSnapshotTimeLabel, toIndex, toPctSigned } from '@/utils/format'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
-import { limitDepth, type FilteredMarketMapCategoryNode } from '@/hooks/useFilteredMarketMapTree'
+import { limitDepth, flattenAllItems, type FilteredMarketMapCategoryNode } from '@/hooks/useFilteredMarketMapTree'
 import type { MarketQuery, MarketMapCategoryNode, MarketMapItem } from '@/types/api'
 
 const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
+
+// "업종 분류 레벨" 슬라이더가 "끄기"(뎁스 0)일 때만 쓰는 합성 카테고리 — 실제 카테고리가 아니므로
+// categoryId는 실제 값과 겹치지 않는 sentinel을 쓰고, isSelf로 매칭해 헤더 자체를 안 그리게 한다
+// (드릴다운으로 들어온 카테고리의 헤더를 breadcrumb과 중복되지 않게 숨기는 것과 동일한 메커니즘).
+const FLAT_GROUP_CATEGORY_ID = -1
+const FLAT_GROUP_NAME = '__flat__'
+
+function toFlatDisplayGroup(items: MarketMapItem[]): DisplayGroup {
+  return {
+    categoryId: FLAT_GROUP_CATEGORY_ID,
+    categoryName: FLAT_GROUP_NAME,
+    totalMarketValue: items.reduce((sum, item) => sum + item.totalMarketValue, 0),
+    weightedAvgChangeRate: null,
+    simpleAvgChangeRate: null,
+    items,
+    children: [],
+  }
+}
 
 function toDisplayGroup(node: FilteredMarketMapCategoryNode): DisplayGroup {
   return {
@@ -96,8 +114,8 @@ export default function MarketMapCustomPage() {
     avgChangeRateUseSimple,
     boxLabelMinAreaPercent,
     stockLabelMode,
+    decimalPlaces,
     colorScale,
-    legendSwatches,
     handleExcludeCategory,
   } = useGlobalSettings()
 
@@ -128,10 +146,22 @@ export default function MarketMapCustomPage() {
   // 상대값이어야 한다(그래야 뎁스 제한 때문에 드릴다운 경로가 끊기거나 더 깊이 진입해도 항상 똑같이
   // 얕게만 보이는 문제가 없다). 커스텀 모드가 아니면 뎁스 제한 자체를 무시한다.
   const effectiveMaxDepth = isCustom ? maxDepth : null
-  const displaySiblings = effectiveMaxDepth != null ? limitDepth(currentSiblings, effectiveMaxDepth) : currentSiblings
+  // 뎁스 0("끄기")은 limitDepth로 표현할 수 없다(그 함수는 항상 최소 1뎁스 = 대분류 박스 하나는
+  // 남긴다) — 완전 평탄화는 별도로 처리한다: 지금 보이는 위치 아래 종목을 전부 하나로 모아
+  // isSelf 처리되는 합성 카테고리 하나로 만들어서, 대분류 헤더까지 포함해 아무 카테고리 박스도
+  // 안 보이게 한다.
+  const isFullyFlattened = effectiveMaxDepth === 0
+  const displaySiblings =
+    effectiveMaxDepth != null && !isFullyFlattened ? limitDepth(currentSiblings, effectiveMaxDepth) : currentSiblings
   const displayNode =
-    currentNode && effectiveMaxDepth != null ? (limitDepth([currentNode], effectiveMaxDepth)[0] ?? currentNode) : currentNode
-  const groups: DisplayGroup[] = displayNode ? [toDisplayGroup(displayNode)] : displaySiblings.map(toDisplayGroup)
+    currentNode && effectiveMaxDepth != null && !isFullyFlattened
+      ? (limitDepth([currentNode], effectiveMaxDepth)[0] ?? currentNode)
+      : currentNode
+  const groups: DisplayGroup[] = isFullyFlattened
+    ? [toFlatDisplayGroup(flattenAllItems(currentNode ? [currentNode] : currentSiblings))]
+    : displayNode
+      ? [toDisplayGroup(displayNode)]
+      : displaySiblings.map(toDisplayGroup)
   const visibleItems = collectItems(groups)
   // 지금 뎁스(path) 기준으로, 카테고리 제외/시가총액 구간 필터를 적용하기 전 원본 트리에 있는 전체 종목 수.
   const rawCurrentNode = findRawNodeByPath(rootNodes, path)
@@ -146,7 +176,7 @@ export default function MarketMapCustomPage() {
           isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-400'
         }`}
       />
-      <span className="text-gray-400">커스텀 모드</span>
+      <span className="text-white">커스텀 모드</span>
     </>
   )
 
@@ -230,59 +260,58 @@ export default function MarketMapCustomPage() {
             <MarketMapColorThresholdEditorPanel {...colorEditorPanelProps} />
           </div>
         )}
-        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 세 번째 바(고정) +
-            지도 본문/사이드바(밀리는 영역) 전체를 감싸는 바깥 wrapper로 둔다 — 세 번째 바는 옵션
-            사이드바가 열려도 밀리지 않지만, 캡처에는 계속 포함되어야 하므로 이 위치에 있어야 한다. */}
+        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 [세 번째 바+본문]
+            열 + 사이드바를 감싸는 바깥 wrapper로 둔다 — 사이드바가 열리면 세 번째 바(마켓명/커스텀
+            모드/시간)까지 같이 밀려서 좁아진다(본문만 밀리지 않는다). */}
         <div
           ref={captureRef}
           data-captureid={CAPTURE_ID.MARKET_MAP}
           data-capture-ready={!isLoading}
-          className="flex min-h-0 flex-1 flex-col bg-black"
+          className="flex min-h-0 flex-1 bg-black"
         >
-          <div className="grid h-7 w-full shrink-0 grid-cols-[auto_1fr_auto] items-center bg-black/70 pl-1 text-sm font-bold text-white">
-            <div className="flex items-center whitespace-nowrap">
+          {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서(overflow: visible이면 내부 콘텐츠의
+              min-content 폭을 그대로 강제해서 사이드바 쪽을 밀어냄) 창을 좁혀도 사이드바(w-80)가
+              항상 같은 폭을 유지하게 한다 — 내부 콘텐츠(트리맵)가 넘치면 이 컬럼 안에서만 처리된다. */}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-black">
+            {/* relative + absolute 중앙 배치: 커스텀 모드 표시를 grid 가운데 열로 두면 좌/우 칸의
+                콘텐츠 폭(마켓명·지수, 시간)이 달라질 때마다 가운데 열 자체의 중심이 바뀌어서 바
+                전체 기준으로는 중앙이 아니게 된다 — 바 전체 폭 기준 절대 중앙에 고정한다. */}
+            <div className="relative flex h-7 w-full shrink-0 items-end justify-between bg-black/70 pl-1 text-sm font-bold text-white">
+              <div className="flex items-end gap-2 whitespace-nowrap">
+                <span
+                  onClick={() => handleGoToDepth(0)}
+                  className={`${FONT_BAR_TITLE} ${path.length > 0 ? 'cursor-pointer hover:text-yellow-400' : ''}`}
+                >
+                  {MARKET_LABEL[market]}
+                </span>
+                {marketOverview && (
+                  <span className={`${FONT_BAR_MARKET_INDEX} text-blue-600`}>
+                    {toIndex(marketOverview.indexValue)}
+                    {TAB_GAP}
+                    {marketOverview.changeValue > 0 ? '▲' : marketOverview.changeValue < 0 ? '▼' : ''}
+                    {toIndex(Math.abs(marketOverview.changeValue))}
+                    {TAB_GAP}
+                    {toPctSigned(marketOverview.changeRate, decimalPlaces)}
+                  </span>
+                )}
+              </div>
               <span
-                onClick={() => handleGoToDepth(0)}
-                className={`${FONT_BAR_TITLE} ${path.length > 0 ? 'cursor-pointer hover:text-yellow-400' : ''}`}
+                className={`${FONT_BAR_MODE_STATUS} absolute bottom-0 left-1/2 -translate-x-1/2 whitespace-nowrap text-gray-400`}
               >
-                {MARKET_LABEL[market]} Map
+                {modeStatusText}
               </span>
-              {marketOverview && (
-                <span className={`${FONT_BAR_MARKET_INDEX} ${signClass(marketOverview.changeRate)}`}>
-                  {TAB_GAP}
-                  {toIndex(marketOverview.indexValue)}
-                  {TAB_GAP}
-                  {marketOverview.changeValue > 0 ? '▲' : marketOverview.changeValue < 0 ? '▼' : ''}
-                  {toIndex(Math.abs(marketOverview.changeValue))}
-                  {TAB_GAP}
-                  {toPctSigned(marketOverview.changeRate)}
-                </span>
-              )}
-            </div>
-            <span className={`${FONT_BAR_MODE_STATUS} min-w-0 whitespace-nowrap text-center text-gray-400`}>
-              {modeStatusText}
-            </span>
-            <div className="flex items-center gap-3 self-stretch">
-              {data?.snapshotTime && (
-                <span className={`${FONT_BAR_TIME} whitespace-nowrap text-gray-400`}>
-                  {toMarketMapSnapshotTimeLabel(data.snapshotTime)}
-                </span>
-              )}
-              {/* self-stretch + items-stretch: 이 칸의 실제 높이가 좌측 마켓명(text-xl) 줄높이 때문에
-                  h-7보다 커질 수 있어서, 고정 높이 대신 실제 행 높이에 맞춰 늘어나야 스와치 위아래로
-                  검은 배경이 남지 않는다. */}
-              <div className="flex items-stretch self-stretch">
-                {legendSwatches.map(({ label, color }) => (
-                  <div key={label} style={{ backgroundColor: color }} className="flex w-9 items-center justify-center">
-                    <span className={FONT_BAR_LEGEND}>{label}</span>
-                  </div>
-                ))}
+              <div className="flex items-center gap-3">
+                {data?.snapshotTime && (
+                  <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-white`}>
+                    <CalendarIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
+                    {toMarketMapSnapshotTimeLabel(data.snapshotTime)}
+                  </span>
+                )}
               </div>
             </div>
-          </div>
-          <div className="flex min-h-0 flex-1">
-            <div className="flex min-h-0 flex-1 flex-col bg-black">
-              {path.length > 0 && (
+            <div className="flex min-h-0 flex-1">
+              <div className="flex min-h-0 flex-1 flex-col bg-black">
+                {path.length > 0 && (
                 // mouseenter/leave 대신 mousemove로 실시간으로 "지금 커서 아래 요소"를 다시 계산한다.
                 // 구간 사이 하이픈/여백처럼 자체 핸들러가 없는 지점을 지나가도 강조가 예전 값에 멈춰있지
                 // 않도록(스테일 하이라이트 방지), 그리고 실제 마우스가 움직인 경우에만 값이 바뀌므로
@@ -341,7 +370,7 @@ export default function MarketMapCustomPage() {
               ) : (
                 <MarketMapTreemap
                   groups={groups}
-                  selfCategoryName={currentNode?.categoryName ?? null}
+                  selfCategoryName={isFullyFlattened ? FLAT_GROUP_NAME : (currentNode?.categoryName ?? null)}
                   depth={path.length}
                   onSelectCategory={enterCategory}
                   onExcludeCategory={handleExcludeCategory}
@@ -354,27 +383,29 @@ export default function MarketMapCustomPage() {
                   colorScale={colorScale}
                   labelMinAreaPercent={boxLabelMinAreaPercent}
                   stockLabelMode={stockLabelMode}
+                  decimalPlaces={decimalPlaces}
                   zoomOutRequestDepth={zoomOutRequestDepth}
                   onZoomOutComplete={handleZoomOutComplete}
                 />
               )}
+              </div>
             </div>
-            <SettingsSidebar {...settingsModalProps} pageLabel="지도">
-              {/* 지도 페이지에서만 커스텀 모드 토글이 드릴다운 경로도 같이 초기화해야 한다. */}
-              <SettingsCustomModeSection
-                {...settingsModalProps}
-                onToggleCustom={() => {
-                  settingsModalProps.onToggleCustom()
-                  reset()
-                }}
-                stockCountLabel={`${visibleItems.length}/${totalItemCount}종목`}
-              />
-              <SettingsEqualWeightSection {...settingsModalProps} />
-              <SettingsDisplayRangeSection {...settingsModalProps} />
-              <SettingsExcludeSection {...settingsModalProps} />
-              <SettingsColorSection {...settingsModalProps} />
-            </SettingsSidebar>
           </div>
+          <SettingsSidebar {...settingsModalProps} pageLabel="지도">
+            {/* 지도 페이지에서만 커스텀 모드 토글이 드릴다운 경로도 같이 초기화해야 한다. */}
+            <SettingsCustomModeSection
+              {...settingsModalProps}
+              onToggleCustom={() => {
+                settingsModalProps.onToggleCustom()
+                reset()
+              }}
+              stockCountLabel={`${visibleItems.length}/${totalItemCount}종목`}
+              showEqualWeightToggle
+            />
+            <SettingsDisplayRangeSection {...settingsModalProps} showDecimalPlaces />
+            <SettingsExcludeSection {...settingsModalProps} />
+            <SettingsColorSection {...settingsModalProps} />
+          </SettingsSidebar>
         </div>
       </div>
 

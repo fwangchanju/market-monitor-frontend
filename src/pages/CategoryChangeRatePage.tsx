@@ -12,14 +12,15 @@ import SettingsSidebar, {
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Spinner from '@/components/Spinner'
-import NumberStepperInput from '@/components/NumberStepperInput'
 import { useCategoryChangeRates } from '@/hooks/useCategoryChangeRates'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
+import { categoryHeaderFontSize } from '@/hooks/useMarketMapLayout'
 import { combineTierBreakdowns } from '@/utils/categoryTierBreakdown'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import NavBarPageActions from '@/components/NavBarPageActions'
-import { FONT_BAR_TITLE, FONT_BAR_TIME } from '@/components/FontStyle'
+import { CalendarIcon } from '@/components/icons/MarketMapIcons'
+import { FONT_BAR_TITLE, FONT_BAR_TIME, FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload } from '@/utils/captureToDownload'
@@ -30,7 +31,6 @@ import type { CategoryTierBreakdown, Market, MarketQuery } from '@/types/api'
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
 
-const MIN_BEFORE_MINUTES = 5
 const BEFORE_MINUTES_PRESETS = [15, 30, 60]
 
 // 지도 페이지(MarketMapCustomPage)와 동일한 마켓 라벨 표기.
@@ -53,7 +53,6 @@ interface RankedItem {
 interface RankChart {
   rankedItems: RankedItem[]
   axisMax: number
-  axisTicks: number[]
 }
 
 // 카테고리별 (id, 값) 목록을 값 내림차순 랭킹 막대그래프 데이터로 변환한다 — "현재" 그래프/"변화율"
@@ -67,11 +66,10 @@ function buildRankChart(
     .sort((a, b) => b.value - a.value)
 
   const rawMaxAbsValue = Math.max(1, ...rankedItems.map(item => Math.abs(item.value)))
-  // 핀비즈처럼 축 눈금이 딱 떨어지게, 0.5%p 단위로 올림한 값을 막대 스케일과 축 눈금 양쪽에 같이 쓴다.
+  // 핀비즈처럼 축 눈금이 딱 떨어지게, 0.5%p 단위로 올림한 값을 막대 스케일에 쓴다.
   const axisMax = Math.ceil(rawMaxAbsValue * 2) / 2
-  const axisTicks = [0, 0.25, 0.5, 0.75, 1].map(ratio => axisMax * ratio)
 
-  return { rankedItems, axisMax, axisTicks }
+  return { rankedItems, axisMax }
 }
 
 // "현재" 그래프는 실제 등락률(%)이지만 "변화율" 그래프는 두 시점의 %끼리 뺀 차이(%p)라 단위가
@@ -79,9 +77,6 @@ function buildRankChart(
 function toChartValueLabel(value: number, unit: string): string {
   const sign = value > 0 ? '+' : ''
   return `${sign}${value.toFixed(2)}${unit}`
-}
-function toChartTickLabel(value: number, unit: string): string {
-  return `${value.toFixed(2)}${unit}`
 }
 
 // 라벨 열은 내용에 맞춰(auto), 그래프 열은 남는 공간을 다 쓴다 — "현재"/"변화율" 그래프 둘 다 동일한
@@ -100,28 +95,31 @@ function RankBars({
   // 고정된 상승/하락 2색 대신 이 스케일로 칠한다.
   colorScale: ColorScaleConfig
 }) {
-  if (chart.rankedItems.length === 0) {
-    return <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
-  }
   return (
     // min-h-0: flex 아이템 기본값(min-height:auto)을 눌러서 부모가 준 높이보다 작게도 줄어들 수 있게
     // 한다(콘텐츠가 더 크면 그만큼 넘쳐서 조상의 overflow-y-auto가 스크롤 처리) — align-self:stretch
-    // (flex 기본값)로 실제 높이는 부모 flex 행 높이를 그대로 받는다. content-between으로 헤더/눈금
-    // 행은 위아래 끝에 붙이고 종목 행들 사이 간격만 넓혀서, 카테고리 수가 적어도 컨테이너 높이를 채운다.
+    // (flex 기본값)로 실제 높이는 부모 flex 행 높이를 그대로 받는다. content-between으로 헤더 행은
+    // 맨 위에 붙이고 종목 행들 사이 간격만 넓혀서, 카테고리 수가 적어도 컨테이너 높이를 채운다.
     <div
       className="grid h-full min-h-0 w-full flex-1 content-between items-center gap-x-3 gap-y-2 text-[15px]"
       style={{ gridTemplateColumns: 'auto 1fr' }}
     >
       <span />
-      {/* min-h-[49px]: "변화율" 헤더(15/30/60분 라디오 줄 + N분 전 대비 입력 줄, 두 줄)의 실측 높이.
-          "현재" 헤더는 캡션 한 줄이라 그대로 두면 이 행이 더 짧아지고, 그 아래 카테고리 막대 행들이
-          그래프마다 다른 높이에서 시작한다(content-between이 남는 세로 공간을 행 높이 기준으로
-          나눠 갖기 때문). 짧은 쪽에 같은 최소 높이를 줘야 두 그래프의 첫 막대 행이 같은 위치에서
-          시작한다. 이 셀만 flex items-end로 텍스트를 박스 하단에 붙인다(그리드 전체의
-          items-center는 셀 자체 위치만 다루고, 셀 안 텍스트가 위쪽에 붙는 것까진 못 막는다) —
-          "동일 가중 등락률" 캡션이 라디오 버튼 줄이 아니라 그 아래 "N분 전 대비" 줄과 같은 높이에
-          오게 하려는 것이다(두 줄 다 15px 기준이라 텍스트 높이가 같음). */}
-      <div className="flex min-h-[49px] items-end whitespace-nowrap text-gray-400">{header ?? ' '}</div>
+      {/* "현재"/"변화율" 헤더 둘 다 한 줄이라(라디오 줄 뒤에 "전 대비"만 붙이고 입력 줄은 없앰),
+          별도 최소 높이 없이도 두 그래프의 첫 막대 행이 같은 위치에서 시작한다. 지도 페이지
+          대분류 카테고리 헤더와 같은 폰트 크기(categoryHeaderFontSize(0) === 15px)·색상(text-yellow-600)을
+          그대로 써서 두 페이지의 헤더 텍스트를 맞춘다. */}
+      <div className="flex items-center whitespace-nowrap text-yellow-600" style={{ fontSize: categoryHeaderFontSize(0) }}>
+        {header ?? ' '}
+      </div>
+      {/* before 데이터가 없어 rankedItems가 비어도 위 헤더(15/30/60분 라디오 등)는 계속 조작할 수
+          있어야 하므로, 빈 상태는 헤더를 감춘 채로 그리지 않고 막대 자리에만 안내 문구를 넣는다. */}
+      {chart.rankedItems.length === 0 && (
+        <>
+          <span />
+          <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
+        </>
+      )}
       {chart.rankedItems.map(item => (
         <Fragment key={item.categoryId}>
           <span className={`whitespace-nowrap text-right ${item.isReference ? 'font-bold text-yellow-500' : ''}`}>
@@ -129,8 +127,8 @@ function RankBars({
           </span>
           {/* 퍼센트 텍스트를 막대 트랙(flex-1) 안에 막대 끝 위치(left: pct%)로 떠 있게 배치한다 —
               막대가 길어질수록 텍스트도 같이 따라간다. 오른쪽 w-[70px]는 막대가 축 최대치까지 길어져도
-              텍스트가 열 밖으로 밀려나지 않도록 미리 비워두는 여백(눈금 행의 w-[70px]와 동일한 목적,
-              15px 폰트 기준으로 폭을 넉넉히 잡음) — 보이는 내용은 없고 폭만 차지한다. */}
+              텍스트가 열 밖으로 밀려나지 않도록 미리 비워두는 여백(15px 폰트 기준으로 폭을 넉넉히 잡음)
+              — 보이는 내용은 없고 폭만 차지한다. */}
           <div className="flex h-[25px] items-center gap-1.5">
             <div className="relative h-full flex-1">
               <div
@@ -151,27 +149,6 @@ function RankBars({
           </div>
         </Fragment>
       ))}
-      {/* 핀비즈처럼 하단에 이 그래프가 몇 퍼센트 구간인지 눈금으로 표시 — 막대 트랙(flex-1)과 같은
-          폭이어야 눈금 위치가 막대 길이와 정확히 맞는다. */}
-      <span />
-      <div className="flex h-4 items-center gap-1.5">
-        <div className="relative h-full flex-1 text-[10px] text-gray-500">
-          {chart.axisTicks.map((tick, tickIndex) => (
-            <span
-              key={tick}
-              className="absolute whitespace-nowrap"
-              style={{
-                left: `${(tick / chart.axisMax) * 100}%`,
-                transform:
-                  tickIndex === 0 ? 'none' : tickIndex === chart.axisTicks.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)',
-              }}
-            >
-              {toChartTickLabel(tick, unit)}
-            </span>
-          ))}
-        </div>
-        <span className="w-14 shrink-0" />
-      </div>
     </div>
   )
 }
@@ -190,8 +167,8 @@ export default function CategoryChangeRatePage() {
     const isValidMarket = marketParam === 'KOSPI' || marketParam === 'KOSDAQ' || marketParam === 'ALL_STOCK'
     if (isValidMarket) setMarket(marketParam)
 
-    // 양의 정수가 아니면 무시하고 기존 값을 쓴다. 화면의 N분 전 대비 입력(NumberStepperInput)이
-    // 5의 배수만 커밋하도록 제한돼 있어(수집 주기가 5분 간격) 여기서도 같은 조건을 맞춘다.
+    // 양의 정수가 아니면 무시하고 기존 값을 쓴다. 데이터가 5분 간격으로만 존재해서(수집 주기) 5의
+    // 배수가 아닌 값은 애초에 조회가 불가능하다 — 여기서도 같은 조건으로 걸러낸다.
     const beforeMinutesParam = searchParams.get('beforeMinutes')
     const parsedBeforeMinutes = beforeMinutesParam === null ? NaN : Number(beforeMinutesParam)
     const isValidBeforeMinutes = Number.isInteger(parsedBeforeMinutes) && parsedBeforeMinutes > 0 && parsedBeforeMinutes % 5 === 0
@@ -218,6 +195,18 @@ export default function CategoryChangeRatePage() {
     excludedCategoryIds,
     colorScale,
   } = useGlobalSettings()
+  // 지도 페이지 상단 바와 동일한 위치/스타일의 커스텀 모드 점등 표시 — 켜짐/꺼짐 상태만 보여준다.
+  const modeStatusText = (
+    <>
+      <span
+        className={`mr-1.5 inline-block h-2 w-2 rounded-full ${
+          settingsModalProps.isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-400'
+        }`}
+      />
+      <span className="text-white">커스텀 모드</span>
+    </>
+  )
+
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
@@ -400,31 +389,42 @@ export default function CategoryChangeRatePage() {
             <MarketMapColorThresholdEditorPanel {...colorEditorPanelProps} />
           </div>
         )}
-        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 세 번째 바(고정) +
-            본문/사이드바(밀리는 영역) 전체를 감싸는 바깥 wrapper로 둔다 — 지도/요약 페이지와 동일한 구조.
-            바(bar3)는 다른 페이지처럼 여백 없이 붙어야 해서, p-4는 바 바깥이 아니라 아래 실제 차트
-            콘텐츠에만 준다(사이드바는 그대로 가장자리에 붙게). */}
+        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 [세 번째 바+본문] 열 +
+            사이드바를 감싸는 바깥 wrapper로 둔다 — 지도/요약 페이지와 동일한 구조. 사이드바가 열리면
+            세 번째 바(마켓명/커스텀 모드/시간)까지 같이 밀려서 좁아진다(본문만 밀리지 않는다). */}
         <div
           ref={captureRef}
           data-captureid={CAPTURE_ID.CATEGORY_CHANGE_RATE}
           data-capture-ready={!isLoading}
-          className="flex min-h-0 flex-1 flex-col overflow-hidden bg-black text-white"
+          className="flex min-h-0 flex-1 overflow-hidden bg-black text-white"
         >
-          <div className="flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
-            <div className="flex items-center whitespace-nowrap">
-              <span className={FONT_BAR_TITLE}>{MARKET_LABEL[market]} Sector</span>
-            </div>
-            {rankingData?.snapshotTime && (
-              <span className={`${FONT_BAR_TIME} whitespace-nowrap text-gray-400`}>
-                {toMarketMapSnapshotTimeLabel(rankingData.snapshotTime)}
+          {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서(overflow: visible이면 내부 콘텐츠의
+              min-content 폭을 그대로 강제해서 사이드바 쪽을 밀어냄) 창을 좁혀도 사이드바(w-80)가
+              항상 같은 폭을 유지하게 한다(지도 페이지와 동일) — 내부 그래프가 넘치면 이 컬럼
+              안에서만 처리된다. */}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="relative flex h-7 w-full shrink-0 items-end justify-between bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
+              <div className="flex items-center whitespace-nowrap">
+                <span className={FONT_BAR_TITLE}>{MARKET_LABEL[market]}</span>
+              </div>
+              {/* 지도 페이지와 동일하게 바 전체 폭 기준 절대 중앙에 고정 — 좌/우 칸 폭에 영향받지 않는다. */}
+              <span
+                className={`${FONT_BAR_MODE_STATUS} absolute bottom-0 left-1/2 -translate-x-1/2 whitespace-nowrap text-gray-400`}
+              >
+                {modeStatusText}
               </span>
-            )}
-          </div>
-          {/* 지도/어드민 페이지와 동일하게 본문이 화면을 꽉 채우는 형태 — 가운데 정렬/폭 제한을 없애서
-              설정 사이드바가 열려도 본문이 밀리는 게 자연스럽게 느껴지도록 한다(밀림 자체는 다른
-              페이지와 동일한 flex 구조이고, 콘텐츠가 항상 남는 공간을 꽉 채우기만 하면 된다). */}
-          <div className="flex min-h-0 flex-1">
-            <div className="flex min-h-0 w-full flex-1 flex-col p-4">
+              {rankingData?.snapshotTime && (
+                <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-white`}>
+                  <CalendarIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
+                  {toMarketMapSnapshotTimeLabel(rankingData.snapshotTime)}
+                </span>
+              )}
+            </div>
+            {/* 지도/어드민 페이지와 동일하게 본문이 화면을 꽉 채우는 형태 — 가운데 정렬/폭 제한을 없애서
+                설정 사이드바가 열려도 본문이 밀리는 게 자연스럽게 느껴지도록 한다(밀림 자체는 다른
+                페이지와 동일한 flex 구조이고, 콘텐츠가 항상 남는 공간을 꽉 채우기만 하면 된다). */}
+            <div className="flex min-h-0 flex-1">
+              <div className="flex min-h-0 w-full flex-1 flex-col p-4">
               {isLoading ? (
                 <div className="flex flex-1 items-center justify-center">
                   <Spinner />
@@ -453,63 +453,48 @@ export default function CategoryChangeRatePage() {
                       unit="%p"
                       colorScale={colorScale}
                       header={
-                        // "N분 전 대비" 바로가기(15/30/60분)를 그 줄 바로 위, 같은 왼쪽 기준선에 두려고
-                        // flex-col + items-start로 감싼다 — 별도 줄로 빼서 좌표를 따로 맞추는 대신, 같은
-                        // 열(header 셀) 안에 쌓으면 왼쪽 정렬이 항상 자동으로 맞는다.
-                        <div className="flex flex-col items-start gap-1">
-                          <div className="flex items-center gap-3" role="radiogroup" aria-label="N분 전 대비 바로가기">
-                            {BEFORE_MINUTES_PRESETS.map(minutes => (
-                              <button
-                                key={minutes}
-                                type="button"
-                                role="radio"
-                                aria-checked={beforeMinutes === minutes}
-                                onClick={() => setBeforeMinutes(minutes)}
-                                className="inline-flex items-center gap-1 border-0 bg-transparent text-[11px] text-gray-400 outline-none hover:text-white"
-                              >
-                                {/* 커스텀 모드 점등 표시(SubNavBar)와 동일한 초록 발광 스타일 — 선택 상태를
-                                    "불이 들어온다"는 느낌으로 통일한다. */}
-                                <span
-                                  className={`h-2.5 w-2.5 rounded-full border ${
-                                    beforeMinutes === minutes
-                                      ? 'border-green-500 bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]'
-                                      : 'border-gray-500'
-                                  }`}
-                                />
-                                {minutes}분
-                              </button>
-                            ))}
-                          </div>
-                          <span className="inline-flex items-center gap-1">
-                            {/* 데이터가 5분 간격으로만 존재해서(CollectionScheduler) 5의 배수가 아닌 값은
-                                애초에 조회가 불가능하다 — validate로 커밋 자체를 막아서 화면에서 미리 걸러낸다. */}
-                            <NumberStepperInput
-                              value={beforeMinutes}
-                              onCommit={setBeforeMinutes}
-                              min={MIN_BEFORE_MINUTES}
-                              step={5}
-                              validate={v => (v % 5 === 0 ? v : null)}
-                              className="w-9 rounded border border-transparent bg-transparent px-0.5 py-0.5 text-right text-gray-400 focus:border-gray-500 focus:bg-white focus:text-black focus:outline-none"
-                            />
-                            분 전 대비
-                          </span>
+                        // "15/30/60분 전 대비"를 한 줄로 — 라디오 버튼들 뒤에 "전 대비" 고정 텍스트만 붙인다.
+                        <div className="flex items-center gap-3" role="radiogroup" aria-label="N분 전 대비 바로가기">
+                          {BEFORE_MINUTES_PRESETS.map(minutes => (
+                            <button
+                              key={minutes}
+                              type="button"
+                              role="radio"
+                              aria-checked={beforeMinutes === minutes}
+                              onClick={() => setBeforeMinutes(minutes)}
+                              className="inline-flex items-center gap-1 border-0 bg-transparent text-yellow-600 outline-none hover:text-yellow-400"
+                            >
+                              {/* 커스텀 모드 점등 표시(SubNavBar)와 동일한 초록 발광 스타일 — 선택 상태를
+                                  "불이 들어온다"는 느낌으로 통일한다. */}
+                              <span
+                                className={`h-2.5 w-2.5 rounded-full border ${
+                                  beforeMinutes === minutes
+                                    ? 'border-green-500 bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]'
+                                    : 'border-gray-500'
+                                }`}
+                              />
+                              {minutes}분
+                            </button>
+                          ))}
+                          <span>전 대비</span>
                         </div>
                       }
                     />
                   </div>
                 </div>
               )}
+              </div>
             </div>
-            {/* 지도 페이지 옵션 대부분을 그대로 재사용 중 — 실제로 섹터 화면에 유효한 항목만 남기는
-                정리는 나중에 검토해서 진행한다. */}
-            <SettingsSidebar {...settingsModalProps} pageLabel="섹터">
-              <SettingsCustomModeSection {...settingsModalProps} />
-              <SettingsEqualWeightSection {...settingsModalProps} />
-              <SettingsDisplayRangeSection {...settingsModalProps} />
-              <SettingsExcludeSection {...settingsModalProps} />
-              <SettingsColorSection {...settingsModalProps} />
-            </SettingsSidebar>
           </div>
+          {/* 지도 페이지 옵션 대부분을 그대로 재사용 중 — 실제로 섹터 화면에 유효한 항목만 남기는
+              정리는 나중에 검토해서 진행한다. */}
+          <SettingsSidebar {...settingsModalProps} pageLabel="섹터">
+            <SettingsCustomModeSection {...settingsModalProps} />
+            <SettingsEqualWeightSection {...settingsModalProps} />
+            <SettingsDisplayRangeSection {...settingsModalProps} />
+            <SettingsExcludeSection {...settingsModalProps} />
+            <SettingsColorSection {...settingsModalProps} />
+          </SettingsSidebar>
         </div>
       </div>
 

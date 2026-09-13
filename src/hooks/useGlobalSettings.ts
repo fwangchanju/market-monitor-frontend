@@ -33,7 +33,7 @@ function seedExcludedCategoryNames(
 ) {
   for (const node of nodes) {
     const path = [...ancestors, node.categoryName]
-    if (node.isExcluded) out.set(node.categoryId, path.join(' - '))
+    if (node.isExcluded) out.set(node.categoryId, path.join(' > '))
     seedExcludedCategoryNames(node.children, path, out)
   }
   return out
@@ -74,8 +74,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     'marketMap.activeDepthMetric',
     'avgChangeRate',
   )
-  // 기본값: 중분류(index 1) — 렌더러가 캡처하는 기본 화면에 등락률이 보이도록.
-  const [depthMetricMinIndex, setDepthMetricMinIndex] = usePersistedState('marketMap.depthMetricMinIndex', 1)
+  // 기본값: 대분류~중분류(index 0~1) — 렌더러가 캡처하는 기본 화면에 등락률이 보이도록.
+  const [depthMetricMinIndex, setDepthMetricMinIndex] = usePersistedState('marketMap.depthMetricMinIndex', 0)
   const [depthMetricMaxIndex, setDepthMetricMaxIndex] = usePersistedState('marketMap.depthMetricMaxIndex', 1)
   // 등락률 태그/툴팁에 가중평균 대신 산술평균을 보여줄지 — 마켓맵 커스텀 페이지의 "동일 가중" 토글
   // 기본값을 On으로 하기 위해 기본을 true로 변경(랭킹 페이지의 기본 정렬 기준도 산술평균으로 같이 바뀜 — 두
@@ -86,6 +86,10 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 종목 박스에 이름만/등락률만/둘 다 보여줄지 — 기본은 둘 다(기존 동작 유지).
   const [stockLabelModeIndex, setStockLabelModeIndex] = usePersistedState('marketMap.stockLabelModeIndex', 2)
   const stockLabelMode = STOCK_LABEL_MODES[stockLabelModeIndex]
+  // 지도 페이지에 표시되는 모든 등락률(%)의 소수점 자릿수 — 인덱스가 그대로 자릿수(0=정수, 1=소수
+  // 1자리, 2=소수 2자리). 기본값 2(소수 2자리)가 기존 toPctSigned의 고정 2자리 동작과 동일하다.
+  const [decimalPlacesIndex, setDecimalPlacesIndex] = usePersistedState('marketMap.decimalPlacesIndex', 2)
+  const decimalPlaces = decimalPlacesIndex
   // 시가총액 구간 범위 필터 — 마켓맵/카테고리 랭킹 화면이 세션스토리지 키를 공유한다(useMarketValueTierRange 참고).
   const {
     tiers: valueTiers,
@@ -302,7 +306,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
 
   const handleExcludeCategory = (categoryId: number, categoryName: string) => {
     const path = findCategoryPath(rootNodes, categoryId)
-    setExcludedCategoryNames(prev => new Map(prev).set(categoryId, path ? path.join(' - ') : categoryName))
+    setExcludedCategoryNames(prev => new Map(prev).set(categoryId, path ? path.join(' > ') : categoryName))
     registerExcludedCategory(categoryId).catch(e => console.error('카테고리 제외 실패', e))
   }
 
@@ -335,6 +339,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     onChangeBoxLabelMinAreaPercent: setBoxLabelMinAreaPercent,
     stockLabelModeIndex,
     onChangeStockLabelModeIndex: setStockLabelModeIndex,
+    decimalPlacesIndex,
+    onChangeDecimalPlacesIndex: setDecimalPlacesIndex,
     tiers: valueTiers,
     tierRangeMinIndex: tierRangeMinIndex === -1 ? 0 : tierRangeMinIndex,
     tierRangeMaxIndex: tierRangeMaxIndex === -1 ? Math.max(valueTiers.length - 1, 0) : tierRangeMaxIndex,
@@ -352,6 +358,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     onAddColorThreshold: handleAddColorThreshold,
     onEditColorThreshold: handleEditColorThreshold,
     onDeleteColorThreshold: handleDeleteColorThreshold,
+    legendSwatches,
     isOpen: isSettingsOpen,
     onOpenChange: setIsSettingsOpen,
   }
@@ -393,8 +400,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     excludedMarketValueTiers,
     boxLabelMinAreaPercent,
     stockLabelMode,
+    decimalPlaces,
     colorScale,
-    legendSwatches,
     excludedCategoryNames,
     // 커스텀 모드+섹터 기준 스위치가 둘 다 켜져있을 때만 실제로 적용되는 최종 제외 대상 ID 집합
     // (filteredRootNodes를 만들 때 쓰는 것과 동일한 값) — 트리를 직접 그리지 않고 카테고리 ID

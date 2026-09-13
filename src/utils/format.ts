@@ -31,14 +31,15 @@ export const toEokSignedFromMln = (value: number): string => {
   return `${sign}${withCommas1(eok)}`
 }
 
-/** 퍼센트 포맷 (소수점 2자리, 부호 포함) */
-export const toPctSigned = (value: number): string => {
+/** 퍼센트 포맷 (기본 소수점 2자리, 부호 포함) — decimalPlaces는 지도 페이지의 "소수점 아래 표시"
+ * 설정처럼 호출부가 자릿수를 바꿔야 할 때만 넘긴다. 안 넘기면 기존과 동일하게 2자리. */
+export const toPctSigned = (value: number, decimalPlaces = 2): string => {
   const sign = value > 0 ? '+' : ''
-  return `${sign}${value.toFixed(2)}%`
+  return `${sign}${value.toFixed(decimalPlaces)}%`
 }
 
-/** 퍼센트 포맷 (소수점 2자리) */
-export const toPct = (value: number): string => `${value.toFixed(2)}%`
+/** 퍼센트 포맷 (기본 소수점 2자리) */
+export const toPct = (value: number, decimalPlaces = 2): string => `${value.toFixed(decimalPlaces)}%`
 
 // TODO: 아래 날짜/시간 포맷터들은 백엔드가 항상 고정 자릿수 ISO 문자열(LocalDate/LocalDateTime)을
 // 보낸다는 전제로 slice 기반으로 짜여있음. 요일 표시, 로케일별 포맷 등 더 복잡한 표기가 필요해지면

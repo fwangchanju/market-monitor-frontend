@@ -29,6 +29,8 @@ interface Props {
   labelMinAreaPercent: number
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명만/등락률만/둘 다 보여줄지.
   stockLabelMode: StockLabelMode
+  // 하위 MarketMapCategorySection/MarketMapBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
+  decimalPlaces: number
   // 0이 아닌 뎁스가 오면 그 뎁스로 진입할 때 썼던 위치로 줄어드는 애니메이션을 재생한다.
   zoomOutRequestDepth: number | null
   onZoomOutComplete: (depth: number) => void
@@ -95,6 +97,7 @@ export default function MarketMapTreemap({
   colorScale,
   labelMinAreaPercent,
   stockLabelMode,
+  decimalPlaces,
   zoomOutRequestDepth,
   onZoomOutComplete,
 }: Props) {
@@ -273,6 +276,7 @@ export default function MarketMapTreemap({
               colorScale={colorScale}
               labelMinAreaPercent={labelMinAreaPercent}
               stockLabelMode={stockLabelMode}
+              decimalPlaces={decimalPlaces}
             />
           ))}
         </div>
@@ -292,6 +296,7 @@ export default function MarketMapTreemap({
             colorScale={colorScale}
             labelMinAreaPercent={labelMinAreaPercent}
             stockLabelMode={stockLabelMode}
+            decimalPlaces={decimalPlaces}
           />
         ))}
       </div>
