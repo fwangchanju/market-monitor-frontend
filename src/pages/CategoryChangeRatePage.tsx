@@ -317,20 +317,24 @@ export default function CategoryChangeRatePage() {
       })
       .filter((entry): entry is { categoryId: number; value: number } => entry !== null)
 
-    // 지수 등락률은 "현재"(절대 등락률, %) 그래프에만 의미가 있다 — "변화율"(%p) 그래프는 N분 전
-    // 대비 차이라 지수 쪽도 같은 기준의 과거값이 필요한데 지금은 그 값을 안 갖고 있어서 뺀다.
     // rankingData.items는 마켓별 랭킹 하나씩이라, market이 ALL_STOCK이면 어느 항목의 market도 'ALL_STOCK'과
     // 같지 않아 자연히 못 찾는다(지도 페이지가 ALL_STOCK일 때 지수를 안 보여주는 것과 동일한 동작) —
-    // indexChangeRate는 랭킹과 정확히 같은 시각 기준이라 스냅샷 시점 어긋남이 없다.
+    // index는 랭킹과 정확히 같은 시각 기준이라 스냅샷 시점 어긋남이 없다.
     const indexRanking = rankingData?.items.find(item => item.market === market)
+    // 백엔드가 아직 옛 응답 모양(indexChangeRate)을 내려주는 동안의 폴백 — 그 구간에는 before가 없어
+    // "변화율" 지수 바가 안 뜬다. 지금 화면과 동일한 동작이다.
+    const index =
+      indexRanking?.index ??
+      (indexRanking?.indexChangeRate != null ? { now: indexRanking.indexChangeRate, before: null } : null)
+
     const currentEntriesWithIndex =
-      indexRanking?.indexChangeRate != null
+      index != null
         ? [
             ...currentEntries,
             {
               categoryId: MARKET_INDEX_CATEGORY_ID,
-              value: indexRanking.indexChangeRate,
-              categoryName: MARKET_INDEX_LABEL_KO[indexRanking.market],
+              value: index.now,
+              categoryName: MARKET_INDEX_LABEL_KO[indexRanking!.market],
               isReference: true,
             },
           ]
@@ -345,9 +349,22 @@ export default function CategoryChangeRatePage() {
       })
       .filter((entry): entry is { categoryId: number; value: number } => entry !== null)
 
+    const deltaEntriesWithIndex =
+      index?.before != null
+        ? [
+            ...deltaEntries,
+            {
+              categoryId: MARKET_INDEX_CATEGORY_ID,
+              value: index.now - index.before,
+              categoryName: MARKET_INDEX_LABEL_KO[indexRanking!.market],
+              isReference: true,
+            },
+          ]
+        : deltaEntries
+
     return {
       current: buildRankChart(currentEntriesWithIndex, categoryNameById),
-      delta: buildRankChart(deltaEntries, categoryNameById),
+      delta: buildRankChart(deltaEntriesWithIndex, categoryNameById),
     }
   }, [rankingData, avgChangeRateUseSimple, categoryNameById, rootCategoryIds, excludedMarketValueTiers, market])
 

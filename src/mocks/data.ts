@@ -300,10 +300,11 @@ const categoryChangeRateItemsKosdaq = categoryChangeRateItemsKospi.map(item => (
 }))
 
 // /market-map/category-change-rates 목업 — 백엔드 응답과 동일하게 마켓별로 그룹핑된 형태.
-// indexChangeRate는 marketOverviews의 같은 마켓 changeRate를 그대로 재사용(실제로도 같은 스냅샷 시각 기준).
+// index.now는 marketOverviews의 같은 마켓 changeRate를 그대로 재사용(실제로도 같은 스냅샷 시각 기준).
+// indexChangeRate(옛 응답 모양) 폴백은 여기 안 채운다 — 옛 백엔드를 위한 임시 경로지 목업이 재현할 상태가 아니다.
 export const categoryChangeRateRankings = [
-  { market: 'KOSPI' as const, items: categoryChangeRateItemsKospi, indexChangeRate: marketOverviews[0].changeRate },
-  { market: 'KOSDAQ' as const, items: categoryChangeRateItemsKosdaq, indexChangeRate: marketOverviews[1].changeRate },
+  { market: 'KOSPI' as const, items: categoryChangeRateItemsKospi, index: { now: marketOverviews[0].changeRate, before: 0.15 } },
+  { market: 'KOSDAQ' as const, items: categoryChangeRateItemsKosdaq, index: { now: marketOverviews[1].changeRate, before: -0.55 } },
 ]
 
 export const excludedStocks: { stockCode: string; stockName: string }[] = []
