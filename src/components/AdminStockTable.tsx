@@ -4,6 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import type { CategoryItem, MarketValueTierItem, StockCategoryListItem } from '@/types/api'
 import { toFullDateTimeLabel, toJoEokDecimal } from '@/utils/format'
 import { exportRowsToExcel } from '@/utils/exportExcel'
+import { charTier } from '@/utils/koreanSort'
 import { useAssignStockCategory, useBulkAssignStockCategory, useUpdateAlias } from '@/hooks/useMarketMapAdmin'
 import { useMarketValueTiers } from '@/hooks/useMarketValueTiers'
 import { usePersistedState } from '@/hooks/usePersistedState'
@@ -59,6 +60,15 @@ const MARKET_FILTER_ORDER = [MARKET_LABEL.KOSPI, MARKET_LABEL.KOSDAQ]
 const marketColorClass = (market: 'KOSPI' | 'KOSDAQ') => (market === 'KOSPI' ? 'text-gray-400' : 'text-[#4f8fd6]')
 
 const KOREAN_COLLATOR = new Intl.Collator('ko')
+
+// AdminCategoryTable의 compareCategoryName과 동일한 기준(charTier)을 utils/koreanSort에서
+// 같이 가져다 쓴다 — 종목명 검색 결과 전용(테이블 자체 컬럼 정렬은 그대로 KOREAN_COLLATOR만 씀).
+function compareStockName(a: string, b: string): number {
+  const tierA = charTier(a[0] ?? '')
+  const tierB = charTier(b[0] ?? '')
+  if (tierA !== tierB) return tierA - tierB
+  return KOREAN_COLLATOR.compare(a, b)
+}
 
 // 화면에 실제로 표시되는 값 기준 — 필터 옵션 목록/필터링/정렬 판정 전부 이 값으로 통일해서 화면과 어긋나지 않게 한다.
 type FilterKey = 'market' | 'originCategoryName' | 'parentCategoryName' | 'midCategoryName' | 'subCategoryName'
@@ -983,11 +993,15 @@ function AdminStockNameFilterButton({
 
   const trimmed = query.trim().toLowerCase()
   const matches = trimmed
-    ? items.filter(
-        item =>
-          (item.stockName.toLowerCase().includes(trimmed) || item.stockCode.includes(trimmed)) &&
-          !selected.has(item.stockCode),
-      )
+    ? items
+        .filter(
+          item =>
+            (item.stockName.toLowerCase().includes(trimmed) || item.stockCode.includes(trimmed)) &&
+            !selected.has(item.stockCode),
+        )
+        // items는 테이블 기본 정렬 순서 그대로라 검색 결과가 뒤섞여 나온다 — 카테고리 트리(AdminCategoryTable)와
+        // 같은 기준(특수문자 < 숫자 < 영어 < 한글)으로 재정렬한다.
+        .sort((a, b) => compareStockName(a.stockName, b.stockName))
     : []
   const selectedItems = items.filter(item => selected.has(item.stockCode))
 
