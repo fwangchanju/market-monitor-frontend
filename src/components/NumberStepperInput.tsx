@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 
 interface Props {
   value: number
@@ -23,11 +23,18 @@ interface Props {
 // 문제가 있었다.
 export default function NumberStepperInput({ value, onCommit, min, max, step = 1, validate, disabled, className }: Props) {
   const [draft, setDraft] = useState(String(value))
-  const isFocusedRef = useRef(false)
+  const [prevValue, setPrevValue] = useState(value)
+  // ref가 아니라 state로 둔다 — 렌더 중에 읽어야(아래 조정 로직) 하는데, ref.current는 렌더 중
+  // 접근이 금지돼 있다(React 훅 린트 규칙).
+  const [isFocused, setIsFocused] = useState(false)
 
-  useEffect(() => {
-    if (!isFocusedRef.current) setDraft(String(value))
-  }, [value])
+  // 렌더 중 상태 조정(React 권장 패턴) — 외부에서 value가 바뀌었을 때만(그리고 포커스 중이 아닐 때만)
+  // draft를 새 값으로 맞춘다. useEffect로 하면 커밋 후 한 번 더 리렌더가 생기지만, 렌더 중에 바로
+  // setState하면 같은 렌더에서 처리되어 추가 리렌더가 없다.
+  if (value !== prevValue) {
+    setPrevValue(value)
+    if (!isFocused) setDraft(String(value))
+  }
 
   const clamp = (raw: number): number => {
     let next = raw
@@ -62,28 +69,24 @@ export default function NumberStepperInput({ value, onCommit, min, max, step = 1
   const handleStep = (direction: 1 | -1) => commit(resolve(value + direction * step))
 
   return (
-    <span className="group inline-flex items-stretch">
+    <span className="inline-flex items-stretch">
       <input
         type="text"
         inputMode="decimal"
         value={draft}
         disabled={disabled}
-        onFocus={() => {
-          isFocusedRef.current = true
-        }}
+        onFocus={() => setIsFocused(true)}
         onChange={e => setDraft(e.target.value)}
         onKeyDown={e => {
           if (e.key === 'Enter') e.currentTarget.blur()
         }}
         onBlur={() => {
-          isFocusedRef.current = false
+          setIsFocused(false)
           tryCommitDraft()
         }}
         className={className}
       />
-      {/* 입력박스에 커서가 있을 때(또는 버튼 자체에 포커스가 옮겨갔을 때)만 보이게 — 평소엔 숨겨서
-          화면을 덜 어수선하게 한다. invisible은 visibility:hidden이라 안 보일 때 클릭도 안 먹는다. */}
-      <span className="invisible ml-0.5 flex flex-col overflow-hidden rounded border border-gray-600 group-focus-within:visible">
+      <span className="ml-0.5 flex flex-col overflow-hidden rounded border border-gray-600">
         <button
           type="button"
           tabIndex={-1}

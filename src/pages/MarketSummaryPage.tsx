@@ -12,6 +12,7 @@ import IndexContributionSection from '@/components/IndexContributionSection'
 import ShortSellingHistorySection from '@/components/ShortSellingHistorySection'
 import ProgramTradingHistorySection from '@/components/ProgramTradingHistorySection'
 import NavBarPageActions from '@/components/NavBarPageActions'
+import { CalendarIcon } from '@/components/icons/MarketMapIcons'
 import { FONT_BAR_TIME } from '@/components/FontStyle'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
@@ -80,34 +81,40 @@ export default function MarketSummaryPage() {
             <MarketMapColorThresholdEditorPanel {...colorEditorPanelProps} />
           </div>
         )}
-        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 세 번째 바(고정) +
-            본문/사이드바(밀리는 영역) 전체를 감싸는 바깥 wrapper로 둔다 — 지도 페이지와 동일한 구조. */}
-        <div ref={captureRef} className="flex min-h-0 flex-1 flex-col bg-black">
-          <div className="flex h-7 w-full shrink-0 items-center justify-end bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
-            {/* 요약 페이지는 아직 이 바에 담을 내용이 없어서, 지도 페이지의 시간 표시 위치(우측 끝)만
-                그대로 가져와 시간만 보여준다. */}
-            {marketSummaryData?.marketOverviews.snapshotTime && (
-              <span className={`${FONT_BAR_TIME} whitespace-nowrap text-gray-400`}>
-                {toMarketMapSnapshotTimeLabel(marketSummaryData.marketOverviews.snapshotTime)}
-              </span>
-            )}
-          </div>
-          <div className="flex min-h-0 flex-1">
-            <div className="flex-1 bg-black">
-              <div className="mx-auto max-w-[1400px]">
-                <div className="mt-4 grid grid-cols-1 gap-4">
-                  <MarketOverviewSection />
-                  <IndexContributionSection />
-                  <InvestorTradingSection />
-                  <ProgramTradingSection />
-                  <IntradayTopSection />
-                  <ShortSellingHistorySection />
-                  <ProgramTradingHistorySection />
+        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 [세 번째 바+본문] 열 +
+            사이드바를 감싸는 바깥 wrapper로 둔다 — 지도 페이지와 동일한 구조. 사이드바가 열리면 세
+            번째 바(시간 표시)까지 같이 밀려서 좁아진다(본문만 밀리지 않는다). */}
+        <div ref={captureRef} className="flex min-h-0 flex-1 bg-black">
+          {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서 창을 좁혀도 사이드바(w-80)가 항상 같은
+              폭을 유지하게 한다(지도/섹터 페이지와 동일). */}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="flex h-7 w-full shrink-0 items-center justify-end bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
+              {/* 요약 페이지는 아직 이 바에 담을 내용이 없어서, 지도 페이지의 시간 표시 위치(우측 끝)만
+                  그대로 가져와 시간만 보여준다. */}
+              {marketSummaryData?.marketOverviews.snapshotTime && (
+                <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-white`}>
+                  <CalendarIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
+                  {toMarketMapSnapshotTimeLabel(marketSummaryData.marketOverviews.snapshotTime)}
+                </span>
+              )}
+            </div>
+            <div className="flex min-h-0 flex-1">
+              <div className="flex-1 bg-black">
+                <div className="mx-auto max-w-[1400px]">
+                  <div className="mt-4 grid grid-cols-1 gap-4">
+                    <MarketOverviewSection />
+                    <IndexContributionSection />
+                    <InvestorTradingSection />
+                    <ProgramTradingSection />
+                    <IntradayTopSection />
+                    <ShortSellingHistorySection />
+                    <ProgramTradingHistorySection />
+                  </div>
                 </div>
               </div>
             </div>
-            <SettingsSidebar {...settingsModalProps} pageLabel="요약" />
           </div>
+          <SettingsSidebar {...settingsModalProps} pageLabel="요약" />
         </div>
       </div>
 

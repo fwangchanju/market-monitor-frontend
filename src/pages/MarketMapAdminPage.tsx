@@ -115,33 +115,38 @@ export default function MarketMapAdminPage() {
             <MarketMapColorThresholdEditorPanel {...colorEditorPanelProps} />
           </div>
         )}
-        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 세 번째 바(고정) +
-            테이블/사이드바(밀리는 영역) 전체를 감싸는 바깥 wrapper로 둔다 — 다른 페이지와 동일한 구조. */}
-        <div ref={captureRef} className="flex min-h-0 flex-1 flex-col bg-black">
-          <div className="flex h-7 w-full shrink-0 items-center bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
-            {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다.
-                카테고리 모드일 땐 그런 툴바 자체가 없어서 빈 채로 둔다. */}
-            {mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 flex-1 items-center" />}
-          </div>
-          <div className="flex min-h-0 flex-1">
-            <div
-              className={`flex min-h-0 flex-1 flex-col px-4 pt-2 pb-4 ${mode === 'category' ? 'overflow-y-auto' : ''}`}
-            >
-              {mode === 'stock' ? (
-                <AdminStockTable
-                  items={stockCategories?.items ?? []}
-                  categories={categories ?? []}
-                  snapshotTime={stockCategories?.snapshotTime ?? null}
-                  onRefetchCategories={() => refetchCategories()}
-                  isRefetchingCategories={isRefetchingCategories}
-                  toolbarContainer={toolbarContainer}
-                />
-              ) : (
-                <AdminCategoryTable categories={categories ?? []} />
-              )}
+        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 [세 번째 바+본문] 열 +
+            사이드바를 감싸는 바깥 wrapper로 둔다 — 다른 페이지와 동일한 구조. 사이드바가 열리면 세
+            번째 바(툴바)까지 같이 밀려서 좁아진다(본문만 밀리지 않는다). */}
+        <div ref={captureRef} className="flex min-h-0 flex-1 bg-black">
+          {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서 창을 좁혀도 사이드바(w-80)가 항상 같은
+              폭을 유지하게 한다(지도/섹터/요약 페이지와 동일). */}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="flex h-7 w-full shrink-0 items-center bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
+              {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다.
+                  카테고리 모드일 땐 그런 툴바 자체가 없어서 빈 채로 둔다. */}
+              {mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 flex-1 items-center" />}
             </div>
-            <SettingsSidebar {...settingsModalProps} pageLabel="커스텀" />
+            <div className="flex min-h-0 flex-1">
+              <div
+                className={`flex min-h-0 flex-1 flex-col px-4 pt-2 pb-4 ${mode === 'category' ? 'overflow-y-auto' : ''}`}
+              >
+                {mode === 'stock' ? (
+                  <AdminStockTable
+                    items={stockCategories?.items ?? []}
+                    categories={categories ?? []}
+                    snapshotTime={stockCategories?.snapshotTime ?? null}
+                    onRefetchCategories={() => refetchCategories()}
+                    isRefetchingCategories={isRefetchingCategories}
+                    toolbarContainer={toolbarContainer}
+                  />
+                ) : (
+                  <AdminCategoryTable categories={categories ?? []} />
+                )}
+              </div>
+            </div>
           </div>
+          <SettingsSidebar {...settingsModalProps} pageLabel="커스텀" />
         </div>
       </div>
 

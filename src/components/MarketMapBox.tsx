@@ -18,6 +18,8 @@ interface Props {
   // 박스에 종목명만/등락률만/둘 다 보여줄지(설정 사이드바의 "종목 박스 표시 내용" 슬라이더) — 위 넓이
   // 기준을 넘어 실제로 보여줄 때(showLabel=true)만 적용된다. 툴팁 내용에는 영향 없음.
   stockLabelMode: StockLabelMode
+  // 등락률(%) 표시 소수점 자릿수(설정 사이드바의 "소수점 아래 표시" 슬라이더).
+  decimalPlaces: number
   tooltipAlignLeft: boolean
   tooltipAlignTop: boolean
   // 박스 색칠은 이 설정 하나로만 결정된다(resolveMarketMapColor) — 범례 바(MarketMapCustomPage)도
@@ -42,11 +44,12 @@ export default function MarketMapBox({
   areaPercent,
   labelMinAreaPercent,
   stockLabelMode,
+  decimalPlaces,
   tooltipAlignLeft,
   tooltipAlignTop,
   colorScale,
 }: Props) {
-  const showLabel = areaPercent >= labelMinAreaPercent
+  const showLabel = stockLabelMode !== 'off' && areaPercent >= labelMinAreaPercent
   const showName = stockLabelMode !== 'rateOnly'
   const showRate = stockLabelMode !== 'nameOnly'
   const fontSize = fontSizePx(width, height)
@@ -78,7 +81,7 @@ export default function MarketMapBox({
           )}
           {showRate && (
             <span className="text-center leading-tight" style={{ fontSize: fontSize * 0.85 }}>
-              {toPctSigned(item.changeRate)}
+              {toPctSigned(item.changeRate, decimalPlaces)}
             </span>
           )}
         </>
@@ -86,7 +89,7 @@ export default function MarketMapBox({
 
       <Tooltip visible={tooltip.hover} position={tooltip.position} alignLeft={tooltipAlignLeft} alignTop={tooltipAlignTop}>
         <div className="font-bold">{item.stockName}</div>
-        <div> 등락률: {toPctSigned(item.changeRate)}</div>
+        <div> 등락률: {toPctSigned(item.changeRate, decimalPlaces)}</div>
         <div> 현재가: {toVolume(item.currentPrice)}원</div>
         <div> 전일종가: {toVolume(item.lastPrice)}원</div>
         <div> 시가총액: {toJoEok(item.totalMarketValue / 100_000_000)}</div>

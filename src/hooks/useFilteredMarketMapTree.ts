@@ -55,6 +55,14 @@ function collectAllItems(node: FilteredMarketMapCategoryNode): MarketMapItem[] {
   return items
 }
 
+// "업종 분류 레벨" 슬라이더가 "끄기"일 때(뎁스 제한 0) 쓰는 완전 평탄화 — 카테고리 구분 없이 지금
+// 보이는 위치(형제 노드들 또는 드릴다운으로 들어온 노드 하나) 아래 종목을 전부 하나로 모은다.
+export function flattenAllItems(nodes: FilteredMarketMapCategoryNode[]): MarketMapItem[] {
+  const result: MarketMapItem[] = []
+  for (const node of nodes) result.push(...collectAllItems(node))
+  return result
+}
+
 // depth는 nodes를 1로 보는 기준(= "분류 단계" 슬라이더 값과 동일 단위) — 진짜 루트가 아니라 "지금
 // 보고 있는 위치"를 1로 삼아 호출부(MarketMapCustomPage)가 드릴다운할 때마다 새로 호출한다. 그래야
 // 뎁스 제한이 절대(진짜 루트 기준)가 아니라 항상 지금 위치 기준 상대값으로 적용된다 — 안 그러면 뎁스

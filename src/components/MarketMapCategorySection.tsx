@@ -5,7 +5,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { categoryHeaderFontSize, categoryHeaderHeight, PADDING, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
 import { TAB_GAP, avgChangeRateLabel, toJoEokDecimal, toPctSigned } from '@/utils/format'
 import type { MarketMapItem } from '@/types/api'
-import type { ColorScaleConfig } from '@/utils/marketMapColorScale'
+import { MARKET_INDEX_REFERENCE_COLOR, type ColorScaleConfig } from '@/utils/marketMapColorScale'
 import type { StockLabelMode } from '@/hooks/useGlobalSettings'
 
 interface Props {
@@ -27,6 +27,8 @@ interface Props {
   labelMinAreaPercent: number
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명만/등락률만/둘 다 보여줄지.
   stockLabelMode: StockLabelMode
+  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
+  decimalPlaces: number
   depth?: number
 }
 
@@ -76,6 +78,7 @@ export default function MarketMapCategorySection({
   colorScale,
   labelMinAreaPercent,
   stockLabelMode,
+  decimalPlaces,
   depth = 0,
 }: Props) {
   const boxRef = useRef<HTMLDivElement>(null)
@@ -93,7 +96,7 @@ export default function MarketMapCategorySection({
   // 태그는 공간이 좁아서 라벨 없이 값만 나열한다 — 표시되는 항목들 사이는 TAB_GAP으로 구분,
   // 등락 종목수 안의 상승/하락/보합 사이는 스페이스 1칸. 순서는 등락률 → 등락 종목수 → 시총(표시 설정 순서와 동일).
   const headerParts = [
-    isInDepthRange(avgChangeRateDepthRange, depth) ? toPctSigned(avgChangeRate) : null,
+    isInDepthRange(avgChangeRateDepthRange, depth) ? toPctSigned(avgChangeRate, decimalPlaces) : null,
     isInDepthRange(upDownCountDepthRange, depth)
       ? `${advancerCount}(↑) ${declinerCount}(↓) ${unchangedCount}(-)`
       : null,
@@ -146,8 +149,9 @@ export default function MarketMapCategorySection({
               fontSize: categoryHeaderFontSize(depth),
               left: PADDING,
               width: `calc(100% - ${PADDING * 2}px)`,
+              color: depth === 0 ? MARKET_INDEX_REFERENCE_COLOR : undefined,
             }}
-            className={`absolute top-0 flex items-center overflow-hidden truncate border-2 border-transparent px-1 text-left font-bold leading-none ${depth === 0 ? 'text-yellow-600' : 'text-white'} ${categoryHeaderColorClass(depth)}`}
+            className={`absolute top-0 flex items-center overflow-hidden truncate border-2 border-transparent px-1 text-left font-bold leading-none ${depth === 0 ? '' : 'text-white'} ${categoryHeaderColorClass(depth)}`}
           >
             {category.categoryName}
             {headerSuffix && <span className="font-normal">{headerSuffix}</span>}
@@ -159,7 +163,7 @@ export default function MarketMapCategorySection({
             alignTop={category.tooltipAlignTop}
           >
             <div className="font-bold">{category.categoryName}</div>
-            <div> {avgChangeRateLabel(avgChangeRateUseSimple)}: {toPctSigned(avgChangeRate)}</div>
+            <div> {avgChangeRateLabel(avgChangeRateUseSimple)}: {toPctSigned(avgChangeRate, decimalPlaces)}</div>
             <div> 상승 {advancerCount} 하락 {declinerCount} 보합 {unchangedCount}</div>
             <div> 시가총액 합: {toJoEokDecimal(category.totalMarketValue / 100_000_000)}</div>
           </Tooltip>
@@ -179,6 +183,7 @@ export default function MarketMapCategorySection({
           colorScale={colorScale}
           labelMinAreaPercent={labelMinAreaPercent}
           stockLabelMode={stockLabelMode}
+          decimalPlaces={decimalPlaces}
           depth={category.isSelf ? depth : depth + 1}
         />
       ))}
@@ -193,6 +198,7 @@ export default function MarketMapCategorySection({
           areaPercent={box.areaPercent}
           labelMinAreaPercent={labelMinAreaPercent}
           stockLabelMode={stockLabelMode}
+          decimalPlaces={decimalPlaces}
           tooltipAlignLeft={box.tooltipAlignLeft}
           tooltipAlignTop={box.tooltipAlignTop}
           colorScale={colorScale}
