@@ -325,16 +325,11 @@ export default function CategoryChangeRatePage() {
     // 같지 않아 자연히 못 찾는다(지도 페이지가 ALL_STOCK일 때 지수를 안 보여주는 것과 동일한 동작) —
     // index는 랭킹과 정확히 같은 시각 기준이라 스냅샷 시점 어긋남이 없다.
     const indexRanking = rankingData?.items.find(item => item.market === market)
-    // 백엔드가 아직 옛 응답 모양(indexChangeRate)을 내려주는 동안의 폴백 — 그 구간에는 before가 없어
-    // "변화율" 지수 바가 안 뜬다. 지금 화면과 동일한 동작이다. categoryName까지 여기서 같이 확정해서
-    // 두 호출부가 indexRanking을 직접 참조하지 않게 한다.
-    const indexBar = (() => {
-      if (indexRanking == null) return null
-      const value =
-        indexRanking.index ??
-        (indexRanking.indexChangeRate != null ? { now: indexRanking.indexChangeRate, before: null } : null)
-      return value == null ? null : { ...value, categoryName: MARKET_INDEX_LABEL_KO[indexRanking.market] }
-    })()
+    // categoryName까지 여기서 같이 확정해서 두 호출부가 indexRanking을 직접 참조하지 않게 한다.
+    const indexBar =
+      indexRanking?.index == null
+        ? null
+        : { ...indexRanking.index, categoryName: MARKET_INDEX_LABEL_KO[indexRanking.market] }
 
     const currentEntriesWithIndex =
       indexBar != null
