@@ -138,3 +138,56 @@ List<CategoryChangeRateItem>
 - **`/category-change-rate` 신규 페이지**: `CategoryChangeRatePage.tsx` 신설, `NavBar`에 "랭킹" 탭 추가. `data-captureid="category-change-rate-capture"`로 `RenderTarget.CATEGORY_CHANGE_RATE` 캡처 셀렉터와 매칭. `categoryName`은 API 응답에 없어 `useMarketMap(market, true)`(커스텀 트리)에서 categoryId 기준으로 join.
 - **토글 2개 + before 없음 알림**: 가중/산술평균, 현재/변화율 토글 구현. 변화율 토글 상태에서 응답의 모든 항목이 `before: null`이면(설계대로 "이 시각엔 구조적으로 데이터가 없음"으로 판단) `window.alert`로 `mm-dd HH:mm 데이터가 없습니다`를 띄우고 토글을 현재로 되돌림 — 기존 `useCategoryDeleteFlow.ts`/`AdminStockTable.tsx`가 카테고리 변경 관련 알림에 쓰던 것과 동일하게 `window.alert`를 그대로 씀(별도 커스텀 모달 없음).
 - 비교 시점(beforeMinutes)은 화면 상단에서 직접 입력 가능(기본 60분).
+
+## 텔레그램 캡처가 `beforeMinutes`를 쿼리 파라미터로 넘긴다 (2026-09-12, PR #52)
+
+백엔드가 섹터 페이지를 15분마다 캡처해 텔레그램으로 보낸다. 그전까지는 비교 시점을 백엔드가 정할
+방법이 없어서 화면 기본값(30분)으로만 찍혔다. `/category-change-rate?market=KOSPI&beforeMinutes=15`
+처럼 쿼리 파라미터로 받도록 뚫었다.
+
+**이 페이지는 사람만 보는 화면이 아니다.** 렌더링이 깨지면 그 깨진 화면이 15분마다 텔레그램으로
+나간다. 아래 항목의 배포 순서가 까다로웠던 이유가 이것이다.
+
+## 섹터 "변화율" 그래프에 마켓 지수 바 (2026-09-13, PR #53)
+
+섹터 페이지는 그래프를 둘 그린다("현재", "변화율"). 노란 마켓 지수 바가 **"현재"에만** 붙어 있었다.
+"변화율"은 N분 전 대비 %p 차이인데 지수 쪽 과거값을 백엔드가 안 내려줬기 때문이다.
+
+백엔드가 응답 필드를 값 하나에서 now/before 짝으로 바꿨다.
+
+```
+전   indexChangeRate: 0.48
+후   index: { now: 0.48, before: 0.15 }
+```
+
+### 배포 순서 — 프론트가 두 모양을 다 받는 릴리즈를 먼저 냈다
+
+**zod의 `.nullable()`은 값이 `null`인 것을 허용할 뿐 키가 없는 것(`undefined`)은 허용하지 않는다.**
+그건 `.optional()`이다. 이 작업은 필드를 더하는 것이 아니라 **바꾸는** 것이라, 그대로 두면 어느 쪽을
+먼저 배포해도 `parse`가 실패해 섹터 페이지가 "데이터를 불러오지 못했습니다"가 된다. 그리고 그 화면이
+15분마다 캡처돼 나간다.
+
+그래서 프론트가 `index`와 `indexChangeRate`를 **둘 다 `.nullable().optional()`로** 받는 릴리즈를 먼저
+내고, 그다음 백엔드를 배포했다. 폴백이 걸리는 구간에는 `before`가 없어 "변화율" 지수 바가 안 뜨는,
+즉 그 전과 같은 화면이 된다.
+
+**"zod가 모르는 키를 버린다"는 사실만 보고 백엔드 먼저라고 판단하면 틀린다.** 필드를 더하기만 하는
+변경(위 `beforeMinutes` 건)과 필드를 바꾸는 변경은 순서가 반대다.
+
+### 남은 조치 — 폴백을 걷어낸다
+
+백엔드가 배포됐으므로 `indexChangeRate`는 더 이상 안 내려온다. 죽은 경로다.
+
+- `src/types/api.ts` — `CategoryChangeRateMarketRankingSchema`에서 `indexChangeRate` 줄과 그 위
+  폴백 주석을 지운다. `index`에서 `.optional()`을 빼고 `.nullable()`만 남긴다
+- `src/pages/CategoryChangeRatePage.tsx` — `indexBar` IIFE의 `??` 폴백 가지를 지운다.
+  `indexRanking.index`를 그대로 쓰면 된다
+
+`.optional()`을 빼는 이유는 원래 의미로 되돌리기 위해서다. 백엔드는 그 시각 지수 스냅샷이 없으면
+`index: null`을 내려주고, 키 자체를 빼지는 않는다. `.optional()`을 남겨두면 백엔드가 필드를 통째로
+빠뜨리는 회귀가 생겨도 화면이 조용히 지수 바 없이 그려진다.
+
+**목업(`src/mocks/data.ts`)은 이미 새 모양만 내려준다.** 폴백은 옛 백엔드를 위한 임시 경로였지
+목업이 재현할 상태가 아니라서 처음부터 넣지 않았다. 이 작업에서 손댈 곳이 없다.
+
+화면 동작은 바뀌지 않는다. 배포 순서도 상관없다 — 이미 안 내려오는 필드를 지우는 것뿐이다.
