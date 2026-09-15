@@ -20,13 +20,18 @@ import { categoryHeaderFontSize } from '@/hooks/useMarketMapLayout'
 import { combineTierBreakdowns } from '@/utils/categoryTierBreakdown'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import NavBarPageActions from '@/components/NavBarPageActions'
-import { CalendarIcon } from '@/components/icons/MarketMapIcons'
+import { CalendarIcon, ClockIcon } from '@/components/icons/MarketMapIcons'
 import { FONT_BAR_TITLE, FONT_BAR_TIME, FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload } from '@/utils/captureToDownload'
-import { toMarketMapSnapshotTimeLabel, signClass, avgChangeRateLabel } from '@/utils/format'
-import { resolveMarketMapColor, MARKET_INDEX_REFERENCE_COLOR, type ColorScaleConfig } from '@/utils/marketMapColorScale'
+import { toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel, avgChangeRateLabel } from '@/utils/format'
+import {
+  resolveMarketMapColor,
+  resolveMarketMapExtremeColor,
+  MARKET_INDEX_REFERENCE_COLOR,
+  type ColorScaleConfig,
+} from '@/utils/marketMapColorScale'
 import type { CategoryTierBreakdown, Market, MarketQuery } from '@/types/api'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
@@ -146,8 +151,11 @@ function RankBars({
                 }}
               />
               <span
-                className={`absolute top-0 flex h-full items-center pl-1.5 font-bold whitespace-nowrap ${signClass(item.value)}`}
-                style={{ left: `${(Math.abs(item.value) / chart.axisMax) * 100}%` }}
+                className="absolute top-0 flex h-full items-center pl-1.5 font-bold whitespace-nowrap"
+                style={{
+                  left: `${(Math.abs(item.value) / chart.axisMax) * 100}%`,
+                  color: resolveMarketMapExtremeColor(item.value, colorScale),
+                }}
               >
                 {toChartValueLabel(item.value, unit)}
               </span>
@@ -325,16 +333,11 @@ export default function CategoryChangeRatePage() {
     // 같지 않아 자연히 못 찾는다(지도 페이지가 ALL_STOCK일 때 지수를 안 보여주는 것과 동일한 동작) —
     // index는 랭킹과 정확히 같은 시각 기준이라 스냅샷 시점 어긋남이 없다.
     const indexRanking = rankingData?.items.find(item => item.market === market)
-    // 백엔드가 아직 옛 응답 모양(indexChangeRate)을 내려주는 동안의 폴백 — 그 구간에는 before가 없어
-    // "변화율" 지수 바가 안 뜬다. 지금 화면과 동일한 동작이다. categoryName까지 여기서 같이 확정해서
-    // 두 호출부가 indexRanking을 직접 참조하지 않게 한다.
-    const indexBar = (() => {
-      if (indexRanking == null) return null
-      const value =
-        indexRanking.index ??
-        (indexRanking.indexChangeRate != null ? { now: indexRanking.indexChangeRate, before: null } : null)
-      return value == null ? null : { ...value, categoryName: MARKET_INDEX_LABEL_KO[indexRanking.market] }
-    })()
+    // categoryName까지 여기서 같이 확정해서 두 호출부가 indexRanking을 직접 참조하지 않게 한다.
+    const indexBar =
+      indexRanking?.index == null
+        ? null
+        : { ...indexRanking.index, categoryName: MARKET_INDEX_LABEL_KO[indexRanking.market] }
 
     const currentEntriesWithIndex =
       indexBar != null
@@ -423,7 +426,9 @@ export default function CategoryChangeRatePage() {
               {rankingData?.snapshotTime && (
                 <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-white`}>
                   <CalendarIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
-                  {toMarketMapSnapshotTimeLabel(rankingData.snapshotTime)}
+                  {toMarketMapSnapshotDateLabel(rankingData.snapshotTime)}
+                  <ClockIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
+                  {toMarketMapSnapshotTimeOnlyLabel(rankingData.snapshotTime)}
                 </span>
               )}
             </div>
@@ -469,7 +474,10 @@ export default function CategoryChangeRatePage() {
                               role="radio"
                               aria-checked={beforeMinutes === minutes}
                               onClick={() => setBeforeMinutes(minutes)}
-                              className="inline-flex items-center gap-1 border-0 bg-transparent text-yellow-600 outline-none hover:text-yellow-400"
+                              // button은 nes.css 리셋에 color: inherit이 없어 부모 색을 상속받지 못하고
+                              // 브라우저 기본값(검정)으로 떨어진다 — 명시적으로 다시 지정해야 한다.
+                              style={{ color: MARKET_INDEX_REFERENCE_COLOR }}
+                              className="inline-flex items-center gap-1 border-0 bg-transparent outline-none hover:brightness-125"
                             >
                               {/* 커스텀 모드 점등 표시(SubNavBar)와 동일한 초록 발광 스타일 — 선택 상태를
                                   "불이 들어온다"는 느낌으로 통일한다. */}

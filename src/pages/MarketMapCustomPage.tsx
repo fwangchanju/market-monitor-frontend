@@ -14,13 +14,14 @@ import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
 import Spinner from '@/components/Spinner'
 import NavBarPageActions from '@/components/NavBarPageActions'
-import { CalendarIcon } from '@/components/icons/MarketMapIcons'
+import { CalendarIcon, ClockIcon } from '@/components/icons/MarketMapIcons'
 import { FONT_BAR_TITLE, FONT_BAR_MARKET_INDEX, FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
-import { TAB_GAP, toMarketMapSnapshotTimeLabel, toIndex, toPctSigned } from '@/utils/format'
+import { TAB_GAP, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel, toIndex, toPctSigned } from '@/utils/format'
+import { resolveMarketMapExtremeColor } from '@/utils/marketMapColorScale'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
@@ -286,7 +287,10 @@ export default function MarketMapCustomPage() {
                   {MARKET_LABEL[market]}
                 </span>
                 {marketOverview && (
-                  <span className={`${FONT_BAR_MARKET_INDEX} text-blue-700`}>
+                  <span
+                    className={FONT_BAR_MARKET_INDEX}
+                    style={{ color: resolveMarketMapExtremeColor(marketOverview.changeRate, colorScale) }}
+                  >
                     {toIndex(marketOverview.indexValue)}
                     {TAB_GAP}
                     {marketOverview.changeValue > 0 ? '▲' : marketOverview.changeValue < 0 ? '▼' : ''}
@@ -305,7 +309,9 @@ export default function MarketMapCustomPage() {
                 {data?.snapshotTime && (
                   <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-white`}>
                     <CalendarIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
-                    {toMarketMapSnapshotTimeLabel(data.snapshotTime)}
+                    {toMarketMapSnapshotDateLabel(data.snapshotTime)}
+                    <ClockIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
+                    {toMarketMapSnapshotTimeOnlyLabel(data.snapshotTime)}
                   </span>
                 )}
               </div>

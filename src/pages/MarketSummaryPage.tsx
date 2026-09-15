@@ -12,12 +12,12 @@ import IndexContributionSection from '@/components/IndexContributionSection'
 import ShortSellingHistorySection from '@/components/ShortSellingHistorySection'
 import ProgramTradingHistorySection from '@/components/ProgramTradingHistorySection'
 import NavBarPageActions from '@/components/NavBarPageActions'
-import { CalendarIcon } from '@/components/icons/MarketMapIcons'
+import { CalendarIcon, ClockIcon } from '@/components/icons/MarketMapIcons'
 import { FONT_BAR_TIME } from '@/components/FontStyle'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { useMarketSummary } from '@/hooks/useMarketSummary'
-import { toMarketMapSnapshotTimeLabel } from '@/utils/format'
+import { toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 
@@ -94,7 +94,9 @@ export default function MarketSummaryPage() {
               {marketSummaryData?.marketOverviews.snapshotTime && (
                 <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-white`}>
                   <CalendarIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
-                  {toMarketMapSnapshotTimeLabel(marketSummaryData.marketOverviews.snapshotTime)}
+                  {toMarketMapSnapshotDateLabel(marketSummaryData.marketOverviews.snapshotTime)}
+                  <ClockIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
+                  {toMarketMapSnapshotTimeOnlyLabel(marketSummaryData.marketOverviews.snapshotTime)}
                 </span>
               )}
             </div>

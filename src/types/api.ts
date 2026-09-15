@@ -268,10 +268,7 @@ export const MarketIndexChangeRateSchema = z.object({
 export const CategoryChangeRateMarketRankingSchema = z.object({
   market: MarketSchema,
   items: z.array(CategoryChangeRateItemSchema),
-  index: MarketIndexChangeRateSchema.nullable().optional(),
-  // 백엔드가 아직 옛 응답 모양(index 대신 indexChangeRate)을 내려주는 동안의 폴백. 백엔드 배포가
-  // 끝나면 별도 PR로 뺀다.
-  indexChangeRate: z.number().nullable().optional(),
+  index: MarketIndexChangeRateSchema.nullable(),
 })
 export type CategoryChangeRateMarketRanking = z.infer<typeof CategoryChangeRateMarketRankingSchema>
 
