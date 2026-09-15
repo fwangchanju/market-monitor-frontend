@@ -299,7 +299,7 @@ export function SettingsCustomModeSection({
   showEqualWeightToggle?: boolean
 }) {
   return (
-    <div className="sticky top-0 z-10 -mx-4 border-b border-gray-700 bg-zinc-900 px-4 pt-4 pb-3">
+    <div className="sticky top-0 z-10 -mx-4 border-b border-gray-700 bg-zinc-800 px-4 pt-4 pb-3">
       <ToggleSwitch
         checked={isCustom}
         onChange={onToggleCustom}
@@ -757,7 +757,7 @@ export default function SettingsSidebar({ pageLabel, isOpen, onOpenChange, child
 
   return (
     // 슬라이더 자체 폭(max-w-[16rem])의 약 1.3배 — 실제 지도 너비를 덜 뺏도록 사이드바를 좁게 유지한다.
-    <div className="flex w-80 shrink-0 flex-col overflow-hidden bg-zinc-900">
+    <div className="flex w-80 shrink-0 flex-col overflow-hidden bg-zinc-800">
       <div className="flex shrink-0 items-center justify-between border-b border-gray-700 p-4">
         <p className="flex h-7 items-center text-lg font-bold leading-none text-white">{pageLabel} 설정</p>
         <button

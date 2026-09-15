@@ -59,12 +59,12 @@ export const toFullDateTimeLabel = (iso: string | null): string => {
 
 const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토']
 
-/** LocalDateTime(ISO) → 'yyyy-MM-dd (요일)' — 마켓맵 상단 스냅샷 시각 전용 표기 중 날짜 부분.
+/** LocalDateTime(ISO) → 'yyyy-MM-dd 요일' — 마켓맵 상단 스냅샷 시각 전용 표기 중 날짜 부분.
  * 시간 부분(toMarketMapSnapshotTimeOnlyLabel)과 따로 둬서 그 사이에 시계 아이콘을 끼워 넣을 수 있게 한다. */
 export const toMarketMapSnapshotDateLabel = (iso: string | null): string => {
   if (!iso) return '-'
   const weekday = WEEKDAY_KO[new Date(iso).getDay()]
-  return `${iso.slice(0, 10)} (${weekday})`
+  return `${iso.slice(0, 10)} ${weekday}`
 }
 
 /** LocalDateTime(ISO) → 'HH:mm (5분 간격)' — 마켓맵 상단 스냅샷 시각 전용 표기 중 시간 부분. */

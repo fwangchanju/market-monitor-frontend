@@ -66,8 +66,11 @@ export function categoryHeaderFontSize(depth: number): number {
 // 크기를 바꾸면 높이도 자동으로 같은 비율로 줄어들거나 커지는 구조. MarketMapCategorySection의 실제
 // 렌더링 높이도 이 함수를 그대로 써서 레이아웃 계산과 화면이 어긋나지 않게 한다.
 const CATEGORY_HEADER_HEIGHT_RATIO = 28 / 16
+// 비율 계산 결과에서 모든 뎁스 공통으로 1px씩 뺀다 — 대분류/중분류/소분류 헤더를 전체적으로 살짝
+// 더 얇게 보이게 하려는 조정.
+const CATEGORY_HEADER_HEIGHT_ADJUSTMENT = -1
 export function categoryHeaderHeight(depth: number): number {
-  return Math.round(categoryHeaderFontSize(depth) * CATEGORY_HEADER_HEIGHT_RATIO)
+  return Math.round(categoryHeaderFontSize(depth) * CATEGORY_HEADER_HEIGHT_RATIO) + CATEGORY_HEADER_HEIGHT_ADJUSTMENT
 }
 // 형제 카테고리끼리의 간격 — d3 treemap의 paddingInner(카테고리 자식을 둔 노드 기준).
 export const CATEGORY_SIBLING_GAP = 5
