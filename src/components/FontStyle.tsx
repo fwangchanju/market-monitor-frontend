@@ -20,8 +20,8 @@ export const FONT_NAV_TAB = 'text-xl font-bold'
 // 다른 텍스트(지수/모드 상태/시간)와 정확히 같은 기준으로 정렬된다.
 export const FONT_BAR_TITLE = 'text-xl leading-none font-bold'
 
-// 세 번째 바 — 지수/등락폭/등락률. 20px(FONT_BAR_TITLE과 동일), medium(500 — 지마켓 산스가
-// 300/500/700만 있어 정확히 매칭됨).
+// 세 번째 바 — 지수/등락폭/등락률. 20px(FONT_BAR_TITLE과 동일), medium(500 — Pretendard가
+// 500/700만 있어 정확히 매칭됨).
 export const FONT_BAR_MARKET_INDEX = 'text-xl leading-none font-medium'
 
 // 세 번째 바 — 모드 상태 텍스트(예: 커스텀 모드). 20px(FONT_BAR_TITLE과 동일), medium(500).
