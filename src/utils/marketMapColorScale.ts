@@ -16,8 +16,8 @@ export interface ColorScaleConfig {
   thresholds: ColorScaleThreshold[]
 }
 
-// 지도 페이지 최상위 뎁스 카테고리 헤더 글자색 & 섹터 페이지 지수 참조 막대/헤더 글자색이 공유하는
-// "기준" 노란색. Tailwind 유틸리티 클래스(text-yellow-500 등)를 쓰면 v4의 oklch 정의를 브라우저가
+// 지도 페이지 최상위 뎁스(대분류) 카테고리 헤더 글자색 & 섹터 페이지 지수 참조 막대/헤더 글자색이
+// 공유하는 "기준" 노란색. Tailwind 유틸리티 클래스(text-yellow-500 등)를 쓰면 v4의 oklch 정의를 브라우저가
 // sRGB로 변환하는 과정에서 실제 렌더링 값이 미묘하게 달라질 수 있어(DEFAULT_ZERO_COLOR와 동일한
 // 이유), 두 페이지가 "정확히 같은 색"이어야 하는 이 값만은 hex 리터럴을 직접 공유해서 픽셀 단위로
 // 맞춘다.
@@ -104,6 +104,16 @@ export function resolveMarketMapColor(changeRate: number, config: ColorScaleConf
   }
 
   // 가장 큰 threshold보다도 크면 그 이후는 추정하지 않고 그대로 clamp(CSS 그라데이션/D3 스케일과 동일).
+  return thresholds[thresholds.length - 1].color
+}
+
+// changeRate(부호 있는 등락률, %) → 그 부호 쪽 threshold 중 절댓값이 가장 큰 색(보간 없이 고정).
+// 지수 헤더/등락률 텍스트처럼 작은 값에도 옅은 그라데이션이 아니라 항상 진하고 읽기 쉬운 색 하나가
+// 필요한 자리에 쓴다. resolveMarketMapColor와 같은 thresholdsForSign을 거치므로 커스텀/기본 여부는
+// 이미 호출자가 넘기는 config(colorScale)에 그대로 반영된다.
+export function resolveMarketMapExtremeColor(changeRate: number, config: ColorScaleConfig): string {
+  if (changeRate === 0) return resolveZeroColor(config)
+  const thresholds = thresholdsForSign(config, changeRate > 0)
   return thresholds[thresholds.length - 1].color
 }
 
