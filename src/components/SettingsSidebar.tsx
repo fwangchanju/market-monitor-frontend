@@ -84,8 +84,8 @@ const DEPTH_METRIC_OPTIONS: { key: DepthMetric; label: string }[] = [
 // 종목 박스 표시 내용 슬라이더 라벨 — 인덱스가 곧 STOCK_LABEL_MODES(useGlobalSettings)의 인덱스.
 const STOCK_LABEL_MODE_LABELS = ['끄기', '종목명', '등락률', '모두']
 
-// 등락률 자리수 슬라이더 라벨 — 인덱스 그대로 소수점 자릿수(toPctSigned의 decimalPlaces 인자, 0=정수).
-const DECIMAL_PLACES_LABELS = ['정수', '소수1자리', '소수2자리']
+// 등락률 소수점 슬라이더 라벨 — 인덱스 그대로 소수점 자릿수(toPctSigned의 decimalPlaces 인자, 0=정수).
+const DECIMAL_PLACES_LABELS = ['정수', '1자리', '2자리']
 
 // 양쪽 끝에 핸들이 있으면 전체 구간 다 보여주고, 핸들을 안쪽으로 옮기면 그 구간(포함) 밖은 제외된다.
 // 두 핸들은 서로를 지나칠 수 없다(겹치는 건 허용 — 그러면 그 한 칸만 표시).
@@ -377,8 +377,8 @@ export function SettingsCategoryLevelSection({
   showDivider = true,
 }: {
   isCustom: boolean
-  // "업종 분류" 위에 구분선(border-t)을 그릴지 — 스티키 커스텀모드 블록(또는 동일 가중) 바로 다음에
-  // 올 때는 그 자체로 이미 구분되므로 false로 끈다. "종목"은 "업종 분류" 바로 다음이라 항상 그린다.
+  // "업종 분류 탭" 위에 구분선(border-t)을 그릴지 — 스티키 커스텀모드 블록(또는 동일 가중) 바로 다음에
+  // 올 때는 그 자체로 이미 구분되므로 false로 끈다. "종목 박스"는 "업종 분류 탭" 바로 다음이라 항상 그린다.
   showDivider?: boolean
   // null이면 제한 없음(=availableMaxDepth 전체 다 보여줌). 슬라이더가 다룰 수 있는 실제 상한은
   // 지금 트리(exclude/tier 필터링까지 반영된)의 최대 뎁스라 따로 내려받는다.
@@ -401,7 +401,7 @@ export function SettingsCategoryLevelSection({
   // 등락률(%) 표시 소수점 자릿수(0=정수, 1=소수 1자리, 2=소수 2자리).
   decimalPlacesIndex: number
   onChangeDecimalPlacesIndex: (index: number) => void
-  // true면 "종목" 그룹에 "등락률 자리수" 슬라이더를 같이 그린다 — 지도 페이지에서 실제로 트리맵
+  // true면 "종목 박스" 그룹에 "등락률 소수점" 슬라이더를 같이 그린다 — 지도 페이지에서 실제로 트리맵
   // 등락률(%) 표시에 쓰이는 설정이라 지도 페이지에서만 켠다(섹터는 그래프 자체 소수점 포맷을 따로
   // 쓰므로 기본 false로 숨긴다).
   showDecimalPlaces?: boolean
@@ -421,7 +421,7 @@ export function SettingsCategoryLevelSection({
           문제가 있었다. showDivider=false는 바로 위가 스티키 커스텀모드 블록(또는 동일 가중)이라
           이미 그 자체로 구분되는 경우에만 쓴다. */}
       <div className={showDivider ? 'mt-6 border-t border-gray-700 pt-8' : 'pt-8'}>
-        <p className="settings-section-num text-base">업종 분류</p>
+        <p className="settings-section-num text-base">업종 분류 탭</p>
         <div className={`mt-2 pl-2 text-sm ${isDepthDisabled ? 'opacity-40' : ''}`}>
           {/* N/M 숫자 표시 대신, 등락률 지표 슬라이더와 같은 "끄기/대분류/중분류/소분류..." 눈금
               라벨을 슬라이더 하단에 둔다 — 다만 "끄기" 실제 동작(뎁스 제한 자체를 끄는 것)은 아직
@@ -477,10 +477,10 @@ export function SettingsCategoryLevelSection({
           </div>
         </div>
       </div>
-      {/* "종목" 중제목 — "종목 박스 표기", "종목 텍스트 표시 기준", (지도 페이지 한정) "소수점 아래
-          표시"를 하위 속성으로 묶는다. "업종 분류" 바로 다음이라 구분선은 항상 그린다. */}
+      {/* "종목 박스" 중제목 — "종목 박스 표기", "종목 텍스트 표시 기준", (지도 페이지 한정) "등락률
+          소수점"을 하위 속성으로 묶는다. "업종 분류 탭" 바로 다음이라 구분선은 항상 그린다. */}
       <div className="mt-6 border-t border-gray-700 pt-8">
-        <p className="settings-section-num text-base">종목</p>
+        <p className="settings-section-num text-base">종목 박스</p>
         <div className={`mt-2 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
           <span className="block max-w-[16rem] text-center text-white">종목 박스 표기</span>
           <div className="mt-2 max-w-[16rem]">
@@ -516,12 +516,12 @@ export function SettingsCategoryLevelSection({
         </div>
         {showDecimalPlaces && (
           <div className={`mt-3 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
-            <span className="block max-w-[16rem] text-center text-white">등락률 자리수</span>
+            <span className="block max-w-[16rem] text-center text-white">등락률 소수점</span>
             <div className="mt-2 max-w-[16rem]">
               <SingleValueSlider
                 index={decimalPlacesIndex}
                 labels={DECIMAL_PLACES_LABELS}
-                ariaLabel="등락률 자리수"
+                ariaLabel="등락률 소수점"
                 onChange={onChangeDecimalPlacesIndex}
                 disabled={!isCustom}
               />
@@ -563,7 +563,7 @@ export function SettingsMarketValueSection({
 
   return (
     <div className={showDivider ? 'mt-6 border-t border-gray-700 pt-8 text-white' : 'pt-8 text-white'}>
-      <p className="settings-section-num text-base">표시 범위</p>
+      <p className="settings-section-num text-base">종목 표시 범위</p>
       <div className={`mt-2 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
         <span className="block max-w-[16rem] text-center text-white">시가총액</span>
         <div className="mt-2 max-w-[16rem]">
@@ -606,7 +606,7 @@ export function SettingsExcludeSection({
         <ToggleSwitch
           checked={sectorFilterEnabled}
           onChange={onToggleSectorFilter}
-          label="제외 범위"
+          label="종목 제외 범위"
           labelClassName="text-base settings-section-num"
           disabled={!isCustom}
         />
