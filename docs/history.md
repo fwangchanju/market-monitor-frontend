@@ -174,20 +174,12 @@ List<CategoryChangeRateItem>
 **"zod가 모르는 키를 버린다"는 사실만 보고 백엔드 먼저라고 판단하면 틀린다.** 필드를 더하기만 하는
 변경(위 `beforeMinutes` 건)과 필드를 바꾸는 변경은 순서가 반대다.
 
-### 남은 조치 — 폴백을 걷어낸다
+### 폴백을 걷어냈다 (PR #56)
 
-백엔드가 배포됐으므로 `indexChangeRate`는 더 이상 안 내려온다. 죽은 경로다.
+백엔드가 배포돼 `indexChangeRate`가 더 이상 안 내려오므로 죽은 경로가 됐다. `src/types/api.ts`에서
+그 필드를 지우고, `CategoryChangeRatePage.tsx`의 `indexBar` 폴백 가지를 지웠다.
 
-- `src/types/api.ts` — `CategoryChangeRateMarketRankingSchema`에서 `indexChangeRate` 줄과 그 위
-  폴백 주석을 지운다. `index`에서 `.optional()`을 빼고 `.nullable()`만 남긴다
-- `src/pages/CategoryChangeRatePage.tsx` — `indexBar` IIFE의 `??` 폴백 가지를 지운다.
-  `indexRanking.index`를 그대로 쓰면 된다
-
-`.optional()`을 빼는 이유는 원래 의미로 되돌리기 위해서다. 백엔드는 그 시각 지수 스냅샷이 없으면
-`index: null`을 내려주고, 키 자체를 빼지는 않는다. `.optional()`을 남겨두면 백엔드가 필드를 통째로
-빠뜨리는 회귀가 생겨도 화면이 조용히 지수 바 없이 그려진다.
-
-**목업(`src/mocks/data.ts`)은 이미 새 모양만 내려준다.** 폴백은 옛 백엔드를 위한 임시 경로였지
-목업이 재현할 상태가 아니라서 처음부터 넣지 않았다. 이 작업에서 손댈 곳이 없다.
-
-화면 동작은 바뀌지 않는다. 배포 순서도 상관없다 — 이미 안 내려오는 필드를 지우는 것뿐이다.
+**`index`에서 `.optional()`도 같이 뺐다.** 백엔드는 그 시각 지수 스냅샷이 없으면 `index: null`을
+내려주고 키 자체를 빼지 않는다(Jackson 기본 inclusion이 `ALWAYS`이고 백엔드에 `@JsonInclude`도
+`spring.jackson.default-property-inclusion`도 없다). `.optional()`을 남겨두면 백엔드가 필드를 통째로
+빠뜨리는 회귀가 생겨도 화면이 조용히 지수 바 없이 그려진다. `.nullable()`만 남는 것이 원래 의미다.
