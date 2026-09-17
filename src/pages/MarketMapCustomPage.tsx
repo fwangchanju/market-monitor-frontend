@@ -114,6 +114,8 @@ export default function MarketMapCustomPage() {
     avgChangeRateDepthRange,
     upDownCountDepthRange,
     avgChangeRateUseSimple,
+    onChangeAvgChangeRateUseSimple,
+    onChangeSectorFilterEnabled,
     boxLabelMinAreaPercent,
     stockLabelMode,
     decimalPlaces,
@@ -188,21 +190,39 @@ export default function MarketMapCustomPage() {
   }
 
   // SubNavBar의 "지도" 탭 위 마켓 목록에서 KOSPI/KOSDAQ/ALL_STOCK를 고르면 /market-map?market=...로
-  // 이동한다. 이미 이 페이지에 있으면(같은 라우트) 리마운트 없이 searchParams만 바뀌므로 여기서 반영하고,
-  // 초기 상태 읽는 용도일 뿐 주소창에 남아있을 필요는 없어서 반영 직후 지운다.
+  // 이동한다. 렌더러도 /market-map?market=KOSPI&avgMode=simple&sectorFilter=true로 캡처 요청한다.
+  // 이미 이 페이지에 있으면(같은 라우트) 리마운트 없이 searchParams만 바뀌므로 여기서 반영하고, 초기
+  // 상태 읽는 용도일 뿐 주소창에 남아있을 필요는 없어서 반영 직후 지운다. 세 파라미터는 서로
+  // 독립적으로 판정한다 — 하나가 없거나 잘못됐다고 다른 것까지 무시하면 안 된다. 실제로 소비한
+  // (유효했던) 파라미터만 주소에서 지운다(CategoryChangeRatePage와 동일한 판정 방식 — 지도 페이지는
+  // beforeMinutes를 안 쓰므로 그것만 없다).
   useEffect(() => {
-    const param = searchParams.get('market')
-    if (param !== 'KOSPI' && param !== 'KOSDAQ' && param !== 'ALL_STOCK') return
-    handleMarketChange(param)
+    const marketParam = searchParams.get('market')
+    const isValidMarket = marketParam === 'KOSPI' || marketParam === 'KOSDAQ' || marketParam === 'ALL_STOCK'
+    if (isValidMarket) handleMarketChange(marketParam)
+
+    // 백엔드가 캡처 URL에 싣는 avgMode=simple|weighted, sectorFilter=true|false 계약에 맞춘다
+    // (market-monitor-backend의 instructions-telegram-average-mode.md 결정 6).
+    const avgModeParam = searchParams.get('avgMode')
+    const isValidAvgMode = avgModeParam === 'simple' || avgModeParam === 'weighted'
+    if (isValidAvgMode) onChangeAvgChangeRateUseSimple(avgModeParam === 'simple')
+
+    const sectorFilterParam = searchParams.get('sectorFilter')
+    const isValidSectorFilter = sectorFilterParam === 'true' || sectorFilterParam === 'false'
+    if (isValidSectorFilter) onChangeSectorFilterEnabled(sectorFilterParam === 'true')
+
+    if (!isValidMarket && !isValidAvgMode && !isValidSectorFilter) return
     setSearchParams(
       prev => {
         const next = new URLSearchParams(prev)
-        next.delete('market')
+        if (isValidMarket) next.delete('market')
+        if (isValidAvgMode) next.delete('avgMode')
+        if (isValidSectorFilter) next.delete('sectorFilter')
         return next
       },
       { replace: true },
     )
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- market 파라미터가 있을 때만 반응하면 됨
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 파라미터가 있을 때만 반응하면 됨
   }, [searchParams])
 
   // breadcrumb에서 상위 뎁스로 갈 때, 바로 이동하지 않고 줌아웃 애니메이션을 먼저 요청한다.
