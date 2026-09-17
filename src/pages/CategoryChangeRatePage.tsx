@@ -173,10 +173,21 @@ export default function CategoryChangeRatePage() {
   const [beforeMinutes, setBeforeMinutes] = usePersistedState('categoryChangeRate.beforeMinutes', 15)
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // 렌더러가 /category-change-rate?market=KOSDAQ&beforeMinutes=15로 캡처 요청할 때 쓰는 진입점 —
-  // MarketMapCustomPage와 동일한 패턴(초기 상태 반영 용도일 뿐 주소창엔 남길 필요 없어 반영 직후
-  // 지움). 두 파라미터는 서로 독립적으로 판정한다 — 하나가 없거나 잘못됐다고 다른 하나까지 무시하면
-  // 안 된다. 실제로 소비한(유효했던) 파라미터만 주소에서 지운다.
+  const {
+    settingsModalProps,
+    colorEditorPanelProps,
+    avgChangeRateUseSimple,
+    onChangeAvgChangeRateUseSimple,
+    onChangeSectorFilterEnabled,
+    excludedMarketValueTiers,
+    excludedCategoryIds,
+    colorScale,
+  } = useGlobalSettings()
+
+  // 렌더러가 /category-change-rate?market=KOSDAQ&beforeMinutes=15&avgMode=simple&sectorFilter=true로
+  // 캡처 요청할 때 쓰는 진입점 — MarketMapCustomPage와 동일한 패턴(초기 상태 반영 용도일 뿐 주소창엔
+  // 남길 필요 없어 반영 직후 지움). 네 파라미터는 서로 독립적으로 판정한다 — 하나가 없거나 잘못됐다고
+  // 다른 것까지 무시하면 안 된다. 실제로 소비한(유효했던) 파라미터만 주소에서 지운다.
   useEffect(() => {
     const marketParam = searchParams.get('market')
     const isValidMarket = marketParam === 'KOSPI' || marketParam === 'KOSDAQ' || marketParam === 'ALL_STOCK'
@@ -189,27 +200,30 @@ export default function CategoryChangeRatePage() {
     const isValidBeforeMinutes = Number.isInteger(parsedBeforeMinutes) && parsedBeforeMinutes > 0 && parsedBeforeMinutes % 5 === 0
     if (isValidBeforeMinutes) setBeforeMinutes(parsedBeforeMinutes)
 
-    if (!isValidMarket && !isValidBeforeMinutes) return
+    // 백엔드가 캡처 URL에 싣는 avgMode=simple|weighted, sectorFilter=true|false 계약에 맞춘다
+    // (market-monitor-backend의 instructions-telegram-average-mode.md 결정 6).
+    const avgModeParam = searchParams.get('avgMode')
+    const isValidAvgMode = avgModeParam === 'simple' || avgModeParam === 'weighted'
+    if (isValidAvgMode) onChangeAvgChangeRateUseSimple(avgModeParam === 'simple')
+
+    const sectorFilterParam = searchParams.get('sectorFilter')
+    const isValidSectorFilter = sectorFilterParam === 'true' || sectorFilterParam === 'false'
+    if (isValidSectorFilter) onChangeSectorFilterEnabled(sectorFilterParam === 'true')
+
+    if (!isValidMarket && !isValidBeforeMinutes && !isValidAvgMode && !isValidSectorFilter) return
     setSearchParams(
       prev => {
         const next = new URLSearchParams(prev)
         if (isValidMarket) next.delete('market')
         if (isValidBeforeMinutes) next.delete('beforeMinutes')
+        if (isValidAvgMode) next.delete('avgMode')
+        if (isValidSectorFilter) next.delete('sectorFilter')
         return next
       },
       { replace: true },
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 파라미터가 있을 때만 반응하면 됨
   }, [searchParams])
-
-  const {
-    settingsModalProps,
-    colorEditorPanelProps,
-    avgChangeRateUseSimple,
-    excludedMarketValueTiers,
-    excludedCategoryIds,
-    colorScale,
-  } = useGlobalSettings()
   // 지도 페이지 상단 바와 동일한 위치/스타일의 커스텀 모드 점등 표시 — 켜짐/꺼짐 상태만 보여준다.
   const modeStatusText = (
     <>
