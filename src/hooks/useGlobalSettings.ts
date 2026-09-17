@@ -398,12 +398,16 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     avgChangeRateDepthRange,
     upDownCountDepthRange,
     avgChangeRateUseSimple,
+    // URL 쿼리(avgMode/sectorFilter)로 값을 직접 세팅해야 하는 페이지용 — 토글(prev => !prev)과 달리
+    // 원하는 값을 그대로 넘겨 세팅한다.
+    onChangeAvgChangeRateUseSimple: setAvgChangeRateUseSimple,
     excludedMarketValueTiers,
     boxLabelMinAreaPercent,
     stockLabelMode,
     decimalPlaces,
     colorScale,
     excludedCategoryNames,
+    onChangeSectorFilterEnabled: setSectorFilterEnabled,
     // 커스텀 모드+섹터 기준 스위치가 둘 다 켜져있을 때만 실제로 적용되는 최종 제외 대상 ID 집합
     // (filteredRootNodes를 만들 때 쓰는 것과 동일한 값) — 트리를 직접 그리지 않고 카테고리 ID
     // 기준으로만 걸러내면 되는 페이지(카테고리 랭킹 등)를 위해 내보낸다.
