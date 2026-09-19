@@ -149,8 +149,17 @@ a { color: var(--accent-light); text-decoration: none; }
 .nes-btn::after { content: none; box-shadow: none; }
 .nes-btn:hover { background-color: var(--surface); color: #fff; }
 .nes-btn:hover::after { box-shadow: none; }
-.nes-btn:focus { box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.4); }
 .nes-btn:active:not(.is-disabled)::after { box-shadow: none; }
+
+/* Keep focus styling only for visible text-entry controls. Other page controls remain usable
+   but do not show the browser/NES focus outline or focus ring. */
+#root :where(button, a, select, [role='button'], [tabindex]):not(input):not(textarea):not([contenteditable='true']):focus,
+#root :where(button, a, select, [role='button'], [tabindex]):not(input):not(textarea):not([contenteditable='true']):focus-visible,
+#root :where(input[type='checkbox'], input[type='radio'], input[type='range'], input[type='color'], input[type='button'], input[type='submit'], input[type='reset']):focus,
+#root :where(input[type='checkbox'], input[type='radio'], input[type='range'], input[type='color'], input[type='button'], input[type='submit'], input[type='reset']):focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
 
 .nes-btn.is-primary {
   background-color: var(--surface);

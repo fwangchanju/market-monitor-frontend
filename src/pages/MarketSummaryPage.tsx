@@ -68,6 +68,7 @@ export default function MarketSummaryPage() {
         actions={
           <NavBarPageActions
             onToggleSettings={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
+            isSettingsOpen={settingsModalProps.isOpen}
             onOpenShare={() => setIsShareOpen(true)}
             isNativeFullscreen={isNativeFullscreen}
             onToggleFullscreen={handleToggleNativeFullscreen}

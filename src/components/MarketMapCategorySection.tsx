@@ -58,10 +58,10 @@ function localSimpleAvgChangeRate(items: MarketMapItem[]): number {
 const TOOLTIP_OFFSET_X = 56
 
 // 투명도로 옅게 하면 페이지 배경 자체가 어두워서 뒤로 비치는 색이 없어 거의 구분이 안 됐다 —
-// 배경과 무관하게 확실히 보이도록 불투명한 순수 무채색(파란기 없는 진짜 검정~회색)을 뎁스가
-// 깊어질수록 점점 밝게 나열한다. Tailwind의 gray-600(파란기 도는 회색, 등락률 0%에 이미 씀)과
-// 헷갈리지 않게 임의값 hex를 쓴다. 배열 끝에 도달하면 마지막 값을 반복한다(더 깊어져도 안전).
-const CATEGORY_HEADER_COLORS = ['bg-black', 'bg-[#333333]', 'bg-[var(--accent)]', 'bg-[var(--accent)]']
+// 대분류는 검정, 중분류는 공통 강조색, 소분류부터는 기존의 무채색 계열을 사용한다.
+// Tailwind의 gray-600(파란기 도는 회색, 등락률 0%에 이미 씀)과 헷갈리지 않게 임의값 hex를 쓴다.
+// 배열 끝에 도달하면 마지막 값을 반복한다(더 깊어져도 안전).
+const CATEGORY_HEADER_COLORS = ['bg-black', 'bg-[var(--accent)]', 'bg-[#4d4d4d]', 'bg-[#666666]']
 function categoryHeaderColorClass(depth: number): string {
   return CATEGORY_HEADER_COLORS[Math.min(depth, CATEGORY_HEADER_COLORS.length - 1)]
 }
@@ -151,7 +151,7 @@ export default function MarketMapCategorySection({
               width: `calc(100% - ${PADDING * 2}px)`,
               color: depth === 0 ? MARKET_INDEX_REFERENCE_COLOR : undefined,
             }}
-            className={`absolute top-0 flex items-center overflow-hidden truncate border-2 border-transparent px-1 text-left font-bold leading-none ${depth === 0 ? '' : depth < 2 ? 'text-white' : 'text-black'} ${categoryHeaderColorClass(depth)}`}
+            className={`absolute top-0 flex items-center overflow-hidden truncate border-2 border-transparent px-1 text-left font-bold leading-none ${depth === 0 ? '' : depth === 1 ? 'text-black' : 'text-white'} ${categoryHeaderColorClass(depth)}`}
           >
             {category.categoryName}
             {headerSuffix && <span className="font-normal">{headerSuffix}</span>}

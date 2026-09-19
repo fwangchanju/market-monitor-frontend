@@ -269,6 +269,7 @@ export default function MarketMapCustomPage() {
         actions={
           <NavBarPageActions
             onToggleSettings={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
+            isSettingsOpen={settingsModalProps.isOpen}
             onOpenShare={() => setIsShareOpen(true)}
             isNativeFullscreen={isNativeFullscreen}
             onToggleFullscreen={handleToggleNativeFullscreen}
