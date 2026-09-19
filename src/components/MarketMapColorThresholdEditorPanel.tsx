@@ -117,7 +117,7 @@ function ThresholdRow({ threshold, active, autoFocus, onFocusRow, onChangeThresh
           type="button"
           onClick={() => handlePickSign('+')}
           aria-label="상승(+)"
-          className={`flex h-7 w-7 items-center justify-center text-sm ${sign === '+' ? 'bg-[#4f8fd6] text-white' : 'bg-transparent text-gray-400 hover:text-white'}`}
+          className={`flex h-7 w-7 items-center justify-center text-sm ${sign === '+' ? 'bg-[var(--accent)] text-black' : 'bg-transparent text-gray-400 hover:text-white'}`}
         >
           +
         </button>
@@ -125,7 +125,7 @@ function ThresholdRow({ threshold, active, autoFocus, onFocusRow, onChangeThresh
           type="button"
           onClick={() => handlePickSign('-')}
           aria-label="하락(-)"
-          className={`flex h-7 w-7 items-center justify-center border-l border-gray-600 text-sm ${sign === '-' ? 'bg-[#4f8fd6] text-white' : 'bg-transparent text-gray-400 hover:text-white'}`}
+          className={`flex h-7 w-7 items-center justify-center border-l border-gray-600 text-sm ${sign === '-' ? 'bg-[var(--accent)] text-black' : 'bg-transparent text-gray-400 hover:text-white'}`}
         >
           −
         </button>
@@ -224,7 +224,7 @@ export default function MarketMapColorThresholdEditorPanel({
             type="button"
             onClick={onAddRow}
             aria-label="항목 추가"
-            className="flex h-8 w-8 items-center justify-center border-0 bg-transparent text-lg text-white hover:text-[#4f8fd6]"
+            className="flex h-8 w-8 items-center justify-center border-0 bg-transparent text-lg text-white hover:text-[var(--accent)]"
           >
             +
           </button>

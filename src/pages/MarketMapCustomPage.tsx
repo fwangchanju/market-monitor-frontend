@@ -14,7 +14,6 @@ import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
 import Spinner from '@/components/Spinner'
 import NavBarPageActions from '@/components/NavBarPageActions'
-import { CalendarIcon, ClockIcon } from '@/components/icons/MarketMapIcons'
 import { FONT_BAR_TITLE, FONT_BAR_MARKET_INDEX, FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
@@ -105,6 +104,8 @@ export default function MarketMapCustomPage() {
     setMarket,
     isCustom,
     data,
+    refetchMarketMap,
+    isRefetchingMarketMap,
     isLoading,
     isError,
     rootNodes,
@@ -114,6 +115,7 @@ export default function MarketMapCustomPage() {
     avgChangeRateDepthRange,
     upDownCountDepthRange,
     avgChangeRateUseSimple,
+    topPickCategoryIds,
     onChangeAvgChangeRateUseSimple,
     onChangeSectorFilterEnabled,
     boxLabelMinAreaPercent,
@@ -148,7 +150,8 @@ export default function MarketMapCustomPage() {
   // "업종 분류 레벨" 뎁스 제한을 "지금 보고 있는 위치"(currentNode, 없으면 최상위) 기준으로 매번 새로
   // 적용한다 — 진짜 루트 기준 절대값이 아니라, 어디로 드릴다운하든 거기서부터 다시 N단계가 보이는
   // 상대값이어야 한다(그래야 뎁스 제한 때문에 드릴다운 경로가 끊기거나 더 깊이 진입해도 항상 똑같이
-  // 얕게만 보이는 문제가 없다). 커스텀 모드가 아니면 뎁스 제한 자체를 무시한다.
+  // 얕게만 보이는 문제가 없다). 드릴다운 상태에서는 헤더를 그리지 않는 자기 자신은 단계로 세지
+  // 않고 그 자식부터 1단계로 센다. 커스텀 모드가 아니면 뎁스 제한 자체를 무시한다.
   const effectiveMaxDepth = isCustom ? maxDepth : null
   // 뎁스 0("끄기")은 limitDepth로 표현할 수 없다(그 함수는 항상 최소 1뎁스 = 대분류 박스 하나는
   // 남긴다) — 완전 평탄화는 별도로 처리한다: 지금 보이는 위치 아래 종목을 전부 하나로 모아
@@ -159,7 +162,7 @@ export default function MarketMapCustomPage() {
     effectiveMaxDepth != null && !isFullyFlattened ? limitDepth(currentSiblings, effectiveMaxDepth) : currentSiblings
   const displayNode =
     currentNode && effectiveMaxDepth != null && !isFullyFlattened
-      ? (limitDepth([currentNode], effectiveMaxDepth)[0] ?? currentNode)
+      ? { ...currentNode, children: limitDepth(currentNode.children, effectiveMaxDepth) }
       : currentNode
   const groups: DisplayGroup[] = isFullyFlattened
     ? [toFlatDisplayGroup(flattenAllItems(currentNode ? [currentNode] : currentSiblings))]
@@ -269,10 +272,14 @@ export default function MarketMapCustomPage() {
       <SubNavBar
         actions={
           <NavBarPageActions
+            onRefresh={refetchMarketMap}
+            isRefreshing={isRefetchingMarketMap}
             onToggleSettings={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
+            isSettingsOpen={settingsModalProps.isOpen}
             onOpenShare={() => setIsShareOpen(true)}
             isNativeFullscreen={isNativeFullscreen}
             onToggleFullscreen={handleToggleNativeFullscreen}
+            showSnapshotControls={Boolean(data?.snapshotTime)}
           />
         }
       />
@@ -302,7 +309,7 @@ export default function MarketMapCustomPage() {
               <div className="flex items-center gap-2 whitespace-nowrap">
                 <span
                   onClick={() => handleGoToDepth(0)}
-                  className={`${FONT_BAR_TITLE} ${path.length > 0 ? 'cursor-pointer hover:text-yellow-400' : ''}`}
+                  className={`${FONT_BAR_TITLE} ${path.length > 0 ? 'cursor-pointer hover:text-[var(--accent)]' : ''}`}
                 >
                   {MARKET_LABEL[market]}
                 </span>
@@ -328,10 +335,8 @@ export default function MarketMapCustomPage() {
               <div className="flex items-center gap-3">
                 {data?.snapshotTime && (
                   <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-white`}>
-                    <CalendarIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
-                    {toMarketMapSnapshotDateLabel(data.snapshotTime)}
-                    <ClockIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
-                    {toMarketMapSnapshotTimeOnlyLabel(data.snapshotTime)}
+                    <span>{toMarketMapSnapshotDateLabel(data.snapshotTime)}</span>
+                    <span>{toMarketMapSnapshotTimeOnlyLabel(data.snapshotTime)}</span>
                   </span>
                 )}
               </div>
@@ -352,7 +357,7 @@ export default function MarketMapCustomPage() {
                   onMouseLeave={() => setBreadcrumbHoverIndex(null)}
                   className="flex h-7 w-full shrink-0 cursor-pointer items-center gap-1 truncate bg-black/70 px-1 text-sm font-bold text-white"
                 >
-                  <span data-breadcrumb-index={0} className={breadcrumbHoverIndex !== null ? 'text-yellow-400' : ''}>
+                  <span data-breadcrumb-index={0} className={breadcrumbHoverIndex !== null ? 'text-[var(--accent)]' : ''}>
                     {MARKET_LABEL[market]}
                   </span>
                   {path.map((name, index) => {
@@ -361,11 +366,11 @@ export default function MarketMapCustomPage() {
                     const isHighlighted = breadcrumbHoverIndex !== null && breadcrumbHoverIndex >= segmentIndex
                     return (
                       <span key={index} data-breadcrumb-index={segmentIndex} className="flex items-center gap-1">
-                        <span className={isHighlighted ? 'text-yellow-400' : ''}>&gt;</span>
+                        <span className={isHighlighted ? 'text-[var(--accent)]' : ''}>&gt;</span>
                         {isLastPath ? (
                           // 지금 보고 있는 카테고리라 클릭해도 아무 동작이 없어야 하므로, 버블링을 막아
                           // 바 전체의 onClick(goToDepth(0))으로 전체 화면으로 빠지지 않게 한다.
-                          <span onClick={e => e.stopPropagation()} className={isHighlighted ? 'text-yellow-400' : ''}>
+                          <span onClick={e => e.stopPropagation()} className={isHighlighted ? 'text-[var(--accent)]' : ''}>
                             {name}
                           </span>
                         ) : (
@@ -376,7 +381,7 @@ export default function MarketMapCustomPage() {
                               handleGoToDepth(segmentIndex)
                             }}
                             style={{ fontFamily: 'inherit' }}
-                            className={`border-0 bg-transparent p-0 text-sm font-bold ${isHighlighted ? 'text-yellow-400' : 'text-white'}`}
+                            className={`border-0 bg-transparent p-0 text-sm font-bold ${isHighlighted ? 'text-[var(--accent)]' : 'text-white'}`}
                           >
                             {name}
                           </button>
@@ -411,6 +416,7 @@ export default function MarketMapCustomPage() {
                   labelMinAreaPercent={boxLabelMinAreaPercent}
                   stockLabelMode={stockLabelMode}
                   decimalPlaces={decimalPlaces}
+                  topPickCategoryIds={topPickCategoryIds}
                   zoomOutRequestDepth={zoomOutRequestDepth}
                   onZoomOutComplete={handleZoomOutComplete}
                 />
@@ -431,7 +437,7 @@ export default function MarketMapCustomPage() {
             />
             <SettingsMarketValueSection {...settingsModalProps} showDivider={false} />
             <SettingsExcludeSection {...settingsModalProps} />
-            <SettingsCategoryLevelSection {...settingsModalProps} showDecimalPlaces />
+            <SettingsCategoryLevelSection {...settingsModalProps} showTopPick showDecimalPlaces />
             <SettingsColorSection {...settingsModalProps} />
           </SettingsSidebar>
         </div>

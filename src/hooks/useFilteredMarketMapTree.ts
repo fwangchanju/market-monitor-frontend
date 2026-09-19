@@ -49,10 +49,23 @@ function filterNodes(
 
 // depth === maxDepth인 노드는 이 뎁스까지만 태그를 보여준다는 뜻 — 그 밑에 있던 하위 카테고리들의
 // 태그(헤더)는 없애되, 안에 있던 종목은 사라지지 않고 전부 이 노드 박스 안으로 펼쳐서 보여준다.
-function collectAllItems(node: FilteredMarketMapCategoryNode): MarketMapItem[] {
+export function collectAllItems(node: FilteredMarketMapCategoryNode): MarketMapItem[] {
   const items = [...node.items]
   for (const child of node.children) items.push(...collectAllItems(child))
   return items
+}
+
+// 루트 카테고리를 절대 depth 0으로 보고, 화면에서 접어 보이는지와 무관하게 해당 단계의 카테고리만 모은다.
+// 업종 톱픽은 드릴다운한 현재 화면이 아니라 필터가 적용된 전체 트리 기준으로 순위를 매겨야 하므로,
+// limitDepth 이후의 화면용 트리가 아니라 이 함수에 filteredRootNodes를 직접 넘겨 쓴다.
+export function collectCategoriesAtDepth(
+  nodes: FilteredMarketMapCategoryNode[],
+  targetDepth: number,
+  depth = 0,
+): FilteredMarketMapCategoryNode[] {
+  if (depth === targetDepth) return nodes
+  if (depth > targetDepth) return []
+  return nodes.flatMap(node => collectCategoriesAtDepth(node.children, targetDepth, depth + 1))
 }
 
 // "업종 분류 레벨" 슬라이더가 "끄기"일 때(뎁스 제한 0) 쓰는 완전 평탄화 — 카테고리 구분 없이 지금
