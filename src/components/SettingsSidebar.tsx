@@ -428,6 +428,9 @@ export function SettingsCategoryLevelSection({
   const isDepthMetricDisabled = !isCustom || maxDepth === 0
   const isTopPickDisabled = !isCustom || maxDepth === 0
   const depthMetricLabels = Array.from({ length: depthLabelCount }, (_, index) => DEPTH_LABELS[index] ?? `${index + 1}차 분류`)
+  // 업종 분류 레벨은 maxDepth(0=끄기, 1=대분류까지, ...)를 인덱스 그대로 쓰므로 맨 앞에 "끄기" 칸이 있어야
+  // 소분류(3)까지 갈 수 있다. 지표 범위 슬라이더는 뎁스 인덱스(0=대분류)라 "끄기" 칸이 없다.
+  const depthLevelLabels = ['끄기', ...depthMetricLabels]
   const depthMetricSliderSteps = Math.max(depthLabelCount - 1, 1)
   // 선택값은 저장한 범위를 그대로 유지하되, 현재 업종 분류 레벨을 넘는 부분만 화면에서 잘라 보여준다.
   const depthMetricSliderMinIndex = Math.min(depthMetricMinIndex, depthMetricMaxSelectableIndex)
@@ -449,7 +452,7 @@ export function SettingsCategoryLevelSection({
             <div className="mt-2 max-w-[16rem]">
               <SingleValueSlider
                 index={depthValue}
-                labels={depthMetricLabels}
+                labels={depthLevelLabels}
                 ariaLabel="업종 분류 레벨"
                 onChange={onChangeMaxDepth}
                 disabled={isDepthDisabled}
