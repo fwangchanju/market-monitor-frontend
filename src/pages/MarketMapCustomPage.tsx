@@ -272,7 +272,7 @@ export default function MarketMapCustomPage() {
             onOpenShare={() => setIsShareOpen(true)}
             isNativeFullscreen={isNativeFullscreen}
             onToggleFullscreen={handleToggleNativeFullscreen}
-            showSnapshotControls={false}
+            showSnapshotControls={Boolean(data?.snapshotTime)}
           />
         }
       />
