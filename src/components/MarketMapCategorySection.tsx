@@ -5,7 +5,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { categoryHeaderFontSize, categoryHeaderHeight, PADDING, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
 import { TAB_GAP, avgChangeRateLabel, toJoEokDecimal, toPctSigned } from '@/utils/format'
 import type { MarketMapItem } from '@/types/api'
-import { MARKET_INDEX_REFERENCE_COLOR, type ColorScaleConfig } from '@/utils/marketMapColorScale'
+import { type ColorScaleConfig } from '@/utils/marketMapColorScale'
 import type { StockLabelMode } from '@/hooks/useGlobalSettings'
 
 interface Props {
@@ -29,6 +29,8 @@ interface Props {
   stockLabelMode: StockLabelMode
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
   decimalPlaces: number
+  // 현재 화면의 상대 depth 0이 트리에서 몇 번째 단계인지 나타내는 절대 depth 오프셋.
+  depthOffset?: number
   depth?: number
 }
 
@@ -57,13 +59,16 @@ function localSimpleAvgChangeRate(items: MarketMapItem[]): number {
 // 동일한 간격(56px)을 쓰지만, 이 컴포넌트 전용 값으로 별도 관리한다(MarketMapBox.tsx에서 import하지 않음).
 const TOOLTIP_OFFSET_X = 56
 
-// 투명도로 옅게 하면 페이지 배경 자체가 어두워서 뒤로 비치는 색이 없어 거의 구분이 안 됐다 —
-// 대분류는 검정, 중분류는 공통 강조색, 소분류부터는 기존의 무채색 계열을 사용한다.
-// Tailwind의 gray-600(파란기 도는 회색, 등락률 0%에 이미 씀)과 헷갈리지 않게 임의값 hex를 쓴다.
-// 배열 끝에 도달하면 마지막 값을 반복한다(더 깊어져도 안전).
-const CATEGORY_HEADER_COLORS = ['bg-black', 'bg-[var(--accent)]', 'bg-[#4d4d4d]', 'bg-[#666666]']
-function categoryHeaderColorClass(depth: number): string {
-  return CATEGORY_HEADER_COLORS[Math.min(depth, CATEGORY_HEADER_COLORS.length - 1)]
+// 절대 depth(트리 기준 실제 단계) → 배경/글자색. 배열 끝을 넘으면 마지막 값을 반복한다.
+const CATEGORY_HEADER_STYLES = [
+  { background: 'bg-[var(--accent)]', text: 'text-black', border: 'border border-[var(--accent)]' },
+  { background: 'bg-black', text: 'text-white', border: 'border border-[var(--accent)]' },
+  { background: 'bg-[#4d4d4d]', text: 'text-white', border: 'border border-[var(--accent)]' },
+  { background: 'bg-[#666666]', text: 'text-white', border: 'border border-[var(--accent)]' },
+]
+
+function categoryHeaderStyle(depth: number) {
+  return CATEGORY_HEADER_STYLES[Math.min(depth, CATEGORY_HEADER_STYLES.length - 1)]
 }
 
 export default function MarketMapCategorySection({
@@ -79,6 +84,7 @@ export default function MarketMapCategorySection({
   labelMinAreaPercent,
   stockLabelMode,
   decimalPlaces,
+  depthOffset = 0,
   depth = 0,
 }: Props) {
   const boxRef = useRef<HTMLDivElement>(null)
@@ -103,6 +109,8 @@ export default function MarketMapCategorySection({
     isInDepthRange(marketValueDepthRange, depth) ? toJoEokDecimal(category.totalMarketValue / 100_000_000) : null,
   ].filter((part): part is string => part !== null)
   const headerSuffix = headerParts.length > 0 ? `${TAB_GAP}${headerParts.join(TAB_GAP)}` : ''
+  const absoluteDepth = depthOffset + depth
+  const headerStyle = categoryHeaderStyle(absoluteDepth)
 
   return (
     <div
@@ -113,11 +121,10 @@ export default function MarketMapCategorySection({
         top: category.y,
         width: category.width,
         height: category.height,
-        // 나중에 그려지는 형제 카테고리의 테두리가 먼저 hover된 카테고리의 테두리 위를 덮지 않도록,
-        // MarketMapBox와 동일하게 hover 시 z-index를 올린다.
+        // 툴팁이 형제 카테고리 아래에 가려지지 않도록 hover 시 z-index만 올린다.
         zIndex: tooltip.hover ? 20 : undefined,
       }}
-      className={`box-content ${tooltip.hover ? 'border-2 border-[var(--accent)]' : 'border border-black'}`}
+      className="box-content"
     >
       {/* isSelf(드릴다운으로 들어온 자기 자신)는 헤더 태그를 안 그린다 — breadcrumb에 이미
           "KOSPI > 반도체"처럼 같은 이름이 떠 있어서 중복이기 때문(useMarketMapLayout의 paddingTop도
@@ -149,9 +156,8 @@ export default function MarketMapCategorySection({
               fontSize: categoryHeaderFontSize(depth),
               left: PADDING,
               width: `calc(100% - ${PADDING * 2}px)`,
-              color: depth === 0 ? MARKET_INDEX_REFERENCE_COLOR : undefined,
             }}
-            className={`absolute top-0 flex items-center overflow-hidden truncate border-2 border-transparent px-1 text-left font-bold leading-none ${depth === 0 ? '' : depth === 1 ? 'text-black' : 'text-white'} ${categoryHeaderColorClass(depth)}`}
+            className={`absolute top-0 flex items-center overflow-hidden truncate px-1 text-left font-bold leading-none ${headerStyle.border} ${headerStyle.text ?? ''} ${headerStyle.background}`}
           >
             {category.categoryName}
             {headerSuffix && <span className="font-normal">{headerSuffix}</span>}
@@ -184,6 +190,7 @@ export default function MarketMapCategorySection({
           labelMinAreaPercent={labelMinAreaPercent}
           stockLabelMode={stockLabelMode}
           decimalPlaces={decimalPlaces}
+          depthOffset={depthOffset}
           depth={category.isSelf ? depth : depth + 1}
         />
       ))}

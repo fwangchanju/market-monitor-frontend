@@ -270,7 +270,10 @@ export default function CategoryChangeRatePage() {
     copyStatus === 'copying' ? 'Copying' : copyStatus === 'copied' ? 'Copied' : copyStatus === 'error' ? 'Failed' : 'Copy'
   const downloadLabel = downloadStatus === 'error' ? 'Failed' : 'Download'
 
-  const { data: rankingData, isLoading, isError } = useCategoryChangeRates(market, beforeMinutes)
+  const { data: rankingData, isLoading, isError, isRefetching: isRefetchingRankingData, refetch: refetchRankingData } = useCategoryChangeRates(
+    market,
+    beforeMinutes,
+  )
 
   // 카테고리 이름을 랭킹 응답에서 직접 얻는다 — 이전에는 useMarketMap으로 트리를 별도 조회해서 얻었지만,
   // 응답에 categoryName이 실리면서 더 이상 필요 없다(depth == 0과 hasNoParent()가 동치라는 근거는
@@ -399,6 +402,8 @@ export default function CategoryChangeRatePage() {
       <SubNavBar
         actions={
           <NavBarPageActions
+            onRefresh={refetchRankingData}
+            isRefreshing={isRefetchingRankingData}
             onToggleSettings={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
             isSettingsOpen={settingsModalProps.isOpen}
             onOpenShare={() => setIsShareOpen(true)}

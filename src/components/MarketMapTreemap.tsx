@@ -56,6 +56,7 @@ interface RelativeRect {
 // (줌인: 실제 콘텐츠가 고스트를 덮으며 커짐 / 줌아웃: 고스트가 실제 콘텐츠를 덮은 채 줄어들며 사라짐).
 interface GhostOverlay {
   categories: LaidOutCategory[]
+  depth: number
   direction: 'in' | 'out'
   style: React.CSSProperties
 }
@@ -117,7 +118,7 @@ export default function MarketMapTreemap({
   // 클릭~실제 path 반영(재렌더) 사이에 잠깐 들고 있는 값들 — 클릭 시점엔 아직 depth/groups가 안 바뀌어
   // 있어서, 새 depth로 렌더된 뒤(useLayoutEffect)에야 확정해서 쓴다.
   const pendingEnterRectRef = useRef<RelativeRect | null>(null)
-  const outgoingSnapshotRef = useRef<LaidOutCategory[] | null>(null)
+  const outgoingSnapshotRef = useRef<{ categories: LaidOutCategory[]; depth: number } | null>(null)
   const prevDepthRef = useRef(depth)
 
   useEffect(() => {
@@ -162,7 +163,7 @@ export default function MarketMapTreemap({
     if (containerRect && containerRect.width > 0 && containerRect.height > 0) {
       pendingEnterRectRef.current = toRelativeRect(rect, containerRect)
     }
-    outgoingSnapshotRef.current = categories
+    outgoingSnapshotRef.current = { categories, depth }
     onSelectCategory(categoryName)
   }
 
@@ -183,7 +184,11 @@ export default function MarketMapTreemap({
         for (let d = prevDepthRef.current; d < depth; d++) {
           entryRectsRef.current.set(d, pendingRect)
         }
-        setGhost(snapshot ? { categories: snapshot, direction: 'in', style: { opacity: 1, transition: 'none' } } : null)
+        setGhost(
+          snapshot
+            ? { categories: snapshot.categories, depth: snapshot.depth, direction: 'in', style: { opacity: 1, transition: 'none' } }
+            : null,
+        )
         setZoomStyle({
           transform: toShrinkTransform(pendingRect, containerRect),
           opacity: 1,
@@ -212,7 +217,12 @@ export default function MarketMapTreemap({
       outgoingSnapshotRef.current = null
       if (rect && containerRect && snapshot) {
         setZoomStyle({ opacity: 0, transition: 'none' })
-        setGhost({ categories: snapshot, direction: 'out', style: { transform: 'none', opacity: 1, transition: 'none' } })
+        setGhost({
+          categories: snapshot.categories,
+          depth: snapshot.depth,
+          direction: 'out',
+          style: { transform: 'none', opacity: 1, transition: 'none' },
+        })
         requestAnimationFrame(() => {
           setZoomStyle({ opacity: 1, transition: `opacity ${ZOOM_OUT_DURATION}ms ease-in` })
           setGhost(prev =>
@@ -241,7 +251,7 @@ export default function MarketMapTreemap({
   // 줄어든 걸 감지해서 재생한다(이동이 이미 끝난 뒤라 실제 콘텐츠가 밑에 다 그려져 있는 상태).
   useEffect(() => {
     if (zoomOutRequestDepth == null) return
-    outgoingSnapshotRef.current = categories
+    outgoingSnapshotRef.current = { categories, depth }
     onZoomOutComplete(zoomOutRequestDepth)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoomOutRequestDepth])
@@ -266,6 +276,7 @@ export default function MarketMapTreemap({
             <MarketMapCategorySection
               key={category.categoryName}
               category={category}
+              depthOffset={ghost.depth}
               onSelectCategory={noop}
               onOpenExcludeMenu={noop}
               marketValueDepthRange={marketValueDepthRange}
@@ -286,6 +297,7 @@ export default function MarketMapTreemap({
           <MarketMapCategorySection
             key={category.categoryName}
             category={category}
+            depthOffset={depth}
             onSelectCategory={handleSelectCategory}
             onOpenExcludeMenu={handleOpenExcludeMenu}
             marketValueDepthRange={marketValueDepthRange}

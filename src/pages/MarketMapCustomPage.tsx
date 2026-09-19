@@ -104,6 +104,8 @@ export default function MarketMapCustomPage() {
     setMarket,
     isCustom,
     data,
+    refetchMarketMap,
+    isRefetchingMarketMap,
     isLoading,
     isError,
     rootNodes,
@@ -147,7 +149,8 @@ export default function MarketMapCustomPage() {
   // "업종 분류 레벨" 뎁스 제한을 "지금 보고 있는 위치"(currentNode, 없으면 최상위) 기준으로 매번 새로
   // 적용한다 — 진짜 루트 기준 절대값이 아니라, 어디로 드릴다운하든 거기서부터 다시 N단계가 보이는
   // 상대값이어야 한다(그래야 뎁스 제한 때문에 드릴다운 경로가 끊기거나 더 깊이 진입해도 항상 똑같이
-  // 얕게만 보이는 문제가 없다). 커스텀 모드가 아니면 뎁스 제한 자체를 무시한다.
+  // 얕게만 보이는 문제가 없다). 드릴다운 상태에서는 헤더를 그리지 않는 자기 자신은 단계로 세지
+  // 않고 그 자식부터 1단계로 센다. 커스텀 모드가 아니면 뎁스 제한 자체를 무시한다.
   const effectiveMaxDepth = isCustom ? maxDepth : null
   // 뎁스 0("끄기")은 limitDepth로 표현할 수 없다(그 함수는 항상 최소 1뎁스 = 대분류 박스 하나는
   // 남긴다) — 완전 평탄화는 별도로 처리한다: 지금 보이는 위치 아래 종목을 전부 하나로 모아
@@ -158,7 +161,7 @@ export default function MarketMapCustomPage() {
     effectiveMaxDepth != null && !isFullyFlattened ? limitDepth(currentSiblings, effectiveMaxDepth) : currentSiblings
   const displayNode =
     currentNode && effectiveMaxDepth != null && !isFullyFlattened
-      ? (limitDepth([currentNode], effectiveMaxDepth)[0] ?? currentNode)
+      ? { ...currentNode, children: limitDepth(currentNode.children, effectiveMaxDepth) }
       : currentNode
   const groups: DisplayGroup[] = isFullyFlattened
     ? [toFlatDisplayGroup(flattenAllItems(currentNode ? [currentNode] : currentSiblings))]
@@ -268,6 +271,8 @@ export default function MarketMapCustomPage() {
       <SubNavBar
         actions={
           <NavBarPageActions
+            onRefresh={refetchMarketMap}
+            isRefreshing={isRefetchingMarketMap}
             onToggleSettings={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
             isSettingsOpen={settingsModalProps.isOpen}
             onOpenShare={() => setIsShareOpen(true)}

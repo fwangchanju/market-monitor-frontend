@@ -37,7 +37,11 @@ export default function MarketMapAdminPage() {
     refetch: refetchCategories,
     isRefetching: isRefetchingCategories,
   } = useAdminCategories()
-  const { data: stockCategories } = useStockCategories()
+  const {
+    data: stockCategories,
+    refetch: refetchStockCategories,
+    isRefetching: isRefetchingStockCategories,
+  } = useStockCategories()
 
   const { settingsModalProps, colorEditorPanelProps } = useGlobalSettings({ needsTree: false })
   const [isShareOpen, setIsShareOpen] = useState(false)
@@ -77,6 +81,8 @@ export default function MarketMapAdminPage() {
 
   const actions = (
     <NavBarPageActions
+      onRefresh={mode === 'stock' ? refetchStockCategories : refetchCategories}
+      isRefreshing={mode === 'stock' ? isRefetchingStockCategories : isRefetchingCategories}
       onToggleSettings={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
       isSettingsOpen={settingsModalProps.isOpen}
       onOpenShare={() => setIsShareOpen(true)}

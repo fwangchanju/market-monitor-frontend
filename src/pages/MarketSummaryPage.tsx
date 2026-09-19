@@ -30,7 +30,7 @@ export default function MarketSummaryPage() {
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
   const { isNativeFullscreen, handleToggleNativeFullscreen } = useNativeFullscreen()
   const captureRef = useRef<HTMLDivElement>(null)
-  const { data: marketSummaryData } = useMarketSummary()
+  const { data: marketSummaryData, isRefetching: isRefetchingMarketSummary, refetch: refetchMarketSummary } = useMarketSummary()
 
   const handleCopy = async () => {
     if (!captureRef.current) return
@@ -67,6 +67,8 @@ export default function MarketSummaryPage() {
       <SubNavBar
         actions={
           <NavBarPageActions
+            onRefresh={refetchMarketSummary}
+            isRefreshing={isRefetchingMarketSummary}
             onToggleSettings={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
             isSettingsOpen={settingsModalProps.isOpen}
             onOpenShare={() => setIsShareOpen(true)}

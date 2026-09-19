@@ -288,5 +288,17 @@ a { color: var(--accent-light); text-decoration: none; }
   counter-increment: settings-section;
   content: counter(settings-section) ". ";
 }
+.settings-section-bullet::before {
+  content: "· ";
+}
+
+/* 옵션 사이드바 중제목 아래의 소항목 번호 — 각 settings-subsection-list마다 1)부터 다시 시작한다. */
+.settings-subsection-list {
+  counter-reset: settings-subsection;
+}
+.settings-subsection-num::before {
+  counter-increment: settings-subsection;
+  content: counter(settings-subsection) ") ";
+}
 
 }

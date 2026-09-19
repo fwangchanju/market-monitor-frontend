@@ -1,6 +1,8 @@
 import { CalendarIcon, ClockIcon, MaximizeIcon, MinimizeIcon, RefreshIcon, SettingsIcon, ShareIcon } from '@/components/icons/MarketMapIcons'
 
 interface Props {
+  onRefresh: () => void | Promise<unknown>
+  isRefreshing: boolean
   onToggleSettings: () => void
   isSettingsOpen: boolean
   onOpenShare: () => void
@@ -16,6 +18,8 @@ const INACTIVE_BUTTON_CLASS = `${BUTTON_CLASS} text-gray-400`
 // SubNavBar 우측에 들어가는 공용 액션 버튼 — 지도/커스텀/요약/섹터 페이지가 전부 동일하게 쓴다.
 // 설정 토글/공유 열기/풀스크린 토글은 페이지마다 다른 상태에 붙어있어 콜백으로 받는다.
 export default function NavBarPageActions({
+  onRefresh,
+  isRefreshing,
   onToggleSettings,
   isSettingsOpen,
   onOpenShare,
@@ -35,8 +39,15 @@ export default function NavBarPageActions({
           </button>
         </>
       )}
-      <button type="button" aria-label="새로고침" className={INACTIVE_BUTTON_CLASS} onClick={() => window.location.reload()}>
-        <RefreshIcon className="h-4 w-4" />
+      <button
+        type="button"
+        aria-label="스냅샷 새로고침"
+        aria-busy={isRefreshing}
+        disabled={isRefreshing}
+        className={INACTIVE_BUTTON_CLASS}
+        onClick={() => void onRefresh()}
+      >
+        <RefreshIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
       </button>
       <button
         type="button"

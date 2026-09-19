@@ -120,7 +120,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 서버 반영 전에 재조회가 먼저 도착할 수 있음).
   const seededKeyRef = useRef<string | null>(null)
 
-  const { data, isLoading, isError } = useMarketMap(market, isCustom, { enabled: needsTree || isSettingsOpen })
+  const { data, isLoading, isError, isRefetching: isRefetchingMarketMap, refetch: refetchMarketMap } = useMarketMap(market, isCustom, {
+    enabled: needsTree || isSettingsOpen,
+  })
   const rootNodes = data?.items ?? []
 
   useEffect(() => {
@@ -386,6 +388,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     setMarket,
     isCustom,
     data,
+    refetchMarketMap,
+    isRefetchingMarketMap,
     isLoading,
     isError,
     rootNodes,

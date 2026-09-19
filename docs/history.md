@@ -183,3 +183,5 @@ List<CategoryChangeRateItem>
 내려주고 키 자체를 빼지 않는다(Jackson 기본 inclusion이 `ALWAYS`이고 백엔드에 `@JsonInclude`도
 `spring.jackson.default-property-inclusion`도 없다). `.optional()`을 남겨두면 백엔드가 필드를 통째로
 빠뜨리는 회귀가 생겨도 화면이 조용히 지수 바 없이 그려진다. `.nullable()`만 남는 것이 원래 의미다.
+
+헤더 색은 절대 depth, 크기는 상대 depth로 유지한다(2026-09-19).
