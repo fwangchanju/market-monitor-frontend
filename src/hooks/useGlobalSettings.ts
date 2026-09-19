@@ -87,16 +87,21 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const [market, setMarket] = usePersistedState<MarketQuery>('marketMap.market', 'KOSPI')
   const [isCustom, setIsCustom] = usePersistedState('marketMap.isCustom', true)
   // 시가총액 합/등락률 평균/등락 종목수 태그를 셋 다 동시에 켤 수 있었는데, 한꺼번에 여러 개가 뜨면
-  // 카테고리 헤더가 너무 정신없어서 라디오처럼 하나만 켤 수 있게 바꿨다 — 뎁스 범위 슬라이더도 셋의
+  // 카테고리 헤더가 너무 정신없어서 라디오처럼 하나만 고르게 했다 — 뎁스 범위 슬라이더도 셋의
   // 내용(스텝/라벨)이 완전히 같으니 하나만 두고, 그 슬라이더가 지금 어느 지표에 적용되는지만
-  // activeDepthMetric으로 고른다(null = 전부 꺼짐). 인덱스는 뎁스에 직접 대응(0=대분류, 1=중분류, ...)
-  // — 예전처럼 별도 OFF 칸을 안 둔다(꺼짐은 activeDepthMetric=null로 표현).
+  // activeDepthMetric으로 고른다. 기능 전체의 표시 여부는 별도 토글(depthMetricEnabled)이 담당한다.
   const [activeDepthMetric, setActiveDepthMetric] = usePersistedState<DepthMetric | null>(
     'marketMap.activeDepthMetric',
     'avgChangeRate',
   )
-  // 지표 슬라이더를 "끄기"로 옮겨도, 다시 슬라이더를 움직이면 직전에 고른 지표를 복원한다.
+  // 업종 표시 지표 토글을 다시 켤 때 직전에 고른 라디오 지표를 복원한다.
   const lastActiveDepthMetricRef = useRef<DepthMetric>(activeDepthMetric ?? 'avgChangeRate')
+  const [depthMetricEnabled, setDepthMetricEnabled] = usePersistedState(
+    'marketMap.depthMetricEnabled',
+    activeDepthMetric !== null,
+  )
+  // 예전 세션스토리지에 activeDepthMetric=null만 남아 있어도 토글을 다시 켜면 등락률을 복원한다.
+  const selectedDepthMetric = activeDepthMetric ?? lastActiveDepthMetricRef.current
   // 기본값: 대분류~중분류(index 0~1) — 렌더러가 캡처하는 기본 화면에 등락률이 보이도록.
   const [depthMetricMinIndex, setDepthMetricMinIndex] = usePersistedState('marketMap.depthMetricMinIndex', 0)
   const [depthMetricMaxIndex, setDepthMetricMaxIndex] = usePersistedState('marketMap.depthMetricMaxIndex', 1)
@@ -136,7 +141,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // null = 제한 없음(전체 뎁스 표시). 슬라이더의 실제 상한(availableMaxDepth)은 트리 계산 후에 나온다.
   // 기본값 2(렌더러 캡처 기준 화면에 맞춤).
   const [maxDepth, setMaxDepth] = useState<number | null>(2)
-  // 업종 톱픽 — 선택한 절대 depth에서 등락률 상위 N개 카테고리를 지도 전체에 강조한다.
+  // 선호 업종 — 선택한 절대 depth에서 등락률 상위 N개 카테고리를 지도 전체에 강조한다.
   const [topPickDepth, setTopPickDepth] = usePersistedState('marketMap.topPickDepth', 0)
   const [topPickCount, setTopPickCount] = usePersistedState('marketMap.topPickCount', 0)
   // 설정 팝업 열림 상태 — 색상 추가/수정 세션이 시작되면(아래) 잠깐 닫혔다가, 세션이 끝나면(적용/취소) 다시 열린다.
@@ -178,15 +183,17 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const isDepthMetricRangeValid = depthMetricClampedMaxIndex < availableMaxDepth
 
   const activeDepthRange: [number, number] | null =
-    activeDepthMetric !== null && isDepthMetricRangeValid ? [depthMetricClampedMinIndex, depthMetricClampedMaxIndex] : null
+    depthMetricEnabled && isDepthMetricRangeValid
+      ? [depthMetricClampedMinIndex, depthMetricClampedMaxIndex]
+      : null
 
-  const marketValueDepthRange = activeDepthMetric === 'marketValue' ? activeDepthRange : null
-  const avgChangeRateDepthRange = activeDepthMetric === 'avgChangeRate' ? activeDepthRange : null
-  const upDownCountDepthRange = activeDepthMetric === 'upDownCount' ? activeDepthRange : null
+  const marketValueDepthRange = selectedDepthMetric === 'marketValue' ? activeDepthRange : null
+  const avgChangeRateDepthRange = selectedDepthMetric === 'avgChangeRate' ? activeDepthRange : null
+  const upDownCountDepthRange = selectedDepthMetric === 'upDownCount' ? activeDepthRange : null
 
-  // 업종 톱픽 라디오의 활성 상한은 실제 화면에 표시할 수 있는 분류 단계와 같다. 저장된 선택값이
-  // 이 범위를 벗어나면 값 자체는 건드리지 않고, 현재만 빈 Set으로 취급해서 강조를 끈다.
-  const topPickMaxSelectableDepth = Math.min(availableMaxDepth, maxDepth ?? availableMaxDepth)
+  // 선호 업종 라디오의 활성 상한은 업종 분류 레벨 설정을 따른다. 대/중/소분류 설정은 데이터가 얕아도
+  // 미리 선택할 수 있게 두고, 현재 데이터에 해당 카테고리가 없으면 강조 대상만 빈 Set으로 둔다.
+  const topPickMaxSelectableDepth = maxDepth === null ? Math.max(3, availableMaxDepth) : maxDepth
   const topPickCategoryIds = useMemo(() => {
     if (!isCustom || topPickCount <= 0 || topPickDepth < 0 || topPickDepth >= topPickMaxSelectableDepth) {
       return new Set<number>()
@@ -358,24 +365,23 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
 
   const handleToggleCustom = () => setIsCustom(prev => !prev)
 
-  const handleChangeActiveDepthMetric = (metric: DepthMetric | null) => {
-    if (metric !== null) lastActiveDepthMetricRef.current = metric
+  const handleChangeActiveDepthMetric = (metric: DepthMetric) => {
+    lastActiveDepthMetricRef.current = metric
     setActiveDepthMetric(metric)
+  }
+
+  const handleToggleDepthMetric = () => {
+    if (!depthMetricEnabled) setActiveDepthMetric(lastActiveDepthMetricRef.current)
+    setDepthMetricEnabled(prev => !prev)
   }
 
   const handleChangeMaxDepth = (nextMaxDepth: number) => {
     setMaxDepth(nextMaxDepth)
-    // 실제 화면에 표시할 수 있는 최대 뎁스가 줄어들면 지표 범위도 그 안으로만 즉시 줄인다.
-    // "끄기"(0)는 지표 설정을 비활성화할 뿐 기존 지표 범위는 보존해서 다시 켰을 때 복원한다.
-    if (nextMaxDepth === 0) return
-    const maxAllowedMetricIndex = Math.max(0, Math.min(availableMaxDepth, nextMaxDepth) - 1)
-    setDepthMetricMinIndex(prev => Math.min(prev, maxAllowedMetricIndex))
-    setDepthMetricMaxIndex(prev => Math.min(prev, maxAllowedMetricIndex))
+    // 지표 범위는 그대로 보존한다. 표시 가능한 상한을 넘는 부분은 설정 UI에서만 잠시 비활성화하고,
+    // 업종 분류 레벨을 다시 높이면 원래 선택 범위가 그대로 돌아온다.
   }
 
   const handleChangeDepthMetricRange = (min: number, max: number) => {
-    // OFF 상태에서 슬라이더를 다시 움직이면 직전에 선택했던 지표를 자동으로 켠다.
-    if (activeDepthMetric === null) setActiveDepthMetric(lastActiveDepthMetricRef.current)
     setDepthMetricMinIndex(min)
     setDepthMetricMaxIndex(max)
   }
@@ -401,8 +407,10 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     maxDepth,
     availableMaxDepth,
     onChangeMaxDepth: handleChangeMaxDepth,
-    activeDepthMetric,
+    activeDepthMetric: selectedDepthMetric,
     onChangeActiveDepthMetric: handleChangeActiveDepthMetric,
+    depthMetricEnabled,
+    onToggleDepthMetric: handleToggleDepthMetric,
     depthMetricMinIndex: depthMetricClampedMinIndex,
     depthMetricMaxIndex: depthMetricClampedMaxIndex,
     onChangeDepthMetricRange: handleChangeDepthMetricRange,

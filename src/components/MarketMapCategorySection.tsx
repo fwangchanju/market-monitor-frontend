@@ -5,7 +5,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { categoryHeaderFontSize, categoryHeaderHeight, PADDING, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
 import { TAB_GAP, avgChangeRateLabel, toJoEokDecimal, toPctSigned } from '@/utils/format'
 import type { MarketMapItem } from '@/types/api'
-import { type ColorScaleConfig } from '@/utils/marketMapColorScale'
+import { resolveContrastingTextColor, resolveMarketMapColor, type ColorScaleConfig } from '@/utils/marketMapColorScale'
 import type { StockLabelMode } from '@/hooks/useGlobalSettings'
 
 interface Props {
@@ -98,6 +98,9 @@ export default function MarketMapCategorySection({
   const avgChangeRate = avgChangeRateUseSimple
     ? (category.simpleAvgChangeRate ?? localSimpleAvgChangeRate(items))
     : (category.weightedAvgChangeRate ?? localWeightedAvgChangeRate(items))
+  const isTopPick = topPickCategoryIds.has(category.categoryId) && !category.isSelf
+  const topPickBackgroundColor = isTopPick ? resolveMarketMapColor(avgChangeRate, colorScale) : undefined
+  const topPickTextColor = topPickBackgroundColor ? resolveContrastingTextColor(topPickBackgroundColor) : null
   const advancerCount = items.filter(item => item.changeRate > 0).length
   const declinerCount = items.filter(item => item.changeRate < 0).length
   const unchangedCount = items.length - advancerCount - declinerCount
@@ -112,9 +115,12 @@ export default function MarketMapCategorySection({
   ].filter((part): part is string => part !== null)
   const headerSuffix = headerParts.length > 0 ? `${TAB_GAP}${headerParts.join(TAB_GAP)}` : ''
   const absoluteDepth = depthOffset + depth
-  const isTopPick = topPickCategoryIds.has(category.categoryId) && !category.isSelf
   const headerStyle = isTopPick
-    ? { background: 'bg-[var(--accent)]', text: 'text-black', border: 'border-2 border-[var(--accent)]' }
+    ? {
+        background: 'bg-transparent',
+        text: topPickTextColor === 'black' ? 'text-black' : 'text-white',
+        border: 'border-0',
+      }
     : categoryHeaderStyle(absoluteDepth)
 
   return (
@@ -161,6 +167,7 @@ export default function MarketMapCategorySection({
               fontSize: categoryHeaderFontSize(depth),
               left: PADDING,
               width: `calc(100% - ${PADDING * 2}px)`,
+              ...(topPickBackgroundColor ? { backgroundColor: topPickBackgroundColor } : {}),
             }}
             className={`absolute top-0 flex items-center overflow-hidden truncate px-1 text-left font-bold leading-none ${headerStyle.border} ${headerStyle.text ?? ''} ${headerStyle.background}`}
           >
