@@ -115,6 +115,7 @@ export default function MarketMapCustomPage() {
     avgChangeRateDepthRange,
     upDownCountDepthRange,
     avgChangeRateUseSimple,
+    topPickCategoryIds,
     onChangeAvgChangeRateUseSimple,
     onChangeSectorFilterEnabled,
     boxLabelMinAreaPercent,
@@ -415,6 +416,7 @@ export default function MarketMapCustomPage() {
                   labelMinAreaPercent={boxLabelMinAreaPercent}
                   stockLabelMode={stockLabelMode}
                   decimalPlaces={decimalPlaces}
+                  topPickCategoryIds={topPickCategoryIds}
                   zoomOutRequestDepth={zoomOutRequestDepth}
                   onZoomOutComplete={handleZoomOutComplete}
                 />
@@ -435,7 +437,7 @@ export default function MarketMapCustomPage() {
             />
             <SettingsMarketValueSection {...settingsModalProps} showDivider={false} />
             <SettingsExcludeSection {...settingsModalProps} />
-            <SettingsCategoryLevelSection {...settingsModalProps} showDecimalPlaces />
+            <SettingsCategoryLevelSection {...settingsModalProps} showTopPick showDecimalPlaces />
             <SettingsColorSection {...settingsModalProps} />
           </SettingsSidebar>
         </div>

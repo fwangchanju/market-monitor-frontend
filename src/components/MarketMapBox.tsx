@@ -70,7 +70,7 @@ export default function MarketMapBox({
       onMouseEnter={tooltip.onMouseEnter}
       onMouseMove={tooltip.onMouseMove}
       onMouseLeave={tooltip.onMouseLeave}
-      className={`flex flex-col items-center justify-center overflow-hidden text-white ${tooltip.hover ? 'border-2 border-[var(--accent)]' : 'border border-black/40'}`}
+      className="flex flex-col items-center justify-center overflow-hidden border border-black/40 text-white"
     >
       {showLabel && (
         <>

@@ -29,6 +29,7 @@ interface Props {
   stockLabelMode: StockLabelMode
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
   decimalPlaces: number
+  topPickCategoryIds: Set<number>
   // 현재 화면의 상대 depth 0이 트리에서 몇 번째 단계인지 나타내는 절대 depth 오프셋.
   depthOffset?: number
   depth?: number
@@ -61,10 +62,10 @@ const TOOLTIP_OFFSET_X = 56
 
 // 절대 depth(트리 기준 실제 단계) → 배경/글자색. 배열 끝을 넘으면 마지막 값을 반복한다.
 const CATEGORY_HEADER_STYLES = [
-  { background: 'bg-[var(--accent)]', text: 'text-black', border: 'border border-[var(--accent)]' },
-  { background: 'bg-black', text: 'text-white', border: 'border border-[var(--accent)]' },
-  { background: 'bg-[#4d4d4d]', text: 'text-white', border: 'border border-[var(--accent)]' },
-  { background: 'bg-[#666666]', text: 'text-white', border: 'border border-[var(--accent)]' },
+  { background: 'bg-black', text: 'text-[var(--accent)]', border: 'border-2 border-transparent' },
+  { background: 'bg-[#333333]', text: 'text-white', border: 'border-2 border-transparent' },
+  { background: 'bg-[#4d4d4d]', text: 'text-white', border: 'border-2 border-transparent' },
+  { background: 'bg-[#666666]', text: 'text-white', border: 'border-2 border-transparent' },
 ]
 
 function categoryHeaderStyle(depth: number) {
@@ -84,6 +85,7 @@ export default function MarketMapCategorySection({
   labelMinAreaPercent,
   stockLabelMode,
   decimalPlaces,
+  topPickCategoryIds,
   depthOffset = 0,
   depth = 0,
 }: Props) {
@@ -110,7 +112,10 @@ export default function MarketMapCategorySection({
   ].filter((part): part is string => part !== null)
   const headerSuffix = headerParts.length > 0 ? `${TAB_GAP}${headerParts.join(TAB_GAP)}` : ''
   const absoluteDepth = depthOffset + depth
-  const headerStyle = categoryHeaderStyle(absoluteDepth)
+  const isTopPick = topPickCategoryIds.has(category.categoryId) && !category.isSelf
+  const headerStyle = isTopPick
+    ? { background: 'bg-[var(--accent)]', text: 'text-black', border: 'border-2 border-[var(--accent)]' }
+    : categoryHeaderStyle(absoluteDepth)
 
   return (
     <div
@@ -122,9 +127,9 @@ export default function MarketMapCategorySection({
         width: category.width,
         height: category.height,
         // 툴팁이 형제 카테고리 아래에 가려지지 않도록 hover 시 z-index만 올린다.
-        zIndex: tooltip.hover ? 20 : undefined,
+        zIndex: isTopPick || tooltip.hover ? 20 : undefined,
       }}
-      className="box-content"
+      className={`box-content ${isTopPick ? 'border-2 border-[var(--accent)]' : ''}`}
     >
       {/* isSelf(드릴다운으로 들어온 자기 자신)는 헤더 태그를 안 그린다 — breadcrumb에 이미
           "KOSPI > 반도체"처럼 같은 이름이 떠 있어서 중복이기 때문(useMarketMapLayout의 paddingTop도
@@ -190,6 +195,7 @@ export default function MarketMapCategorySection({
           labelMinAreaPercent={labelMinAreaPercent}
           stockLabelMode={stockLabelMode}
           decimalPlaces={decimalPlaces}
+          topPickCategoryIds={topPickCategoryIds}
           depthOffset={depthOffset}
           depth={category.isSelf ? depth : depth + 1}
         />

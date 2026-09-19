@@ -1,9 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePersistedState } from './usePersistedState'
 import { useMarketMap } from './useMarketMap'
 import { useMarketMapColorScale } from './useMarketMapColorScale'
 import { useCreateMarketMapScaleThreshold, useUpdateMarketMapScaleThreshold, useDeleteMarketMapScaleThreshold } from './useMarketMapAdmin'
-import { useFilteredMarketMapTree } from './useFilteredMarketMapTree'
+import {
+  collectAllItems,
+  collectCategoriesAtDepth,
+  useFilteredMarketMapTree,
+  type FilteredMarketMapCategoryNode,
+} from './useFilteredMarketMapTree'
 import { useMarketValueTierRange } from './useMarketValueTierRange'
 import { registerExcludedCategory, unregisterExcludedCategory } from '@/api/marketMap'
 import {
@@ -51,6 +56,22 @@ function findCategoryPath(nodes: MarketMapCategoryNode[], targetId: number, ance
   return null
 }
 
+function fallbackWeightedAvgChangeRate(items: ReturnType<typeof collectAllItems>): number | null {
+  const totalWeight = items.reduce((sum, item) => sum + item.totalMarketValue, 0)
+  return totalWeight > 0 ? items.reduce((sum, item) => sum + item.changeRate * item.totalMarketValue, 0) / totalWeight : null
+}
+
+function fallbackSimpleAvgChangeRate(items: ReturnType<typeof collectAllItems>): number | null {
+  return items.length > 0 ? items.reduce((sum, item) => sum + item.changeRate, 0) / items.length : null
+}
+
+function topPickAverage(node: FilteredMarketMapCategoryNode, useSimple: boolean): number | null {
+  const snapshotAverage = useSimple ? node.simpleAvgChangeRate : node.weightedAvgChangeRate
+  if (snapshotAverage !== null) return snapshotAverage
+  const items = collectAllItems(node)
+  return useSimple ? fallbackSimpleAvgChangeRate(items) : fallbackWeightedAvgChangeRate(items)
+}
+
 // "설정" 사이드바(SettingsSidebar) + 색상 구간 편집 패널이 필요로 하는 상태/로직 전부를
 // 여기 한 곳에 모아둔다 — 세션스토리지 키를 그대로 공유해서 어느 페이지에서 열어도 같은 값을 보고
 // 편집한다(지도/섹터 페이지뿐 아니라 아직 이 옵션이 실제로 영향 안 주는 페이지에서 열어도 동일).
@@ -74,6 +95,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     'marketMap.activeDepthMetric',
     'avgChangeRate',
   )
+  // 지표 슬라이더를 "끄기"로 옮겨도, 다시 슬라이더를 움직이면 직전에 고른 지표를 복원한다.
+  const lastActiveDepthMetricRef = useRef<DepthMetric>(activeDepthMetric ?? 'avgChangeRate')
   // 기본값: 대분류~중분류(index 0~1) — 렌더러가 캡처하는 기본 화면에 등락률이 보이도록.
   const [depthMetricMinIndex, setDepthMetricMinIndex] = usePersistedState('marketMap.depthMetricMinIndex', 0)
   const [depthMetricMaxIndex, setDepthMetricMaxIndex] = usePersistedState('marketMap.depthMetricMaxIndex', 1)
@@ -113,6 +136,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // null = 제한 없음(전체 뎁스 표시). 슬라이더의 실제 상한(availableMaxDepth)은 트리 계산 후에 나온다.
   // 기본값 2(렌더러 캡처 기준 화면에 맞춤).
   const [maxDepth, setMaxDepth] = useState<number | null>(2)
+  // 업종 톱픽 — 선택한 절대 depth에서 등락률 상위 N개 카테고리를 지도 전체에 강조한다.
+  const [topPickDepth, setTopPickDepth] = usePersistedState('marketMap.topPickDepth', 0)
+  const [topPickCount, setTopPickCount] = usePersistedState('marketMap.topPickCount', 0)
   // 설정 팝업 열림 상태 — 색상 추가/수정 세션이 시작되면(아래) 잠깐 닫혔다가, 세션이 끝나면(적용/취소) 다시 열린다.
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   // 새로 받아온 (market, isCustom) 조합의 데이터가 처음 도착했을 때만 서버 isExcluded로 시드하고,
@@ -157,6 +183,31 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const marketValueDepthRange = activeDepthMetric === 'marketValue' ? activeDepthRange : null
   const avgChangeRateDepthRange = activeDepthMetric === 'avgChangeRate' ? activeDepthRange : null
   const upDownCountDepthRange = activeDepthMetric === 'upDownCount' ? activeDepthRange : null
+
+  // 업종 톱픽 라디오의 활성 상한은 실제 화면에 표시할 수 있는 분류 단계와 같다. 저장된 선택값이
+  // 이 범위를 벗어나면 값 자체는 건드리지 않고, 현재만 빈 Set으로 취급해서 강조를 끈다.
+  const topPickMaxSelectableDepth = Math.min(availableMaxDepth, maxDepth ?? availableMaxDepth)
+  const topPickCategoryIds = useMemo(() => {
+    if (!isCustom || topPickCount <= 0 || topPickDepth < 0 || topPickDepth >= topPickMaxSelectableDepth) {
+      return new Set<number>()
+    }
+
+    const candidates = collectCategoriesAtDepth(filteredRootNodes, topPickDepth)
+      .map((node, index) => ({ node, index, average: topPickAverage(node, avgChangeRateUseSimple) }))
+      .filter((candidate): candidate is { node: FilteredMarketMapCategoryNode; index: number; average: number } => {
+        return candidate.average !== null
+      })
+      .sort((a, b) => b.average - a.average || b.node.totalMarketValue - a.node.totalMarketValue || a.index - b.index)
+
+    return new Set(candidates.slice(0, topPickCount).map(candidate => candidate.node.categoryId))
+  }, [
+    avgChangeRateUseSimple,
+    filteredRootNodes,
+    isCustom,
+    topPickCount,
+    topPickDepth,
+    topPickMaxSelectableDepth,
+  ])
 
   // 등락률 컬러 스케일 draft — 서버 값(useMarketMapColorScale)이 도착하면 딱 한 번만 시드하고,
   // 이후로는 어드민이 설정 팝업에서 편집하는 draft를 그대로 트리맵/범례에 흘려보낸다. 그래서 "저장"
@@ -307,6 +358,28 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
 
   const handleToggleCustom = () => setIsCustom(prev => !prev)
 
+  const handleChangeActiveDepthMetric = (metric: DepthMetric | null) => {
+    if (metric !== null) lastActiveDepthMetricRef.current = metric
+    setActiveDepthMetric(metric)
+  }
+
+  const handleChangeMaxDepth = (nextMaxDepth: number) => {
+    setMaxDepth(nextMaxDepth)
+    // 실제 화면에 표시할 수 있는 최대 뎁스가 줄어들면 지표 범위도 그 안으로만 즉시 줄인다.
+    // "끄기"(0)는 지표 설정을 비활성화할 뿐 기존 지표 범위는 보존해서 다시 켰을 때 복원한다.
+    if (nextMaxDepth === 0) return
+    const maxAllowedMetricIndex = Math.max(0, Math.min(availableMaxDepth, nextMaxDepth) - 1)
+    setDepthMetricMinIndex(prev => Math.min(prev, maxAllowedMetricIndex))
+    setDepthMetricMaxIndex(prev => Math.min(prev, maxAllowedMetricIndex))
+  }
+
+  const handleChangeDepthMetricRange = (min: number, max: number) => {
+    // OFF 상태에서 슬라이더를 다시 움직이면 직전에 선택했던 지표를 자동으로 켠다.
+    if (activeDepthMetric === null) setActiveDepthMetric(lastActiveDepthMetricRef.current)
+    setDepthMetricMinIndex(min)
+    setDepthMetricMaxIndex(max)
+  }
+
   const handleExcludeCategory = (categoryId: number, categoryName: string) => {
     const path = findCategoryPath(rootNodes, categoryId)
     setExcludedCategoryNames(prev => new Map(prev).set(categoryId, path ? path.join(' > ') : categoryName))
@@ -327,15 +400,17 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     onToggleCustom: handleToggleCustom,
     maxDepth,
     availableMaxDepth,
-    onChangeMaxDepth: setMaxDepth,
+    onChangeMaxDepth: handleChangeMaxDepth,
     activeDepthMetric,
-    onChangeActiveDepthMetric: setActiveDepthMetric,
+    onChangeActiveDepthMetric: handleChangeActiveDepthMetric,
     depthMetricMinIndex: depthMetricClampedMinIndex,
     depthMetricMaxIndex: depthMetricClampedMaxIndex,
-    onChangeDepthMetricRange: (min: number, max: number) => {
-      setDepthMetricMinIndex(min)
-      setDepthMetricMaxIndex(max)
-    },
+    onChangeDepthMetricRange: handleChangeDepthMetricRange,
+    topPickDepth,
+    topPickCount,
+    topPickMaxSelectableDepth,
+    onChangeTopPickDepth: setTopPickDepth,
+    onChangeTopPickCount: setTopPickCount,
     avgChangeRateUseSimple,
     onToggleAvgChangeRateUseSimple: () => setAvgChangeRateUseSimple(prev => !prev),
     boxLabelMinAreaPercent,
@@ -402,6 +477,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     avgChangeRateDepthRange,
     upDownCountDepthRange,
     avgChangeRateUseSimple,
+    topPickCategoryIds,
     // URL 쿼리(avgMode/sectorFilter)로 값을 직접 세팅해야 하는 페이지용 — 토글(prev => !prev)과 달리
     // 원하는 값을 그대로 넘겨 세팅한다.
     onChangeAvgChangeRateUseSimple: setAvgChangeRateUseSimple,

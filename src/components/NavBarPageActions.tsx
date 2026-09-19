@@ -44,7 +44,7 @@ export default function NavBarPageActions({
         aria-label="스냅샷 새로고침"
         aria-busy={isRefreshing}
         disabled={isRefreshing}
-        className={INACTIVE_BUTTON_CLASS}
+        className={`${INACTIVE_BUTTON_CLASS} nav-refresh-button`}
         onClick={() => void onRefresh()}
       >
         <RefreshIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />

@@ -292,6 +292,11 @@ a { color: var(--accent-light); text-decoration: none; }
   content: "· ";
 }
 
+/* 새로고침 중에도 버튼이 비활성화된 기본 브라우저 스타일에 가려지지 않고 기존 hover 색을 유지한다. */
+.nav-refresh-button:disabled:hover {
+  color: var(--accent);
+}
+
 /* 옵션 사이드바 중제목 아래의 소항목 번호 — 각 settings-subsection-list마다 1)부터 다시 시작한다. */
 .settings-subsection-list {
   counter-reset: settings-subsection;
