@@ -57,7 +57,7 @@ const alignClass = (align: 'center' | 'left' | 'right') =>
 
 const MARKET_LABEL: Record<'KOSPI' | 'KOSDAQ', string> = { KOSPI: '코스피', KOSDAQ: '코스닥' }
 const MARKET_FILTER_ORDER = [MARKET_LABEL.KOSPI, MARKET_LABEL.KOSDAQ]
-const marketColorClass = (market: 'KOSPI' | 'KOSDAQ') => (market === 'KOSPI' ? 'text-gray-400' : 'text-[#4f8fd6]')
+const marketColorClass = (market: 'KOSPI' | 'KOSDAQ') => (market === 'KOSPI' ? 'text-gray-400' : 'text-[var(--accent)]')
 
 const KOREAN_COLLATOR = new Intl.Collator('ko')
 
@@ -348,7 +348,7 @@ function UndoRedoHistoryPopup({
           {ordered.map(action => (
             <div
               key={action.id}
-              className="group flex items-center justify-between gap-3 whitespace-nowrap rounded px-1 py-0.5 hover:bg-yellow-400/10"
+              className="group flex items-center justify-between gap-3 whitespace-nowrap rounded px-1 py-0.5 hover:bg-[var(--accent)]/10"
             >
               <span className="text-white">{describeUndoableAction(action, items, categoryOptionsById)}</span>
               <button
@@ -357,7 +357,7 @@ function UndoRedoHistoryPopup({
                   onPick(action.id)
                   setIsOpen(false)
                 }}
-                className="hidden shrink-0 border-0 bg-transparent text-xs text-white hover:text-yellow-400 group-hover:inline-block"
+                  className="hidden shrink-0 border-0 bg-transparent text-xs text-white hover:text-[var(--accent)] group-hover:inline-block"
               >
                 {actionLabel}
               </button>
@@ -463,7 +463,7 @@ function CategorySearchPopup({
         className="nes-input is-dark w-full py-2 text-sm"
       />
       {contextLabel && (
-        <span className="mt-2 inline-block rounded bg-[#4f8fd6]/30 px-2 py-0.5 text-xs text-white">
+        <span className="mt-2 inline-block rounded bg-[var(--accent)]/30 px-2 py-0.5 text-xs text-white">
           {contextLabel}
         </span>
       )}
@@ -483,7 +483,7 @@ function CategorySearchPopup({
                 onClick={() => onSelect(opt.id)}
                 onMouseEnter={() => search.setHighlightedIndex(index)}
                 className={`block w-full truncate rounded px-2 py-0.5 text-left text-sm text-white ${
-                  index === search.highlightedIndex ? 'bg-[#4f8fd6]/30' : 'bg-transparent'
+                  index === search.highlightedIndex ? 'bg-[var(--accent)]/30' : 'bg-transparent'
                 }`}
               >
                 {opt.label}
@@ -571,7 +571,7 @@ function AdminStockCategoryCell({
     <td
       ref={cellRef}
       className={`pl-4 text-left ${disabled ? 'cursor-default text-gray-500' : 'cursor-pointer'} ${
-        isHighlighted ? 'bg-yellow-400/50' : rowHoverClass
+        isHighlighted ? 'bg-[var(--accent)]/50' : rowHoverClass
       }`}
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
@@ -679,7 +679,7 @@ function BulkAssignButton({
         type="button"
         onClick={handleClick}
         style={widthPx != null ? { width: widthPx } : undefined}
-        className="nes-btn border-sky-500 bg-sky-500 px-2 py-0.5 text-xs text-white hover:bg-sky-600"
+        className="nes-btn border-[var(--accent)] bg-[var(--accent)] px-2 py-0.5 text-xs text-black hover:bg-[var(--accent-hover)]"
       >
         일괄변경 ({count})
       </button>
@@ -768,7 +768,7 @@ function AdminAliasCell({
 
   return (
     <td
-      className={`cursor-pointer text-white ${alignClass('left')} ${isHighlighted ? 'bg-yellow-400/50' : rowHoverClass}`}
+      className={`cursor-pointer text-white ${alignClass('left')} ${isHighlighted ? 'bg-[var(--accent)]/50' : rowHoverClass}`}
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
       onClick={e => {
@@ -863,7 +863,7 @@ function AdminColumnFilterButton({
             placeholder="검색"
             className="nes-input is-dark mb-2 w-full py-2 text-sm"
           />
-          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 font-bold text-white hover:bg-yellow-400/50">
+          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 font-bold text-white hover:bg-[var(--accent)]/50">
             <input type="checkbox" checked={!isPreviewingSearch && isAllSelected} onChange={handleToggleAll} />
             <span>전체</span>
           </label>
@@ -871,7 +871,7 @@ function AdminColumnFilterButton({
             {visibleOptions.map(opt => (
               <label
                 key={opt}
-                className="flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-white hover:bg-yellow-400/50"
+                className="flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-white hover:bg-[var(--accent)]/50"
               >
                 <input
                   type="checkbox"
@@ -939,7 +939,7 @@ function AdminMarketValueFilterButton({
           className="nes-container is-dark z-50 !bg-violet-950 p-2 text-left text-sm normal-case"
           onClick={e => e.stopPropagation()}
         >
-          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 font-bold text-white hover:bg-yellow-400/50">
+          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 font-bold text-white hover:bg-[var(--accent)]/50">
             <input type="checkbox" checked={isAllSelected} onChange={() => (isAllSelected ? onSelectNone() : onSelectAll())} />
             <span>전체</span>
           </label>
@@ -947,7 +947,7 @@ function AdminMarketValueFilterButton({
             {tiers.map(tier => (
               <label
                 key={tier.id}
-                className="flex w-full cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-white hover:bg-yellow-400/50"
+                className="flex w-full cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-white hover:bg-[var(--accent)]/50"
               >
                 <input type="checkbox" checked={!excluded.has(tier.label)} onChange={() => onToggle(tier.label)} />
                 <span className="flex flex-1 items-center justify-between gap-2">
@@ -1106,7 +1106,7 @@ function AdminStockNameFilterButton({
                   onClick={() => onToggle(item.stockCode)}
                   onMouseEnter={() => setHighlightedIndex(index)}
                   className={`flex w-full items-center justify-between rounded px-1 py-0.5 text-left text-white ${
-                    index === highlightedIndex ? 'bg-yellow-400/50' : 'bg-transparent'
+                    index === highlightedIndex ? 'bg-[var(--accent)]/50' : 'bg-transparent'
                   }`}
                 >
                   <span className="whitespace-nowrap">{item.stockName}</span>
@@ -1135,7 +1135,7 @@ function AdminStockNameFilterButton({
                   key={item.stockCode}
                   type="button"
                   onClick={() => onToggle(item.stockCode)}
-                  className="flex w-full items-center justify-between rounded bg-transparent px-1 py-0.5 text-left text-yellow-400 hover:bg-yellow-400/20"
+                  className="flex w-full items-center justify-between rounded bg-transparent px-1 py-0.5 text-left text-[var(--accent)] hover:bg-[var(--accent)]/20"
                 >
                   <span className="whitespace-nowrap">{item.stockName}</span>
                   <span className="ml-1.5 shrink-0 text-gray-500">{item.stockCode}</span>
@@ -1197,7 +1197,7 @@ const AdminStockRow = memo(function AdminStockRow({
       return next
     })
   }
-  const rowHoverClass = isRowHovered || isSelected || editingCells.size > 0 ? 'bg-yellow-400/20' : ''
+  const rowHoverClass = isRowHovered || isSelected || editingCells.size > 0 ? 'bg-[var(--accent)]/20' : ''
 
   // 대분류 팝업엔 최상위 카테고리만, 중분류 팝업엔 "지금 이 종목의 대분류"의 자식만, 소분류 팝업엔
   // "지금 이 종목의 중분류"의 자식만 보여준다. categoryId(실제 배정된 카테고리)를 parentId로 거슬러
@@ -1786,13 +1786,13 @@ export default function AdminStockTable({
           <div className="flex items-center gap-2">
             <div
               ref={undoGroupRef}
-              className={`nes-btn flex items-stretch gap-0 border-sky-500 bg-sky-500 p-0 text-white ${undoStack.length === 0 ? 'opacity-50' : ''}`}
+              className={`nes-btn flex items-stretch gap-0 border-[var(--accent)] bg-[var(--accent)] p-0 text-black ${undoStack.length === 0 ? 'opacity-50' : ''}`}
             >
               <button
                 type="button"
                 onClick={handleUndo}
                 disabled={undoStack.length === 0}
-                className="flex items-center gap-1.5 border-0 bg-transparent px-2 py-0.5 text-xs text-white hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white"
+                className="flex items-center gap-1.5 border-0 bg-transparent px-2 py-0.5 text-xs text-black hover:text-black disabled:cursor-not-allowed disabled:hover:text-black"
                 title="실행취소 (Ctrl+Z)"
               >
                 <UndoIcon className="h-4 w-4" />
@@ -1802,7 +1802,7 @@ export default function AdminStockTable({
                 type="button"
                 onClick={() => setIsUndoListOpen(prev => !prev)}
                 disabled={undoStack.length === 0}
-                className={`flex items-center justify-center border-0 bg-transparent px-3 py-0.5 hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white ${isUndoListOpen ? 'text-yellow-400' : 'text-white'}`}
+                className={`flex items-center justify-center border-0 bg-transparent px-3 py-0.5 hover:text-black disabled:cursor-not-allowed disabled:hover:text-black ${isUndoListOpen ? 'text-black' : 'text-black'}`}
                 title="실행취소 목록"
               >
                 <ChevronDownIcon className="h-3.5 w-3.5" />
@@ -1820,13 +1820,13 @@ export default function AdminStockTable({
             />
             <div
               ref={redoGroupRef}
-              className={`nes-btn flex items-stretch gap-0 border-sky-500 bg-sky-500 p-0 text-white ${redoStack.length === 0 ? 'opacity-50' : ''}`}
+              className={`nes-btn flex items-stretch gap-0 border-[var(--accent)] bg-[var(--accent)] p-0 text-black ${redoStack.length === 0 ? 'opacity-50' : ''}`}
             >
               <button
                 type="button"
                 onClick={handleRedo}
                 disabled={redoStack.length === 0}
-                className="flex items-center gap-1.5 border-0 bg-transparent px-2 py-0.5 text-xs text-white hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white"
+                className="flex items-center gap-1.5 border-0 bg-transparent px-2 py-0.5 text-xs text-black hover:text-black disabled:cursor-not-allowed disabled:hover:text-black"
                 title="다시실행 (Ctrl+Y)"
               >
                 <RedoIcon className="h-4 w-4" />
@@ -1836,7 +1836,7 @@ export default function AdminStockTable({
                 type="button"
                 onClick={() => setIsRedoListOpen(prev => !prev)}
                 disabled={redoStack.length === 0}
-                className={`flex items-center justify-center border-0 bg-transparent px-3 py-0.5 hover:text-yellow-400 disabled:cursor-not-allowed disabled:hover:text-white ${isRedoListOpen ? 'text-yellow-400' : 'text-white'}`}
+                className={`flex items-center justify-center border-0 bg-transparent px-3 py-0.5 hover:text-black disabled:cursor-not-allowed disabled:hover:text-black ${isRedoListOpen ? 'text-black' : 'text-black'}`}
                 title="다시실행 목록"
               >
                 <ChevronDownIcon className="h-3.5 w-3.5" />
@@ -1861,7 +1861,7 @@ export default function AdminStockTable({
               <button
                 type="button"
                 onClick={handleClearAllFilters}
-                className="nes-btn border-sky-500 bg-sky-500 px-2 py-0.5 text-xs text-white hover:bg-sky-600"
+                className="nes-btn border-[var(--accent)] bg-[var(--accent)] px-2 py-0.5 text-xs text-black hover:bg-[var(--accent-hover)]"
               >
                 전체 필터 해제
               </button>
@@ -1871,7 +1871,7 @@ export default function AdminStockTable({
             type="button"
             onClick={onRefetchCategories}
             disabled={isRefetchingCategories}
-            className="nes-btn flex items-center gap-1 border-sky-500 bg-sky-500 px-2 py-0.5 text-xs text-white hover:bg-sky-600 disabled:opacity-50"
+            className="nes-btn flex items-center gap-1 border-[var(--accent)] bg-[var(--accent)] px-2 py-0.5 text-xs text-black hover:bg-[var(--accent-hover)] disabled:opacity-50"
             title="다른 탭에서 추가/변경한 카테고리를 반영합니다 (필터는 유지됨)"
           >
             <RefreshIcon className={`h-3.5 w-3.5 ${isRefetchingCategories ? 'animate-spin' : ''}`} />
@@ -1930,7 +1930,7 @@ export default function AdminStockTable({
           <thead className="sticky top-0 z-10">
             <tr>
               <th
-                className="cursor-pointer bg-[#4f8fd6] text-center"
+                className="cursor-pointer bg-[var(--accent)] text-center"
                 style={{ width: CHECKBOX_COLUMN_WIDTH }}
                 onClick={e => {
                   // 체크박스 자신을 클릭한 경우는 onChange가 이미 처리하므로 여기서 중복 토글하지 않는다.
@@ -1940,12 +1940,12 @@ export default function AdminStockTable({
               >
                 <input type="checkbox" checked={isAllVisibleSelected} onChange={toggleSelectAllVisible} />
               </th>
-              <th className="bg-[#4f8fd6] text-center" style={{ width: NUMBER_COLUMN_WIDTH }}>
+              <th className="bg-[var(--accent)] text-center" style={{ width: NUMBER_COLUMN_WIDTH }}>
                 #
               </th>
               {COLUMNS.map(col => {
                 const label = (
-                  <span className="cursor-pointer select-none hover:text-yellow-400" onClick={() => handleSort(col.key)}>
+                  <span className="cursor-pointer select-none hover:text-[var(--accent)]" onClick={() => handleSort(col.key)}>
                     {col.header}
                     <span className={`ml-1 ${sortKey === col.key ? 'text-[#ffee00]' : 'text-gray-400'}`}>
                       {sortKey === col.key ? (sortDirection === 'asc' ? '▲' : '▼') : '▼'}
@@ -1967,7 +1967,7 @@ export default function AdminStockTable({
                             : undefined
                     }
                     style={{ width: col.width }}
-                    className="whitespace-nowrap bg-[#4f8fd6] text-center"
+                    className="whitespace-nowrap bg-[var(--accent)] text-center"
                   >
                     {filterKey ? (
                       <div className="flex items-center justify-between pl-2 pr-1">

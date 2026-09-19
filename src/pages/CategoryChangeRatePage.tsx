@@ -20,7 +20,6 @@ import { categoryHeaderFontSize } from '@/hooks/useMarketMapLayout'
 import { combineTierBreakdowns } from '@/utils/categoryTierBreakdown'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import NavBarPageActions from '@/components/NavBarPageActions'
-import { CalendarIcon, ClockIcon } from '@/components/icons/MarketMapIcons'
 import { FONT_BAR_TITLE, FONT_BAR_TIME, FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
@@ -404,6 +403,7 @@ export default function CategoryChangeRatePage() {
             onOpenShare={() => setIsShareOpen(true)}
             isNativeFullscreen={isNativeFullscreen}
             onToggleFullscreen={handleToggleNativeFullscreen}
+            showSnapshotControls={Boolean(rankingData?.snapshotTime)}
           />
         }
       />
@@ -439,10 +439,8 @@ export default function CategoryChangeRatePage() {
               </span>
               {rankingData?.snapshotTime && (
                 <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-white`}>
-                  <CalendarIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
-                  {toMarketMapSnapshotDateLabel(rankingData.snapshotTime)}
-                  <ClockIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
-                  {toMarketMapSnapshotTimeOnlyLabel(rankingData.snapshotTime)}
+                  <span>{toMarketMapSnapshotDateLabel(rankingData.snapshotTime)}</span>
+                  <span>{toMarketMapSnapshotTimeOnlyLabel(rankingData.snapshotTime)}</span>
                 </span>
               )}
             </div>

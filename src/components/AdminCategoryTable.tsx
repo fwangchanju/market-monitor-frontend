@@ -117,7 +117,7 @@ function DroppableCategoryRow({
     data: { categoryId },
   })
   return (
-    <tr ref={setNodeRef} className={`${className} ${isOver ? 'bg-yellow-400/20' : ''}`}>
+    <tr ref={setNodeRef} className={`${className} ${isOver ? 'bg-[var(--accent)]/20' : ''}`}>
       {children}
     </tr>
   )
@@ -226,7 +226,7 @@ export default function AdminCategoryTable({ categories }: Props) {
               <button
                 type="button"
                 onClick={() => handleCreateChild(parentId)}
-                className="nes-btn shrink-0 border-[#4f8fd6] bg-[#4f8fd6] px-3 py-1 text-sm text-white opacity-0 transition-opacity hover:brightness-125 group-focus-within/create:opacity-100"
+                className="nes-btn shrink-0 border-[var(--accent)] bg-[var(--accent)] px-3 py-1 text-sm text-black opacity-0 transition-opacity hover:brightness-125 group-focus-within/create:opacity-100"
               >
                 추가
               </button>
@@ -258,7 +258,7 @@ export default function AdminCategoryTable({ categories }: Props) {
                 <button
                   type="button"
                   onClick={() => toggleExpand(category.id)}
-                  className="mr-1 flex h-6 w-6 shrink-0 items-center justify-center border-0 bg-transparent text-gray-400 hover:text-yellow-400"
+                  className="mr-1 flex h-6 w-6 shrink-0 items-center justify-center border-0 bg-transparent text-gray-400 hover:text-[var(--accent)]"
                 >
                   {expandedIds.has(category.id) ? '▾' : '▸'}
                 </button>
@@ -282,7 +282,7 @@ export default function AdminCategoryTable({ categories }: Props) {
                   categoryId={category.id}
                   parentId={category.parentId}
                   label={label}
-                  className="cursor-grab touch-none truncate text-left text-white hover:text-yellow-400 active:cursor-grabbing"
+                  className="cursor-grab touch-none truncate text-left text-white hover:text-[var(--accent)] active:cursor-grabbing"
                 />
               )}
             </div>
@@ -294,7 +294,7 @@ export default function AdminCategoryTable({ categories }: Props) {
                   <button
                     type="button"
                     onClick={() => submitRename(category)}
-                    className="nes-btn border-[#4f8fd6] bg-[#4f8fd6] px-3 py-1 text-sm text-white hover:brightness-125"
+                    className="nes-btn border-[var(--accent)] bg-[var(--accent)] px-3 py-1 text-sm text-black hover:brightness-125"
                   >
                     확인
                   </button>
@@ -311,14 +311,14 @@ export default function AdminCategoryTable({ categories }: Props) {
                   <button
                     type="button"
                     onClick={() => toggleAddChild(category.id)}
-                    className="nes-btn border-sky-500 bg-sky-500 px-3 py-1 text-sm text-white hover:bg-sky-600"
+                    className="nes-btn border-[var(--accent)] bg-[var(--accent)] px-3 py-1 text-sm text-black hover:bg-[var(--accent-hover)]"
                   >
                     추가
                   </button>
                   <button
                     type="button"
                     onClick={() => startRename(category)}
-                    className="nes-btn border-[#4f8fd6] bg-[#4f8fd6] px-3 py-1 text-sm text-white hover:brightness-125"
+                    className="nes-btn border-[var(--accent)] bg-[var(--accent)] px-3 py-1 text-sm text-black hover:brightness-125"
                   >
                     변경
                   </button>
@@ -364,7 +364,7 @@ export default function AdminCategoryTable({ categories }: Props) {
             <button
               type="button"
               onClick={handleExpandAll}
-              className="nes-btn border-[#4f8fd6] bg-[#4f8fd6] px-2 py-1 text-xs text-white hover:brightness-125"
+              className="nes-btn border-[var(--accent)] bg-[var(--accent)] px-2 py-1 text-xs text-black hover:brightness-125"
             >
               펼치기
             </button>
@@ -377,7 +377,7 @@ export default function AdminCategoryTable({ categories }: Props) {
             </button>
           </div>
           {isDraggingCategory && (
-            <p className="text-sm text-yellow-400">다른 카테고리 위에 놓으면 그 밑으로, 빈 곳에 놓으면 최상위로 이동합니다</p>
+            <p className="text-sm text-[var(--accent)]">다른 카테고리 위에 놓으면 그 밑으로, 빈 곳에 놓으면 최상위로 이동합니다</p>
           )}
         </div>
         <div className="grid grid-cols-3 gap-4">
@@ -400,7 +400,7 @@ export default function AdminCategoryTable({ categories }: Props) {
                           <button
                             type="button"
                             onClick={handleCreate}
-                            className="nes-btn shrink-0 border-[#4f8fd6] bg-[#4f8fd6] px-3 py-1 text-sm text-white opacity-0 transition-opacity hover:brightness-125 group-focus-within/create:opacity-100"
+                            className="nes-btn shrink-0 border-[var(--accent)] bg-[var(--accent)] px-3 py-1 text-sm text-black opacity-0 transition-opacity hover:brightness-125 group-focus-within/create:opacity-100"
                           >
                             추가
                           </button>

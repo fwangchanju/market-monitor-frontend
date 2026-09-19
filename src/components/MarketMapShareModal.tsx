@@ -120,7 +120,7 @@ export default function MarketMapShareModal({
               <button
                 type="button"
                 onClick={onCopy}
-                className="nes-btn col-start-2 flex items-center justify-self-center gap-2 border-sky-500 bg-sky-500 px-3 py-1.5 text-sm text-white shadow-lg hover:bg-sky-600"
+            className="nes-btn col-start-2 flex items-center justify-self-center gap-2 border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-black shadow-lg hover:bg-[var(--accent-hover)]"
               >
                 <RefreshIcon className="h-4 w-4" />
                 클립보드에 복사되었습니다

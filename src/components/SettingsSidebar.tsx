@@ -61,7 +61,7 @@ function ToggleSwitch({
         aria-label={label}
         onClick={onChange}
         disabled={disabled}
-        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${checked ? 'bg-[#4f8fd6]' : 'bg-gray-600'} ${disabled ? 'cursor-not-allowed' : ''}`}
+        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${checked ? 'bg-[var(--accent)]' : 'bg-gray-600'} ${disabled ? 'cursor-not-allowed' : ''}`}
       >
         <span
           className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${checked ? 'translate-x-4' : 'translate-x-0'}`}
@@ -192,17 +192,17 @@ function RangeSlider({
       >
         <div className="absolute top-1/2 h-1 w-full -translate-y-1/2 rounded bg-gray-600" />
         <div
-          className="absolute top-1/2 h-1 -translate-y-1/2 rounded bg-[#4f8fd6]"
+          className="absolute top-1/2 h-1 -translate-y-1/2 rounded bg-[var(--accent)]"
           style={{ left: `${minPct}%`, width: `${maxPct - minPct}%` }}
         />
         <div
           aria-label={minAriaLabel}
-          className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full bg-[#4f8fd6]"
+          className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full bg-[var(--accent)]"
           style={{ left: `${minPct}%` }}
         />
         <div
           aria-label={maxAriaLabel}
-          className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full bg-[#4f8fd6]"
+          className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full bg-[var(--accent)]"
           style={{ left: `${maxPct}%` }}
         />
       </div>
@@ -251,7 +251,7 @@ function SingleValueSlider({
         aria-label={ariaLabel}
         onChange={e => onChange(Number(e.target.value))}
         disabled={disabled}
-        className="w-full accent-[#4f8fd6] disabled:cursor-not-allowed"
+        className="w-full accent-[var(--accent)] disabled:cursor-not-allowed"
       />
       <div className="relative mt-1 h-4 text-xs text-gray-400">
         {labels.map((label, labelIndex) => (
@@ -510,7 +510,7 @@ export function SettingsCategoryLevelSection({
               value={boxLabelMinAreaPercent}
               onChange={e => onChangeBoxLabelMinAreaPercent(Number(e.target.value))}
               disabled={!isCustom}
-              className="w-full accent-[#4f8fd6] disabled:cursor-not-allowed"
+              className="w-full accent-[var(--accent)] disabled:cursor-not-allowed"
             />
           </div>
         </div>
@@ -692,7 +692,7 @@ export function SettingsColorSection({
         <button
           type="button"
           onClick={onAddColorThreshold}
-          className="nes-btn self-start border-[#4f8fd6] bg-[#4f8fd6] px-3 py-1 text-xs text-white hover:brightness-125"
+          className="nes-btn self-start border-[var(--accent)] bg-[var(--accent)] px-3 py-1 text-xs text-black hover:brightness-125"
         >
           + 추가
         </button>
@@ -718,7 +718,7 @@ export function SettingsColorSection({
                 <button
                   type="button"
                   onClick={() => onEditColorThreshold(index)}
-                  className="border-0 bg-transparent text-xs text-white hover:text-yellow-400"
+                  className="border-0 bg-transparent text-xs text-white hover:text-[var(--accent)]"
                 >
                   수정
                 </button>

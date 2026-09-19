@@ -12,7 +12,6 @@ import IndexContributionSection from '@/components/IndexContributionSection'
 import ShortSellingHistorySection from '@/components/ShortSellingHistorySection'
 import ProgramTradingHistorySection from '@/components/ProgramTradingHistorySection'
 import NavBarPageActions from '@/components/NavBarPageActions'
-import { CalendarIcon, ClockIcon } from '@/components/icons/MarketMapIcons'
 import { FONT_BAR_TIME } from '@/components/FontStyle'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
@@ -72,6 +71,7 @@ export default function MarketSummaryPage() {
             onOpenShare={() => setIsShareOpen(true)}
             isNativeFullscreen={isNativeFullscreen}
             onToggleFullscreen={handleToggleNativeFullscreen}
+            showSnapshotControls={Boolean(marketSummaryData?.marketOverviews.snapshotTime)}
           />
         }
       />
@@ -93,10 +93,8 @@ export default function MarketSummaryPage() {
                   그대로 가져와 시간만 보여준다. */}
               {marketSummaryData?.marketOverviews.snapshotTime && (
                 <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-white`}>
-                  <CalendarIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
-                  {toMarketMapSnapshotDateLabel(marketSummaryData.marketOverviews.snapshotTime)}
-                  <ClockIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
-                  {toMarketMapSnapshotTimeOnlyLabel(marketSummaryData.marketOverviews.snapshotTime)}
+                  <span>{toMarketMapSnapshotDateLabel(marketSummaryData.marketOverviews.snapshotTime)}</span>
+                  <span>{toMarketMapSnapshotTimeOnlyLabel(marketSummaryData.marketOverviews.snapshotTime)}</span>
                 </span>
               )}
             </div>

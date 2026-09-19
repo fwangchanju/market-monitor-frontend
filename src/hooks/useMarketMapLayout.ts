@@ -65,7 +65,7 @@ export function categoryHeaderFontSize(depth: number): number {
 // 그대로 기준 삼아, 지금 폰트 크기(CATEGORY_HEADER_FONT_SIZES)가 얼마든 그 비율만큼의 높이를 준다. 폰트
 // 크기를 바꾸면 높이도 자동으로 같은 비율로 줄어들거나 커지는 구조. MarketMapCategorySection의 실제
 // 렌더링 높이도 이 함수를 그대로 써서 레이아웃 계산과 화면이 어긋나지 않게 한다.
-const CATEGORY_HEADER_HEIGHT_RATIO = 28 / 16
+const CATEGORY_HEADER_HEIGHT_RATIO = 20 / 16
 // 비율 계산 결과에서 모든 뎁스 공통으로 1px씩 뺀다 — 대분류/중분류/소분류 헤더를 전체적으로 살짝
 // 더 얇게 보이게 하려는 조정.
 const CATEGORY_HEADER_HEIGHT_ADJUSTMENT = -1
