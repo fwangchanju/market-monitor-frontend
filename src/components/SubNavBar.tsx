@@ -7,8 +7,8 @@ import { marketRoute } from '@/utils/marketRoute'
 
 const BASE_LINKS = [
   { to: '/summary', label: '요약' },
-  { to: '/map/kospi', label: '지도' },
-  { to: '/sector/kospi', label: '섹터' },
+  { to: '/map/allstock', label: '지도' },
+  { to: '/sector/allstock', label: '섹터' },
 ]
 const ADMIN_LINK = { to: '/admin/sector', label: '커스텀' }
 
@@ -72,9 +72,9 @@ export default function SubNavBar({ actions }: Props) {
   const linkClassName = (to: string) =>
     `${FONT_NAV_TAB} whitespace-nowrap ${location.pathname === to ? 'text-[var(--accent)]' : 'text-gray-400 hover:text-white'}`
 
-  const isMarketTab = (to: string) => to === '/map/kospi' || to === '/sector/kospi'
+  const isMarketTab = (to: string) => to === '/map/allstock' || to === '/sector/allstock'
   const isMarketTabActive = (to: string) =>
-    to === '/map/kospi' ? location.pathname.startsWith('/map/') : to === '/sector/kospi' ? location.pathname.startsWith('/sector/') : false
+    to === '/map/allstock' ? location.pathname.startsWith('/map/') : to === '/sector/allstock' ? location.pathname.startsWith('/sector/') : false
   const isAdminTabActive = location.pathname === '/admin/sector' || location.pathname === '/admin/stock' || location.pathname === '/admin/market-map'
 
   return (
@@ -82,7 +82,7 @@ export default function SubNavBar({ actions }: Props) {
       <div className="flex h-8 items-center gap-3">
         {links.map(link =>
           isMarketTab(link.to) ? (
-            // 클릭하면 그냥 기본값(KOSPI)으로 이동하고, 마켓을 올려두면 여기서 골라 바로 그 마켓으로 들어갈 수 있다.
+            // 클릭하면 기본값(ALL STOCK)으로 이동하고, 마우스를 올리면 목록에서 마켓을 골라 들어갈 수 있다.
             <TabWithDropdown
               key={link.to}
               to={link.to}

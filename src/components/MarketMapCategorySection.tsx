@@ -107,7 +107,7 @@ export default function MarketMapCategorySection({
   const headerParts = [
     isInDepthRange(avgChangeRateDepthRange, depth) ? toPctSigned(avgChangeRate, decimalPlaces) : null,
     isInDepthRange(upDownCountDepthRange, depth)
-      ? `${advancerCount}(↑) ${declinerCount}(↓) ${unchangedCount}(-)`
+      ? `▲${advancerCount} ▼${declinerCount} ■${unchangedCount}`
       : null,
     isInDepthRange(marketValueDepthRange, depth) ? toJoEokDecimal(category.totalMarketValue / 100_000_000) : null,
   ].filter((part): part is string => part !== null)

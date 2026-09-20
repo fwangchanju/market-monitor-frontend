@@ -86,7 +86,7 @@ function topPickAverage(node: FilteredMarketMapCategoryNode, useSimple: boolean)
 export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const needsTree = options?.needsTree ?? true
   const { pathname } = useLocation()
-  const [market, setMarket] = usePersistedState<MarketQuery>('marketMap.market', 'KOSPI')
+  const [market, setMarket] = usePersistedState<MarketQuery>('marketMap.market', 'ALL_STOCK')
   const [isCustom, setIsCustom] = usePersistedState('marketMap.isCustom', true)
   // 시가총액 합/등락률 평균/등락 종목수 태그를 셋 다 동시에 켤 수 있었는데, 한꺼번에 여러 개가 뜨면
   // 카테고리 헤더가 너무 정신없어서 라디오처럼 하나만 고르게 했다 — 뎁스 범위 슬라이더도 셋의

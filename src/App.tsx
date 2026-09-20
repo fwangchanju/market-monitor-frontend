@@ -9,13 +9,13 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/map/kospi" replace />} />
+        <Route path="/" element={<Navigate to="/map/allstock" replace />} />
         <Route path="/summary" element={<MarketSummaryPage />} />
-        <Route path="/map" element={<Navigate to="/map/kospi" replace />} />
+        <Route path="/map" element={<Navigate to="/map/allstock" replace />} />
         <Route path="/map/kospi" element={<MarketMapCustomPage />} />
         <Route path="/map/kosdaq" element={<MarketMapCustomPage />} />
         <Route path="/map/allstock" element={<MarketMapCustomPage />} />
-        <Route path="/sector" element={<Navigate to="/sector/kospi" replace />} />
+        <Route path="/sector" element={<Navigate to="/sector/allstock" replace />} />
         <Route path="/sector/kospi" element={<CategoryChangeRatePage />} />
         <Route path="/sector/kosdaq" element={<CategoryChangeRatePage />} />
         <Route path="/sector/allstock" element={<CategoryChangeRatePage />} />
@@ -27,7 +27,7 @@ export default function App() {
         <Route path="/admin/sector" element={<MarketMapAdminPage />} />
         <Route path="/admin/stock" element={<MarketMapAdminPage />} />
         <Route path="/admin/market-map" element={<MarketMapAdminPage />} />
-        <Route path="*" element={<Navigate to="/map/kospi" replace />} />
+        <Route path="*" element={<Navigate to="/map/allstock" replace />} />
       </Routes>
     </BrowserRouter>
   )

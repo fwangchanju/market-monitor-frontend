@@ -169,7 +169,7 @@ function RankBars({
 }
 
 export default function CategoryChangeRatePage() {
-  const [market, setMarket] = usePersistedState<MarketQuery>('categoryChangeRate.market', 'KOSPI')
+  const [market, setMarket] = usePersistedState<MarketQuery>('categoryChangeRate.market', 'ALL_STOCK')
   const [beforeMinutes, setBeforeMinutes] = usePersistedState('categoryChangeRate.beforeMinutes', 15)
   const [searchParams, setSearchParams] = useSearchParams()
   const { pathname } = useLocation()
