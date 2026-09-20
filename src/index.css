@@ -129,12 +129,6 @@ a { color: var(--accent-light); text-decoration: none; }
 .positive { color: var(--stock-up); }
 .negative { color: var(--stock-down); }
 
-.market-map-top-pick-label {
-  color: #fff;
-  -webkit-text-stroke: 2.5px #000;
-  paint-order: stroke fill;
-}
-
 /* ── Button (override nes.css's pixel-art bevel look) ───────────────────────── */
 
 .nes-btn {

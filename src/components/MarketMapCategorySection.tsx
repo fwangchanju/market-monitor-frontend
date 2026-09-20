@@ -117,7 +117,7 @@ export default function MarketMapCategorySection({
   const headerStyle = isTopPick
     ? {
         background: 'bg-[var(--accent)]',
-        text: 'text-white',
+        text: 'text-black',
         border: 'border-0',
       }
     : categoryHeaderStyle(absoluteDepth)
@@ -167,7 +167,7 @@ export default function MarketMapCategorySection({
               left: PADDING,
               width: `calc(100% - ${PADDING * 2}px)`,
             }}
-            className={`absolute top-0 flex items-center overflow-hidden truncate px-1 text-left leading-none ${isTopPick ? 'font-bold market-map-top-pick-label' : 'font-bold'} ${headerStyle.border} ${headerStyle.text ?? ''} ${headerStyle.background}`}
+            className={`absolute top-0 flex items-center overflow-hidden truncate px-1 text-left font-bold leading-none ${headerStyle.border} ${headerStyle.text ?? ''} ${headerStyle.background}`}
           >
             {displayCategoryName}
             {headerSuffix && <span className="font-normal">{headerSuffix}</span>}
