@@ -1,13 +1,30 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useLayoutEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import MarketSummaryPage from './pages/MarketSummaryPage'
 import MarketMapCustomPage from './pages/MarketMapCustomPage'
 import CategoryChangeRatePage from './pages/CategoryChangeRatePage'
 import AdminPage from './pages/AdminPage'
 import MarketMapAdminPage from './pages/MarketMapAdminPage'
 
+// 페이지 전체와 document.body로 포털 렌더링한 메뉴/팝업에 같은 숫자 폭 규칙을 적용한다.
+// 공통 스냅샷 시간은 FONT_BAR_TIME의 normal-nums로 이 상속에서 제외한다.
+function PageNumberStyle() {
+  const { pathname } = useLocation()
+  const useTabularNumbers = pathname === '/sector' || pathname.startsWith('/sector/')
+    || pathname === '/category-change-rate' || pathname === '/admin' || pathname.startsWith('/admin/')
+
+  useLayoutEffect(() => {
+    document.body.classList.toggle('tabular-nums', useTabularNumbers)
+    return () => document.body.classList.remove('tabular-nums')
+  }, [useTabularNumbers])
+
+  return null
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <PageNumberStyle />
       <Routes>
         <Route path="/" element={<Navigate to="/map/allstock" replace />} />
         <Route path="/summary" element={<MarketSummaryPage />} />

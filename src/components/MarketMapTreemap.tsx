@@ -32,8 +32,6 @@ interface Props {
   // 하위 MarketMapCategorySection/MarketMapBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
   decimalPlaces: number
   topPickCategoryIds: Set<number>
-  // 커스텀 종목 본문에서만 숫자 폭을 맞춘다. 기본 지도는 숫자가 세로 열로 정렬되지 않으므로 제외한다.
-  useTabularNumbers?: boolean
   // 0이 아닌 뎁스가 오면 그 뎁스로 진입할 때 썼던 위치로 줄어드는 애니메이션을 재생한다.
   zoomOutRequestDepth: number | null
   onZoomOutComplete: (depth: number) => void
@@ -103,7 +101,6 @@ export default function MarketMapTreemap({
   stockLabelMode,
   decimalPlaces,
   topPickCategoryIds,
-  useTabularNumbers = false,
   zoomOutRequestDepth,
   onZoomOutComplete,
 }: Props) {
@@ -266,7 +263,7 @@ export default function MarketMapTreemap({
     // 페이지 스크롤바를 만들고, 스크롤바가 생기면 컨테이너 너비가 줄어서 ResizeObserver가 다시 계산 →
     // 이번엔 안 넘쳐서 스크롤바가 사라지고 너비가 늘고 → 다시 계산... 무한 루프(우측 하단이 떨리는 현상)로
     // 이어진다. overflow-hidden으로 이 삐져나옴 자체를 화면에서 잘라내 루프의 시작을 막는다.
-    <div ref={containerRef} className={`relative w-full overflow-hidden bg-black ${useTabularNumbers ? 'tabular-nums' : ''} ${heightClassName}`}>
+    <div ref={containerRef} className={`relative w-full overflow-hidden bg-black ${heightClassName}`}>
       {/* 줌인일 땐 고스트(옛 화면)를 실제 콘텐츠보다 아래(zIndex -1)에 깔아서, 커지는 실제 콘텐츠가
           덮어가며 형제들을 가리게 하고, 줌아웃일 땐 반대로 위(zIndex 10)에 덮어서 줄어들며 걷히게 한다.
           transform-origin은 항상 '0 0'으로 고정 — zoomStyle 쪽 객체에 넣으면 identity로 바뀔 때 origin

@@ -398,7 +398,6 @@ export default function MarketMapCustomPage() {
                   stockLabelMode={stockLabelMode}
                   decimalPlaces={decimalPlaces}
                   topPickCategoryIds={topPickCategoryIds}
-                  useTabularNumbers={isCustom}
                   zoomOutRequestDepth={zoomOutRequestDepth}
                   onZoomOutComplete={handleZoomOutComplete}
                 />

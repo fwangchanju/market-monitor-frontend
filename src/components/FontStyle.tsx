@@ -27,8 +27,9 @@ export const FONT_BAR_MARKET_INDEX = 'text-xl leading-none font-medium'
 // 세 번째 바 — 모드 상태 텍스트(예: 커스텀 모드). 14px, medium(500).
 export const FONT_BAR_MODE_STATUS = 'text-sm leading-none font-medium'
 
-// 세 번째 바 — 시간(스냅샷 시각). 14px(FONT_BAR_MODE_STATUS와 동일), medium(500).
-export const FONT_BAR_TIME = 'text-sm leading-none font-medium'
+// 세 번째 바 — 시간(스냅샷 시각). 페이지의 숫자 폭 설정과 무관하게 일반 숫자 폭을 쓴다.
+// 14px(FONT_BAR_MODE_STATUS와 동일), medium(500).
+export const FONT_BAR_TIME = 'text-sm leading-none font-medium normal-nums'
 
 // 세 번째 바 — 범례. 12px, bold.
 export const FONT_BAR_LEGEND = 'text-xs font-bold'

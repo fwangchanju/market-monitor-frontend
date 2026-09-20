@@ -100,6 +100,11 @@ body, code, html, kbd, pre, samp {
   font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
 }
 
+/* 브라우저 기본 폼 글꼴이 숫자 폭을 초기화하지 않도록 페이지 설정을 상속한다. */
+button, input, select, textarea {
+  font-variant-numeric: inherit;
+}
+
 /* nes.css가 html/a/button에 커스텀 픽셀아트 커서(cursor: url(...))를 지정해서 일반 마우스 포인터보다
    훨씬 크게 보임 — 같은 선택자로 재정의해서 기본 시스템 커서로 되돌림. */
 html {
