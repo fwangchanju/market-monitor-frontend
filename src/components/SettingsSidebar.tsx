@@ -227,20 +227,31 @@ function RangeSlider({
           </>
         )}
       </div>
-      {/* 라벨 개수(=steps+1)가 슬라이더마다 다르므로, flex justify-between 대신 핸들과 똑같은 방식
-          (각 tick의 x% 위치에 중심을 맞춰 절대 위치)으로 배치해야 라벨 중앙이 항상 그 tick과 정확히
-          x축이 맞는다 — 라벨 폭이 서로 달라도(예: "끄기" vs "중분류") 흔들리지 않는다. */}
-      <div className="relative mt-1 h-4 text-xs text-gray-400">
-        {labels.map((label, index) => (
-          <span
-            key={index}
-            className="absolute -translate-x-1/2 whitespace-nowrap"
-            style={{ left: `${(index / labelSteps) * 100}%` }}
-          >
-            {label}
-          </span>
-        ))}
-      </div>
+      <SliderTickLabels labels={labels} steps={labelSteps} />
+    </div>
+  )
+}
+
+// 라벨 개수(=steps+1)가 슬라이더마다 다르므로, flex justify-between 대신 핸들과 똑같은 방식(각 tick의
+// x% 위치에 절대 위치)으로 배치해야 라벨이 항상 그 tick과 x축이 맞는다 — 라벨 폭이 서로 달라도(예:
+// "끄기" vs "중분류") 흔들리지 않는다. 양 끝만 가운데 정렬이 아니다. 가운데 정렬하면 라벨 절반이
+// 트랙 밖으로 나가서 끝 핸들과 어긋나 보이므로, 첫 라벨은 왼쪽 끝을, 마지막 라벨은 오른쪽 끝을 핸들에
+// 맞춘다.
+function SliderTickLabels({ labels, steps }: { labels: string[]; steps: number }) {
+  const lastIndex = labels.length - 1
+  return (
+    <div className="relative mt-1 h-4 text-xs text-gray-400">
+      {labels.map((label, index) => (
+        <span
+          key={index}
+          className={`absolute whitespace-nowrap ${
+            index === 0 ? '' : index === lastIndex ? '-translate-x-full' : '-translate-x-1/2'
+          }`}
+          style={{ left: `${(index / steps) * 100}%` }}
+        >
+          {label}
+        </span>
+      ))}
     </div>
   )
 }
@@ -274,17 +285,7 @@ function SingleValueSlider({
         disabled={disabled}
         className="w-full accent-[var(--accent)] disabled:cursor-not-allowed"
       />
-      <div className="relative mt-1 h-4 text-xs text-gray-400">
-        {labels.map((label, labelIndex) => (
-          <span
-            key={label}
-            className="absolute -translate-x-1/2 whitespace-nowrap"
-            style={{ left: `${(labelIndex / steps) * 100}%` }}
-          >
-            {label}
-          </span>
-        ))}
-      </div>
+      <SliderTickLabels labels={labels} steps={steps} />
     </div>
   )
 }
