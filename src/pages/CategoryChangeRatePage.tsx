@@ -20,7 +20,6 @@ import { categoryHeaderFontSize } from '@/hooks/useMarketMapLayout'
 import { combineTierBreakdowns } from '@/utils/categoryTierBreakdown'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import NavBarPageActions from '@/components/NavBarPageActions'
-import { CalendarIcon, ClockIcon } from '@/components/icons/MarketMapIcons'
 import { FONT_BAR_TITLE, FONT_BAR_TIME, FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
@@ -271,7 +270,10 @@ export default function CategoryChangeRatePage() {
     copyStatus === 'copying' ? 'Copying' : copyStatus === 'copied' ? 'Copied' : copyStatus === 'error' ? 'Failed' : 'Copy'
   const downloadLabel = downloadStatus === 'error' ? 'Failed' : 'Download'
 
-  const { data: rankingData, isLoading, isError } = useCategoryChangeRates(market, beforeMinutes)
+  const { data: rankingData, isLoading, isError, isRefetching: isRefetchingRankingData, refetch: refetchRankingData } = useCategoryChangeRates(
+    market,
+    beforeMinutes,
+  )
 
   // 카테고리 이름을 랭킹 응답에서 직접 얻는다 — 이전에는 useMarketMap으로 트리를 별도 조회해서 얻었지만,
   // 응답에 categoryName이 실리면서 더 이상 필요 없다(depth == 0과 hasNoParent()가 동치라는 근거는
@@ -400,10 +402,14 @@ export default function CategoryChangeRatePage() {
       <SubNavBar
         actions={
           <NavBarPageActions
+            onRefresh={refetchRankingData}
+            isRefreshing={isRefetchingRankingData}
             onToggleSettings={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
+            isSettingsOpen={settingsModalProps.isOpen}
             onOpenShare={() => setIsShareOpen(true)}
             isNativeFullscreen={isNativeFullscreen}
             onToggleFullscreen={handleToggleNativeFullscreen}
+            showSnapshotControls={Boolean(rankingData?.snapshotTime)}
           />
         }
       />
@@ -439,10 +445,8 @@ export default function CategoryChangeRatePage() {
               </span>
               {rankingData?.snapshotTime && (
                 <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-white`}>
-                  <CalendarIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
-                  {toMarketMapSnapshotDateLabel(rankingData.snapshotTime)}
-                  <ClockIcon className="h-3.5 w-3.5 shrink-0 cursor-pointer text-gray-400 hover:text-white" />
-                  {toMarketMapSnapshotTimeOnlyLabel(rankingData.snapshotTime)}
+                  <span>{toMarketMapSnapshotDateLabel(rankingData.snapshotTime)}</span>
+                  <span>{toMarketMapSnapshotTimeOnlyLabel(rankingData.snapshotTime)}</span>
                 </span>
               )}
             </div>

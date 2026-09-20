@@ -107,6 +107,19 @@ export function resolveMarketMapColor(changeRate: number, config: ColorScaleConf
   return thresholds[thresholds.length - 1].color
 }
 
+// 등락률 색상 위에 얹는 텍스트가 충분히 읽히도록, 검정/흰색 중 대비가 더 큰 쪽을 고른다.
+// 커스텀 색상도 같은 규칙을 타므로 특정 상승/하락 색상 밝기에 종속되지 않는다.
+export function resolveContrastingTextColor(backgroundColor: string): 'black' | 'white' {
+  const [red, green, blue] = hexToRgb(backgroundColor).map(value => value / 255)
+  if (![red, green, blue].every(Number.isFinite)) return 'white'
+
+  const toLinear = (value: number) => (value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+  const luminance = 0.2126 * toLinear(red) + 0.7152 * toLinear(green) + 0.0722 * toLinear(blue)
+  const blackContrast = (luminance + 0.05) / 0.05
+  const whiteContrast = 1.05 / (luminance + 0.05)
+  return blackContrast >= whiteContrast ? 'black' : 'white'
+}
+
 // changeRate(부호 있는 등락률, %) → 그 부호 쪽 threshold 중 절댓값이 가장 큰 색(보간 없이 고정).
 // 지수 헤더/등락률 텍스트처럼 작은 값에도 옅은 그라데이션이 아니라 항상 진하고 읽기 쉬운 색 하나가
 // 필요한 자리에 쓴다. resolveMarketMapColor와 같은 thresholdsForSign을 거치므로 커스텀/기본 여부는

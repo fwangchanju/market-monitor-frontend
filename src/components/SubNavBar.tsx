@@ -14,9 +14,9 @@ const ADMIN_LINK = { to: '/admin/market-map', label: '커스텀' }
 // "지도"/"섹터" 탭 위에 마우스를 올리면 뜨는 마켓 목록 — 두 탭 다 같은 목록이고 이동할 경로(basePath)만
 // 다르다.
 const MARKET_LIST_ITEMS: { label: string; market: MarketQuery }[] = [
+  { label: 'ALL STOCK', market: 'ALL_STOCK' },
   { label: 'KOSPI', market: 'KOSPI' },
   { label: 'KOSDAQ', market: 'KOSDAQ' },
-  { label: 'ALL STOCK', market: 'ALL_STOCK' },
 ]
 
 // 글자가 안 잘리도록 가장 긴 라벨("ALL STOCK") 기준으로 폭이 자동으로 늘어난다(w-max).
@@ -54,7 +54,7 @@ interface Props {
 function TabWithDropdown({ to, label, active, children }: { to: string; label: string; active: boolean; children: ReactNode }) {
   return (
     <div className="group relative flex h-8 items-center">
-      <Link to={to} className={`${FONT_NAV_TAB} whitespace-nowrap ${active ? 'text-[#4f8fd6]' : 'text-gray-400 group-hover:text-white'}`}>
+      <Link to={to} className={`${FONT_NAV_TAB} whitespace-nowrap ${active ? 'text-[var(--accent)]' : 'text-gray-400 group-hover:text-white'}`}>
         {label}
       </Link>
       <div className="absolute left-0 top-full z-30 hidden w-max flex-col bg-zinc-900 py-1 shadow-lg group-hover:flex">{children}</div>
@@ -69,7 +69,7 @@ export default function SubNavBar({ actions }: Props) {
   const links = isAdmin ? [...BASE_LINKS, ADMIN_LINK] : BASE_LINKS
 
   const linkClassName = (to: string) =>
-    `${FONT_NAV_TAB} whitespace-nowrap ${location.pathname === to ? 'text-[#4f8fd6]' : 'text-gray-400 hover:text-white'}`
+    `${FONT_NAV_TAB} whitespace-nowrap ${location.pathname === to ? 'text-[var(--accent)]' : 'text-gray-400 hover:text-white'}`
 
   return (
     <div className="flex h-8 shrink-0 items-center justify-between gap-3 bg-zinc-900 px-3 text-xs shadow-lg">

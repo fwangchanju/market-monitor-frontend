@@ -22,6 +22,7 @@ function ToggleSwitch({
   labelClassName = '',
   hideLabel = false,
   forceLabelWhite = false,
+  compact = false,
 }: {
   checked: boolean
   onChange: () => void
@@ -39,6 +40,8 @@ function ToggleSwitch({
   // OFF가 "꺼짐(비활성)"이 아니라 "다른 선택지가 켜짐"을 뜻하는 경우, label 자체가 항상 지금 선택된
   // 쪽을 나타내므로 checked 여부와 무관하게 항상 강조돼야 한다.
   forceLabelWhite?: boolean
+  // 상위 설정과 같은 위계를 만들지 않을 작은 하위 옵션용 스위치.
+  compact?: boolean
 }) {
   // 라벨(+보조 콘텐츠)은 왼쪽에 모으고, 스위치는 justify-between으로 항상 이 줄의 우측 끝에 붙인다.
   return (
@@ -61,10 +64,10 @@ function ToggleSwitch({
         aria-label={label}
         onClick={onChange}
         disabled={disabled}
-        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${checked ? 'bg-[#4f8fd6]' : 'bg-gray-600'} ${disabled ? 'cursor-not-allowed' : ''}`}
+        className={`relative shrink-0 rounded-full transition-colors ${compact ? 'h-4 w-7' : 'h-5 w-9'} ${checked ? 'bg-[var(--accent)]' : 'bg-gray-600'} ${disabled ? 'cursor-not-allowed' : ''}`}
       >
         <span
-          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${checked ? 'translate-x-4' : 'translate-x-0'}`}
+          className={`absolute top-0.5 left-0.5 rounded-full bg-white transition-transform ${compact ? 'h-3 w-3' : 'h-4 w-4'} ${checked ? (compact ? 'translate-x-3' : 'translate-x-4') : 'translate-x-0'}`}
         />
       </button>
     </div>
@@ -73,6 +76,9 @@ function ToggleSwitch({
 
 // 뎁스 범위 슬라이더 인덱스는 뎁스에 직접 대응한다(0=대분류, 1=중분류, 2=소분류, ...).
 const DEPTH_LABELS = ['대분류', '중분류', '소분류']
+
+// 선호 업종으로 강조할 상위 카테고리 수 — 0은 끄기.
+const TOP_PICK_COUNT_LABELS = ['끄기', '1', '2', '3']
 
 // 등락률/등락 종목수/시가총액 합 중 하나만 라디오처럼 고른다 — 순서가 곧 라벨 표시 순서.
 const DEPTH_METRIC_OPTIONS: { key: DepthMetric; label: string }[] = [
@@ -98,7 +104,7 @@ function RangeSlider({
   maxAriaLabel,
   onChange,
   disabled = false,
-  offIndex,
+  maxSelectableIndex,
 }: {
   minIndex: number
   maxIndex: number
@@ -108,22 +114,19 @@ function RangeSlider({
   maxAriaLabel: string
   onChange: (minIndex: number, maxIndex: number) => void
   disabled?: boolean
-  // OFF 전용 칸의 인덱스(주로 0). 있으면: 드래그로는 이 칸에 들어가거나 나갈 수 없다(항상 offIndex+1
-  // 이상만 드래그 가능) — OFF ↔ ON 전환은 아래 라벨 클릭으로만 한다.
-  offIndex?: number
+  // 눈금은 전부 보여주되, 실제로 이동할 수 있는 마지막 인덱스만 제한한다.
+  maxSelectableIndex?: number
 }) {
   const trackRef = useRef<HTMLDivElement>(null)
-  const isOff = offIndex !== undefined && minIndex === offIndex && maxIndex === offIndex
+  const sliderSteps = Math.max(steps, 1)
+  const selectableMaxIndex = Math.min(sliderSteps, maxSelectableIndex ?? sliderSteps)
 
   // 핸들 버튼은 순전히 시각적 표시일 뿐, 실제 클릭/드래그는 트랙 전체가 받는다 — 두 핸들이 겹치면
   // DOM상 나중에 그려지는 쪽(max)이 항상 클릭을 가로채 반대쪽 핸들을 못 잡는 문제를 이렇게 피한다.
   // 클릭 지점이 두 핸들의 중점보다 왼쪽이면 min을, 오른쪽이면 max를 그 위치로 옮긴다.
   //
-  // offIndex가 있는 슬라이더(등락률/등락 종목수/시가총액 합)는 드래그와 클릭을 다르게 취급한다 —
-  // 포인터가 실제로 움직였으면(threshold 이상) "드래그"로 보고 OFF 칸은 건드리지 않는 기존 범위
-  // 조정만, 움직임 없이 그냥 뗐으면("클릭") OFF 칸을 클릭했으면 완전히 꺼짐, 다른 칸을 클릭했으면
-  // 좌측은 첫 뎁스로 우측은 그 칸으로 한번에 점프 — 그래야 드래그만으로는 OFF에 들어가거나
-  // 나갈 수 없으면서도(핸들끼리 서로 못 지나치는 규칙 때문에 트랩에 빠짐), 클릭 한 번으로 켜고 끌 수 있다.
+  // 포인터가 실제로 움직였으면(threshold 이상) "드래그"로 보고 범위를 조정하고, 움직임 없이 그냥
+  // 뗐으면("클릭") 가까운 핸들을 그 위치로 옮긴다. 기능 전체의 켜기/끄기는 별도 토글이 담당한다.
   const CLICK_MOVE_THRESHOLD = 4
   const startDrag = (e: React.PointerEvent) => {
     if (disabled) return
@@ -133,12 +136,13 @@ function RangeSlider({
     const rect = track.getBoundingClientRect()
     const rawIndexFromClientX = (clientX: number) => {
       const ratio = rect.width > 0 ? Math.min(1, Math.max(0, (clientX - rect.left) / rect.width)) : 0
-      return Math.round(ratio * steps)
+      return Math.round(ratio * sliderSteps)
     }
-    // OFF 칸으로는 드래그가 들어갈 수 없다 — 실제 뎁스값 중 최소인 offIndex+1이 바닥.
+    const selectableIndexFromClientX = (clientX: number) => Math.min(rawIndexFromClientX(clientX), selectableMaxIndex)
+    // 바깥쪽 뎁스는 현재 선택 가능한 상한에서 멈춘다.
     const dragIndexFromClientX = (clientX: number) => {
-      const index = rawIndexFromClientX(clientX)
-      return offIndex !== undefined ? Math.max(index, offIndex + 1) : index
+      const index = selectableIndexFromClientX(clientX)
+      return Math.min(selectableMaxIndex, index)
     }
     const which: 'min' | 'max' = dragIndexFromClientX(e.clientX) <= (minIndex + maxIndex) / 2 ? 'min' : 'max'
     const startX = e.clientX
@@ -146,7 +150,6 @@ function RangeSlider({
     const handleMove = (ev: PointerEvent) => {
       if (!dragged && Math.abs(ev.clientX - startX) < CLICK_MOVE_THRESHOLD) return
       dragged = true
-      if (offIndex !== undefined && isOff) return // OFF 상태에서는 드래그 자체가 무효
       const index = dragIndexFromClientX(ev.clientX)
       if (which === 'min') onChange(Math.min(index, maxIndex), maxIndex)
       else onChange(minIndex, Math.max(index, minIndex))
@@ -155,24 +158,10 @@ function RangeSlider({
       document.removeEventListener('pointermove', handleMove)
       document.removeEventListener('pointerup', handleUp)
       if (dragged) return
-      // 움직이지 않고 뗐다 = 클릭. offIndex가 없는(시가총액 구간) 슬라이더는 그냥 가까운 핸들을 그 자리로.
-      if (offIndex === undefined) {
-        const index = dragIndexFromClientX(ev.clientX)
-        if (which === 'min') onChange(Math.min(index, maxIndex), maxIndex)
-        else onChange(minIndex, Math.max(index, minIndex))
-        return
-      }
-      const clickedIndex = rawIndexFromClientX(ev.clientX)
-      if (clickedIndex === offIndex) {
-        onChange(offIndex, offIndex) // OFF 클릭 → 항상 완전히 꺼짐
-      } else if (isOff) {
-        onChange(offIndex + 1, clickedIndex) // OFF에서 켜질 땐 좌측 첫 뎁스 + 클릭한 칸
-      } else {
-        // 이미 켜져있으면 더 가까운 핸들만 그 자리로 — 드래그와 동일하게 동작.
-        const index = Math.max(clickedIndex, offIndex + 1)
-        if (which === 'min') onChange(Math.min(index, maxIndex), maxIndex)
-        else onChange(minIndex, Math.max(index, minIndex))
-      }
+      // 움직이지 않고 뗐다 = 클릭. 가까운 핸들을 그 자리로 옮긴다.
+      const index = dragIndexFromClientX(ev.clientX)
+      if (which === 'min') onChange(Math.min(index, maxIndex), maxIndex)
+      else onChange(minIndex, Math.max(index, minIndex))
     }
     document.addEventListener('pointermove', handleMove)
     document.addEventListener('pointerup', handleUp)
@@ -180,8 +169,9 @@ function RangeSlider({
 
   // 데이터가 얕아서 steps가 minIndex/maxIndex(기본값 등으로 미리 정해진 값)보다 작아질 수 있다 —
   // 그대로 두면 핸들이 트랙 밖(100% 너머)으로 밀려나므로 표시 위치만 안전하게 클램프한다.
-  const minPct = (Math.min(minIndex, steps) / steps) * 100
-  const maxPct = (Math.min(maxIndex, steps) / steps) * 100
+  const minPct = (Math.min(minIndex, selectableMaxIndex) / sliderSteps) * 100
+  const maxPct = (Math.min(maxIndex, selectableMaxIndex) / sliderSteps) * 100
+  const labelSteps = Math.max(labels.length - 1, 1)
 
   return (
     <div>
@@ -192,19 +182,23 @@ function RangeSlider({
       >
         <div className="absolute top-1/2 h-1 w-full -translate-y-1/2 rounded bg-gray-600" />
         <div
-          className="absolute top-1/2 h-1 -translate-y-1/2 rounded bg-[#4f8fd6]"
+          className="absolute top-1/2 h-1 -translate-y-1/2 rounded bg-[var(--accent)]"
           style={{ left: `${minPct}%`, width: `${maxPct - minPct}%` }}
         />
         <div
           aria-label={minAriaLabel}
-          className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full bg-[#4f8fd6]"
+          className="pointer-events-none absolute top-1/2 z-10 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center touch-none text-[var(--accent)] text-sm font-bold leading-none"
           style={{ left: `${minPct}%` }}
-        />
+        >
+          ←
+        </div>
         <div
           aria-label={maxAriaLabel}
-          className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full bg-[#4f8fd6]"
+          className="pointer-events-none absolute top-1/2 z-20 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center touch-none text-[var(--accent)] text-sm font-bold leading-none"
           style={{ left: `${maxPct}%` }}
-        />
+        >
+          →
+        </div>
       </div>
       {/* 라벨 개수(=steps+1)가 슬라이더마다 다르므로, flex justify-between 대신 핸들과 똑같은 방식
           (각 tick의 x% 위치에 중심을 맞춰 절대 위치)으로 배치해야 라벨 중앙이 항상 그 tick과 정확히
@@ -214,7 +208,7 @@ function RangeSlider({
           <span
             key={index}
             className="absolute -translate-x-1/2 whitespace-nowrap"
-            style={{ left: `${(index / (labels.length - 1)) * 100}%` }}
+            style={{ left: `${(index / labelSteps) * 100}%` }}
           >
             {label}
           </span>
@@ -251,7 +245,7 @@ function SingleValueSlider({
         aria-label={ariaLabel}
         onChange={e => onChange(Number(e.target.value))}
         disabled={disabled}
-        className="w-full accent-[#4f8fd6] disabled:cursor-not-allowed"
+        className="w-full accent-[var(--accent)] disabled:cursor-not-allowed"
       />
       <div className="relative mt-1 h-4 text-xs text-gray-400">
         {labels.map((label, labelIndex) => (
@@ -304,7 +298,7 @@ export function SettingsCustomModeSection({
         checked={isCustom}
         onChange={onToggleCustom}
         label="커스텀 모드"
-        labelClassName="text-base settings-section-num"
+        labelClassName="text-base settings-section-bullet"
         labelSuffix={stockCountLabel ? <span className="text-sm text-gray-400">{stockCountLabel}</span> : undefined}
       />
       {showEqualWeightToggle && (
@@ -333,8 +327,8 @@ function EqualWeightToggleSwitch({
       checked={avgChangeRateUseSimple}
       onChange={onToggleAvgChangeRateUseSimple}
       label={avgChangeRateUseSimple ? '동일 가중' : '시총 가중'}
-      labelClassName="text-base settings-section-num"
-      labelSuffix={<span className="text-gray-500">{avgChangeRateUseSimple ? '시총 가중' : '동일 가중'}</span>}
+      labelClassName="text-base settings-section-bullet"
+      labelSuffix={<span className="text-gray-500">↔ {avgChangeRateUseSimple ? '시총 가중' : '동일 가중'}</span>}
       forceLabelWhite
     />
   )
@@ -364,15 +358,23 @@ export function SettingsCategoryLevelSection({
   onChangeMaxDepth,
   activeDepthMetric,
   onChangeActiveDepthMetric,
+  depthMetricEnabled,
+  onToggleDepthMetric,
   depthMetricMinIndex,
   depthMetricMaxIndex,
   onChangeDepthMetricRange,
+  topPickDepth,
+  topPickCount,
+  topPickMaxSelectableDepth,
+  onChangeTopPickDepth,
+  onChangeTopPickCount,
   stockLabelModeIndex,
   onChangeStockLabelModeIndex,
   boxLabelMinAreaPercent,
   onChangeBoxLabelMinAreaPercent,
   decimalPlacesIndex,
   onChangeDecimalPlacesIndex,
+  showTopPick = false,
   showDecimalPlaces = false,
   showDivider = true,
 }: {
@@ -385,13 +387,22 @@ export function SettingsCategoryLevelSection({
   maxDepth: number | null
   availableMaxDepth: number
   onChangeMaxDepth: (value: number) => void
-  // 등락률/등락 종목수/시가총액 합 중 하나만 라디오처럼 고른다 — null이면 전부 꺼짐(태그 자체가 안 뜸).
-  activeDepthMetric: DepthMetric | null
-  onChangeActiveDepthMetric: (metric: DepthMetric | null) => void
+  // 등락률/등락 종목수/시가총액 합 중 하나만 라디오처럼 고른다 — 표시 여부는 별도 토글로 제어한다.
+  activeDepthMetric: DepthMetric
+  onChangeActiveDepthMetric: (metric: DepthMetric) => void
+  // 업종 표시 지표 전체의 표시 여부 — 라디오 선택과 범위 조정은 이 토글이 켜져 있을 때만 가능하다.
+  depthMetricEnabled: boolean
+  onToggleDepthMetric: () => void
   // 인덱스는 뎁스에 직접 대응(0=대분류, 1=중분류, ...) — 위에서 고른 지표 하나에 공통으로 적용된다.
   depthMetricMinIndex: number
   depthMetricMaxIndex: number
   onChangeDepthMetricRange: (minIndex: number, maxIndex: number) => void
+  // 선호 업종의 절대 depth/상위 N개 — 지도 페이지에서만 showTopPick으로 노출한다.
+  topPickDepth: number
+  topPickCount: number
+  topPickMaxSelectableDepth: number
+  onChangeTopPickDepth: (depth: number) => void
+  onChangeTopPickCount: (count: number) => void
   // 종목 박스에 끄기(0)/이름만(1)/등락률만(2)/둘 다(3) 보여줄지 — STOCK_LABEL_MODE_OPTIONS 인덱스.
   stockLabelModeIndex: number
   onChangeStockLabelModeIndex: (index: number) => void
@@ -401,18 +412,29 @@ export function SettingsCategoryLevelSection({
   // 등락률(%) 표시 소수점 자릿수(0=정수, 1=소수 1자리, 2=소수 2자리).
   decimalPlacesIndex: number
   onChangeDecimalPlacesIndex: (index: number) => void
+  // true면 지도 페이지에만 선호 업종 설정을 추가한다.
+  showTopPick?: boolean
   // true면 "종목 박스" 그룹에 "등락률 소수점" 슬라이더를 같이 그린다 — 지도 페이지에서 실제로 트리맵
   // 등락률(%) 표시에 쓰이는 설정이라 지도 페이지에서만 켠다(섹터는 그래프 자체 소수점 포맷을 따로
   // 쓰므로 기본 false로 숨긴다).
   showDecimalPlaces?: boolean
 }) {
-  const depthValue = Math.min(maxDepth ?? availableMaxDepth, availableMaxDepth)
+  // 설정에서 선택할 수 있는 최소 단계는 대/중/소분류까지 보장한다. 실제 데이터가 얕으면 해당 단계의
+  // 화면 결과만 비어 있을 뿐, 사용자가 미리 설정해 둔 값을 UI가 임의로 막거나 지우지는 않는다.
+  const depthLabelCount = Math.max(availableMaxDepth, DEPTH_LABELS.length)
+  const depthValue = Math.min(maxDepth ?? depthLabelCount, depthLabelCount)
   const isDepthDisabled = !isCustom || availableMaxDepth <= 1
-  // 맨 앞 "끄기" 칸(offIndex=0) + 대분류/중분류/소분류... 뎁스 라벨. 슬라이더 인덱스는 뎁스값보다 1 큼.
-  const depthMetricLabels = [
-    '끄기',
-    ...Array.from({ length: availableMaxDepth }, (_, index) => DEPTH_LABELS[index] ?? `${index + 1}차 분류`),
-  ]
+  const depthMetricMaxSelectableIndex = Math.max(0, Math.min(depthLabelCount, maxDepth ?? depthLabelCount) - 1)
+  const isDepthMetricDisabled = !isCustom || maxDepth === 0
+  const isTopPickDisabled = !isCustom || maxDepth === 0
+  const depthMetricLabels = Array.from({ length: depthLabelCount }, (_, index) => DEPTH_LABELS[index] ?? `${index + 1}차 분류`)
+  // 업종 분류 레벨은 maxDepth(0=끄기, 1=대분류까지, ...)를 인덱스 그대로 쓰므로 맨 앞에 "끄기" 칸이 있어야
+  // 소분류(3)까지 갈 수 있다. 지표 범위 슬라이더는 뎁스 인덱스(0=대분류)라 "끄기" 칸이 없다.
+  const depthLevelLabels = ['끄기', ...depthMetricLabels]
+  const depthMetricSliderSteps = Math.max(depthLabelCount - 1, 1)
+  // 선택값은 저장한 범위를 그대로 유지하되, 현재 업종 분류 레벨을 넘는 부분만 화면에서 잘라 보여준다.
+  const depthMetricSliderMinIndex = Math.min(depthMetricMinIndex, depthMetricMaxSelectableIndex)
+  const depthMetricSliderMaxIndex = Math.min(depthMetricMaxIndex, depthMetricMaxSelectableIndex)
 
   return (
     <div className="text-white">
@@ -422,112 +444,161 @@ export function SettingsCategoryLevelSection({
           이미 그 자체로 구분되는 경우에만 쓴다. */}
       <div className={showDivider ? 'mt-6 border-t border-gray-700 pt-8' : 'pt-8'}>
         <p className="settings-section-num text-base">업종 분류 탭</p>
-        <div className={`mt-2 pl-2 text-sm ${isDepthDisabled ? 'opacity-40' : ''}`}>
-          {/* N/M 숫자 표시 대신, 등락률 지표 슬라이더와 같은 "끄기/대분류/중분류/소분류..." 눈금
-              라벨을 슬라이더 하단에 둔다 — 다만 "끄기" 실제 동작(뎁스 제한 자체를 끄는 것)은 아직
-              연결하지 않았다(일단 구성만). */}
-          <span className="block max-w-[16rem] text-center text-white">업종 분류 레벨</span>
-          <div className="mt-2 max-w-[16rem]">
-            <SingleValueSlider
-              index={depthValue}
-              labels={depthMetricLabels}
-              ariaLabel="업종 분류 레벨"
-              onChange={onChangeMaxDepth}
-              disabled={isDepthDisabled}
-            />
+        <div className="settings-subsection-list">
+          <div className={`mt-2 pl-2 text-sm ${isDepthDisabled ? 'opacity-40' : ''}`}>
+            {/* "끄기/대분류/중분류/소분류..." 눈금 라벨을 슬라이더 하단에 둔다 — 끄기(0)는 카테고리
+                태그를 평탄화하고, 실제 화면에 표시할 최대 분류 레벨은 이 값을 기준으로 제한한다. */}
+            <span className="settings-subsection-num block max-w-[16rem] text-left text-white">업종 분류 레벨</span>
+            <div className="mt-2 max-w-[16rem]">
+              <SingleValueSlider
+                index={depthValue}
+                labels={depthLevelLabels}
+                ariaLabel="업종 분류 레벨"
+                onChange={onChangeMaxDepth}
+                disabled={isDepthDisabled}
+              />
+            </div>
           </div>
-        </div>
-        <div className={`mt-3 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
-          {/* 라디오 버튼 대신 텍스트 자체를 눌러서 고른다 — 누른 텍스트가 켜지고 기존에 켜져있던 텍스트는
-              꺼진다. 셋 다 내용(스텝/라벨)이 같은 슬라이더 하나를 공유해서, 지금 고른 지표에만 적용한다.
-              버튼은 "어느 지표를 보여줄지"만 고르고, 켜고 끄는 건 아래 슬라이더의 "끄기" 칸으로만 한다. */}
-          <div className="flex max-w-[16rem] flex-wrap items-center justify-center gap-3">
-            {DEPTH_METRIC_OPTIONS.map(opt => (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => onChangeActiveDepthMetric(opt.key)}
-                disabled={!isCustom}
-                className={`border-0 bg-transparent p-0 disabled:cursor-not-allowed ${
-                  activeDepthMetric === opt.key ? 'text-white' : 'text-gray-500 hover:text-gray-300'
-                }`}
+          <div className={`mt-3 pl-2 text-sm ${isDepthMetricDisabled ? 'opacity-40' : ''}`}>
+            <div className="flex max-w-[16rem] items-center justify-between">
+              <span className="settings-subsection-num block text-left text-white">업종 표시 지표</span>
+              <ToggleSwitch
+                checked={depthMetricEnabled}
+                onChange={onToggleDepthMetric}
+                label="업종 표시 지표 사용"
+                hideLabel
+                compact
+                disabled={isDepthMetricDisabled}
+              />
+            </div>
+            <div className={`mt-2 pl-2 ${depthMetricEnabled ? '' : 'opacity-40'}`}>
+              {/* 세 선택지는 지표를 고르는 라디오 그룹일 뿐, 기능을 켜고 끄지는 않는다. 활성화는 제목 옆
+                  작은 토글만 담당하므로 토글이 꺼진 동안 라디오를 눌러도 화면에 다시 나타나지 않는다. */}
+              <div role="radiogroup" aria-label="업종 표시 지표" className="flex max-w-[16rem] flex-row items-center gap-3 whitespace-nowrap">
+                {DEPTH_METRIC_OPTIONS.map(opt => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    role="radio"
+                    aria-checked={activeDepthMetric === opt.key}
+                    onClick={() => onChangeActiveDepthMetric(opt.key)}
+                    disabled={isDepthMetricDisabled || !depthMetricEnabled}
+                    className={`border-0 bg-transparent p-0 text-left disabled:cursor-not-allowed ${
+                      activeDepthMetric === opt.key ? 'text-white' : 'text-gray-500 hover:text-gray-300'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-2 max-w-[16rem]">
+                <RangeSlider
+                  minIndex={depthMetricSliderMinIndex}
+                  maxIndex={depthMetricSliderMaxIndex}
+                  steps={depthMetricSliderSteps}
+                  labels={depthMetricLabels}
+                  minAriaLabel="최소 표시 뎁스"
+                  maxAriaLabel="최대 표시 뎁스"
+                  maxSelectableIndex={depthMetricMaxSelectableIndex}
+                  onChange={onChangeDepthMetricRange}
+                  disabled={isDepthMetricDisabled || !depthMetricEnabled}
+                />
+              </div>
+            </div>
+          </div>
+          {showTopPick && (
+            <div className={`mt-3 pl-2 text-sm ${isTopPickDisabled ? 'opacity-40' : ''}`}>
+              <span className="settings-subsection-num block max-w-[16rem] text-left text-white">선호 업종</span>
+              <div
+                role="radiogroup"
+                aria-label="선호 업종 분류 단계"
+                className="mt-2 flex max-w-[16rem] flex-row items-center gap-3 whitespace-nowrap"
               >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          <div className="mt-2 max-w-[16rem]">
-            <RangeSlider
-              minIndex={activeDepthMetric === null ? 0 : depthMetricMinIndex + 1}
-              maxIndex={activeDepthMetric === null ? 0 : depthMetricMaxIndex + 1}
-              steps={availableMaxDepth}
-              labels={depthMetricLabels}
-              minAriaLabel="최소 표시 뎁스"
-              maxAriaLabel="최대 표시 뎁스"
-              offIndex={0}
-              onChange={(newMin, newMax) => {
-                if (newMin === 0 && newMax === 0) {
-                  onChangeActiveDepthMetric(null)
-                  return
-                }
-                onChangeDepthMetricRange(newMin - 1, newMax - 1)
-              }}
-              disabled={!isCustom}
-            />
-          </div>
+                {DEPTH_LABELS.map((label, index) => {
+                  const isOptionDisabled = isTopPickDisabled || index >= topPickMaxSelectableDepth
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      role="radio"
+                      aria-checked={topPickDepth === index}
+                      onClick={() => onChangeTopPickDepth(index)}
+                      disabled={isOptionDisabled}
+                      className={`border-0 bg-transparent p-0 text-left disabled:cursor-not-allowed ${
+                        topPickDepth === index ? 'text-white' : 'text-gray-500 hover:text-gray-300'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="mt-2 max-w-[16rem]">
+                <SingleValueSlider
+                  index={topPickCount}
+                  labels={TOP_PICK_COUNT_LABELS}
+                  ariaLabel="선호 업종 개수"
+                  onChange={onChangeTopPickCount}
+                  disabled={isTopPickDisabled}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
       {/* "종목 박스" 중제목 — "종목 박스 표기", "종목 텍스트 표시 기준", (지도 페이지 한정) "등락률
           소수점"을 하위 속성으로 묶는다. "업종 분류 탭" 바로 다음이라 구분선은 항상 그린다. */}
       <div className="mt-6 border-t border-gray-700 pt-8">
         <p className="settings-section-num text-base">종목 박스</p>
-        <div className={`mt-2 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
-          <span className="block max-w-[16rem] text-center text-white">종목 박스 표기</span>
-          <div className="mt-2 max-w-[16rem]">
-            <SingleValueSlider
-              index={stockLabelModeIndex}
-              labels={STOCK_LABEL_MODE_LABELS}
-              ariaLabel="종목 박스 표기"
-              onChange={onChangeStockLabelModeIndex}
-              disabled={!isCustom}
-            />
-          </div>
-        </div>
-        <div className={`mt-3 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
-          {/* 퍼센티지 값은 우측 끝에 옅은 회색으로 — 그 값이 없다고 치면 라벨만 가운데 정렬된 것처럼
-              보이도록, 라벨을 flex-1로 남는 공간에서 가운데 정렬한다("업종 분류 레벨" + N/M 배지와
-              동일한 패턴). 값 변경은 아래 슬라이더로만 한다. */}
-          <div className="flex max-w-[16rem] items-center">
-            <span className="flex-1 text-center text-white">종목 텍스트 표시 기준</span>
-            <span className="text-gray-400">{boxLabelMinAreaPercent.toFixed(2)}%</span>
-          </div>
-          <div className="mt-2 max-w-[16rem]">
-            <input
-              type="range"
-              min={0.01}
-              max={0.3}
-              step={0.01}
-              value={boxLabelMinAreaPercent}
-              onChange={e => onChangeBoxLabelMinAreaPercent(Number(e.target.value))}
-              disabled={!isCustom}
-              className="w-full accent-[#4f8fd6] disabled:cursor-not-allowed"
-            />
-          </div>
-        </div>
-        {showDecimalPlaces && (
-          <div className={`mt-3 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
-            <span className="block max-w-[16rem] text-center text-white">등락률 소수점</span>
+        <div className="settings-subsection-list">
+          <div className={`mt-2 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
+            <span className="settings-subsection-num block max-w-[16rem] text-left text-white">종목 박스 표기</span>
             <div className="mt-2 max-w-[16rem]">
               <SingleValueSlider
-                index={decimalPlacesIndex}
-                labels={DECIMAL_PLACES_LABELS}
-                ariaLabel="등락률 소수점"
-                onChange={onChangeDecimalPlacesIndex}
+                index={stockLabelModeIndex}
+                labels={STOCK_LABEL_MODE_LABELS}
+                ariaLabel="종목 박스 표기"
+                onChange={onChangeStockLabelModeIndex}
                 disabled={!isCustom}
               />
             </div>
           </div>
-        )}
+          <div className={`mt-3 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
+            {/* 퍼센티지 값은 우측 끝에 옅은 회색으로 — 그 값이 없다고 치면 라벨만 가운데 정렬된 것처럼
+                보이도록, 라벨을 flex-1로 남는 공간에서 가운데 정렬한다("업종 분류 레벨" + N/M 배지와
+                동일한 패턴). 값 변경은 아래 슬라이더로만 한다. */}
+            <div className="flex max-w-[16rem] items-center">
+              <span className="settings-subsection-num flex-1 text-left text-white">종목 텍스트 표시 기준</span>
+              <span className="text-gray-400">{boxLabelMinAreaPercent.toFixed(2)}%</span>
+            </div>
+            <div className="mt-2 max-w-[16rem]">
+              <input
+                type="range"
+                min={0.01}
+                max={0.3}
+                step={0.01}
+                value={boxLabelMinAreaPercent}
+                onChange={e => onChangeBoxLabelMinAreaPercent(Number(e.target.value))}
+                disabled={!isCustom}
+                className="w-full accent-[var(--accent)] disabled:cursor-not-allowed"
+              />
+            </div>
+          </div>
+          {showDecimalPlaces && (
+            <div className={`mt-3 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
+              <span className="settings-subsection-num block max-w-[16rem] text-left text-white">등락률 소수점</span>
+              <div className="mt-2 max-w-[16rem]">
+                <SingleValueSlider
+                  index={decimalPlacesIndex}
+                  labels={DECIMAL_PLACES_LABELS}
+                  ariaLabel="등락률 소수점"
+                  onChange={onChangeDecimalPlacesIndex}
+                  disabled={!isCustom}
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -564,8 +635,8 @@ export function SettingsMarketValueSection({
   return (
     <div className={showDivider ? 'mt-6 border-t border-gray-700 pt-8 text-white' : 'pt-8 text-white'}>
       <p className="settings-section-num text-base">종목 표시 범위</p>
-      <div className={`mt-2 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
-        <span className="block max-w-[16rem] text-center text-white">시가총액</span>
+      <div className={`settings-subsection-list mt-2 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
+        <span className="settings-subsection-num block max-w-[16rem] text-left text-white">시가총액</span>
         <div className="mt-2 max-w-[16rem]">
           <RangeSlider
             minIndex={tierDisplayMinIndex}
@@ -692,7 +763,7 @@ export function SettingsColorSection({
         <button
           type="button"
           onClick={onAddColorThreshold}
-          className="nes-btn self-start border-[#4f8fd6] bg-[#4f8fd6] px-3 py-1 text-xs text-white hover:brightness-125"
+          className="nes-btn self-start border-[var(--accent)] bg-[var(--accent)] px-3 py-1 text-xs text-black hover:brightness-125"
         >
           + 추가
         </button>
@@ -718,7 +789,7 @@ export function SettingsColorSection({
                 <button
                   type="button"
                   onClick={() => onEditColorThreshold(index)}
-                  className="border-0 bg-transparent text-xs text-white hover:text-yellow-400"
+                  className="border-0 bg-transparent text-xs text-white hover:text-[var(--accent)]"
                 >
                   수정
                 </button>
@@ -757,7 +828,7 @@ export default function SettingsSidebar({ pageLabel, isOpen, onOpenChange, child
 
   return (
     // 슬라이더 자체 폭(max-w-[16rem])의 약 1.3배 — 실제 지도 너비를 덜 뺏도록 사이드바를 좁게 유지한다.
-    <div className="flex w-80 shrink-0 flex-col overflow-hidden bg-zinc-800">
+    <div className="flex w-80 shrink-0 flex-col overflow-hidden border border-gray-700 bg-zinc-800">
       <div className="flex shrink-0 items-center justify-between border-b border-gray-700 p-4">
         <p className="flex h-7 items-center text-lg font-bold leading-none text-white">{pageLabel} 설정</p>
         <button

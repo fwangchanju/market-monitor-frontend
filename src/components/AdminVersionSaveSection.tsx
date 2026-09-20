@@ -79,7 +79,7 @@ export default function AdminVersionSaveSection() {
           <div
             key={version.id}
             className={`group nes-container is-rounded is-dark flex items-center gap-2 px-2 py-1 text-white ${
-              selectedId === version.id ? 'border-2 border-[#4f8fd6]' : ''
+              selectedId === version.id ? 'border-2 border-[var(--accent)]' : ''
             }`}
           >
             <button
@@ -95,7 +95,7 @@ export default function AdminVersionSaveSection() {
                 type="button"
                 onClick={() => handleRestore(version.id, version.label)}
                 title="불러오기"
-                className="nes-btn border-[#4f8fd6] bg-[#4f8fd6] px-2 py-0.5 text-sm text-white hover:brightness-125"
+                className="nes-btn border-[var(--accent)] bg-[var(--accent)] px-2 py-0.5 text-sm text-black hover:brightness-125"
               >
                 ⤴
               </button>
