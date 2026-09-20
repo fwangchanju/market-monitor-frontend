@@ -78,18 +78,20 @@ export default function MarketMapShareModal({
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70" onClick={onClose}>
-      {/* 이미지 비율에 따라 높이가 정해지고, 화면보다 긴 캡처만 미리보기 안에서 스크롤된다. */}
+      {/* 팝업 크기는 페이지와 무관하게 뷰포트 비율로 고정한다. 페이지마다 캡처 비율이 달라서(지도는
+          가로로 넓고 섹터는 세로로 길다) 이미지에 맞추면 팝업이 페이지마다 다른 크기로 뜨고, 고정 크기에
+          이미지를 폭 기준으로 채우면 낮은 이미지 아래가 빈다. 대신 미리보기 칸을 고정하고 이미지는
+          object-contain으로 그 안에 최대한 크게 넣는다. 남는 여백은 위아래(또는 좌우) 대칭이라
+          레터박스로 읽힌다. */}
       <div
-        className="flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] flex-col border border-gray-700 bg-[var(--surface)] p-4 sm:w-3/5 sm:min-w-[30rem]"
+        className="flex h-[85dvh] w-[calc(100%-2rem)] max-w-6xl flex-col border border-gray-700 bg-[var(--surface)] p-4 sm:w-4/5"
         onClick={e => e.stopPropagation()}
       >
-        <div className="min-h-0 overflow-y-auto border border-gray-700 bg-black/30">
+        <div className="flex min-h-0 flex-1 items-center justify-center border border-gray-700 bg-black/30">
           {previewSrc ? (
-            <img src={previewSrc} alt="마켓맵 미리보기" className="block h-auto w-full" />
+            <img src={previewSrc} alt="마켓맵 미리보기" className="h-full w-full object-contain" />
           ) : (
-            <div className="flex h-48 w-full items-center justify-center">
-              <Spinner />
-            </div>
+            <Spinner />
           )}
         </div>
         {/* 양끝 칸의 폭을 같게 유지해 문구 길이와 무관하게 복사 상태를 정중앙에 둔다.
