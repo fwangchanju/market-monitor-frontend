@@ -93,6 +93,26 @@ const STOCK_LABEL_MODE_LABELS = ['종목명', '등락률', '모두']
 // 등락률 소수점 슬라이더 라벨 — 인덱스 그대로 소수점 자릿수(toPctSigned의 decimalPlaces 인자, 0=정수).
 const DECIMAL_PLACES_LABELS = ['정수', '1자리', '2자리']
 
+// 범위 슬라이더 핸들 안의 화살표. 유니코드 화살표는 16px 안에서 뭉개져서 SVG로 그린다.
+function ChevronGlyph({ direction }: { direction: 'left' | 'right' }) {
+  return (
+    <svg viewBox="0 0 8 12" className="h-2.5 w-2 shrink-0" aria-hidden="true">
+      <path
+        d={direction === 'left' ? 'M6 1 2 6l4 5' : 'M2 1l4 5-4 5'}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+// 핸들 크기는 SingleValueSlider(네이티브 range thumb, 16px)와 맞춘다.
+const RANGE_HANDLE_CLASS =
+  'pointer-events-none absolute top-1/2 flex h-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--accent)] text-black touch-none'
+
 // 양쪽 끝에 핸들이 있으면 전체 구간 다 보여주고, 핸들을 안쪽으로 옮기면 그 구간(포함) 밖은 제외된다.
 // 두 핸들은 서로를 지나칠 수 없다(겹치는 건 허용 — 그러면 그 한 칸만 표시).
 function RangeSlider({
@@ -185,20 +205,27 @@ function RangeSlider({
           className="absolute top-1/2 h-1 -translate-y-1/2 rounded bg-[var(--accent)]"
           style={{ left: `${minPct}%`, width: `${maxPct - minPct}%` }}
         />
-        <div
-          aria-label={minAriaLabel}
-          className="pointer-events-none absolute top-1/2 z-10 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center touch-none text-[var(--accent)] text-sm font-bold leading-none"
-          style={{ left: `${minPct}%` }}
-        >
-          ←
-        </div>
-        <div
-          aria-label={maxAriaLabel}
-          className="pointer-events-none absolute top-1/2 z-20 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center touch-none text-[var(--accent)] text-sm font-bold leading-none"
-          style={{ left: `${maxPct}%` }}
-        >
-          →
-        </div>
+        {/* 두 핸들이 같은 칸에 모이면 원 두 개가 겹쳐 화살표가 뭉개진다. 그때는 바깥으로 벌어지는
+            화살표 둘을 담은 알약 하나로 그려서, 모여 있어도 양방향으로 벌릴 수 있는 핸들임이 보이게 한다. */}
+        {minPct === maxPct ? (
+          <div
+            aria-label={`${minAriaLabel} / ${maxAriaLabel}`}
+            className={`${RANGE_HANDLE_CLASS} z-10 w-7 justify-between px-1`}
+            style={{ left: `${minPct}%` }}
+          >
+            <ChevronGlyph direction="left" />
+            <ChevronGlyph direction="right" />
+          </div>
+        ) : (
+          <>
+            <div aria-label={minAriaLabel} className={`${RANGE_HANDLE_CLASS} z-10 w-4`} style={{ left: `${minPct}%` }}>
+              <ChevronGlyph direction="left" />
+            </div>
+            <div aria-label={maxAriaLabel} className={`${RANGE_HANDLE_CLASS} z-20 w-4`} style={{ left: `${maxPct}%` }}>
+              <ChevronGlyph direction="right" />
+            </div>
+          </>
+        )}
       </div>
       {/* 라벨 개수(=steps+1)가 슬라이더마다 다르므로, flex justify-between 대신 핸들과 똑같은 방식
           (각 tick의 x% 위치에 중심을 맞춰 절대 위치)으로 배치해야 라벨 중앙이 항상 그 tick과 정확히
