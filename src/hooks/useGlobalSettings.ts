@@ -116,7 +116,10 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 종목 박스에 이름만/등락률만/둘 다/끄기 중 뭘 보여줄지 — 기본은 둘 다(기존 동작 유지, 배열 앞에
   // "끄기"가 추가되면서 both의 인덱스가 2에서 3으로 밀림).
   const [stockLabelModeIndex, setStockLabelModeIndex] = usePersistedState('marketMap.stockLabelModeIndex', 3)
-  const stockLabelMode = STOCK_LABEL_MODES[stockLabelModeIndex]
+  // 기존 저장값 0(끄기)도 유지하며, 켜고 끄는 동안 선택한 표기 방식은 보존한다.
+  const [stockLabelEnabled, setStockLabelEnabled] = usePersistedState('marketMap.stockLabelEnabled', stockLabelModeIndex !== 0)
+  const selectedStockLabelModeIndex = stockLabelModeIndex || 3
+  const stockLabelMode = stockLabelEnabled ? STOCK_LABEL_MODES[selectedStockLabelModeIndex] : 'off'
   // 지도 페이지에 표시되는 모든 등락률(%)의 소수점 자릿수 — 인덱스가 그대로 자릿수(0=정수, 1=소수
   // 1자리, 2=소수 2자리). 기본값 1(소수 1자리).
   const [decimalPlacesIndex, setDecimalPlacesIndex] = usePersistedState('marketMap.decimalPlacesIndex', 1)
@@ -142,10 +145,14 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const [sectorFilterEnabled, setSectorFilterEnabled] = usePersistedState('marketMap.sectorFilterEnabled', true)
   // null = 제한 없음(전체 뎁스 표시). 슬라이더의 실제 상한(availableMaxDepth)은 트리 계산 후에 나온다.
   // 기본값 2(렌더러 캡처 기준 화면에 맞춤).
-  const [maxDepth, setMaxDepth] = useState<number | null>(2)
+  const [selectedMaxDepth, setMaxDepth] = useState<number | null>(2)
+  const [categoryLevelEnabled, setCategoryLevelEnabled] = useState(true)
+  const maxDepth = categoryLevelEnabled ? selectedMaxDepth : 0
   // 선호 업종 — 선택한 절대 depth에서 등락률 상위 N개 카테고리를 지도 전체에 강조한다.
   const [topPickDepth, setTopPickDepth] = usePersistedState('marketMap.topPickDepth', 1)
   const [topPickCount, setTopPickCount] = usePersistedState('marketMap.topPickCount', 2)
+  const [topPickEnabled, setTopPickEnabled] = usePersistedState('marketMap.topPickEnabled', topPickCount !== 0)
+  const selectedTopPickCount = topPickCount || 2
   // 설정 팝업 열림 상태 — 색상 추가/수정 세션이 시작되면(아래) 잠깐 닫혔다가, 세션이 끝나면(적용/취소) 다시 열린다.
   // 페이지 컴포넌트가 새로 마운트될 때마다 설정창을 기본적으로 연다.
   // 닫힘 상태는 현재 페이지에 머무는 동안만 유지하고, 라우트 이동 시 초기화한다.
@@ -206,7 +213,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 미리 선택할 수 있게 두고, 현재 데이터에 해당 카테고리가 없으면 강조 대상만 빈 Set으로 둔다.
   const topPickMaxSelectableDepth = maxDepth === null ? Math.max(3, availableMaxDepth) : maxDepth
   const topPickCategoryIds = useMemo(() => {
-    if (!isCustom || topPickCount <= 0 || topPickDepth < 0 || topPickDepth >= topPickMaxSelectableDepth) {
+    if (!isCustom || !topPickEnabled || topPickDepth < 0 || topPickDepth >= topPickMaxSelectableDepth) {
       return new Set<number>()
     }
 
@@ -217,12 +224,13 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
       })
       .sort((a, b) => b.average - a.average || b.node.totalMarketValue - a.node.totalMarketValue || a.index - b.index)
 
-    return new Set(candidates.slice(0, topPickCount).map(candidate => candidate.node.categoryId))
+    return new Set(candidates.slice(0, selectedTopPickCount).map(candidate => candidate.node.categoryId))
   }, [
     avgChangeRateUseSimple,
     filteredRootNodes,
     isCustom,
-    topPickCount,
+    topPickEnabled,
+    selectedTopPickCount,
     topPickDepth,
     topPickMaxSelectableDepth,
   ])
@@ -415,7 +423,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const settingsModalProps = {
     isCustom,
     onToggleCustom: handleToggleCustom,
-    maxDepth,
+    maxDepth: selectedMaxDepth,
+    categoryLevelEnabled,
+    onToggleCategoryLevel: () => setCategoryLevelEnabled(prev => !prev),
     availableMaxDepth,
     onChangeMaxDepth: handleChangeMaxDepth,
     activeDepthMetric: selectedDepthMetric,
@@ -426,7 +436,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     depthMetricMaxIndex: depthMetricClampedMaxIndex,
     onChangeDepthMetricRange: handleChangeDepthMetricRange,
     topPickDepth,
-    topPickCount,
+    topPickCount: selectedTopPickCount,
+    topPickEnabled,
+    onToggleTopPick: () => setTopPickEnabled(prev => !prev),
     topPickMaxSelectableDepth,
     onChangeTopPickDepth: setTopPickDepth,
     onChangeTopPickCount: setTopPickCount,
@@ -434,7 +446,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     onToggleAvgChangeRateUseSimple: () => setAvgChangeRateUseSimple(prev => !prev),
     boxLabelMinAreaPercent,
     onChangeBoxLabelMinAreaPercent: setBoxLabelMinAreaPercent,
-    stockLabelModeIndex,
+    stockLabelModeIndex: selectedStockLabelModeIndex,
+    stockLabelEnabled,
+    onToggleStockLabel: () => setStockLabelEnabled(prev => !prev),
     onChangeStockLabelModeIndex: setStockLabelModeIndex,
     decimalPlacesIndex,
     onChangeDecimalPlacesIndex: setDecimalPlacesIndex,

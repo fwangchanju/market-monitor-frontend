@@ -77,8 +77,8 @@ function ToggleSwitch({
 // 뎁스 범위 슬라이더 인덱스는 뎁스에 직접 대응한다(0=대분류, 1=중분류, 2=소분류, ...).
 const DEPTH_LABELS = ['대분류', '중분류', '소분류']
 
-// 선호 업종으로 강조할 상위 카테고리 수 — 0은 끄기.
-const TOP_PICK_COUNT_LABELS = ['끄기', '1개', '2개', '3개']
+// 활성화는 제목 오른쪽 토글, 슬라이더는 표시할 개수만 선택한다.
+const TOP_PICK_COUNT_LABELS = ['1개', '2개', '3개']
 
 // 등락률/등락 종목수/시가총액 합 중 하나만 라디오처럼 고른다 — 순서가 곧 라벨 표시 순서.
 const DEPTH_METRIC_OPTIONS: { key: DepthMetric; label: string }[] = [
@@ -87,8 +87,8 @@ const DEPTH_METRIC_OPTIONS: { key: DepthMetric; label: string }[] = [
   { key: 'marketValue', label: '시가총액 합' },
 ]
 
-// 종목 박스 표시 내용 슬라이더 라벨 — 인덱스가 곧 STOCK_LABEL_MODES(useGlobalSettings)의 인덱스.
-const STOCK_LABEL_MODE_LABELS = ['끄기', '종목명', '등락률', '모두']
+// 저장된 표기 인덱스는 1부터 시작한다. 슬라이더의 0부터 시작하는 인덱스와 변환한다.
+const STOCK_LABEL_MODE_LABELS = ['종목명', '등락률', '모두']
 
 // 등락률 소수점 슬라이더 라벨 — 인덱스 그대로 소수점 자릿수(toPctSigned의 decimalPlaces 인자, 0=정수).
 const DECIMAL_PLACES_LABELS = ['정수', '1자리', '2자리']
@@ -354,6 +354,8 @@ export function SettingsEqualWeightSection({
 export function SettingsCategoryLevelSection({
   isCustom,
   maxDepth,
+  categoryLevelEnabled,
+  onToggleCategoryLevel,
   availableMaxDepth,
   onChangeMaxDepth,
   activeDepthMetric,
@@ -365,10 +367,14 @@ export function SettingsCategoryLevelSection({
   onChangeDepthMetricRange,
   topPickDepth,
   topPickCount,
+  topPickEnabled,
+  onToggleTopPick,
   topPickMaxSelectableDepth,
   onChangeTopPickDepth,
   onChangeTopPickCount,
   stockLabelModeIndex,
+  stockLabelEnabled,
+  onToggleStockLabel,
   onChangeStockLabelModeIndex,
   boxLabelMinAreaPercent,
   onChangeBoxLabelMinAreaPercent,
@@ -385,6 +391,8 @@ export function SettingsCategoryLevelSection({
   // null이면 제한 없음(=availableMaxDepth 전체 다 보여줌). 슬라이더가 다룰 수 있는 실제 상한은
   // 지금 트리(exclude/tier 필터링까지 반영된)의 최대 뎁스라 따로 내려받는다.
   maxDepth: number | null
+  categoryLevelEnabled: boolean
+  onToggleCategoryLevel: () => void
   availableMaxDepth: number
   onChangeMaxDepth: (value: number) => void
   // 등락률/등락 종목수/시가총액 합 중 하나만 라디오처럼 고른다 — 표시 여부는 별도 토글로 제어한다.
@@ -400,11 +408,15 @@ export function SettingsCategoryLevelSection({
   // 선호 업종의 절대 depth/상위 N개 — 지도 페이지에서만 showTopPick으로 노출한다.
   topPickDepth: number
   topPickCount: number
+  topPickEnabled: boolean
+  onToggleTopPick: () => void
   topPickMaxSelectableDepth: number
   onChangeTopPickDepth: (depth: number) => void
   onChangeTopPickCount: (count: number) => void
-  // 종목 박스에 끄기(0)/이름만(1)/등락률만(2)/둘 다(3) 보여줄지 — STOCK_LABEL_MODE_OPTIONS 인덱스.
+  // 종목 박스에 이름만(1)/등락률만(2)/둘 다(3) 보여줄지. 표시 여부는 별도 토글로 제어한다.
   stockLabelModeIndex: number
+  stockLabelEnabled: boolean
+  onToggleStockLabel: () => void
   onChangeStockLabelModeIndex: (index: number) => void
   // 종목 박스가 전체 트리맵 넓이에서 이 비중(%) 미만이면 종목명/등락률을 표시하지 않는다.
   boxLabelMinAreaPercent: number
@@ -425,12 +437,10 @@ export function SettingsCategoryLevelSection({
   const depthValue = Math.min(maxDepth ?? depthLabelCount, depthLabelCount)
   const isDepthDisabled = !isCustom || availableMaxDepth <= 1
   const depthMetricMaxSelectableIndex = Math.max(0, Math.min(depthLabelCount, maxDepth ?? depthLabelCount) - 1)
-  const isDepthMetricDisabled = !isCustom || maxDepth === 0
-  const isTopPickDisabled = !isCustom || maxDepth === 0
+  const isDepthMetricDisabled = !isCustom || !categoryLevelEnabled
+  const isTopPickDisabled = !isCustom || !categoryLevelEnabled
   const depthMetricLabels = Array.from({ length: depthLabelCount }, (_, index) => DEPTH_LABELS[index] ?? `${index + 1}차 분류`)
-  // 업종 분류 레벨은 maxDepth(0=끄기, 1=대분류까지, ...)를 인덱스 그대로 쓰므로 맨 앞에 "끄기" 칸이 있어야
-  // 소분류(3)까지 갈 수 있다. 지표 범위 슬라이더는 뎁스 인덱스(0=대분류)라 "끄기" 칸이 없다.
-  const depthLevelLabels = ['끄기', ...depthMetricLabels]
+  // 레벨 값은 1=대분류, 2=중분류, 3=소분류. 슬라이더 인덱스와 1만큼 차이 난다.
   const depthMetricSliderSteps = Math.max(depthLabelCount - 1, 1)
   // 선택값은 저장한 범위를 그대로 유지하되, 현재 업종 분류 레벨을 넘는 부분만 화면에서 잘라 보여준다.
   const depthMetricSliderMinIndex = Math.min(depthMetricMinIndex, depthMetricMaxSelectableIndex)
@@ -446,16 +456,24 @@ export function SettingsCategoryLevelSection({
         <p className="settings-section-num text-base">업종 분류 탭</p>
         <div className="settings-subsection-list">
           <div className={`mt-2 pl-2 text-sm ${isDepthDisabled ? 'opacity-40' : ''}`}>
-            {/* "끄기/대분류/중분류/소분류..." 눈금 라벨을 슬라이더 하단에 둔다 — 끄기(0)는 카테고리
-                태그를 평탄화하고, 실제 화면에 표시할 최대 분류 레벨은 이 값을 기준으로 제한한다. */}
-            <span className="settings-subsection-num block max-w-[16rem] text-left text-white">업종 분류 레벨</span>
-            <div className="mt-2 max-w-[16rem]">
-              <SingleValueSlider
-                index={depthValue}
-                labels={depthLevelLabels}
-                ariaLabel="업종 분류 레벨"
-                onChange={onChangeMaxDepth}
+            <div className="flex max-w-[16rem] items-center justify-between">
+              <span className="settings-subsection-num block text-left text-white">업종 분류 레벨</span>
+              <ToggleSwitch
+                checked={categoryLevelEnabled}
+                onChange={onToggleCategoryLevel}
+                label="업종 분류 레벨 사용"
+                hideLabel
+                compact
                 disabled={isDepthDisabled}
+              />
+            </div>
+            <div className={`mt-2 max-w-[16rem] ${categoryLevelEnabled ? '' : 'opacity-40'}`}>
+              <SingleValueSlider
+                index={depthValue - 1}
+                labels={depthMetricLabels}
+                ariaLabel="업종 분류 레벨"
+                onChange={index => onChangeMaxDepth(index + 1)}
+                disabled={isDepthDisabled || !categoryLevelEnabled}
               />
             </div>
           </div>
@@ -508,14 +526,24 @@ export function SettingsCategoryLevelSection({
           </div>
           {showTopPick && (
             <div className={`mt-3 pl-2 text-sm ${isTopPickDisabled ? 'opacity-40' : ''}`}>
-              <span className="settings-subsection-num block max-w-[16rem] text-left text-white">강세 업종 표시</span>
+              <div className="flex max-w-[16rem] items-center justify-between">
+                <span className="settings-subsection-num block text-left text-white">강세 업종 표시</span>
+                <ToggleSwitch
+                  checked={topPickEnabled}
+                  onChange={onToggleTopPick}
+                  label="강세 업종 표시 사용"
+                  hideLabel
+                  compact
+                  disabled={isTopPickDisabled}
+                />
+              </div>
               <div
                 role="radiogroup"
                 aria-label="강세 업종 표시 분류 단계"
-                className="mt-2 flex max-w-[16rem] flex-row items-center gap-3 whitespace-nowrap"
+                className={`mt-2 flex max-w-[16rem] flex-row items-center gap-3 whitespace-nowrap ${topPickEnabled ? '' : 'opacity-40'}`}
               >
                 {DEPTH_LABELS.map((label, index) => {
-                  const isOptionDisabled = isTopPickDisabled || index >= topPickMaxSelectableDepth
+                  const isOptionDisabled = isTopPickDisabled || !topPickEnabled || index >= topPickMaxSelectableDepth
                   return (
                     <button
                       key={label}
@@ -533,13 +561,13 @@ export function SettingsCategoryLevelSection({
                   )
                 })}
               </div>
-              <div className="mt-2 max-w-[16rem]">
+              <div className={`mt-2 max-w-[16rem] ${topPickEnabled ? '' : 'opacity-40'}`}>
                 <SingleValueSlider
-                  index={topPickCount}
+                  index={topPickCount - 1}
                   labels={TOP_PICK_COUNT_LABELS}
                   ariaLabel="강세 업종 표시 개수"
-                  onChange={onChangeTopPickCount}
-                  disabled={isTopPickDisabled}
+                  onChange={index => onChangeTopPickCount(index + 1)}
+                  disabled={isTopPickDisabled || !topPickEnabled}
                 />
               </div>
             </div>
@@ -552,14 +580,24 @@ export function SettingsCategoryLevelSection({
         <p className="settings-section-num text-base">종목 박스</p>
         <div className="settings-subsection-list">
           <div className={`mt-2 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
-            <span className="settings-subsection-num block max-w-[16rem] text-left text-white">종목 박스 내 표기</span>
-            <div className="mt-2 max-w-[16rem]">
+            <div className="flex max-w-[16rem] items-center justify-between">
+              <span className="settings-subsection-num block text-left text-white">종목 박스 내 표기</span>
+              <ToggleSwitch
+                checked={stockLabelEnabled}
+                onChange={onToggleStockLabel}
+                label="종목 박스 내 표기 사용"
+                hideLabel
+                compact
+                disabled={!isCustom}
+              />
+            </div>
+            <div className={`mt-2 max-w-[16rem] ${stockLabelEnabled ? '' : 'opacity-40'}`}>
               <SingleValueSlider
-                index={stockLabelModeIndex}
+                index={stockLabelModeIndex - 1}
                 labels={STOCK_LABEL_MODE_LABELS}
                 ariaLabel="종목 박스 내 표기"
-                onChange={onChangeStockLabelModeIndex}
-                disabled={!isCustom}
+                onChange={index => onChangeStockLabelModeIndex(index + 1)}
+                disabled={!isCustom || !stockLabelEnabled}
               />
             </div>
           </div>
