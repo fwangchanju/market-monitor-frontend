@@ -3,13 +3,14 @@ import { Link, useLocation } from 'react-router-dom'
 import { useIsAdmin } from '@/hooks/useAccess'
 import { FONT_NAV_TAB } from '@/components/FontStyle'
 import type { MarketQuery } from '@/types/api'
+import { marketRoute } from '@/utils/marketRoute'
 
 const BASE_LINKS = [
-  { to: '/market-summary', label: '요약' },
-  { to: '/market-map', label: '지도' },
-  { to: '/category-change-rate', label: '섹터' },
+  { to: '/summary', label: '요약' },
+  { to: '/map/kospi', label: '지도' },
+  { to: '/sector/kospi', label: '섹터' },
 ]
-const ADMIN_LINK = { to: '/admin/market-map', label: '커스텀' }
+const ADMIN_LINK = { to: '/admin/sector', label: '커스텀' }
 
 // "지도"/"섹터" 탭 위에 마우스를 올리면 뜨는 마켓 목록 — 두 탭 다 같은 목록이고 이동할 경로(basePath)만
 // 다르다.
@@ -20,13 +21,13 @@ const MARKET_LIST_ITEMS: { label: string; market: MarketQuery }[] = [
 ]
 
 // 글자가 안 잘리도록 가장 긴 라벨("ALL STOCK") 기준으로 폭이 자동으로 늘어난다(w-max).
-function MarketDropdownItems({ basePath }: { basePath: string }) {
+function MarketDropdownItems({ basePath }: { basePath: '/map' | '/sector' }) {
   return (
     <>
       {MARKET_LIST_ITEMS.map(({ label, market }) => (
         <Link
           key={label}
-          to={`${basePath}?market=${market}`}
+          to={marketRoute(basePath, market)}
           className="px-3 py-1 text-left text-lg font-normal whitespace-nowrap text-white hover:bg-gray-800"
         >
           {label}
@@ -71,21 +72,31 @@ export default function SubNavBar({ actions }: Props) {
   const linkClassName = (to: string) =>
     `${FONT_NAV_TAB} whitespace-nowrap ${location.pathname === to ? 'text-[var(--accent)]' : 'text-gray-400 hover:text-white'}`
 
+  const isMarketTab = (to: string) => to === '/map/kospi' || to === '/sector/kospi'
+  const isMarketTabActive = (to: string) =>
+    to === '/map/kospi' ? location.pathname.startsWith('/map/') : to === '/sector/kospi' ? location.pathname.startsWith('/sector/') : false
+  const isAdminTabActive = location.pathname === '/admin/sector' || location.pathname === '/admin/stock' || location.pathname === '/admin/market-map'
+
   return (
     <div className="flex h-8 shrink-0 items-center justify-between gap-3 bg-zinc-900 px-3 text-xs shadow-lg">
       <div className="flex h-8 items-center gap-3">
         {links.map(link =>
-          link.to === '/market-map' || link.to === '/category-change-rate' ? (
+          isMarketTab(link.to) ? (
             // 클릭하면 그냥 기본값(KOSPI)으로 이동하고, 마켓을 올려두면 여기서 골라 바로 그 마켓으로 들어갈 수 있다.
-            <TabWithDropdown key={link.to} to={link.to} label={link.label} active={location.pathname === link.to}>
-              <MarketDropdownItems basePath={link.to} />
+            <TabWithDropdown
+              key={link.to}
+              to={link.to}
+              label={link.label}
+              active={isMarketTabActive(link.to)}
+            >
+              <MarketDropdownItems basePath={link.to.startsWith('/map/') ? '/map' : '/sector'} />
             </TabWithDropdown>
-          ) : link.to === '/admin/market-map' ? (
-            <TabWithDropdown key={link.to} to={link.to} label={link.label} active={location.pathname === link.to}>
+          ) : link.to === '/admin/sector' ? (
+            <TabWithDropdown key={link.to} to={link.to} label={link.label} active={isAdminTabActive}>
               {ADMIN_MODE_LIST_ITEMS.map(({ label, mode }) => (
                 <Link
                   key={label}
-                  to={`/admin/market-map?mode=${mode}`}
+                  to={mode === 'stock' ? '/admin/stock' : '/admin/sector'}
                   className="px-3 py-1 text-left text-lg font-normal whitespace-nowrap text-white hover:bg-gray-800"
                 >
                   {label}

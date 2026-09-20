@@ -30,7 +30,7 @@ const programTradingDailyHistoryResponseSchema = stockHistoryResponseSchema(Prog
 const shortSellingHistoryResponseSchema = stockHistoryResponseSchema(ShortSellingHistoryItemSchema)
 
 export const getMarketSummary = () =>
-  client.get('/market-summary').then(r => MarketSummaryResponseSchema.parse(r.data))
+  client.get('/summary').then(r => MarketSummaryResponseSchema.parse(r.data))
 
 export const getWatchStocks = () =>
   client.get('/watch-stocks').then(r => watchStocksResponseSchema.parse(r.data))

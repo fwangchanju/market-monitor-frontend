@@ -1,6 +1,6 @@
 import type { MarketValueTierItem } from '@/types/api'
 
-// 시가총액 구간 정의는 더 이상 프론트 하드코딩이 아니라 GET /market-map/value-tiers 조회 결과
+// 시가총액 구간 정의는 더 이상 프론트 하드코딩이 아니라 GET /map/value-tiers 조회 결과
 // (useMarketValueTiers)를 그대로 쓴다 — thresholdValue 오름차순으로 내려온다는 게 백엔드 계약.
 // 이 파일은 그 목록을 필터링에 쓰기 위한 순수 변환 함수만 모아둔다.
 

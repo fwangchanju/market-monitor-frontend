@@ -24,11 +24,11 @@ export const FONT_BAR_TITLE = 'text-xl leading-none font-bold'
 // 500/700만 있어 정확히 매칭됨).
 export const FONT_BAR_MARKET_INDEX = 'text-xl leading-none font-medium'
 
-// 세 번째 바 — 모드 상태 텍스트(예: 커스텀 모드). 20px(FONT_BAR_TITLE과 동일), medium(500).
-export const FONT_BAR_MODE_STATUS = 'text-xl leading-none font-medium'
+// 세 번째 바 — 모드 상태 텍스트(예: 커스텀 모드). 14px, medium(500).
+export const FONT_BAR_MODE_STATUS = 'text-sm leading-none font-medium'
 
-// 세 번째 바 — 시간(스냅샷 시각). 20px(FONT_BAR_TITLE과 동일), medium(500).
-export const FONT_BAR_TIME = 'text-xl leading-none font-medium'
+// 세 번째 바 — 시간(스냅샷 시각). 14px(FONT_BAR_MODE_STATUS와 동일), medium(500).
+export const FONT_BAR_TIME = 'text-sm leading-none font-medium'
 
 // 세 번째 바 — 범례. 12px, bold.
 export const FONT_BAR_LEGEND = 'text-xs font-bold'

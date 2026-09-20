@@ -47,7 +47,7 @@ export default function MarketOverviewSection() {
             <div className="text-xs text-white">{item.market}</div>
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className={`text-2xl font-bold tabular-nums ${signClass(item.changeValue)}`}>
+                <div className={`text-2xl font-bold ${signClass(item.changeValue)}`}>
                   {toIndex(item.indexValue)}
                 </div>
                 <div className={`mt-1 text-sm ${signClass(item.changeValue)}`}>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { usePersistedState } from './usePersistedState'
 import { useMarketMap } from './useMarketMap'
 import { useMarketMapColorScale } from './useMarketMapColorScale'
@@ -84,6 +85,7 @@ function topPickAverage(node: FilteredMarketMapCategoryNode, useSimple: boolean)
 // 내용 자체는 어느 페이지에서 열든 동일하게 보인다.
 export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const needsTree = options?.needsTree ?? true
+  const { pathname } = useLocation()
   const [market, setMarket] = usePersistedState<MarketQuery>('marketMap.market', 'KOSPI')
   const [isCustom, setIsCustom] = usePersistedState('marketMap.isCustom', true)
   // 시가총액 합/등락률 평균/등락 종목수 태그를 셋 다 동시에 켤 수 있었는데, 한꺼번에 여러 개가 뜨면
@@ -142,17 +144,26 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 기본값 2(렌더러 캡처 기준 화면에 맞춤).
   const [maxDepth, setMaxDepth] = useState<number | null>(2)
   // 선호 업종 — 선택한 절대 depth에서 등락률 상위 N개 카테고리를 지도 전체에 강조한다.
-  const [topPickDepth, setTopPickDepth] = usePersistedState('marketMap.topPickDepth', 0)
-  const [topPickCount, setTopPickCount] = usePersistedState('marketMap.topPickCount', 0)
+  const [topPickDepth, setTopPickDepth] = usePersistedState('marketMap.topPickDepth', 1)
+  const [topPickCount, setTopPickCount] = usePersistedState('marketMap.topPickCount', 2)
   // 설정 팝업 열림 상태 — 색상 추가/수정 세션이 시작되면(아래) 잠깐 닫혔다가, 세션이 끝나면(적용/취소) 다시 열린다.
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  // 페이지 컴포넌트가 새로 마운트될 때마다 설정창을 기본적으로 연다.
+  // 닫힘 상태는 현재 페이지에 머무는 동안만 유지하고, 라우트 이동 시 초기화한다.
+  const [isSettingsOpen, setIsSettingsOpen] = useState(true)
+  const previousPathnameRef = useRef(pathname)
+
+  useEffect(() => {
+    if (previousPathnameRef.current === pathname) return
+    previousPathnameRef.current = pathname
+    setIsSettingsOpen(true)
+  }, [pathname])
   // 새로 받아온 (market, isCustom) 조합의 데이터가 처음 도착했을 때만 서버 isExcluded로 시드하고,
   // 그 뒤 60초 백그라운드 재조회가 로컬에서 방금 토글한 상태를 덮어쓰지 않게 한다(fire-and-forget 저장이라
   // 서버 반영 전에 재조회가 먼저 도착할 수 있음).
   const seededKeyRef = useRef<string | null>(null)
 
   const { data, isLoading, isError, isRefetching: isRefetchingMarketMap, refetch: refetchMarketMap } = useMarketMap(market, isCustom, {
-    enabled: needsTree || isSettingsOpen,
+    enabled: needsTree,
   })
   const rootNodes = data?.items ?? []
 

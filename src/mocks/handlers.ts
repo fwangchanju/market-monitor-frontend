@@ -12,7 +12,7 @@ const ok = () => HttpResponse.json({})
 
 export const handlers = [
   // ── 대시보드(시장요약) ──────────────────────────────────────────────
-  http.get('/api/market-summary', () =>
+  http.get('/api/summary', () =>
     HttpResponse.json({
       marketOverviews: snapshot(data.marketOverviews),
       investorTradingSummaries: snapshot(data.investorTradingSummaries),
@@ -52,26 +52,26 @@ export const handlers = [
 
   // ── 마켓맵 ──────────────────────────────────────────────────────────
   // marketOverview는 market이 단일 마켓일 때만(ALL_STOCK이면 단일 지수값이 없어 null) — 실제 백엔드와 동일.
-  http.get('/api/market-map', ({ request }) => {
+  http.get('/api/map', ({ request }) => {
     const market = new URL(request.url).searchParams.get('market')
     const marketOverview = data.marketOverviews.find(o => o.market === market) ?? null
     return HttpResponse.json({ ...snapshot(data.marketMapTree), marketOverview })
   }),
-  http.get('/api/market-map/value-tiers', () => HttpResponse.json(data.marketValueTiers)),
-  http.get('/api/market-map/category-change-rates', ({ request }) => {
+  http.get('/api/map/value-tiers', () => HttpResponse.json(data.marketValueTiers)),
+  http.get('/api/sector', ({ request }) => {
     const market = new URL(request.url).searchParams.get('market')
     const rankings = data.categoryChangeRateRankings.filter(r => market === 'ALL_STOCK' || r.market === market)
     return HttpResponse.json(snapshot(rankings))
   }),
-  http.get('/api/market-map/scale', () => HttpResponse.json(data.marketMapColorScale)),
-  http.get('/api/market-map/excluded-stocks', () => HttpResponse.json(data.excludedStocks)),
-  http.post('/api/market-map/excluded-stocks/:stockCode', ok),
-  http.delete('/api/market-map/excluded-stocks/:stockCode', ok),
-  http.delete('/api/market-map/excluded-stocks', ok),
-  http.post('/api/market-map/excluded-categories/:categoryId', ok),
-  http.delete('/api/market-map/excluded-categories/:categoryId', ok),
-  http.delete('/api/market-map/excluded-categories', ok),
-  http.delete('/api/market-map/reset', ok),
+  http.get('/api/map/scale', () => HttpResponse.json(data.marketMapColorScale)),
+  http.get('/api/map/excluded-stocks', () => HttpResponse.json(data.excludedStocks)),
+  http.post('/api/map/excluded-stocks/:stockCode', ok),
+  http.delete('/api/map/excluded-stocks/:stockCode', ok),
+  http.delete('/api/map/excluded-stocks', ok),
+  http.post('/api/map/excluded-categories/:categoryId', ok),
+  http.delete('/api/map/excluded-categories/:categoryId', ok),
+  http.delete('/api/map/excluded-categories', ok),
+  http.delete('/api/map/reset', ok),
 
   // ── 접근 권한 ───────────────────────────────────────────────────────
   // 로컬 개발 환경에서는 항상 admin으로 취급 — 커스텀 버튼 등 admin 전용 UI를 바로 확인할 수 있게.

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
 import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
@@ -14,18 +14,18 @@ import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
 import Spinner from '@/components/Spinner'
 import NavBarPageActions from '@/components/NavBarPageActions'
-import { FONT_BAR_TITLE, FONT_BAR_MARKET_INDEX, FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
+import { FONT_BAR_TITLE, FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
-import { TAB_GAP, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel, toIndex, toPctSigned } from '@/utils/format'
-import { resolveMarketMapExtremeColor } from '@/utils/marketMapColorScale'
+import { toCount, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { limitDepth, flattenAllItems, type FilteredMarketMapCategoryNode } from '@/hooks/useFilteredMarketMapTree'
 import type { MarketQuery, MarketMapCategoryNode, MarketMapItem } from '@/types/api'
+import { marketFromRouteSegment } from '@/utils/marketRoute'
 
 const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
 
@@ -137,10 +137,6 @@ export default function MarketMapCustomPage() {
   const [zoomOutRequestDepth, setZoomOutRequestDepth] = useState<number | null>(null)
   const captureRef = useRef<HTMLDivElement>(null)
 
-  // data(useMarketMap 응답)에 이미 같은 스냅샷 시각 기준의 지수 개요가 함께 온다 — market이 ALL_STOCK이면
-  // 단일 지수값이 없어 marketOverview가 null.
-  const marketOverview = data?.marketOverview
-
   const { path, currentNode, currentSiblings, enterCategory, goToDepth, reset } = useMarketMapDrilldown(filteredRootNodes)
   // path가 바뀌면(어떤 방식의 이동이든) 이전 hover 상태를 무조건 지운다 — 안 그러면 브레드크럼 바가
   // path 없을 때 사라졌다가 다시 나타날 때, 예전에 hover했던 값이 그대로 남아 있다가 새로 그려진
@@ -183,7 +179,7 @@ export default function MarketMapCustomPage() {
           isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-400'
         }`}
       />
-      <span className="text-white">커스텀 모드</span>
+      <span className="text-gray-400">커스텀 모드</span>
     </>
   )
 
@@ -192,17 +188,15 @@ export default function MarketMapCustomPage() {
     reset()
   }
 
-  // SubNavBar의 "지도" 탭 위 마켓 목록에서 KOSPI/KOSDAQ/ALL_STOCK를 고르면 /market-map?market=...로
-  // 이동한다. 렌더러도 /market-map?market=KOSPI&avgMode=simple&sectorFilter=true로 캡처 요청한다.
-  // 이미 이 페이지에 있으면(같은 라우트) 리마운트 없이 searchParams만 바뀌므로 여기서 반영하고, 초기
-  // 상태 읽는 용도일 뿐 주소창에 남아있을 필요는 없어서 반영 직후 지운다. 세 파라미터는 서로
-  // 독립적으로 판정한다 — 하나가 없거나 잘못됐다고 다른 것까지 무시하면 안 된다. 실제로 소비한
-  // (유효했던) 파라미터만 주소에서 지운다(CategoryChangeRatePage와 동일한 판정 방식 — 지도 페이지는
-  // beforeMinutes를 안 쓰므로 그것만 없다).
+  // SubNavBar의 "지도" 탭 위 마켓 목록은 /map/kospi처럼 경로에 마켓을 담는다. 기존 캡처 요청이
+  // ?market=...을 계속 보내도 호환되도록 쿼리 마켓을 우선 소비하고, 소비한 쿼리만 주소에서 지운다.
+  const { pathname } = useLocation()
+  const routeMarket = marketFromRouteSegment(pathname.split('/')[2])
   useEffect(() => {
     const marketParam = searchParams.get('market')
     const isValidMarket = marketParam === 'KOSPI' || marketParam === 'KOSDAQ' || marketParam === 'ALL_STOCK'
-    if (isValidMarket) handleMarketChange(marketParam)
+    const nextMarket = isValidMarket ? marketParam : routeMarket
+    if (nextMarket && nextMarket !== market) handleMarketChange(nextMarket)
 
     // 백엔드가 캡처 URL에 싣는 avgMode=simple|weighted, sectorFilter=true|false 계약에 맞춘다
     // (market-monitor-backend의 instructions-telegram-average-mode.md 결정 6).
@@ -226,7 +220,7 @@ export default function MarketMapCustomPage() {
       { replace: true },
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 파라미터가 있을 때만 반응하면 됨
-  }, [searchParams])
+  }, [market, routeMarket, searchParams])
 
   // breadcrumb에서 상위 뎁스로 갈 때, 바로 이동하지 않고 줌아웃 애니메이션을 먼저 요청한다.
   const handleGoToDepth = (depth: number) => {
@@ -313,19 +307,6 @@ export default function MarketMapCustomPage() {
                 >
                   {MARKET_LABEL[market]}
                 </span>
-                {marketOverview && (
-                  <span
-                    className={FONT_BAR_MARKET_INDEX}
-                    style={{ color: resolveMarketMapExtremeColor(marketOverview.changeRate, colorScale) }}
-                  >
-                    {toIndex(marketOverview.indexValue)}
-                    {TAB_GAP}
-                    {marketOverview.changeValue > 0 ? '▲' : marketOverview.changeValue < 0 ? '▼' : ''}
-                    {toIndex(Math.abs(marketOverview.changeValue))}
-                    {TAB_GAP}
-                    {toPctSigned(marketOverview.changeRate, decimalPlaces)}
-                  </span>
-                )}
               </div>
               <span
                 className={`${FONT_BAR_MODE_STATUS} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-gray-400`}
@@ -334,7 +315,7 @@ export default function MarketMapCustomPage() {
               </span>
               <div className="flex items-center gap-3">
                 {data?.snapshotTime && (
-                  <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-white`}>
+                  <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
                     <span>{toMarketMapSnapshotDateLabel(data.snapshotTime)}</span>
                     <span>{toMarketMapSnapshotTimeOnlyLabel(data.snapshotTime)}</span>
                   </span>
@@ -417,6 +398,7 @@ export default function MarketMapCustomPage() {
                   stockLabelMode={stockLabelMode}
                   decimalPlaces={decimalPlaces}
                   topPickCategoryIds={topPickCategoryIds}
+                  useTabularNumbers={isCustom}
                   zoomOutRequestDepth={zoomOutRequestDepth}
                   onZoomOutComplete={handleZoomOutComplete}
                 />
@@ -432,7 +414,7 @@ export default function MarketMapCustomPage() {
                 settingsModalProps.onToggleCustom()
                 reset()
               }}
-              stockCountLabel={`${visibleItems.length}/${totalItemCount}종목`}
+              stockCountLabel={`${toCount(visibleItems.length)}/${toCount(totalItemCount)}종목`}
               showEqualWeightToggle
             />
             <SettingsMarketValueSection {...settingsModalProps} showDivider={false} />

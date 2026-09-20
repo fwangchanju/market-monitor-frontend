@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
 import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
@@ -32,6 +32,7 @@ import {
   type ColorScaleConfig,
 } from '@/utils/marketMapColorScale'
 import type { CategoryTierBreakdown, Market, MarketQuery } from '@/types/api'
+import { marketFromRouteSegment } from '@/utils/marketRoute'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
@@ -106,7 +107,7 @@ function RankBars({
     // (flex 기본값)로 실제 높이는 부모 flex 행 높이를 그대로 받는다. content-between으로 헤더 행은
     // 맨 위에 붙이고 종목 행들 사이 간격만 넓혀서, 카테고리 수가 적어도 컨테이너 높이를 채운다.
     <div
-      className="grid h-full min-h-0 w-full flex-1 content-between items-center gap-x-3 gap-y-2 text-[15px]"
+      className="grid h-full min-h-0 w-full flex-1 content-between items-center gap-x-3 gap-y-2 text-[15px] tabular-nums"
       style={{ gridTemplateColumns: 'auto 1fr' }}
     >
       <span />
@@ -171,6 +172,8 @@ export default function CategoryChangeRatePage() {
   const [market, setMarket] = usePersistedState<MarketQuery>('categoryChangeRate.market', 'KOSPI')
   const [beforeMinutes, setBeforeMinutes] = usePersistedState('categoryChangeRate.beforeMinutes', 15)
   const [searchParams, setSearchParams] = useSearchParams()
+  const { pathname } = useLocation()
+  const routeMarket = marketFromRouteSegment(pathname.split('/')[2])
 
   const {
     settingsModalProps,
@@ -183,14 +186,15 @@ export default function CategoryChangeRatePage() {
     colorScale,
   } = useGlobalSettings()
 
-  // 렌더러가 /category-change-rate?market=KOSDAQ&beforeMinutes=15&avgMode=simple&sectorFilter=true로
+  // 렌더러가 /sector/kosdaq?beforeMinutes=15&avgMode=simple&sectorFilter=true로
   // 캡처 요청할 때 쓰는 진입점 — MarketMapCustomPage와 동일한 패턴(초기 상태 반영 용도일 뿐 주소창엔
   // 남길 필요 없어 반영 직후 지움). 네 파라미터는 서로 독립적으로 판정한다 — 하나가 없거나 잘못됐다고
   // 다른 것까지 무시하면 안 된다. 실제로 소비한(유효했던) 파라미터만 주소에서 지운다.
   useEffect(() => {
     const marketParam = searchParams.get('market')
     const isValidMarket = marketParam === 'KOSPI' || marketParam === 'KOSDAQ' || marketParam === 'ALL_STOCK'
-    if (isValidMarket) setMarket(marketParam)
+    const nextMarket = isValidMarket ? marketParam : routeMarket
+    if (nextMarket && nextMarket !== market) setMarket(nextMarket)
 
     // 양의 정수가 아니면 무시하고 기존 값을 쓴다. 데이터가 5분 간격으로만 존재해서(수집 주기) 5의
     // 배수가 아닌 값은 애초에 조회가 불가능하다 — 여기서도 같은 조건으로 걸러낸다.
@@ -222,7 +226,7 @@ export default function CategoryChangeRatePage() {
       { replace: true },
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 파라미터가 있을 때만 반응하면 됨
-  }, [searchParams])
+  }, [market, routeMarket, searchParams])
   // 지도 페이지 상단 바와 동일한 위치/스타일의 커스텀 모드 점등 표시 — 켜짐/꺼짐 상태만 보여준다.
   const modeStatusText = (
     <>
@@ -231,7 +235,7 @@ export default function CategoryChangeRatePage() {
           settingsModalProps.isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-400'
         }`}
       />
-      <span className="text-white">커스텀 모드</span>
+      <span className="text-sm text-gray-400">커스텀 모드</span>
     </>
   )
 
@@ -444,7 +448,7 @@ export default function CategoryChangeRatePage() {
                 {modeStatusText}
               </span>
               {rankingData?.snapshotTime && (
-                <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-white`}>
+                <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
                   <span>{toMarketMapSnapshotDateLabel(rankingData.snapshotTime)}</span>
                   <span>{toMarketMapSnapshotTimeOnlyLabel(rankingData.snapshotTime)}</span>
                 </span>

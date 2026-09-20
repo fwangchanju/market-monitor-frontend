@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { createPortal } from 'react-dom'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { CategoryItem, MarketValueTierItem, StockCategoryListItem } from '@/types/api'
-import { toFullDateTimeLabel, toJoEokDecimal } from '@/utils/format'
+import { toCount, toFullDateTimeLabel, toJoEokDecimal } from '@/utils/format'
 import { exportRowsToExcel } from '@/utils/exportExcel'
 import { charTier } from '@/utils/koreanSort'
 import { useAssignStockCategory, useBulkAssignStockCategory, useUpdateAlias } from '@/hooks/useMarketMapAdmin'
@@ -891,7 +891,7 @@ function AdminColumnFilterButton({
 
 // 시가총액 구간 필터. 다른 컬럼 필터(AdminColumnFilterButton)와 동일하게 "기본 전체 포함,
 // 체크 해제로 제외"하는 다중선택 방식이라 대형주+중형주처럼 여러 구간을 동시에 볼 수 있다.
-// 구간 종류/개수가 고정이 아니라 GET /market-map/value-tiers 조회 결과라 검색 입력 없이 목록만 보여준다.
+// 구간 종류/개수가 고정이 아니라 GET /map/value-tiers 조회 결과라 검색 입력 없이 목록만 보여준다.
 function AdminMarketValueFilterButton({
   tiers,
   excluded,
@@ -1780,8 +1780,8 @@ export default function AdminStockTable({
     <div className="flex h-full min-h-0 w-full items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <p className="text-sm font-bold text-white">
-            종목수 ({sorted.length}
-            {sorted.length !== items.length ? ` / ${items.length}` : ''})
+            종목수 ({toCount(sorted.length)}
+            {sorted.length !== items.length ? ` / ${toCount(items.length)}` : ''})
           </p>
           <div className="flex items-center gap-2">
             <div
@@ -1930,7 +1930,7 @@ export default function AdminStockTable({
           <thead className="sticky top-0 z-10">
             <tr>
               <th
-                className="cursor-pointer bg-[var(--accent)] text-center"
+                className="cursor-pointer bg-[var(--accent)] text-center text-black"
                 style={{ width: CHECKBOX_COLUMN_WIDTH }}
                 onClick={e => {
                   // 체크박스 자신을 클릭한 경우는 onChange가 이미 처리하므로 여기서 중복 토글하지 않는다.
@@ -1940,12 +1940,12 @@ export default function AdminStockTable({
               >
                 <input type="checkbox" checked={isAllVisibleSelected} onChange={toggleSelectAllVisible} />
               </th>
-              <th className="bg-[var(--accent)] text-center" style={{ width: NUMBER_COLUMN_WIDTH }}>
+              <th className="bg-[var(--accent)] text-center text-black" style={{ width: NUMBER_COLUMN_WIDTH }}>
                 #
               </th>
               {COLUMNS.map(col => {
                 const label = (
-                  <span className="cursor-pointer select-none hover:text-[var(--accent)]" onClick={() => handleSort(col.key)}>
+                  <span className="cursor-pointer select-none text-black hover:text-[var(--accent)]" onClick={() => handleSort(col.key)}>
                     {col.header}
                     <span className={`ml-1 ${sortKey === col.key ? 'text-[#ffee00]' : 'text-gray-400'}`}>
                       {sortKey === col.key ? (sortDirection === 'asc' ? '▲' : '▼') : '▼'}
@@ -1967,7 +1967,7 @@ export default function AdminStockTable({
                             : undefined
                     }
                     style={{ width: col.width }}
-                    className="whitespace-nowrap bg-[var(--accent)] text-center"
+                    className="whitespace-nowrap bg-[var(--accent)] text-center text-black"
                   >
                     {filterKey ? (
                       <div className="flex items-center justify-between pl-2 pr-1">

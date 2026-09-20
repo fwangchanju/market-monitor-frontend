@@ -230,7 +230,7 @@ export const marketMapTree = [
 ]
 
 // marketMapTree의 categoryId(1~18)와 동일한 카테고리 기준 now/before 구간별 원시 합계 —
-// /market-map/category-change-rates 목업. now/categoryName/depth는 marketMapTree의 해당 노드를 그대로
+// /sector 목업. now/categoryName/depth는 marketMapTree의 해당 노드를 그대로
 // 참조해서, 트리가 바뀌어도 여기서 손으로 다시 맞출 일이 없게 했다(0은 최상위, 1은 marketMapTree의
 // children). before는 단일 구간(itemCount=1, totalValue=1)으로 단순화해 "예전 가중/산술평균 값 그
 // 자체"가 되도록 구성했다 — 정확한 재현이 목적이 아니라 화면에서 자연스러운 변화율(now-before)이
@@ -299,7 +299,7 @@ const categoryChangeRateItemsKosdaq = categoryChangeRateItemsKospi.map(item => (
   before: item.before.map(b => ({ ...b, weightedSum: -b.weightedSum, simpleSum: -b.simpleSum })),
 }))
 
-// /market-map/category-change-rates 목업 — 백엔드 응답과 동일하게 마켓별로 그룹핑된 형태.
+// /sector 목업 — 백엔드 응답과 동일하게 마켓별로 그룹핑된 형태.
 // index.now는 marketOverviews의 같은 마켓 changeRate를 그대로 재사용(실제로도 같은 스냅샷 시각 기준).
 export const categoryChangeRateRankings = [
   { market: 'KOSPI' as const, items: categoryChangeRateItemsKospi, index: { now: marketOverviews[0].changeRate, before: 0.15 } },

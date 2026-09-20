@@ -8,7 +8,7 @@ import type {
 } from '@/types/api'
 
 export const marketSummaryKeys = {
-  all: ['market-summary'] as const,
+  all: ['summary'] as const,
   summary: () => [...marketSummaryKeys.all, 'summary'] as const,
   intradayTop: (market: MarketQuery, investor: IntradayInvestor, ranking: IntradayRanking, amtQty: AmtQty) =>
     [...marketSummaryKeys.all, 'intraday-top', market, investor, ranking, amtQty] as const,
@@ -39,13 +39,13 @@ export const watchStockKeys = {
 }
 
 export const marketMapKeys = {
-  all: ['market-map'] as const,
+  all: ['map'] as const,
   // exclude 필터링이 프론트로 옮겨오면서 백엔드는 항상 전체 트리를 내려주므로, isExclude는 쿼리에서 뺐다.
   map: (market: MarketQuery, isCustom: boolean) => [...marketMapKeys.all, 'map', market, isCustom] as const,
   scale: () => [...marketMapKeys.all, 'scale'] as const,
   valueTiers: () => [...marketMapKeys.all, 'value-tiers'] as const,
   categoryChangeRates: (market: MarketQuery, beforeMinutes: number) =>
-    [...marketMapKeys.all, 'category-change-rates', market, beforeMinutes] as const,
+    [...marketMapKeys.all, 'sector', market, beforeMinutes] as const,
 }
 
 export const allowedIpKeys = {
