@@ -5,7 +5,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { categoryHeaderFontSize, categoryHeaderHeight, PADDING, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
 import { TAB_GAP, avgChangeRateLabel, toJoEokDecimal, toPctSigned } from '@/utils/format'
 import type { MarketMapItem } from '@/types/api'
-import { resolveContrastingTextColor, resolveMarketMapColor, type ColorScaleConfig } from '@/utils/marketMapColorScale'
+import type { ColorScaleConfig } from '@/utils/marketMapColorScale'
 import type { StockLabelMode } from '@/hooks/useGlobalSettings'
 
 interface Props {
@@ -99,8 +99,6 @@ export default function MarketMapCategorySection({
     ? (category.simpleAvgChangeRate ?? localSimpleAvgChangeRate(items))
     : (category.weightedAvgChangeRate ?? localWeightedAvgChangeRate(items))
   const isTopPick = topPickCategoryIds.has(category.categoryId) && !category.isSelf
-  const topPickBackgroundColor = isTopPick ? resolveMarketMapColor(avgChangeRate, colorScale) : undefined
-  const topPickTextColor = topPickBackgroundColor ? resolveContrastingTextColor(topPickBackgroundColor) : null
   const advancerCount = items.filter(item => item.changeRate > 0).length
   const declinerCount = items.filter(item => item.changeRate < 0).length
   const unchangedCount = items.length - advancerCount - declinerCount
@@ -109,16 +107,17 @@ export default function MarketMapCategorySection({
   const headerParts = [
     isInDepthRange(avgChangeRateDepthRange, depth) ? toPctSigned(avgChangeRate, decimalPlaces) : null,
     isInDepthRange(upDownCountDepthRange, depth)
-      ? `${advancerCount}(↑) ${declinerCount}(↓) ${unchangedCount}(-)`
+      ? `▲${advancerCount} ▼${declinerCount} ■${unchangedCount}`
       : null,
     isInDepthRange(marketValueDepthRange, depth) ? toJoEokDecimal(category.totalMarketValue / 100_000_000) : null,
   ].filter((part): part is string => part !== null)
   const headerSuffix = headerParts.length > 0 ? `${TAB_GAP}${headerParts.join(TAB_GAP)}` : ''
   const absoluteDepth = depthOffset + depth
+  const displayCategoryName = absoluteDepth === 2 ? `└ ${category.categoryName}` : category.categoryName
   const headerStyle = isTopPick
     ? {
-        background: 'bg-transparent',
-        text: topPickTextColor === 'black' ? 'text-black' : 'text-white',
+        background: 'bg-[var(--accent)]',
+        text: 'text-black',
         border: 'border-0',
       }
     : categoryHeaderStyle(absoluteDepth)
@@ -167,11 +166,10 @@ export default function MarketMapCategorySection({
               fontSize: categoryHeaderFontSize(depth),
               left: PADDING,
               width: `calc(100% - ${PADDING * 2}px)`,
-              ...(topPickBackgroundColor ? { backgroundColor: topPickBackgroundColor } : {}),
             }}
             className={`absolute top-0 flex items-center overflow-hidden truncate px-1 text-left font-bold leading-none ${headerStyle.border} ${headerStyle.text ?? ''} ${headerStyle.background}`}
           >
-            {category.categoryName}
+            {displayCategoryName}
             {headerSuffix && <span className="font-normal">{headerSuffix}</span>}
           </button>
           <Tooltip

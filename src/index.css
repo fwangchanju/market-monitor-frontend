@@ -90,17 +90,19 @@
   --accent-hover: #facc15;
   --accent-light: var(--accent);
   /* 위 @font-face 주석 참고 — Pretendard에 없는 문자(글리프 자체가 없는 경우)만 Noto Sans KR로
-     폴백된다. 숫자는 Pretendard 자체가 tabular 숫자(OpenType tnum)를 지원해서, 굵기 매칭과
-     무관하게 아래 tabular-nums만으로 자릿수 폭이 고르게 맞는다(예: '1.11%'와 '2.22%'를 나열해도
-     소수점 위치가 어긋나지 않음). */
+     폴백된다. */
   font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
   line-height: 1.5;
-  font-variant-numeric: tabular-nums;
 }
 
 /* nes.css가 body/html 등에 직접 font-family를 지정해서 :root만으로는 안 덮어써짐 — 같은 선택자로 재정의 */
 body, code, html, kbd, pre, samp {
   font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
+}
+
+/* 브라우저 기본 폼 글꼴이 숫자 폭을 초기화하지 않도록 페이지 설정을 상속한다. */
+button, input, select, textarea {
+  font-variant-numeric: inherit;
 }
 
 /* nes.css가 html/a/button에 커스텀 픽셀아트 커서(cursor: url(...))를 지정해서 일반 마우스 포인터보다

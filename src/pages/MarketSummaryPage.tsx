@@ -95,7 +95,7 @@ export default function MarketSummaryPage() {
               {/* 요약 페이지는 아직 이 바에 담을 내용이 없어서, 지도 페이지의 시간 표시 위치(우측 끝)만
                   그대로 가져와 시간만 보여준다. */}
               {marketSummaryData?.marketOverviews.snapshotTime && (
-                <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-white`}>
+                <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
                   <span>{toMarketMapSnapshotDateLabel(marketSummaryData.marketOverviews.snapshotTime)}</span>
                   <span>{toMarketMapSnapshotTimeOnlyLabel(marketSummaryData.marketOverviews.snapshotTime)}</span>
                 </span>

@@ -59,12 +59,12 @@ export const toFullDateTimeLabel = (iso: string | null): string => {
 
 const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토']
 
-/** LocalDateTime(ISO) → 'yyyy-MM-dd 요일' — 마켓맵 상단 스냅샷 시각 전용 표기 중 날짜 부분.
+/** LocalDateTime(ISO) → 'yyyy-MM-dd (요일)' — 마켓맵 상단 스냅샷 시각 전용 표기 중 날짜 부분.
  * 시간 부분(toMarketMapSnapshotTimeOnlyLabel)과 따로 둬서 그 사이에 시계 아이콘을 끼워 넣을 수 있게 한다. */
 export const toMarketMapSnapshotDateLabel = (iso: string | null): string => {
   if (!iso) return '-'
   const weekday = WEEKDAY_KO[new Date(iso).getDay()]
-  return `${iso.slice(0, 10)} ${weekday}`
+  return `${iso.slice(0, 10)} (${weekday})`
 }
 
 /** LocalDateTime(ISO) → 'HH:mm (5분 간격)' — 마켓맵 상단 스냅샷 시각 전용 표기 중 시간 부분. */
@@ -99,6 +99,9 @@ export const toIndex = (value: number): string =>
 /** 거래량 포맷 (천 단위 콤마) */
 export const toVolume = (value: number): string =>
   value.toLocaleString('ko-KR')
+
+/** 정수 개수 표시(천 단위 구분 기호 포함) */
+export const toCount = (value: number): string => value.toLocaleString('ko-KR')
 
 /** 억 원 단위 값을 '조 단위 콤마 억' 형태로 포맷 (예: 12942675 → '1,294조 2,675억') */
 export const toJoEok = (eokValue: number): string => {

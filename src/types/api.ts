@@ -138,7 +138,7 @@ export const ShortSellingHistoryItemSchema = z.object({
 })
 export type ShortSellingHistoryItem = z.infer<typeof ShortSellingHistoryItemSchema>
 
-// ─── Market summary (/market-summary) ─────────────────────────────────────────
+// ─── Market summary (/summary) ─────────────────────────────────────────
 
 export const MarketSummaryResponseSchema = z.object({
   marketOverviews: snapshotResponseSchema(MarketOverviewItemSchema),
@@ -170,7 +170,7 @@ export type ProgramTradingDailyItem = z.infer<typeof ProgramTradingDailyItemSche
 
 // ─── Market map ────────────────────────────────────────────────────────────────
 
-// 시가총액 구간(초대형주/대형주/...) 정의 — 코드 enum이 아니라 GET /market-map/value-tiers로 조회한다.
+// 시가총액 구간(초대형주/대형주/...) 정의 — 코드 enum이 아니라 GET /map/value-tiers로 조회한다.
 // thresholdValue 오름차순 정렬로 내려온다. isExcludedByDefault는 화면 진입 시 필터 토글의 초기값일 뿐,
 // 이후 토글 상태는 프론트가 직접 관리한다(백엔드에 다시 물어보지 않음).
 export const MarketValueTierItemSchema = z.object({
@@ -243,7 +243,7 @@ export const MarketMapResponseSchema = z.object({
   marketOverview: MarketOverviewItemSchema.nullable(),
 })
 
-// ─── Market map category change-rate ranking (/market-map/category-change-rates) ─────
+// ─── Sector category change-rate ranking (/sector) ─────
 
 export const CategoryChangeRateItemSchema = z.object({
   categoryId: z.number(),
@@ -292,7 +292,7 @@ export const MarketMapScaleThresholdSchema = z.object({
 })
 export type MarketMapScaleThreshold = z.infer<typeof MarketMapScaleThresholdSchema>
 
-// GET /market-map/scale 응답
+// GET /map/scale 응답
 export const MarketMapScaleResponseSchema = z.object({
   thresholds: z.array(MarketMapScaleThresholdSchema),
 })

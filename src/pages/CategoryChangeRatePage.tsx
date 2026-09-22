@@ -16,6 +16,7 @@ import Spinner from '@/components/Spinner'
 import { useCategoryChangeRates } from '@/hooks/useCategoryChangeRates'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
+import { useRouteAwareMarket } from '@/hooks/useRouteAwareMarket'
 import { categoryHeaderFontSize } from '@/hooks/useMarketMapLayout'
 import { combineTierBreakdowns } from '@/utils/categoryTierBreakdown'
 import { CAPTURE_ID } from '@/utils/captureIds'
@@ -168,7 +169,9 @@ function RankBars({
 }
 
 export default function CategoryChangeRatePage() {
-  const [market, setMarket] = usePersistedState<MarketQuery>('categoryChangeRate.market', 'KOSPI')
+  // 랭킹 조회 마켓 — useGlobalSettings의 트리 조회 마켓과 저장 키(categoryChangeRate.market)는 다르지만
+  // 둘 다 같은 경로에서 같은 우선순위로 뽑으므로 항상 같은 값이 된다(docs/instructions-route-market-first-render.md 5-3).
+  const [market] = useRouteAwareMarket('categoryChangeRate.market', 'ALL_STOCK')
   const [beforeMinutes, setBeforeMinutes] = usePersistedState('categoryChangeRate.beforeMinutes', 15)
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -183,21 +186,21 @@ export default function CategoryChangeRatePage() {
     colorScale,
   } = useGlobalSettings()
 
-  // 렌더러가 /category-change-rate?market=KOSDAQ&beforeMinutes=15&avgMode=simple&sectorFilter=true로
+  // 렌더러가 /sector/kosdaq?beforeMinutes=15&avgMode=simple&sectorFilter=true로
   // 캡처 요청할 때 쓰는 진입점 — MarketMapCustomPage와 동일한 패턴(초기 상태 반영 용도일 뿐 주소창엔
-  // 남길 필요 없어 반영 직후 지움). 네 파라미터는 서로 독립적으로 판정한다 — 하나가 없거나 잘못됐다고
-  // 다른 것까지 무시하면 안 된다. 실제로 소비한(유효했던) 파라미터만 주소에서 지운다.
+  // 남길 필요 없어 반영 직후 지움). market은 useRouteAwareMarket이 이미 우선 반영했으므로 여기서는
+  // 나머지 세 파라미터만 다룬다. 셋은 서로 독립적으로 판정한다 — 하나가 없거나 잘못됐다고 다른 것까지
+  // 무시하면 안 된다. 실제로 소비한(유효했던) 파라미터만 주소에서 지운다.
   useEffect(() => {
-    const marketParam = searchParams.get('market')
-    const isValidMarket = marketParam === 'KOSPI' || marketParam === 'KOSDAQ' || marketParam === 'ALL_STOCK'
-    if (isValidMarket) setMarket(marketParam)
-
     // 양의 정수가 아니면 무시하고 기존 값을 쓴다. 데이터가 5분 간격으로만 존재해서(수집 주기) 5의
     // 배수가 아닌 값은 애초에 조회가 불가능하다 — 여기서도 같은 조건으로 걸러낸다.
     const beforeMinutesParam = searchParams.get('beforeMinutes')
     const parsedBeforeMinutes = beforeMinutesParam === null ? NaN : Number(beforeMinutesParam)
     const isValidBeforeMinutes = Number.isInteger(parsedBeforeMinutes) && parsedBeforeMinutes > 0 && parsedBeforeMinutes % 5 === 0
     if (isValidBeforeMinutes) setBeforeMinutes(parsedBeforeMinutes)
+
+    const marketParam = searchParams.get('market')
+    const isValidMarket = marketParam === 'KOSPI' || marketParam === 'KOSDAQ' || marketParam === 'ALL_STOCK'
 
     // 백엔드가 캡처 URL에 싣는 avgMode=simple|weighted, sectorFilter=true|false 계약에 맞춘다
     // (market-monitor-backend의 instructions-telegram-average-mode.md 결정 6).
@@ -231,7 +234,7 @@ export default function CategoryChangeRatePage() {
           settingsModalProps.isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-400'
         }`}
       />
-      <span className="text-white">커스텀 모드</span>
+      <span className="text-sm text-gray-400">커스텀 모드</span>
     </>
   )
 
@@ -444,7 +447,7 @@ export default function CategoryChangeRatePage() {
                 {modeStatusText}
               </span>
               {rankingData?.snapshotTime && (
-                <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-white`}>
+                <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
                   <span>{toMarketMapSnapshotDateLabel(rankingData.snapshotTime)}</span>
                   <span>{toMarketMapSnapshotTimeOnlyLabel(rankingData.snapshotTime)}</span>
                 </span>

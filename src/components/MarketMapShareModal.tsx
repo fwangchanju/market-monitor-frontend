@@ -28,6 +28,8 @@ export default function MarketMapShareModal({
   const [showCopiedNotice, setShowCopiedNotice] = useState(false)
   const [prevCopyLabel, setPrevCopyLabel] = useState(copyLabel)
   const hasAutoCopiedRef = useRef(false)
+  // 상태가 바뀌어도 위치·크기·타이포는 그대로 두고 내용과 색상만 교체한다.
+  const copyStatusClassName = 'nes-btn col-span-2 col-start-1 row-start-1 m-0 flex h-9 w-48 items-center justify-center justify-self-center gap-2 whitespace-nowrap border-gray-600 px-3 py-1.5 text-sm font-normal leading-5 shadow-lg sm:col-span-1 sm:col-start-2'
 
   // copyLabel이 막 'Copied'로 바뀐 시점을 렌더 중에 감지해서 알림을 켠다(React가 권장하는 "prop 변화에
   // 맞춰 상태 조정" 패턴 — effect 안에서 무조건 setState부터 부르는 것보다 이쪽이 더 안전하다).
@@ -76,61 +78,55 @@ export default function MarketMapShareModal({
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70" onClick={onClose}>
-      {/* 팝업 자체를 지도 실 표시 영역 기준 고정 크기로 유지한다 — 캡처 이미지의 세로 비율이 얼마든
-          팝업 크기는 항상 그대로고, 이미지가 넘치면 미리보기 영역 안에서만 스크롤된다(가로로 넘치는
-          경우는 당장 없다고 가정). 지도/섹터/어드민처럼 캡처 비율이 뷰포트에 가까운 페이지는 폭 대비
-          높이가 딱 맞아떨어져서 1px 남짓 차이로 스크롤이 생기던 문제가 있어, 높이는 그대로 두고 폭을
-          좀 더 좁혀서(2/3 -> 3/5) 여유를 뒀다. */}
+      {/* 팝업 크기는 페이지와 무관하게 뷰포트 비율로 고정한다. 페이지마다 캡처 비율이 달라서(지도는
+          가로로 넓고 섹터는 세로로 길다) 이미지에 맞추면 팝업이 페이지마다 다른 크기로 뜨고, 고정 크기에
+          이미지를 폭 기준으로 채우면 낮은 이미지 아래가 빈다. 대신 미리보기 칸을 고정하고 이미지는
+          object-contain으로 그 안에 최대한 크게 넣는다. 남는 여백은 위아래(또는 좌우) 대칭이라
+          레터박스로 읽힌다. */}
       <div
-        className="flex h-2/3 w-3/5 flex-col border border-gray-700 bg-[var(--surface)] p-4"
+        className="flex h-[85dvh] w-[calc(100%-2rem)] max-w-6xl flex-col border border-gray-700 bg-[var(--surface)] p-4 sm:w-4/5"
         onClick={e => e.stopPropagation()}
       >
-        <div className="min-h-0 flex-1 overflow-y-auto border border-gray-700 bg-black/30">
+        <div className="flex min-h-0 flex-1 items-center justify-center border border-gray-700 bg-black/30">
           {previewSrc ? (
-            <img src={previewSrc} alt="마켓맵 미리보기" className="h-auto w-full" />
+            <img src={previewSrc} alt="마켓맵 미리보기" className="h-full w-full object-contain" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <Spinner />
-            </div>
+            <Spinner />
           )}
         </div>
-        {/* Download/Close 글자 길이가 서로 달라서 flex justify-between으로는 가운데 칸(복사 상태
-            표시)이 컨테이너 정중앙에 오지 않는다 — 3칸 그리드로 나눠 각 칸 안에서만 정렬하면
-            가운데 칸은 항상 정중앙, 양끝 버튼은 항상 컨테이너 가장자리에 붙는다. 가운데 칸(복사 상태
-            표시)은 조건부로 아예 렌더링 안 될 때가 있는데, 그때 grid auto-placement에 맡기면 실제
-            존재하는 자식 수만큼만 순서대로 칸을 채워서 Close가 3번 칸이 아니라 2번(가운데) 칸으로
-            당겨져 버린다 — 그래서 각 버튼에 col-start를 명시해 항상 고정된 칸에 놓이게 한다. */}
-        <div className="mt-4 grid shrink-0 grid-cols-3 items-center gap-4">
+        {/* 양끝 칸의 폭을 같게 유지해 문구 길이와 무관하게 복사 상태를 정중앙에 둔다.
+            좁은 화면에서는 복사 상태 아래로 양끝 버튼을 내려 겹치지 않게 한다. */}
+        <div className="mt-4 grid shrink-0 grid-cols-2 items-center gap-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
           <button
             type="button"
             onClick={onDownload}
             disabled={isDownloading}
-            className="nes-btn col-start-1 flex items-center justify-self-start gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800"
+            className="nes-btn col-start-1 row-start-2 flex items-center justify-self-start gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800 sm:row-start-1"
           >
             {isDownloading ? <Spinner className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
             {downloadLabel}
           </button>
           {isCopying ? (
-            <p className="nes-btn col-start-2 flex items-center justify-self-center gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white shadow-lg">
+            <p role="status" className={`${copyStatusClassName} bg-black text-white`}>
               <Spinner className="h-4 w-4" />
-              클립보드에 복사 중...
+              클립보드 복사 중..
             </p>
           ) : (
             showCopiedNotice && (
               <button
                 type="button"
                 onClick={onCopy}
-            className="nes-btn col-start-2 flex items-center justify-self-center gap-2 border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-black shadow-lg hover:bg-[var(--accent-hover)]"
+                className={`${copyStatusClassName} bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)] hover:text-black`}
               >
                 <RefreshIcon className="h-4 w-4" />
-                클립보드에 복사되었습니다
+                클립보드 복사 완료
               </button>
             )
           )}
           <button
             type="button"
             onClick={onClose}
-            className="nes-btn col-start-3 flex items-center justify-self-end gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800"
+            className="nes-btn col-start-2 row-start-2 flex items-center justify-self-end gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800 sm:col-start-3 sm:row-start-1"
           >
             Close
           </button>

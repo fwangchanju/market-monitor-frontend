@@ -1,7 +1,7 @@
 // 마켓맵 종목 박스/범례가 공유하는 등락률 컬러 스케일 계산.
 // 박스 색칠(MarketMapBox)과 범례 스와치(MarketMapCustomPage) 양쪽이 반드시 이 모듈만 거치도록 해서,
 // 예전처럼 두 곳이 서로 다른 하드코딩 배열을 들고 있다가 실제 값이 어긋나는 문제를 구조적으로 막는다.
-// GET /api/market-map/scale 응답(MarketMapScaleResponse)을 그대로 입력(ColorScaleConfig)으로 받는다.
+// GET /api/map/scale 응답(MarketMapScaleResponse)을 그대로 입력(ColorScaleConfig)으로 받는다.
 // side는 별도 필드가 아니라 thresholdPercent의 부호로 표현한다(음수=하락, 0=기준, 양수=상승) —
 // "side와 부호가 서로 다른 값을 가리키는" 상태 자체를 구조적으로 불가능하게 만든다.
 // 서버에서 받은 threshold는 항상 id가 있지만, 어드민이 방금 로컬에서 추가해서 아직 생성 API를
