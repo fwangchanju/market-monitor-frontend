@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
 import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
@@ -25,7 +25,6 @@ import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { limitDepth, flattenAllItems, type FilteredMarketMapCategoryNode } from '@/hooks/useFilteredMarketMapTree'
 import type { MarketQuery, MarketMapCategoryNode, MarketMapItem } from '@/types/api'
-import { marketFromRouteSegment } from '@/utils/marketRoute'
 
 const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
 
@@ -101,7 +100,6 @@ export default function MarketMapCustomPage() {
     settingsModalProps,
     colorEditorPanelProps,
     market,
-    setMarket,
     isCustom,
     data,
     refetchMarketMap,
@@ -183,20 +181,22 @@ export default function MarketMapCustomPage() {
     </>
   )
 
-  const handleMarketChange = (next: MarketQuery) => {
-    setMarket(next)
+  // market은 이제 useGlobalSettings(useRouteAwareMarket)가 경로/쿼리를 반영해서 매 렌더 계산해준다 —
+  // 여기서는 그 값이 바뀔 때(SubNavBar에서 마켓을 고르는 등) 드릴다운만 초기화한다. 첫 렌더는 초기화할
+  // 드릴다운이 없으므로 ref로 이전 값과 비교해서 실제로 바뀐 경우에만 반응한다.
+  const previousMarketRef = useRef(market)
+  useEffect(() => {
+    if (previousMarketRef.current === market) return
+    previousMarketRef.current = market
     reset()
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- market이 바뀔 때만 반응하면 됨(reset은 매 렌더 새 함수)
+  }, [market])
 
-  // SubNavBar의 "지도" 탭 위 마켓 목록은 /map/kospi처럼 경로에 마켓을 담는다. 기존 캡처 요청이
-  // ?market=...을 계속 보내도 호환되도록 쿼리 마켓을 우선 소비하고, 소비한 쿼리만 주소에서 지운다.
-  const { pathname } = useLocation()
-  const routeMarket = marketFromRouteSegment(pathname.split('/')[2])
+  // 렌더러가 옛 캡처 URL(?market=...)로 요청할 때도 마켓 자체는 useGlobalSettings가 이미 우선 반영했으니,
+  // 여기서는 avgMode/sectorFilter를 반영하고 소비한 쿼리 파라미터만 주소에서 지운다.
   useEffect(() => {
     const marketParam = searchParams.get('market')
     const isValidMarket = marketParam === 'KOSPI' || marketParam === 'KOSDAQ' || marketParam === 'ALL_STOCK'
-    const nextMarket = isValidMarket ? marketParam : routeMarket
-    if (nextMarket && nextMarket !== market) handleMarketChange(nextMarket)
 
     // 백엔드가 캡처 URL에 싣는 avgMode=simple|weighted, sectorFilter=true|false 계약에 맞춘다
     // (market-monitor-backend의 instructions-telegram-average-mode.md 결정 6).
@@ -220,7 +220,7 @@ export default function MarketMapCustomPage() {
       { replace: true },
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 파라미터가 있을 때만 반응하면 됨
-  }, [market, routeMarket, searchParams])
+  }, [searchParams])
 
   // breadcrumb에서 상위 뎁스로 갈 때, 바로 이동하지 않고 줌아웃 애니메이션을 먼저 요청한다.
   const handleGoToDepth = (depth: number) => {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { usePersistedState } from './usePersistedState'
+import { useRouteAwareMarket } from './useRouteAwareMarket'
 import { useMarketMap } from './useMarketMap'
 import { useMarketMapColorScale } from './useMarketMapColorScale'
 import { useCreateMarketMapScaleThreshold, useUpdateMarketMapScaleThreshold, useDeleteMarketMapScaleThreshold } from './useMarketMapAdmin'
@@ -18,7 +19,7 @@ import {
   type ColorScaleConfig,
   type ColorScaleThreshold,
 } from '@/utils/marketMapColorScale'
-import type { MarketQuery, MarketMapCategoryNode } from '@/types/api'
+import type { MarketMapCategoryNode } from '@/types/api'
 
 // 조회 실패/로딩 중이거나 "색상 커스텀 사용"이 꺼져있을 때 쓰는 폴백 — thresholds가 비어있으면 어차피
 // 기본 프리셋으로 귀결된다(resolveMarketMapColor/resolveLegendSwatches 참고).
@@ -86,7 +87,10 @@ function topPickAverage(node: FilteredMarketMapCategoryNode, useSimple: boolean)
 export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const needsTree = options?.needsTree ?? true
   const { pathname } = useLocation()
-  const [market, setMarket] = usePersistedState<MarketQuery>('marketMap.market', 'ALL_STOCK')
+  // 트리 조회 마켓은 경로를 따른다 — /map, /sector 둘 다 경로 세그먼트가 곧 마켓이라 여기서 바로
+  // 우선순위(쿼리 > 경로 > 저장값 > 기본값)를 적용하면, 이 훅을 그대로 쓰는 지도 페이지는 물론
+  // 트리 조회만 공유하는 섹터 페이지도 같은 마켓으로 트리를 받는다(docs/instructions-route-market-first-render.md 결정 2).
+  const [market, setMarket] = useRouteAwareMarket('marketMap.market', 'ALL_STOCK')
   const [isCustom, setIsCustom] = usePersistedState('marketMap.isCustom', true)
   // 시가총액 합/등락률 평균/등락 종목수 태그를 셋 다 동시에 켤 수 있었는데, 한꺼번에 여러 개가 뜨면
   // 카테고리 헤더가 너무 정신없어서 라디오처럼 하나만 고르게 했다 — 뎁스 범위 슬라이더도 셋의
