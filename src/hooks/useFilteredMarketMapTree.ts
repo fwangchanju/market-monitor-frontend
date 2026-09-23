@@ -1,12 +1,11 @@
 import { useMemo } from 'react'
 import type { MarketMapCategoryNode, MarketMapItem } from '@/types/api'
-import { combineTierBreakdowns } from '@/utils/categoryTierBreakdown'
+import { computeCategoryAverage } from '@/utils/categoryAverage'
 
 // 필터링(카테고리 제외/시가총액 구간)까지 반영된 뒤에도 화면이 필요로 하는 등락률 평균 두 개를 들고
-// 있는 노드 — tierBreakdown을 매번 다시 조합하지 않도록 필터링 시점에 한 번만 계산해서 붙여둔다.
-// weightedAvgChangeRate/simpleAvgChangeRate가 null이면 스냅샷이 없거나(기본 마켓맵) 지금 선택된
-// 구간에 해당하는 종목이 하나도 없다는 뜻 — MarketMapCategorySection이 그 경우 items 기준 실시간
-// 계산으로 대체한다.
+// 있는 노드 — 종목을 매번 다시 순회하지 않도록 필터링 시점에 한 번만 계산해서 붙여둔다.
+// weightedAvgChangeRate/simpleAvgChangeRate가 null이면 지금 선택된 구간에 해당하는 종목이 하나도
+// 없다는 뜻이다.
 export interface FilteredMarketMapCategoryNode extends MarketMapCategoryNode {
   weightedAvgChangeRate: number | null
   simpleAvgChangeRate: number | null
@@ -34,7 +33,7 @@ function filterNodes(
       children.reduce((sum, child) => sum + child.totalMarketValue, 0)
     if (totalMarketValue <= 0) continue
 
-    const { weightedAvg, simpleAvg } = combineTierBreakdowns(node.tierBreakdown, excludedMarketValueTiers)
+    const { weightedAvg, simpleAvg } = computeCategoryAverage(node, excludedMarketValueTiers)
     result.push({
       ...node,
       items,

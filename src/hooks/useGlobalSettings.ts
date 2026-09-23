@@ -6,7 +6,6 @@ import { useMarketMap } from './useMarketMap'
 import { useMarketMapColorScale } from './useMarketMapColorScale'
 import { useCreateMarketMapScaleThreshold, useUpdateMarketMapScaleThreshold, useDeleteMarketMapScaleThreshold } from './useMarketMapAdmin'
 import {
-  collectAllItems,
   collectCategoriesAtDepth,
   useFilteredMarketMapTree,
   type FilteredMarketMapCategoryNode,
@@ -58,20 +57,8 @@ function findCategoryPath(nodes: MarketMapCategoryNode[], targetId: number, ance
   return null
 }
 
-function fallbackWeightedAvgChangeRate(items: ReturnType<typeof collectAllItems>): number | null {
-  const totalWeight = items.reduce((sum, item) => sum + item.totalMarketValue, 0)
-  return totalWeight > 0 ? items.reduce((sum, item) => sum + item.changeRate * item.totalMarketValue, 0) / totalWeight : null
-}
-
-function fallbackSimpleAvgChangeRate(items: ReturnType<typeof collectAllItems>): number | null {
-  return items.length > 0 ? items.reduce((sum, item) => sum + item.changeRate, 0) / items.length : null
-}
-
 function topPickAverage(node: FilteredMarketMapCategoryNode, useSimple: boolean): number | null {
-  const snapshotAverage = useSimple ? node.simpleAvgChangeRate : node.weightedAvgChangeRate
-  if (snapshotAverage !== null) return snapshotAverage
-  const items = collectAllItems(node)
-  return useSimple ? fallbackSimpleAvgChangeRate(items) : fallbackWeightedAvgChangeRate(items)
+  return useSimple ? node.simpleAvgChangeRate : node.weightedAvgChangeRate
 }
 
 // "설정" 사이드바(SettingsSidebar) + 색상 구간 편집 패널이 필요로 하는 상태/로직 전부를
