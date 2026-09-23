@@ -11,8 +11,10 @@ import { z } from 'zod'
 
 const excludedStockListResponseSchema = z.array(ExcludedStockItemSchema)
 
-export const getMarketMap = (market: MarketQuery, isCustom: boolean) =>
-  client.get('/map', { params: { market, isCustom } }).then(r => MarketMapResponseSchema.parse(r.data))
+export const getMarketMap = (market: MarketQuery, isCustom: boolean, snapshotTime?: string) =>
+  client
+    .get('/map', { params: { market, isCustom, ...(snapshotTime ? { snapshotTime } : {}) } })
+    .then(r => MarketMapResponseSchema.parse(r.data))
 
 export const getMarketValueTiers = () =>
   client.get('/map/value-tiers').then(r => MarketValueTierListResponseSchema.parse(r.data))
