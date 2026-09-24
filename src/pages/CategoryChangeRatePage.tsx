@@ -423,6 +423,11 @@ export default function CategoryChangeRatePage() {
                 </div>
               ) : isError ? (
                 <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
+              ) : data?.snapshotTime == null ? (
+                // now가 성공했지만 그 시각 데이터 자체가 없다 — 쌍 쿼리가 비활성이라(결정 4)
+                // displayNow도 계속 undefined이므로, 아래 !displayNow 분기보다 먼저 걸러야
+                // 스피너가 영원히 돌지 않는다.
+                <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
               ) : !displayNow ? (
                 // now는 성공했지만(비어 있지 않음) 쌍 쿼리가 아직 첫 결과를 내지 못한 순간 — 짝이 안
                 // 맞는 반쪽짜리 화면을 그리지 않고 기다린다(결정 4).
