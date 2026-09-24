@@ -196,28 +196,11 @@ const MarketMapItemSchema = z.object({
 })
 export type MarketMapItem = z.infer<typeof MarketMapItemSchema>
 
-// 카테고리(하위 카테고리 재귀 포함) 하나의, 시가총액 구간 하나에 대한 등락률 원시 합계(분자/분모) —
-// 이미 나눠진 평균이 아니다. 필터(어떤 구간을 포함할지)는 화면이 알고 있으므로, 원하는 구간들만 골라
-// weightedSum/totalValue, simpleSum/itemCount를 각각 합산한 뒤 마지막에 한 번만 나눠야 한다
-// (이미 나뉜 구간별 평균끼리 다시 평균내면 틀림) — utils/categoryTierBreakdown.ts의 combineTierBreakdowns 참고.
-export const CategoryTierBreakdownSchema = z.object({
-  tierId: z.number(),
-  tierLabel: z.string(),
-  weightedSum: z.number(),
-  totalValue: z.number(),
-  simpleSum: z.number(),
-  itemCount: z.number(),
-})
-export type CategoryTierBreakdown = z.infer<typeof CategoryTierBreakdownSchema>
-
 export interface MarketMapCategoryNode {
   categoryId: number
   categoryName: string
   totalMarketValue: number
   isExcluded: boolean
-  // 이 카테고리(하위 카테고리 포함) 최신 스냅샷 기준, 시가총액 구간별 등락률 원시 합계. 아직 스냅샷이
-  // 없는 카테고리(기본 마켓맵 노드 포함)는 빈 배열.
-  tierBreakdown: CategoryTierBreakdown[]
   children: MarketMapCategoryNode[]
   items: MarketMapItem[]
 }
@@ -228,7 +211,6 @@ const MarketMapCategoryNodeSchema: z.ZodType<MarketMapCategoryNode> = z.lazy(() 
     categoryName: z.string(),
     totalMarketValue: z.number(),
     isExcluded: z.boolean(),
-    tierBreakdown: z.array(CategoryTierBreakdownSchema),
     children: z.array(MarketMapCategoryNodeSchema),
     items: z.array(MarketMapItemSchema),
   }),
@@ -243,39 +225,6 @@ export const MarketMapResponseSchema = z.object({
   marketOverview: MarketOverviewItemSchema.nullable(),
 })
 export type MarketMapResponse = z.infer<typeof MarketMapResponseSchema>
-
-// ─── Sector category change-rate ranking (/sector) ─────
-
-export const CategoryChangeRateItemSchema = z.object({
-  categoryId: z.number(),
-  categoryName: z.string(),
-  // 0이면 최상위(대분류) 카테고리 — depth === 0과 hasNoParent()는 동치(백엔드 근거).
-  depth: z.number(),
-  now: z.array(CategoryTierBreakdownSchema),
-  // 요청한 beforeMinutes분 전 시점 데이터가 없으면(장 시작 직후 등) null — 조용히 다른 시점으로
-  // 대체하지 않는다.
-  before: z.array(CategoryTierBreakdownSchema).nullable(),
-})
-export type CategoryChangeRateItem = z.infer<typeof CategoryChangeRateItemSchema>
-
-// 랭킹과 같은 시각의 마켓 지수 등락률 현재/이전 짝(지도 페이지 최상단과 동일 소스). 그 시각에 지수
-// 스냅샷이 없으면(수집 부분 실패 등) index 자체가 null. index가 있으면 now는 항상 값이 있고, before만
-// null일 수 있다(장 시작 직후, 수집 gap). 조용히 다른 시각 값으로 대체하지 않는다.
-export const MarketIndexChangeRateSchema = z.object({
-  now: z.number(),
-  before: z.number().nullable(),
-})
-
-export const CategoryChangeRateMarketRankingSchema = z.object({
-  market: MarketSchema,
-  items: z.array(CategoryChangeRateItemSchema),
-  index: MarketIndexChangeRateSchema.nullable(),
-})
-export type CategoryChangeRateMarketRanking = z.infer<typeof CategoryChangeRateMarketRankingSchema>
-
-// snapshotTime은 요청한 마켓들이 공통으로 가진 최신 시각 하나 — ALL_STOCK면 KOSPI/KOSDAQ이 같은 시각
-// 기준으로 나란히 나온다(마켓별로 제각각인 시각을 보여주지 않는다). 단일 마켓 조회면 항목 1개짜리 배열.
-export const CategoryChangeRateResponseSchema = snapshotResponseSchema(CategoryChangeRateMarketRankingSchema)
 
 // 박스/범례 등락률 컬러 스케일의 기준값 하나(admin이 개별 CRUD하는 단위) — src/utils/marketMapColorScale.ts 참고.
 // side는 별도 필드로 두지 않고 thresholdPercent의 부호로 표현한다(음수=하락, 0=기준, 양수=상승).

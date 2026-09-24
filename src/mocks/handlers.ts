@@ -76,11 +76,6 @@ export const handlers = [
     })
   }),
   http.get('/api/map/value-tiers', () => HttpResponse.json(data.marketValueTiers)),
-  http.get('/api/sector', ({ request }) => {
-    const market = new URL(request.url).searchParams.get('market')
-    const rankings = data.categoryChangeRateRankings.filter(r => market === 'ALL_STOCK' || r.market === market)
-    return HttpResponse.json(snapshot(rankings))
-  }),
   http.get('/api/map/scale', () => HttpResponse.json(data.marketMapColorScale)),
   http.get('/api/map/excluded-stocks', () => HttpResponse.json(data.excludedStocks)),
   http.post('/api/map/excluded-stocks/:stockCode', ok),
