@@ -13,12 +13,11 @@ import SettingsSidebar, {
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Spinner from '@/components/Spinner'
-import { useCategoryChangeRates } from '@/hooks/useCategoryChangeRates'
+import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
-import { useRouteAwareMarket } from '@/hooks/useRouteAwareMarket'
 import { categoryHeaderFontSize } from '@/hooks/useMarketMapLayout'
-import { combineTierBreakdowns } from '@/utils/categoryTierBreakdown'
+import { computeCategoryAverage } from '@/utils/categoryAverage'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import NavBarPageActions from '@/components/NavBarPageActions'
 import { FONT_BAR_TITLE, FONT_BAR_TIME, FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
@@ -32,7 +31,7 @@ import {
   MARKET_INDEX_REFERENCE_COLOR,
   type ColorScaleConfig,
 } from '@/utils/marketMapColorScale'
-import type { CategoryTierBreakdown, Market, MarketQuery } from '@/types/api'
+import type { Market, MarketMapCategoryNode, MarketQuery } from '@/types/api'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
@@ -43,13 +42,17 @@ const BEFORE_MINUTES_PRESETS = [15, 30, 60]
 const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
 // 지수 등락률 참조 막대에 붙는 한글 라벨 — ALL_STOCK은 단일 지수가 없어 대상에서 제외된다.
 const MARKET_INDEX_LABEL_KO: Record<Market, string> = { KOSPI: '코스피', KOSDAQ: '코스닥' }
-// 실제 카테고리 id(양수)와 겹치지 않는 음수 sentinel — 지수 참조 막대 전용 categoryId(React key로도 씀).
-const MARKET_INDEX_CATEGORY_ID = -1
+// 지수 참조 막대 전용 React key — 카테고리 이름(예: '코스피'라는 카테고리가 실제로 있을 수 있다)과
+// 겹치지 않도록 일반 카테고리 key(categoryKey)와 다른 접두사를 쓴다.
+const MARKET_INDEX_KEY = 'market-index'
+function categoryKey(categoryName: string): string {
+  return `category:${categoryName}`
+}
 // 지도 페이지에서 최상위 뎁스 카테고리를 노란 글자로 표시하는 것과 같은 "기준" 색상 — 참조 막대도 동일하게 맞춘다.
 const MARKET_INDEX_BAR_COLOR = MARKET_INDEX_REFERENCE_COLOR
 
 interface RankedItem {
-  categoryId: number
+  key: string
   categoryName: string
   value: number
   // 지수 등락률 참조 막대 표시용 — 일반 카테고리 막대와 색을 다르게 칠하는 데만 쓴다.
@@ -61,15 +64,10 @@ interface RankChart {
   axisMax: number
 }
 
-// 카테고리별 (id, 값) 목록을 값 내림차순 랭킹 막대그래프 데이터로 변환한다 — "현재" 그래프/"변화율"
-// 그래프 둘 다 이 함수로 각각 독립적으로 정렬·스케일을 만든다(같은 포맷, 정렬 기준값만 다름).
-function buildRankChart(
-  entries: { categoryId: number; value: number; categoryName?: string; isReference?: boolean }[],
-  categoryNameById: Map<number, string>,
-): RankChart {
-  const rankedItems: RankedItem[] = entries
-    .map(entry => ({ ...entry, categoryName: entry.categoryName ?? categoryNameById.get(entry.categoryId) ?? '' }))
-    .sort((a, b) => b.value - a.value)
+// (key, 값) 목록을 값 내림차순 랭킹 막대그래프 데이터로 변환한다 — "현재" 그래프/"변화율" 그래프 둘
+// 다 이 함수로 각각 독립적으로 정렬·스케일을 만든다(같은 포맷, 정렬 기준값만 다름).
+function buildRankChart(entries: RankedItem[]): RankChart {
+  const rankedItems = [...entries].sort((a, b) => b.value - a.value)
 
   const rawMaxAbsValue = Math.max(1, ...rankedItems.map(item => Math.abs(item.value)))
   // 핀비즈처럼 축 눈금이 딱 떨어지게, 0.5%p 단위로 올림한 값을 막대 스케일에 쓴다.
@@ -130,7 +128,7 @@ function RankBars({
         </>
       )}
       {chart.rankedItems.map(item => (
-        <Fragment key={item.categoryId}>
+        <Fragment key={item.key}>
           <span
             className={`whitespace-nowrap text-right ${item.isReference ? 'font-bold' : ''}`}
             style={item.isReference ? { color: MARKET_INDEX_REFERENCE_COLOR } : undefined}
@@ -169,15 +167,21 @@ function RankBars({
 }
 
 export default function CategoryChangeRatePage() {
-  // 랭킹 조회 마켓 — useGlobalSettings의 트리 조회 마켓과 저장 키(categoryChangeRate.market)는 다르지만
-  // 둘 다 같은 경로에서 같은 우선순위로 뽑으므로 항상 같은 값이 된다(docs/instructions-route-market-first-render.md 5-3).
-  const [market] = useRouteAwareMarket('categoryChangeRate.market', 'ALL_STOCK')
   const [beforeMinutes, setBeforeMinutes] = usePersistedState('categoryChangeRate.beforeMinutes', 15)
   const [searchParams, setSearchParams] = useSearchParams()
 
   const {
     settingsModalProps,
     colorEditorPanelProps,
+    market,
+    isCustom,
+    data,
+    isLoading,
+    isError,
+    isMarketMapSuccess,
+    isMarketValueTierRangeReady,
+    isRefetchingMarketMap,
+    refetchMarketMap,
     avgChangeRateUseSimple,
     onChangeAvgChangeRateUseSimple,
     onChangeSectorFilterEnabled,
@@ -186,11 +190,31 @@ export default function CategoryChangeRatePage() {
     colorScale,
   } = useGlobalSettings()
 
+  // now는 여기서 따로 조회하지 않는다 — useGlobalSettings()가 이미 부르는 useMarketMap(market, isCustom)
+  // 결과(data)를 그대로 쓴다. before는 그 now.snapshotTime에서 계산한 시각을 쌍으로 묶어 조회한다
+  // (market-monitor-backend 지시서 결정 4) — 이렇게 해야 재조회로 now가 새 tick으로 바뀌는 순간에도
+  // 화면이 새 now·옛 before를 잠깐이라도 섞어 그리지 않는다.
+  const pairQuery = useSectorMarketMapPair(market, isCustom, beforeMinutes, data)
+  // 쌍 쿼리가 에러(재시도 1회 뒤)면 "before 없음"으로 보고 now 쿼리의 현재 data로 그린다. 그 외에는
+  // 화면에 그리는 now가 항상 "쌍 안의 now"다 — placeholder 기간에도 그 쌍이 만들어질 때의 now·before가
+  // 함께 유지되어, 상단 바 시각과 그래프가 서로 어긋나지 않는다.
+  const displayNow = pairQuery.data?.now ?? (pairQuery.isError ? data : undefined)
+  const displayBefore = pairQuery.data?.before ?? null
+  const isPairSettled = pairQuery.isSuccess || pairQuery.isError
+  // data-capture-ready(결정 4) — now가 성공했고 비어 있으면(그 시각 데이터가 아예 없음) 그대로
+  // "데이터가 없습니다" 화면을 캡처한다. 그 외에는 쌍 쿼리까지 끝나 있고(성공 또는 에러), placeholder가
+  // 아니고, 시가총액 구간 설정이 준비된 뒤에야 캡처를 허용한다 — now 에러는 항상 false다.
+  const isDataCaptureReady =
+    isMarketMapSuccess &&
+    (data?.snapshotTime == null ||
+      (isPairSettled && !pairQuery.isPlaceholderData && isMarketValueTierRangeReady))
+  const isRefreshing = isRefetchingMarketMap || pairQuery.isFetching
+
   // 렌더러가 /sector/kosdaq?beforeMinutes=15&avgMode=simple&sectorFilter=true로
   // 캡처 요청할 때 쓰는 진입점 — MarketMapCustomPage와 동일한 패턴(초기 상태 반영 용도일 뿐 주소창엔
-  // 남길 필요 없어 반영 직후 지움). market은 useRouteAwareMarket이 이미 우선 반영했으므로 여기서는
-  // 나머지 세 파라미터만 다룬다. 셋은 서로 독립적으로 판정한다 — 하나가 없거나 잘못됐다고 다른 것까지
-  // 무시하면 안 된다. 실제로 소비한(유효했던) 파라미터만 주소에서 지운다.
+  // 남길 필요 없어 반영 직후 지움). market은 useGlobalSettings()가 내부에서 이미 우선 반영했으므로
+  // 여기서는 나머지 세 파라미터만 다룬다. 셋은 서로 독립적으로 판정한다 — 하나가 없거나 잘못됐다고
+  // 다른 것까지 무시하면 안 된다. 실제로 소비한(유효했던) 파라미터만 주소에서 지운다.
   useEffect(() => {
     // 양의 정수가 아니면 무시하고 기존 값을 쓴다. 데이터가 5분 간격으로만 존재해서(수집 주기) 5의
     // 배수가 아닌 값은 애초에 조회가 불가능하다 — 여기서도 같은 조건으로 걸러낸다.
@@ -273,131 +297,66 @@ export default function CategoryChangeRatePage() {
     copyStatus === 'copying' ? 'Copying' : copyStatus === 'copied' ? 'Copied' : copyStatus === 'error' ? 'Failed' : 'Copy'
   const downloadLabel = downloadStatus === 'error' ? 'Failed' : 'Download'
 
-  const { data: rankingData, isLoading, isError, isRefetching: isRefetchingRankingData, refetch: refetchRankingData } = useCategoryChangeRates(
-    market,
-    beforeMinutes,
-  )
-
-  // 카테고리 이름을 랭킹 응답에서 직접 얻는다 — 이전에는 useMarketMap으로 트리를 별도 조회해서 얻었지만,
-  // 응답에 categoryName이 실리면서 더 이상 필요 없다(depth == 0과 hasNoParent()가 동치라는 근거는
-  // 백엔드 work-plan 참고, 별도 확인 절차는 두지 않는다).
-  const categoryNameById = useMemo(() => {
-    const map = new Map<number, string>()
-    for (const marketRanking of rankingData?.items ?? []) {
-      for (const item of marketRanking.items) {
-        map.set(item.categoryId, item.categoryName)
-      }
-    }
-    return map
-  }, [rankingData])
-
-  // 뎁스 구분 없이 전부 나열하면 너무 많아서, 어드민 카테고리 관리 화면처럼 최상위(depth 0) 카테고리만
-  // 보여준다. 마지막 줄이 그 필터 — 설정 사이드바의 "제외 설정"(섹터 기준)에 걸린 카테고리는 지도
-  // 페이지와 동일하게 여기서 그래프 대상에서도 뺀다.
-  const rootCategoryIds = useMemo(() => {
-    const ids = new Set<number>()
-    for (const marketRanking of rankingData?.items ?? []) {
-      for (const item of marketRanking.items) {
-        if (item.depth === 0) ids.add(item.categoryId)
-      }
-    }
-    for (const excludedId of excludedCategoryIds) ids.delete(excludedId)
-    return ids
-  }, [rankingData, excludedCategoryIds])
-
-  // 마켓별로 따로 그래프를 그리지 않고, 지도 페이지의 ALL STOCK와 동일하게 KOSPI/KOSDAQ을 하나로
-  // 합쳐서 "현재"/"변화율" 그래프 각각 하나씩만 계산한다. KOSPI 종목과 KOSDAQ 종목은 겹치지 않으므로,
-  // 같은 categoryId의 tierBreakdown(구간별 원시 합계) 배열을 마켓 간에 그냥 이어붙이면(concat) 그
-  // 자체로 정확한 통합 합계가 된다 — 단일 마켓 조회는 기여자가 1개뿐이라 결과가 기존과 동일하다.
+  // 대상 카테고리는 트리의 최상위 노드(response.items)다. 설정 사이드바의 "제외 설정"(섹터 기준)에
+  // 걸린 카테고리는 지도 페이지와 동일하게 여기서도 뺀다. now/before 짝은 categoryId가 아니라
+  // categoryName으로 맞춘다 — 기본 모드 노드는 categoryId가 전부 0(NO_CATEGORY_ID)이라 id로는 짝을
+  // 맞출 수 없다(market-monitor-backend 지시서 결정 5). ALL_STOCK은 응답 하나가 이미 두 마켓을 합친
+  // 트리라 마켓별로 따로 합칠 필요가 없다.
   const charts = useMemo(() => {
-    // now/before는 구간별 원시 합계 리스트라, 지금 선택된(제외되지 않은) 구간만 골라 합산한 뒤
-    // 마지막에 한 번만 나눈다 — 이미 나뉜 구간별 평균끼리 다시 평균내면 틀리기 때문.
-    const resolveAvg = (breakdowns: CategoryTierBreakdown[]): number | null => {
-      const combined = combineTierBreakdowns(breakdowns, excludedMarketValueTiers)
-      return avgChangeRateUseSimple ? combined.simpleAvg : combined.weightedAvg
+    if (!displayNow) return { current: buildRankChart([]), delta: buildRankChart([]) }
+
+    const beforeByName = new Map<string, MarketMapCategoryNode>(
+      (displayBefore?.items ?? []).map(node => [node.categoryName, node]),
+    )
+
+    const currentEntries: RankedItem[] = []
+    const deltaEntries: RankedItem[] = []
+
+    for (const node of displayNow.items) {
+      if (excludedCategoryIds.has(node.categoryId)) continue
+
+      const nowAverage = computeCategoryAverage(node, excludedMarketValueTiers)
+      const nowValue = avgChangeRateUseSimple ? nowAverage.simpleAvg : nowAverage.weightedAvg
+      // 새 트리는 종목이 하나도 없는 최상위 카테고리도 노드로 준다 — 그런 카테고리는 평균이 null이라
+      // 두 그래프 모두에서 뺀다(옛 /api/sector는 애초에 그런 카테고리를 안 내려줬다).
+      if (nowValue === null) continue
+      currentEntries.push({ key: categoryKey(node.categoryName), categoryName: node.categoryName, value: nowValue })
+
+      const beforeNode = beforeByName.get(node.categoryName)
+      if (!beforeNode) continue
+      const beforeAverage = computeCategoryAverage(beforeNode, excludedMarketValueTiers)
+      const beforeValue = avgChangeRateUseSimple ? beforeAverage.simpleAvg : beforeAverage.weightedAvg
+      if (beforeValue === null) continue
+      deltaEntries.push({
+        key: categoryKey(node.categoryName),
+        categoryName: node.categoryName,
+        value: nowValue - beforeValue,
+      })
     }
 
-    // beforeAvailable: 병합 대상 마켓 중 하나라도 before가 없으면(장 시작 직후 등) 그 카테고리는
-    // "현재" 값만 있는 걸로 취급한다 — 반쪽짜리 before로 델타를 계산하면 실제보다 작아 보이는 값이
-    // 나오므로, 있는 마켓만이라도 합치는 대신 델타 자체를 숨긴다(아래 deltaEntries의 null 필터에 걸림).
-    const mergedByCategoryId = new Map<
-      number,
-      { categoryId: number; now: CategoryTierBreakdown[]; before: CategoryTierBreakdown[]; beforeAvailable: boolean }
-    >()
-    for (const marketRanking of rankingData?.items ?? []) {
-      for (const item of marketRanking.items) {
-        if (!rootCategoryIds.has(item.categoryId)) continue
-        const entry =
-          mergedByCategoryId.get(item.categoryId) ?? { categoryId: item.categoryId, now: [], before: [], beforeAvailable: true }
-        entry.now.push(...item.now)
-        if (item.before) entry.before.push(...item.before)
-        else entry.beforeAvailable = false
-        mergedByCategoryId.set(item.categoryId, entry)
+    // marketOverview는 단일 마켓 조회에만 온다(ALL_STOCK이면 단일 지수값이 없어 null) — 지도 페이지와
+    // 동일하게 ALL_STOCK이면 지수 막대를 아예 안 보여준다.
+    const nowOverview = displayNow.marketOverview
+    if (nowOverview) {
+      currentEntries.push({
+        key: MARKET_INDEX_KEY,
+        categoryName: MARKET_INDEX_LABEL_KO[nowOverview.market],
+        value: nowOverview.changeRate,
+        isReference: true,
+      })
+      const beforeOverview = displayBefore?.marketOverview ?? null
+      if (beforeOverview) {
+        deltaEntries.push({
+          key: MARKET_INDEX_KEY,
+          categoryName: MARKET_INDEX_LABEL_KO[nowOverview.market],
+          value: nowOverview.changeRate - beforeOverview.changeRate,
+          isReference: true,
+        })
       }
     }
-    const rootItems = [...mergedByCategoryId.values()].map(entry => ({
-      categoryId: entry.categoryId,
-      now: entry.now,
-      before: entry.beforeAvailable ? entry.before : null,
-    }))
 
-    const currentEntries = rootItems
-      .map(item => {
-        const value = resolveAvg(item.now)
-        return value === null ? null : { categoryId: item.categoryId, value }
-      })
-      .filter((entry): entry is { categoryId: number; value: number } => entry !== null)
-
-    // rankingData.items는 마켓별 랭킹 하나씩이라, market이 ALL_STOCK이면 어느 항목의 market도 'ALL_STOCK'과
-    // 같지 않아 자연히 못 찾는다(지도 페이지가 ALL_STOCK일 때 지수를 안 보여주는 것과 동일한 동작) —
-    // index는 랭킹과 정확히 같은 시각 기준이라 스냅샷 시점 어긋남이 없다.
-    const indexRanking = rankingData?.items.find(item => item.market === market)
-    // categoryName까지 여기서 같이 확정해서 두 호출부가 indexRanking을 직접 참조하지 않게 한다.
-    const indexBar =
-      indexRanking?.index == null
-        ? null
-        : { ...indexRanking.index, categoryName: MARKET_INDEX_LABEL_KO[indexRanking.market] }
-
-    const currentEntriesWithIndex =
-      indexBar != null
-        ? [
-            ...currentEntries,
-            {
-              categoryId: MARKET_INDEX_CATEGORY_ID,
-              value: indexBar.now,
-              categoryName: indexBar.categoryName,
-              isReference: true,
-            },
-          ]
-        : currentEntries
-
-    const deltaEntries = rootItems
-      .map(item => {
-        const value = resolveAvg(item.now)
-        const beforeValue = item.before ? resolveAvg(item.before) : null
-        if (value === null || beforeValue === null) return null
-        return { categoryId: item.categoryId, value: value - beforeValue }
-      })
-      .filter((entry): entry is { categoryId: number; value: number } => entry !== null)
-
-    const deltaEntriesWithIndex =
-      indexBar?.before != null
-        ? [
-            ...deltaEntries,
-            {
-              categoryId: MARKET_INDEX_CATEGORY_ID,
-              value: indexBar.now - indexBar.before,
-              categoryName: indexBar.categoryName,
-              isReference: true,
-            },
-          ]
-        : deltaEntries
-
-    return {
-      current: buildRankChart(currentEntriesWithIndex, categoryNameById),
-      delta: buildRankChart(deltaEntriesWithIndex, categoryNameById),
-    }
-  }, [rankingData, avgChangeRateUseSimple, categoryNameById, rootCategoryIds, excludedMarketValueTiers, market])
+    return { current: buildRankChart(currentEntries), delta: buildRankChart(deltaEntries) }
+  }, [displayNow, displayBefore, excludedCategoryIds, excludedMarketValueTiers, avgChangeRateUseSimple])
 
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden">
@@ -405,14 +364,14 @@ export default function CategoryChangeRatePage() {
       <SubNavBar
         actions={
           <NavBarPageActions
-            onRefresh={refetchRankingData}
-            isRefreshing={isRefetchingRankingData}
+            onRefresh={refetchMarketMap}
+            isRefreshing={isRefreshing}
             onToggleSettings={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
             isSettingsOpen={settingsModalProps.isOpen}
             onOpenShare={() => setIsShareOpen(true)}
             isNativeFullscreen={isNativeFullscreen}
             onToggleFullscreen={handleToggleNativeFullscreen}
-            showSnapshotControls={Boolean(rankingData?.snapshotTime)}
+            showSnapshotControls={Boolean(displayNow?.snapshotTime)}
           />
         }
       />
@@ -428,7 +387,7 @@ export default function CategoryChangeRatePage() {
         <div
           ref={captureRef}
           data-captureid={CAPTURE_ID.CATEGORY_CHANGE_RATE}
-          data-capture-ready={!isLoading}
+          data-capture-ready={isDataCaptureReady}
           className="flex min-h-0 flex-1 overflow-hidden bg-black text-white"
         >
           {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서(overflow: visible이면 내부 콘텐츠의
@@ -446,10 +405,10 @@ export default function CategoryChangeRatePage() {
               >
                 {modeStatusText}
               </span>
-              {rankingData?.snapshotTime && (
+              {displayNow?.snapshotTime && (
                 <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
-                  <span>{toMarketMapSnapshotDateLabel(rankingData.snapshotTime)}</span>
-                  <span>{toMarketMapSnapshotTimeOnlyLabel(rankingData.snapshotTime)}</span>
+                  <span>{toMarketMapSnapshotDateLabel(displayNow.snapshotTime)}</span>
+                  <span>{toMarketMapSnapshotTimeOnlyLabel(displayNow.snapshotTime)}</span>
                 </span>
               )}
             </div>
@@ -464,6 +423,17 @@ export default function CategoryChangeRatePage() {
                 </div>
               ) : isError ? (
                 <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
+              ) : data?.snapshotTime == null ? (
+                // now가 성공했지만 그 시각 데이터 자체가 없다 — 쌍 쿼리가 비활성이라(결정 4)
+                // displayNow도 계속 undefined이므로, 아래 !displayNow 분기보다 먼저 걸러야
+                // 스피너가 영원히 돌지 않는다.
+                <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
+              ) : !displayNow ? (
+                // now는 성공했지만(비어 있지 않음) 쌍 쿼리가 아직 첫 결과를 내지 못한 순간 — 짝이 안
+                // 맞는 반쪽짜리 화면을 그리지 않고 기다린다(결정 4).
+                <div className="flex flex-1 items-center justify-center">
+                  <Spinner />
+                </div>
               ) : charts.current.rankedItems.length === 0 && charts.delta.rankedItems.length === 0 ? (
                 <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
               ) : (

@@ -1,6 +1,5 @@
 import client from './client'
 import {
-  CategoryChangeRateResponseSchema,
   ExcludedStockItemSchema,
   MarketMapResponseSchema,
   MarketMapScaleResponseSchema,
@@ -11,16 +10,13 @@ import { z } from 'zod'
 
 const excludedStockListResponseSchema = z.array(ExcludedStockItemSchema)
 
-export const getMarketMap = (market: MarketQuery, isCustom: boolean) =>
-  client.get('/map', { params: { market, isCustom } }).then(r => MarketMapResponseSchema.parse(r.data))
+export const getMarketMap = (market: MarketQuery, isCustom: boolean, snapshotTime?: string) =>
+  client
+    .get('/map', { params: { market, isCustom, ...(snapshotTime ? { snapshotTime } : {}) } })
+    .then(r => MarketMapResponseSchema.parse(r.data))
 
 export const getMarketValueTiers = () =>
   client.get('/map/value-tiers').then(r => MarketValueTierListResponseSchema.parse(r.data))
-
-export const getCategoryChangeRates = (market: MarketQuery, beforeMinutes: number) =>
-  client
-    .get('/sector', { params: { market, beforeMinutes } })
-    .then(r => CategoryChangeRateResponseSchema.parse(r.data))
 
 export const getMarketMapScale = () =>
   client.get('/map/scale').then(r => MarketMapScaleResponseSchema.parse(r.data))

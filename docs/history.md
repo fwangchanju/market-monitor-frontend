@@ -187,3 +187,5 @@ List<CategoryChangeRateItem>
 헤더 색은 절대 depth, 크기는 상대 depth로 유지한다(2026-09-19).
 
 업종 톱픽은 전체 지도 기준 절대 depth 순위로 강조하고 등락률은 가중 토글을 따른다(2026-09-19).
+
+섹터 페이지는 /api/map 두 번(now, now−N분)으로 그린다. 카테고리 평균은 utils/categoryAverage 하나(하위 전체·구간만 거름)

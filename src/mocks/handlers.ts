@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw'
+import { http, HttpResponse, delay } from 'msw'
 import * as data from './data'
 
 const snapshot = <T>(items: T[]) => ({ snapshotTime: new Date().toISOString().slice(0, 19), items })
@@ -52,17 +52,30 @@ export const handlers = [
 
   // ── 마켓맵 ──────────────────────────────────────────────────────────
   // marketOverview는 market이 단일 마켓일 때만(ALL_STOCK이면 단일 지수값이 없어 null) — 실제 백엔드와 동일.
-  http.get('/api/map', ({ request }) => {
-    const market = new URL(request.url).searchParams.get('market')
+  // 지연을 둬서 섹터 페이지 쌍 쿼리의 placeholder·스피너를 dev:mock에서 눈으로 볼 수 있게 한다(결정 7).
+  http.get('/api/map', async ({ request }) => {
+    await delay(1200)
+    const url = new URL(request.url)
+    const market = url.searchParams.get('market')
+    const isCustom = url.searchParams.get('isCustom') === 'true'
+    const snapshotTime = url.searchParams.get('snapshotTime')
     const marketOverview = data.marketOverviews.find(o => o.market === market) ?? null
-    return HttpResponse.json({ ...snapshot(data.marketMapTree), marketOverview })
+    const tree = isCustom ? data.marketMapTree : data.toDefaultModeTree(data.marketMapTree)
+
+    if (!snapshotTime) {
+      return HttpResponse.json({ ...snapshot(tree), marketOverview })
+    }
+    // snapshotTime이 있으면 그 값을 응답에 그대로 싣고(결정 4의 "요청 시각과 같아야 before로 인정" 조건을
+    // 목업에서도 통과시키기 위함), 종목 changeRate를 낮춘 트리를 준다.
+    return HttpResponse.json({
+      snapshotTime,
+      items: data.shiftMarketMapTreeChangeRates(tree),
+      marketOverview: marketOverview
+        ? { ...marketOverview, changeRate: marketOverview.changeRate - data.MOCK_BEFORE_INDEX_CHANGE_RATE_DELTA }
+        : null,
+    })
   }),
   http.get('/api/map/value-tiers', () => HttpResponse.json(data.marketValueTiers)),
-  http.get('/api/sector', ({ request }) => {
-    const market = new URL(request.url).searchParams.get('market')
-    const rankings = data.categoryChangeRateRankings.filter(r => market === 'ALL_STOCK' || r.market === market)
-    return HttpResponse.json(snapshot(rankings))
-  }),
   http.get('/api/map/scale', () => HttpResponse.json(data.marketMapColorScale)),
   http.get('/api/map/excluded-stocks', () => HttpResponse.json(data.excludedStocks)),
   http.post('/api/map/excluded-stocks/:stockCode', ok),

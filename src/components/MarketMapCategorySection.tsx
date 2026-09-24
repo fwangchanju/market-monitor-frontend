@@ -47,15 +47,6 @@ function isInDepthRange(range: [number, number] | null, depth: number): boolean 
   return range !== null && depth >= range[0] && depth <= range[1]
 }
 
-function localWeightedAvgChangeRate(items: MarketMapItem[]): number {
-  const totalWeight = items.reduce((sum, item) => sum + item.totalMarketValue, 0)
-  return totalWeight > 0 ? items.reduce((sum, item) => sum + item.changeRate * item.totalMarketValue, 0) / totalWeight : 0
-}
-
-function localSimpleAvgChangeRate(items: MarketMapItem[]): number {
-  return items.length > 0 ? items.reduce((sum, item) => sum + item.changeRate, 0) / items.length : 0
-}
-
 // 마우스 커서(손모양 아이콘)가 툴팁 첫 글자를 가리지 않도록 두는 좌우 간격 — 종목 박스 툴팁과
 // 동일한 간격(56px)을 쓰지만, 이 컴포넌트 전용 값으로 별도 관리한다(MarketMapBox.tsx에서 import하지 않음).
 const TOOLTIP_OFFSET_X = 56
@@ -93,11 +84,9 @@ export default function MarketMapCategorySection({
   const tooltip = useTooltip(TOOLTIP_OFFSET_X, 8, category.tooltipAlignLeft, category.tooltipAlignTop)
 
   const items = collectCategoryItems(category)
-  // 백엔드가 내려주는 값을 우선 쓰고, 아직 스냅샷이 없는 카테고리(기본 마켓맵, 신설 카테고리 등)만
-  // 종목 목록으로 그 자리에서 계산해 보완한다.
-  const avgChangeRate = avgChangeRateUseSimple
-    ? (category.simpleAvgChangeRate ?? localSimpleAvgChangeRate(items))
-    : (category.weightedAvgChangeRate ?? localWeightedAvgChangeRate(items))
+  // useFilteredMarketMapTree가 필터 전 원본 노드로 미리 계산해둔 값이다. null이면 지금 선택된 구간에
+  // 해당하는 종목이 하나도 없다는 뜻 — 그 카테고리는 등락률 칸을 비운다.
+  const avgChangeRate = avgChangeRateUseSimple ? category.simpleAvgChangeRate : category.weightedAvgChangeRate
   const isTopPick = topPickCategoryIds.has(category.categoryId) && !category.isSelf
   const advancerCount = items.filter(item => item.changeRate > 0).length
   const declinerCount = items.filter(item => item.changeRate < 0).length
@@ -105,7 +94,9 @@ export default function MarketMapCategorySection({
   // 태그는 공간이 좁아서 라벨 없이 값만 나열한다 — 표시되는 항목들 사이는 TAB_GAP으로 구분,
   // 등락 종목수 안의 상승/하락/보합 사이는 스페이스 1칸. 순서는 등락률 → 등락 종목수 → 시총(표시 설정 순서와 동일).
   const headerParts = [
-    isInDepthRange(avgChangeRateDepthRange, depth) ? toPctSigned(avgChangeRate, decimalPlaces) : null,
+    isInDepthRange(avgChangeRateDepthRange, depth) && avgChangeRate !== null
+      ? toPctSigned(avgChangeRate, decimalPlaces)
+      : null,
     isInDepthRange(upDownCountDepthRange, depth)
       ? `▲${advancerCount} ▼${declinerCount} ■${unchangedCount}`
       : null,
@@ -179,7 +170,9 @@ export default function MarketMapCategorySection({
             alignTop={category.tooltipAlignTop}
           >
             <div className="font-bold">{category.categoryName}</div>
-            <div> {avgChangeRateLabel(avgChangeRateUseSimple)}: {toPctSigned(avgChangeRate, decimalPlaces)}</div>
+            {avgChangeRate !== null && (
+              <div> {avgChangeRateLabel(avgChangeRateUseSimple)}: {toPctSigned(avgChangeRate, decimalPlaces)}</div>
+            )}
             <div> 상승 {advancerCount} 하락 {declinerCount} 보합 {unchangedCount}</div>
             <div> 시가총액 합: {toJoEokDecimal(category.totalMarketValue / 100_000_000)}</div>
           </Tooltip>
