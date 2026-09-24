@@ -123,6 +123,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     setMinIndex: setTierRangeMinIndex,
     setMaxIndex: setTierRangeMaxIndex,
     excludedMarketValueTiers,
+    isTierRangeReady: isMarketValueTierRangeReady,
   } = useMarketValueTierRange(isCustom)
   const [excludedCategoryNames, setExcludedCategoryNames] = usePersistedState<Map<number, string>>(
     'marketMap.excludedCategoryNames',
@@ -160,7 +161,14 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 서버 반영 전에 재조회가 먼저 도착할 수 있음).
   const seededKeyRef = useRef<string | null>(null)
 
-  const { data, isLoading, isError, isRefetching: isRefetchingMarketMap, refetch: refetchMarketMap } = useMarketMap(market, isCustom, {
+  const {
+    data,
+    isLoading,
+    isError,
+    isSuccess: isMarketMapSuccess,
+    isRefetching: isRefetchingMarketMap,
+    refetch: refetchMarketMap,
+  } = useMarketMap(market, isCustom, {
     enabled: needsTree,
   })
   const rootNodes = data?.items ?? []
@@ -491,6 +499,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     isRefetchingMarketMap,
     isLoading,
     isError,
+    isMarketMapSuccess,
+    isMarketValueTierRangeReady,
     rootNodes,
     filteredRootNodes,
     availableMaxDepth,

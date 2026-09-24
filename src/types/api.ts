@@ -242,6 +242,7 @@ export const MarketMapResponseSchema = z.object({
   items: z.array(MarketMapCategoryNodeSchema),
   marketOverview: MarketOverviewItemSchema.nullable(),
 })
+export type MarketMapResponse = z.infer<typeof MarketMapResponseSchema>
 
 // ─── Sector category change-rate ranking (/sector) ─────
 

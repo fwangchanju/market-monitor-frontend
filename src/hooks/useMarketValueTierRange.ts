@@ -11,7 +11,7 @@ const MAX_INDEX_KEY = 'marketMap.tierRangeMaxIndex'
 // 배포 전 운영 수치와 일치해야 한다는 요구사항 때문에 상태를 분리해두면 안 됨).
 // enabled=false면(예: 기본 분류 트리 모드) 필터 자체를 적용하지 않는다.
 export function useMarketValueTierRange(enabled: boolean) {
-  const { data: valueTiersData } = useMarketValueTiers()
+  const { data: valueTiersData, isSuccess: isValueTiersSuccess } = useMarketValueTiers()
   const tiers = useMemo(() => valueTiersData ?? [], [valueTiersData])
 
   // -1 = tiers를 아직 못 받아와서 기본값을 못 정한 상태. tiers가 도착하면 아래 useEffect가
@@ -36,5 +36,11 @@ export function useMarketValueTierRange(enabled: boolean) {
     [enabled, tiers, minIndex, maxIndex],
   )
 
-  return { tiers, minIndex, maxIndex, setMinIndex, setMaxIndex, excludedMarketValueTiers }
+  // 구간 준비됨(market-monitor-frontend 지시서 결정 4) — 커스텀 모드가 아니면(구간 필터 자체가
+  // 꺼져 있다) 항상 준비된 것으로 본다. 커스텀 모드면 value-tiers 조회가 끝나고, 구간이 아예
+  // 없거나(minIndex를 정할 필요가 없음) minIndex가 채워진 뒤에야 준비됐다고 본다. 그 전에
+  // 캡처되면(data-capture-ready) 소형주가 포함된 숫자가 찍히는데, 캡션(백엔드)은 그 구간을 뺀다.
+  const isTierRangeReady = !enabled || (isValueTiersSuccess && (tiers.length === 0 || minIndex !== -1))
+
+  return { tiers, minIndex, maxIndex, setMinIndex, setMaxIndex, excludedMarketValueTiers, isTierRangeReady }
 }
