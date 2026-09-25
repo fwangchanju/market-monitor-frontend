@@ -1,11 +1,11 @@
 import type { DragEndEvent } from '@dnd-kit/core'
-import { useReparentCategory } from './useMarketMapAdmin'
+import { useReparentSector } from './useMarketMapCustom'
 
 type CategoryDragData = { categoryId: number; parentId: number | null }
 type CategoryDropData = { categoryId: number }
 
 export function useCategoryDragEnd() {
-  const reparentCategory = useReparentCategory()
+  const reparentSector = useReparentSector()
 
   return (event: DragEndEvent) => {
     const dragData = event.active.data.current as CategoryDragData | undefined
@@ -20,6 +20,6 @@ export function useCategoryDragEnd() {
     // 백엔드 순환참조 에러가 그대로 알림으로 떠서, 사용자는 그냥 클릭한 것뿐인데 뭘 잘못했나 헷갈린다.
     if (newParentId === dragData.parentId || newParentId === dragData.categoryId) return
 
-    reparentCategory.mutate({ id: dragData.categoryId, parentId: newParentId })
+    reparentSector.mutate({ id: dragData.categoryId, parentId: newParentId })
   }
 }

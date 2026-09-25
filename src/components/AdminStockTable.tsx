@@ -1,19 +1,19 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import type { CategoryItem, MarketValueTierItem, StockCategoryListItem } from '@/types/api'
+import type { SectorItem, MarketValueTierItem, StockSectorListItem } from '@/types/api'
 import { toCount, toFullDateTimeLabel, toJoEokDecimal } from '@/utils/format'
 import { exportRowsToExcel } from '@/utils/exportExcel'
 import { charTier } from '@/utils/koreanSort'
-import { useAssignStockCategory, useBulkAssignStockCategory, useUpdateAlias } from '@/hooks/useMarketMapAdmin'
+import { useAssignStockSector, useBulkAssignStockSector, useUpdateStockAlias } from '@/hooks/useMarketMapCustom'
 import { useMarketValueTiers } from '@/hooks/useMarketValueTiers'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import Spinner from './Spinner'
 import { CheckIcon, ChevronDownIcon, RedoIcon, RefreshIcon, SearchIcon, UndoIcon } from './icons/MarketMapIcons'
 
 interface Props {
-  items: StockCategoryListItem[]
-  categories: CategoryItem[]
+  items: StockSectorListItem[]
+  categories: SectorItem[]
   snapshotTime: string | null
   // 다른 탭에서 카테고리를 추가/변경한 뒤 이 화면의 필터 상태를 유지한 채로 카테고리 목록만
   // 다시 불러오고 싶을 때 쓰는 버튼용 — 전체 새로고침(필터 초기화)을 피하기 위함.
@@ -85,8 +85,8 @@ function isFilterKey(key: SortKey): key is FilterKey {
 }
 
 function compareByKey(
-  a: StockCategoryListItem,
-  b: StockCategoryListItem,
+  a: StockSectorListItem,
+  b: StockSectorListItem,
   key: SortKey,
   displayByStockCode: Map<string, ItemDisplayValues>,
 ): number {
@@ -102,8 +102,8 @@ function compareByKey(
 }
 
 // 카테고리를 부모-자식 순서로 펼쳐서 검색 옵션으로 만든다 (자식은 들여쓰기 표시).
-function buildCategoryOptions(categories: CategoryItem[]): CategoryOption[] {
-  const byParent = new Map<number | null, CategoryItem[]>()
+function buildCategoryOptions(categories: SectorItem[]): CategoryOption[] {
+  const byParent = new Map<number | null, SectorItem[]>()
   for (const c of categories) {
     const list = byParent.get(c.parentId)
     if (list) list.push(c)
@@ -149,7 +149,7 @@ const UNDO_STACK_LIMIT = 50
 // 지금 undo 목록에 있든 redo 목록에 있든(즉 아직 실행 전이든 이미 되돌린 뒤든) 항상 같은 문구를 쓴다.
 function describeUndoableAction(
   action: UndoableAction,
-  items: StockCategoryListItem[],
+  items: StockSectorListItem[],
   categoryOptionsById: Map<number, CategoryOption>,
 ): string {
   const categoryLabel = (id: number) => categoryOptionsById.get(id)?.name ?? '(알 수 없음)'
@@ -197,11 +197,11 @@ interface ItemDisplayValues {
   subCategoryName: string
 }
 
-function computeDisplayValues(item: StockCategoryListItem, categoryOptionsById: Map<number, CategoryOption>): ItemDisplayValues {
-  const chain = resolveCategoryChain(categoryOptionsById, item.categoryId)
+function computeDisplayValues(item: StockSectorListItem, categoryOptionsById: Map<number, CategoryOption>): ItemDisplayValues {
+  const chain = resolveCategoryChain(categoryOptionsById, item.sectorId)
   return {
     market: MARKET_LABEL[item.market],
-    originCategoryName: item.originCategoryName ?? '-',
+    originCategoryName: item.industryName ?? '-',
     parentCategoryName: chain.rootName,
     midCategoryName: chain.midName ?? '-',
     subCategoryName: chain.leafName ?? '-',
@@ -316,7 +316,7 @@ function UndoRedoHistoryPopup({
   triggerRef: React.RefObject<HTMLElement | null>
   actions: UndoableAction[]
   direction: 'undo' | 'redo'
-  items: StockCategoryListItem[]
+  items: StockSectorListItem[]
   categoryOptionsById: Map<number, CategoryOption>
   onPick: (id: string) => void
 }) {
@@ -972,7 +972,7 @@ function AdminStockNameFilterButton({
   onToggle,
   onClear,
 }: {
-  items: StockCategoryListItem[]
+  items: StockSectorListItem[]
   selected: Set<string>
   onToggle: (stockCode: string) => void
   onClear: () => void
@@ -1167,7 +1167,7 @@ const AdminStockRow = memo(function AdminStockRow({
   onAssign,
   onUpdateAlias,
 }: {
-  item: StockCategoryListItem
+  item: StockSectorListItem
   index: number
   isSelected: boolean
   onToggleSelected: (stockCode: string) => void
@@ -1202,7 +1202,7 @@ const AdminStockRow = memo(function AdminStockRow({
   // 대분류 팝업엔 최상위 카테고리만, 중분류 팝업엔 "지금 이 종목의 대분류"의 자식만, 소분류 팝업엔
   // "지금 이 종목의 중분류"의 자식만 보여준다. categoryId(실제 배정된 카테고리)를 parentId로 거슬러
   // 올라가서 전체 조상 체인을 구한 뒤, 뎁스별로 슬롯에 나눠 담는다.
-  const chain = resolveCategoryChain(categoryOptionsById, item.categoryId)
+  const chain = resolveCategoryChain(categoryOptionsById, item.sectorId)
   const parentCategoryOptions = categoryOptions.filter(opt => opt.parentId === null)
   // 이미 한 단계 위로 좁혀진 목록이라 "- " 들여쓰기 접두어가 필요 없다 — 그냥 이름 그대로 보여준다.
   const midCategoryOptions = categoryOptions
@@ -1242,7 +1242,7 @@ const AdminStockRow = memo(function AdminStockRow({
         {item.totalMarketValue != null ? toJoEokDecimal(item.totalMarketValue / 100_000_000) : '-'}
       </td>
       <td className={`text-center ${marketColorClass(item.market)} ${rowHoverClass}`}>{MARKET_LABEL[item.market]}</td>
-      <td className={`${alignClass('left')} text-gray-400 ${rowHoverClass}`}>{item.originCategoryName ?? '-'}</td>
+      <td className={`${alignClass('left')} text-gray-400 ${rowHoverClass}`}>{item.industryName ?? '-'}</td>
       <AdminStockCategoryCell
         value={chain.rootName}
         options={parentCategoryOptions}
@@ -1296,9 +1296,9 @@ export default function AdminStockTable({
   // 부모의 overflow에 잘린다 — body에 포털로 그려서 잘리지 않게 한다(MarketMapBox 등과 동일한 패턴).
   const [snapshotTooltipPos, setSnapshotTooltipPos] = useState<{ left: number; top: number } | null>(null)
 
-  const assignStockCategory = useAssignStockCategory()
-  const bulkAssignStockCategory = useBulkAssignStockCategory()
-  const updateAlias = useUpdateAlias()
+  const assignStockCategory = useAssignStockSector()
+  const bulkAssignStockCategory = useBulkAssignStockSector()
+  const updateAlias = useUpdateStockAlias()
   // handleAssign/runBulkAssign에서 "변경 전" 카테고리를 읽어야 하는데, items를 그대로 의존성에 넣으면
   // 카테고리가 바뀔 때마다(=매 변경마다) 콜백 identity가 바뀌어 AdminStockRow의 memo가 무력화된다 —
   // ref로 최신 값만 따라가게 해서 콜백은 그대로 안정적으로 유지한다.
@@ -1316,10 +1316,10 @@ export default function AdminStockTable({
   }, [])
   const applyCategoryAction = (action: UndoableAction, direction: 'before' | 'after') => {
     if (action.type === 'category') {
-      assignStockCategory.mutate({ stockCode: action.stockCode, categoryId: direction === 'before' ? action.before : action.after })
+      assignStockCategory.mutate({ stockCode: action.stockCode, sectorId: direction === 'before' ? action.before : action.after })
     } else {
       for (const entry of action.entries) {
-        assignStockCategory.mutate({ stockCode: entry.stockCode, categoryId: direction === 'before' ? entry.before : action.after })
+        assignStockCategory.mutate({ stockCode: entry.stockCode, sectorId: direction === 'before' ? entry.before : action.after })
       }
     }
   }
@@ -1445,8 +1445,8 @@ export default function AdminStockTable({
   // AdminStockRow에 props로 내려가는 콜백들 — 매 렌더마다 새 함수면 React.memo가 무력화되므로 useCallback으로 고정한다.
   const handleAssign = useCallback(
     (stockCode: string, categoryId: number) => {
-      const before = itemsRef.current.find(item => item.stockCode === stockCode)?.categoryId
-      assignStockCategory.mutate({ stockCode, categoryId })
+      const before = itemsRef.current.find(item => item.stockCode === stockCode)?.sectorId
+      assignStockCategory.mutate({ stockCode, sectorId: categoryId })
       if (before != null && before !== categoryId) {
         pushUndo({ type: 'category', stockCode, before, after: categoryId })
       }
@@ -1491,13 +1491,13 @@ export default function AdminStockTable({
     const targets = [...selectedStockCodes]
     // 실행취소용으로 각 종목의 "변경 전" 카테고리를 미리 스냅샷 — 일괄적용은 종목마다 원래 카테고리가
     // 달랐을 수 있어서, 되돌릴 때도 종목별로 각자의 이전 값으로 복원해야 한다.
-    const beforeByStockCode = new Map(targets.map(stockCode => [stockCode, itemsRef.current.find(item => item.stockCode === stockCode)?.categoryId]))
+    const beforeByStockCode = new Map(targets.map(stockCode => [stockCode, itemsRef.current.find(item => item.stockCode === stockCode)?.sectorId]))
     bulkAssignStockCategory.mutate(
-      { stockCodes: targets, categoryId },
+      { stockCodes: targets, sectorId: categoryId },
       {
         onSuccess: result => {
           onSuccessExtra?.()
-          const categoryName = categoryOptions.find(opt => opt.id === result.categoryId)?.name ?? ''
+          const categoryName = categoryOptions.find(opt => opt.id === result.sectorId)?.name ?? ''
           const entries = targets
             .filter(stockCode => !result.failedStockCodes.includes(stockCode))
             .map(stockCode => ({ stockCode, before: beforeByStockCode.get(stockCode) }))
@@ -1614,7 +1614,7 @@ export default function AdminStockTable({
   // 통과하는지 판정 — key 자신의 필터는 빼야, 이미 체크 해제한 값도 그 필터 드롭다운에서 계속 보이고
   // 다시 켤 수 있다.
   const matchesFilters = useCallback(
-    (item: StockCategoryListItem, excludeKey?: FilterKey) => {
+    (item: StockSectorListItem, excludeKey?: FilterKey) => {
       const display = displayByStockCode.get(item.stockCode)!
       return (
         FILTER_KEYS.every(key => key === excludeKey || !excludedFilters[key].has(display[key])) &&

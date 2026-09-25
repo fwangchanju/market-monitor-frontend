@@ -270,8 +270,8 @@ export const MOCK_BEFORE_INDEX_CHANGE_RATE_DELTA = 0.2
 
 export const excludedStocks: { stockCode: string; stockName: string }[] = []
 
-// ── 마켓맵 어드민(신규 커스텀 시스템) ───────────────────────────────────
-export const adminCategories = [
+// ── 커스텀 섹터·종목 배정(가입/로그인 전환 이후 /api/custom/*) ───────────
+export const customSectors = [
   { id: 1, name: '반도체', parentId: null, depth: 0 },
   { id: 2, name: '2차전지', parentId: null, depth: 0 },
   { id: 3, name: '인터넷/플랫폼', parentId: null, depth: 0 },
@@ -280,17 +280,17 @@ export const adminCategories = [
   { id: 6, name: '양극재', parentId: 2, depth: 1 },
 ]
 
-export const adminStockCategories: {
+export const customStockSectors: {
   stockCode: string
   market: 'KOSPI' | 'KOSDAQ'
   stockName: string
   alias: string | null
   totalMarketValue: number | null
   marketValueTier: string | null
-  originCategoryName: string | null
-  parentCategoryName: string | null
-  categoryName: string
-  categoryId: number
+  industryName: string | null
+  parentSectorName: string | null
+  sectorName: string
+  sectorId: number
 }[] = [
   {
     stockCode: '005930',
@@ -299,10 +299,10 @@ export const adminStockCategories: {
     alias: null,
     totalMarketValue: 420_000_000_000_000,
     marketValueTier: '초대형주',
-    originCategoryName: '반도체와반도체장비',
-    parentCategoryName: '반도체',
-    categoryName: '메모리',
-    categoryId: 4,
+    industryName: '반도체와반도체장비',
+    parentSectorName: '반도체',
+    sectorName: '메모리',
+    sectorId: 4,
   },
   {
     stockCode: '000660',
@@ -311,10 +311,10 @@ export const adminStockCategories: {
     alias: null,
     totalMarketValue: 130_000_000_000_000,
     marketValueTier: '초대형주',
-    originCategoryName: '반도체와반도체장비',
-    parentCategoryName: '반도체',
-    categoryName: '파운드리',
-    categoryId: 5,
+    industryName: '반도체와반도체장비',
+    parentSectorName: '반도체',
+    sectorName: '파운드리',
+    sectorId: 5,
   },
   {
     stockCode: '051910',
@@ -323,10 +323,10 @@ export const adminStockCategories: {
     alias: null,
     totalMarketValue: 29_000_000_000_000,
     marketValueTier: '대형주',
-    originCategoryName: '화학',
-    parentCategoryName: '2차전지',
-    categoryName: '양극재',
-    categoryId: 6,
+    industryName: '화학',
+    parentSectorName: '2차전지',
+    sectorName: '양극재',
+    sectorId: 6,
   },
   {
     stockCode: '373220',
@@ -335,10 +335,10 @@ export const adminStockCategories: {
     alias: 'LG엔솔',
     totalMarketValue: 93_000_000_000_000,
     marketValueTier: '대형주',
-    originCategoryName: '전기장비',
-    parentCategoryName: null,
-    categoryName: '2차전지',
-    categoryId: 2,
+    industryName: '전기장비',
+    parentSectorName: null,
+    sectorName: '2차전지',
+    sectorId: 2,
   },
   {
     stockCode: '035420',
@@ -347,10 +347,10 @@ export const adminStockCategories: {
     alias: null,
     totalMarketValue: 32_000_000_000_000,
     marketValueTier: '대형주',
-    originCategoryName: '소프트웨어',
-    parentCategoryName: null,
-    categoryName: '인터넷/플랫폼',
-    categoryId: 3,
+    industryName: '소프트웨어',
+    parentSectorName: null,
+    sectorName: '인터넷/플랫폼',
+    sectorId: 3,
   },
   {
     stockCode: '035720',
@@ -359,26 +359,34 @@ export const adminStockCategories: {
     alias: null,
     totalMarketValue: 18_000_000_000_000,
     marketValueTier: '중형주',
-    originCategoryName: '소프트웨어',
-    parentCategoryName: null,
-    categoryName: '인터넷/플랫폼',
-    categoryId: 3,
+    industryName: '소프트웨어',
+    parentSectorName: null,
+    sectorName: '인터넷/플랫폼',
+    sectorId: 3,
   },
 ]
 
-export const adminVersions = [
+export const customSnapshots = [
   { id: 1, label: '2026-07-초안', createdAt: '2026-07-01T09:00:00', updatedAt: '2026-07-01T09:00:00' },
   { id: 2, label: '분기 정기 저장', createdAt: '2026-08-01T09:00:00', updatedAt: '2026-08-01T09:00:00' },
 ]
 
-export const allowedIps = [
-  { ip: '127.0.0.1', createdAt: now() },
-  { ip: '10.0.0.5', createdAt: now() },
-]
+// 로그인 여부/로그인 사용자 정보를 흉내 내는 목업 전역 상태 — dev:mock에서 새로고침해도 유지되도록
+// 모듈 스코프에 둔다(탭을 닫으면 사라짐, 실제 백엔드 쿠키와 달리 서버 재시작 개념이 없음).
+export const mockAuth: { authenticated: boolean; userId: number; email: string; role: 'USER' | 'ADMIN' } = {
+  authenticated: false,
+  userId: 1,
+  email: 'dev@example.com',
+  role: 'USER',
+}
 
-// GET /market-map/scale 기본 응답 — thresholds를 비워둬서 커스텀 저장 전에는 오늘(기본 프리셋) 화면과
-// 동일하게 보이도록 한다. 개별 create/update/delete는 이 목업 자체를 실제로 mutate하지 않는다(다른
-// admin 핸들러들과 동일 — 페이지가 응답을 받아 로컬 colorScaleDraft를 직접 갱신하는 구조라 필요 없음).
+// GET/PUT /custom/preferences 목업 — 사용자가 바꾼 값만 담기는 sparse JSON.
+export const mockCustomPreferences: Record<string, unknown> = {}
+
+// GET /custom/scale, /map/scale 공통 응답 모양 — thresholds를 비워둬서 커스텀 저장 전에는 오늘(기본
+// 프리셋) 화면과 동일하게 보이도록 한다. 개별 create/update/delete는 이 목업 자체를 실제로 mutate하지
+// 않는다(다른 custom 핸들러들과 동일 — 페이지가 응답을 받아 로컬 colorScaleDraft를 직접 갱신하는
+// 구조라 필요 없음).
 export const marketMapColorScale: {
   thresholds: { id: number; thresholdPercent: number; color: string; colorLabel: string | null }[]
 } = {

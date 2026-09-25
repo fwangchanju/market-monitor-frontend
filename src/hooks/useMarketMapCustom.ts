@@ -1,188 +1,186 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  getCategories,
-  createCategory,
-  renameCategory,
-  reparentCategory,
-  getCategoryDeletePreview,
-  deleteCategory,
-  getVersions,
-  getCurrentVersion,
-  saveVersion,
-  overwriteVersion,
-  restoreVersion,
-  deleteVersion,
-  assignStockCategory,
-  updateAlias,
-  bulkAssignStockCategory,
-  getStockCategories,
-  createMarketMapScaleThreshold,
-  updateMarketMapScaleThreshold,
-  deleteMarketMapScaleThreshold,
-} from '@/api/marketMapAdmin'
-import { marketMapAdminKeys } from './queryKeys'
+  getSectors,
+  createSector,
+  renameSector,
+  reparentSector,
+  getSectorDeletePreview,
+  deleteSector,
+  getSnapshots,
+  getCurrentSnapshot,
+  saveSnapshot,
+  overwriteSnapshot,
+  restoreSnapshot,
+  deleteSnapshot,
+  assignStockSector,
+  updateStockAlias,
+  bulkAssignStockSector,
+  getStockSectors,
+  createCustomScaleThreshold,
+  updateCustomScaleThreshold,
+  deleteCustomScaleThreshold,
+} from '@/api/custom'
+import { customMarketMapKeys } from './queryKeys'
 import { STATIC_REFERENCE_CACHE, INFREQUENT_DATA_CACHE } from './cacheConfig'
-import type { StockCategoryListItem } from '@/types/api'
+import type { StockSectorListItem } from '@/types/api'
 
-interface StockCategoryListResponse {
+interface StockSectorListResponse {
   snapshotTime: string | null
-  items: StockCategoryListItem[]
+  items: StockSectorListItem[]
 }
 
-export function useAdminCategories() {
+export function useCustomSectors(options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: marketMapAdminKeys.categories(),
-    queryFn: getCategories,
+    queryKey: customMarketMapKeys.sectors(),
+    queryFn: getSectors,
+    enabled: options?.enabled ?? true,
     ...INFREQUENT_DATA_CACHE,
   })
 }
 
-export function useCategoryDeletePreview() {
+export function useSectorDeletePreview() {
   return useMutation({
-    mutationFn: (id: number) => getCategoryDeletePreview(id),
+    mutationFn: (id: number) => getSectorDeletePreview(id),
     meta: { skipGlobalError: true },
   })
 }
 
-export function useCreateCategory() {
+export function useCreateSector() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ name, parentId }: { name: string; parentId: number | null }) =>
-      createCategory(name, parentId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.categories() }),
+    mutationFn: ({ name, parentId }: { name: string; parentId: number | null }) => createSector(name, parentId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() }),
   })
 }
 
-export function useRenameCategory() {
+export function useRenameSector() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, name }: { id: number; name: string }) => renameCategory(id, name),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.categories() }),
+    mutationFn: ({ id, name }: { id: number; name: string }) => renameSector(id, name),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() }),
   })
 }
 
-export function useReparentCategory() {
+export function useReparentSector() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, parentId }: { id: number; parentId: number | null }) => reparentCategory(id, parentId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.categories() }),
+    mutationFn: ({ id, parentId }: { id: number; parentId: number | null }) => reparentSector(id, parentId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() }),
   })
 }
 
-export function useDeleteCategory() {
+export function useDeleteSector() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => deleteCategory(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.categories() }),
+    mutationFn: (id: number) => deleteSector(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() }),
     meta: { skipGlobalError: true },
   })
 }
 
-export function useVersions() {
+export function useSnapshots() {
   return useQuery({
-    queryKey: marketMapAdminKeys.versions(),
-    queryFn: getVersions,
+    queryKey: customMarketMapKeys.snapshots(),
+    queryFn: getSnapshots,
     ...STATIC_REFERENCE_CACHE,
   })
 }
 
-export function useCurrentVersion() {
+export function useCurrentSnapshot() {
   return useQuery({
-    queryKey: marketMapAdminKeys.currentVersion(),
-    queryFn: getCurrentVersion,
+    queryKey: customMarketMapKeys.currentSnapshot(),
+    queryFn: getCurrentSnapshot,
     ...STATIC_REFERENCE_CACHE,
   })
 }
 
-export function useSaveVersion() {
+export function useSaveSnapshot() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (label: string) => saveVersion(label),
+    mutationFn: (label: string) => saveSnapshot(label),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.versions() })
-      queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.currentVersion() })
+      queryClient.invalidateQueries({ queryKey: customMarketMapKeys.snapshots() })
+      queryClient.invalidateQueries({ queryKey: customMarketMapKeys.currentSnapshot() })
     },
   })
 }
 
-export function useOverwriteVersion() {
+export function useOverwriteSnapshot() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, label }: { id: number; label: string }) => overwriteVersion(id, label),
+    mutationFn: ({ id, label }: { id: number; label: string }) => overwriteSnapshot(id, label),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.versions() })
-      queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.currentVersion() })
+      queryClient.invalidateQueries({ queryKey: customMarketMapKeys.snapshots() })
+      queryClient.invalidateQueries({ queryKey: customMarketMapKeys.currentSnapshot() })
     },
   })
 }
 
-export function useRestoreVersion() {
+export function useRestoreSnapshot() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => restoreVersion(id),
+    mutationFn: (id: number) => restoreSnapshot(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.categories() })
-      queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.currentVersion() })
+      queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() })
+      queryClient.invalidateQueries({ queryKey: customMarketMapKeys.currentSnapshot() })
     },
   })
 }
 
-export function useDeleteVersion() {
+export function useDeleteSnapshot() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => deleteVersion(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.versions() }),
+    mutationFn: (id: number) => deleteSnapshot(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: customMarketMapKeys.snapshots() }),
   })
 }
 
-// 서버 재조회 대신 캐시에 있는 그 종목의 categoryId만 직접 패치한다 — 화면에 보이는 대/중/소분류는
-// categoryId를 카테고리 트리에서 찾아 렌더 시점에 계산하므로 이 필드만 바꿔도 바로 정확히 반영된다.
-// 재조회(invalidate)를 하면 필터링 중이던 목록에서 방금 바꾼 종목이 새 카테고리 기준으로 곧장
+// 서버 재조회 대신 캐시에 있는 그 종목의 sectorId만 직접 패치한다 — 화면에 보이는 대/중/소분류는
+// sectorId를 섹터 트리에서 찾아 렌더 시점에 계산하므로 이 필드만 바꿔도 바로 정확히 반영된다.
+// 재조회(invalidate)를 하면 필터링 중이던 목록에서 방금 바꾼 종목이 새 섹터 기준으로 곧장
 // 걸러져 사라져버리는 문제가 있었다 — 목록 자체(필터링된 종목 집합)를 다시 계산하는 건 필터 조건을
 // 바꾸거나 명시적으로 새로고침할 때만 일어나야 한다.
-function patchStockCategoryId(
-  queryClient: ReturnType<typeof useQueryClient>,
-  stockCodes: string[],
-  categoryId: number,
-) {
+function patchStockSectorId(queryClient: ReturnType<typeof useQueryClient>, stockCodes: string[], sectorId: number) {
   const stockCodeSet = new Set(stockCodes)
-  queryClient.setQueryData<StockCategoryListResponse>(marketMapAdminKeys.stockCategories(), old =>
+  queryClient.setQueryData<StockSectorListResponse>(customMarketMapKeys.stockSectors(), old =>
     old
-      ? { ...old, items: old.items.map(item => (stockCodeSet.has(item.stockCode) ? { ...item, categoryId } : item)) }
+      ? { ...old, items: old.items.map(item => (stockCodeSet.has(item.stockCode) ? { ...item, sectorId } : item)) }
       : old,
   )
 }
 
-export function useAssignStockCategory() {
+export function useAssignStockSector() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ stockCode, categoryId }: { stockCode: string; categoryId: number }) =>
-      assignStockCategory(stockCode, categoryId),
-    onSuccess: (_data, { stockCode, categoryId }) => patchStockCategoryId(queryClient, [stockCode], categoryId),
+    mutationFn: ({ stockCode, sectorId }: { stockCode: string; sectorId: number }) =>
+      assignStockSector(stockCode, sectorId),
+    onSuccess: (_data, { stockCode, sectorId }) => patchStockSectorId(queryClient, [stockCode], sectorId),
   })
 }
 
-export function useBulkAssignStockCategory() {
+export function useBulkAssignStockSector() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ stockCodes, categoryId }: { stockCodes: string[]; categoryId: number }) =>
-      bulkAssignStockCategory(stockCodes, categoryId),
-    onSuccess: (_data, { stockCodes, categoryId }) => patchStockCategoryId(queryClient, stockCodes, categoryId),
+    mutationFn: ({ stockCodes, sectorId }: { stockCodes: string[]; sectorId: number }) =>
+      bulkAssignStockSector(stockCodes, sectorId),
+    onSuccess: (_data, { stockCodes, sectorId }) => patchStockSectorId(queryClient, stockCodes, sectorId),
   })
 }
 
-export function useUpdateAlias() {
+export function useUpdateStockAlias() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ stockCode, alias }: { stockCode: string; alias: string | null }) => updateAlias(stockCode, alias),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: marketMapAdminKeys.stockCategories() }),
+    mutationFn: ({ stockCode, alias }: { stockCode: string; alias: string | null }) =>
+      updateStockAlias(stockCode, alias),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: customMarketMapKeys.stockSectors() }),
   })
 }
 
-export function useStockCategories() {
+export function useStockSectors(options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: marketMapAdminKeys.stockCategories(),
-    queryFn: getStockCategories,
+    queryKey: customMarketMapKeys.stockSectors(),
+    queryFn: getStockSectors,
+    enabled: options?.enabled ?? true,
     ...STATIC_REFERENCE_CACHE,
   })
 }
@@ -191,17 +189,17 @@ export function useStockCategories() {
 // 실제 렌더 소스는 react-query 캐시가 아니라 로컬 colorScaleDraft라서, 페이지가 각 CRUD 호출 결과를
 // 받아 draft를 직접 갱신하고 필요하면 그때 캐시도 같이 맞춘다(한 번의 "적용"이 여러 건의 create/
 // update/delete로 나뉠 수 있어서, 낱개 뮤테이션마다 캐시를 건드리면 중간 상태가 잠깐씩 노출된다).
-export function useCreateMarketMapScaleThreshold() {
-  return useMutation({ mutationFn: createMarketMapScaleThreshold })
+export function useCreateCustomScaleThreshold() {
+  return useMutation({ mutationFn: createCustomScaleThreshold })
 }
 
-export function useUpdateMarketMapScaleThreshold() {
+export function useUpdateCustomScaleThreshold() {
   return useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: Parameters<typeof updateMarketMapScaleThreshold>[1] }) =>
-      updateMarketMapScaleThreshold(id, payload),
+    mutationFn: ({ id, payload }: { id: number; payload: Parameters<typeof updateCustomScaleThreshold>[1] }) =>
+      updateCustomScaleThreshold(id, payload),
   })
 }
 
-export function useDeleteMarketMapScaleThreshold() {
-  return useMutation({ mutationFn: (id: number) => deleteMarketMapScaleThreshold(id) })
+export function useDeleteCustomScaleThreshold() {
+  return useMutation({ mutationFn: (id: number) => deleteCustomScaleThreshold(id) })
 }
