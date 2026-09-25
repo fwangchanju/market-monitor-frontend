@@ -50,21 +50,23 @@ export const marketMapKeys = {
     [...marketMapKeys.all, 'sectorPair', market, isCustom, beforeMinutes, nowSnapshotTime] as const,
 }
 
-export const allowedIpKeys = {
-  all: ['allowed-ip'] as const,
-  list: () => [...allowedIpKeys.all, 'list'] as const,
+export const authKeys = {
+  all: ['auth'] as const,
+  session: () => [...authKeys.all, 'session'] as const,
 }
 
-export const accessKeys = {
-  all: ['access'] as const,
-  adminStatus: () => [...accessKeys.all, 'admin-status'] as const,
+export const customMarketMapKeys = {
+  all: ['custom-market-map'] as const,
+  sectors: () => [...customMarketMapKeys.all, 'sectors'] as const,
+  sectorDeletePreview: (id: number) => [...customMarketMapKeys.all, 'sector-delete-preview', id] as const,
+  snapshots: () => [...customMarketMapKeys.all, 'snapshots'] as const,
+  currentSnapshot: () => [...customMarketMapKeys.all, 'current-snapshot'] as const,
+  stockSectors: () => [...customMarketMapKeys.all, 'stock-sectors'] as const,
+  scale: () => [...customMarketMapKeys.all, 'scale'] as const,
+  valueTiers: () => [...customMarketMapKeys.all, 'value-tiers'] as const,
 }
 
-export const marketMapAdminKeys = {
-  all: ['market-map-admin'] as const,
-  categories: () => [...marketMapAdminKeys.all, 'categories'] as const,
-  deletePreview: (id: number) => [...marketMapAdminKeys.all, 'delete-preview', id] as const,
-  versions: () => [...marketMapAdminKeys.all, 'versions'] as const,
-  currentVersion: () => [...marketMapAdminKeys.all, 'current-version'] as const,
-  stockCategories: () => [...marketMapAdminKeys.all, 'stock-categories'] as const,
+export const customPreferenceKeys = {
+  all: ['custom-preferences'] as const,
+  preferences: () => [...customPreferenceKeys.all, 'preferences'] as const,
 }

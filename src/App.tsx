@@ -3,8 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import MarketSummaryPage from './pages/MarketSummaryPage'
 import MarketMapCustomPage from './pages/MarketMapCustomPage'
 import CategoryChangeRatePage from './pages/CategoryChangeRatePage'
-import AdminPage from './pages/AdminPage'
-import MarketMapAdminPage from './pages/MarketMapAdminPage'
+import CustomManagePage from './pages/CustomManagePage'
+import LoginGateProvider from './components/LoginGateProvider'
 
 // 페이지 전체와 document.body로 포털 렌더링한 메뉴/팝업에 같은 숫자 폭 규칙을 적용한다.
 // 공통 스냅샷 시간은 FONT_BAR_TIME의 normal-nums로 이 상속에서 제외한다.
@@ -24,28 +24,31 @@ function PageNumberStyle() {
 export default function App() {
   return (
     <BrowserRouter>
-      <PageNumberStyle />
-      <Routes>
-        <Route path="/" element={<Navigate to="/map/allstock" replace />} />
-        <Route path="/summary" element={<MarketSummaryPage />} />
-        <Route path="/map" element={<Navigate to="/map/allstock" replace />} />
-        <Route path="/map/kospi" element={<MarketMapCustomPage />} />
-        <Route path="/map/kosdaq" element={<MarketMapCustomPage />} />
-        <Route path="/map/allstock" element={<MarketMapCustomPage />} />
-        <Route path="/sector" element={<Navigate to="/sector/allstock" replace />} />
-        <Route path="/sector/kospi" element={<CategoryChangeRatePage />} />
-        <Route path="/sector/kosdaq" element={<CategoryChangeRatePage />} />
-        <Route path="/sector/allstock" element={<CategoryChangeRatePage />} />
-        {/* 이전 주소도 캡처 쿼리를 보존할 수 있도록 페이지를 직접 렌더링한다. 새 링크는 위 새 주소를 사용한다. */}
-        <Route path="/market-summary" element={<Navigate to="/summary" replace />} />
-        <Route path="/market-map" element={<MarketMapCustomPage />} />
-        <Route path="/category-change-rate" element={<CategoryChangeRatePage />} />
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="/admin/sector" element={<MarketMapAdminPage />} />
-        <Route path="/admin/stock" element={<MarketMapAdminPage />} />
-        <Route path="/admin/market-map" element={<MarketMapAdminPage />} />
-        <Route path="*" element={<Navigate to="/map/allstock" replace />} />
-      </Routes>
+      <LoginGateProvider>
+        <PageNumberStyle />
+        <Routes>
+          <Route path="/" element={<Navigate to="/map/allstock" replace />} />
+          <Route path="/summary" element={<MarketSummaryPage />} />
+          <Route path="/map" element={<Navigate to="/map/allstock" replace />} />
+          <Route path="/map/kospi" element={<MarketMapCustomPage />} />
+          <Route path="/map/kosdaq" element={<MarketMapCustomPage />} />
+          <Route path="/map/allstock" element={<MarketMapCustomPage />} />
+          <Route path="/sector" element={<Navigate to="/sector/allstock" replace />} />
+          <Route path="/sector/kospi" element={<CategoryChangeRatePage />} />
+          <Route path="/sector/kosdaq" element={<CategoryChangeRatePage />} />
+          <Route path="/sector/allstock" element={<CategoryChangeRatePage />} />
+          {/* 이전 주소도 캡처 쿼리를 보존할 수 있도록 페이지를 직접 렌더링한다. 새 링크는 위 새 주소를 사용한다. */}
+          <Route path="/market-summary" element={<Navigate to="/summary" replace />} />
+          <Route path="/market-map" element={<MarketMapCustomPage />} />
+          <Route path="/category-change-rate" element={<CategoryChangeRatePage />} />
+          {/* IP 관리 AdminPage(/admin)와 옛 /admin/market-map 캡처 호환 경로는 가입/로그인 전환과 함께
+              제거했다 — 커스텀 섹터·종목 관리 화면(CustomManagePage)은 /admin/sector, /admin/stock을
+              그대로 쓴다(로그인 사용자 전용, 비로그인은 로그인 팝업). */}
+          <Route path="/admin/sector" element={<CustomManagePage />} />
+          <Route path="/admin/stock" element={<CustomManagePage />} />
+          <Route path="*" element={<Navigate to="/map/allstock" replace />} />
+        </Routes>
+      </LoginGateProvider>
     </BrowserRouter>
   )
 }
