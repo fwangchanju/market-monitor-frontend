@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { usePersistedState } from './usePersistedState'
+import { usePageSetting } from './usePageSetting'
 import { useMarketValueTiers } from './useMarketValueTiers'
 import { defaultExcludedTierLabels, tierRangeToExcludedLabels } from '@/utils/marketValueTier'
 
@@ -15,9 +15,10 @@ export function useMarketValueTierRange(enabled: boolean) {
   const tiers = useMemo(() => valueTiersData ?? [], [valueTiersData])
 
   // -1 = tiers를 아직 못 받아와서 기본값을 못 정한 상태. tiers가 도착하면 아래 useEffect가
-  // isExcludedByDefault 기준으로 딱 한 번만 채운다(이미 세션에 저장된 값이 있으면 건드리지 않음).
-  const [minIndex, setMinIndex] = usePersistedState(MIN_INDEX_KEY, -1)
-  const [maxIndex, setMaxIndex] = usePersistedState(MAX_INDEX_KEY, -1)
+  // isExcludedByDefault 기준으로 딱 한 번만 채운다(이미 저장된 값이 있으면 건드리지 않음). 로그인
+  // 사용자는 이 값이 서버 user_preference에 저장된다(usePageSetting).
+  const [minIndex, setMinIndex] = usePageSetting(MIN_INDEX_KEY, -1)
+  const [maxIndex, setMaxIndex] = usePageSetting(MAX_INDEX_KEY, -1)
 
   useEffect(() => {
     if (minIndex !== -1 || tiers.length === 0) return

@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { usePersistedState } from './usePersistedState'
+import { usePageSetting } from './usePageSetting'
 import { useRouteAwareMarket } from './useRouteAwareMarket'
+import { useIsLoggedIn } from './useSession'
+import { useLoginGate } from './useLoginGate'
 import { useMarketMap } from './useMarketMap'
 import { useMarketMapColorScale } from './useMarketMapColorScale'
-import { useCreateMarketMapScaleThreshold, useUpdateMarketMapScaleThreshold, useDeleteMarketMapScaleThreshold } from './useMarketMapAdmin'
+import {
+  useCreateCustomScaleThreshold as useCreateMarketMapScaleThreshold,
+  useUpdateCustomScaleThreshold as useUpdateMarketMapScaleThreshold,
+  useDeleteCustomScaleThreshold as useDeleteMarketMapScaleThreshold,
+} from './useMarketMapCustom'
 import {
   collectCategoriesAtDepth,
   useFilteredMarketMapTree,
@@ -74,46 +81,51 @@ function topPickAverage(node: FilteredMarketMapCategoryNode, useSimple: boolean)
 export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const needsTree = options?.needsTree ?? true
   const { pathname } = useLocation()
+  const isLoggedIn = useIsLoggedIn()
+  const { requireLogin } = useLoginGate()
   // 트리 조회 마켓은 경로를 따른다 — /map, /sector 둘 다 경로 세그먼트가 곧 마켓이라 여기서 바로
   // 우선순위(쿼리 > 경로 > 저장값 > 기본값)를 적용하면, 이 훅을 그대로 쓰는 지도 페이지는 물론
   // 트리 조회만 공유하는 섹터 페이지도 같은 마켓으로 트리를 받는다(docs/instructions-route-market-first-render.md 결정 2).
   const [market, setMarket] = useRouteAwareMarket('marketMap.market', 'ALL_STOCK')
-  const [isCustom, setIsCustom] = usePersistedState('marketMap.isCustom', true)
+  // 저장값은 로그인 사용자에 한해 서버(user_preference)에 남는다. 비로그인은 저장값이 true여도
+  // 항상 false로 강제한다 — 비로그인은 커스텀 모드 자체를 쓸 수 없다(가입/로그인 전환 지시서 4).
+  const [storedIsCustom, setStoredIsCustom] = usePageSetting('marketMap.isCustom', true)
+  const isCustom = isLoggedIn ? storedIsCustom : false
   // 시가총액 합/등락률 평균/등락 종목수 태그를 셋 다 동시에 켤 수 있었는데, 한꺼번에 여러 개가 뜨면
   // 카테고리 헤더가 너무 정신없어서 라디오처럼 하나만 고르게 했다 — 뎁스 범위 슬라이더도 셋의
   // 내용(스텝/라벨)이 완전히 같으니 하나만 두고, 그 슬라이더가 지금 어느 지표에 적용되는지만
   // activeDepthMetric으로 고른다. 기능 전체의 표시 여부는 별도 토글(depthMetricEnabled)이 담당한다.
-  const [activeDepthMetric, setActiveDepthMetric] = usePersistedState<DepthMetric | null>(
+  const [activeDepthMetric, setActiveDepthMetric] = usePageSetting<DepthMetric | null>(
     'marketMap.activeDepthMetric',
     'avgChangeRate',
   )
   // 업종 표시 지표 토글을 다시 켤 때 직전에 고른 라디오 지표를 복원한다.
   const lastActiveDepthMetricRef = useRef<DepthMetric>(activeDepthMetric ?? 'avgChangeRate')
-  const [depthMetricEnabled, setDepthMetricEnabled] = usePersistedState(
+  const [depthMetricEnabled, setDepthMetricEnabled] = usePageSetting(
     'marketMap.depthMetricEnabled',
     activeDepthMetric !== null,
   )
   // 예전 세션스토리지에 activeDepthMetric=null만 남아 있어도 토글을 다시 켜면 등락률을 복원한다.
   const selectedDepthMetric = activeDepthMetric ?? lastActiveDepthMetricRef.current
   // 기본값: 대분류~중분류(index 0~1) — 렌더러가 캡처하는 기본 화면에 등락률이 보이도록.
-  const [depthMetricMinIndex, setDepthMetricMinIndex] = usePersistedState('marketMap.depthMetricMinIndex', 0)
-  const [depthMetricMaxIndex, setDepthMetricMaxIndex] = usePersistedState('marketMap.depthMetricMaxIndex', 1)
+  const [depthMetricMinIndex, setDepthMetricMinIndex] = usePageSetting('marketMap.depthMetricMinIndex', 0)
+  const [depthMetricMaxIndex, setDepthMetricMaxIndex] = usePageSetting('marketMap.depthMetricMaxIndex', 1)
   // 등락률 태그/툴팁에 가중평균 대신 산술평균을 보여줄지 — 마켓맵 커스텀 페이지의 "동일 가중" 토글
   // 기본값을 On으로 하기 위해 기본을 true로 변경(랭킹 페이지의 기본 정렬 기준도 산술평균으로 같이 바뀜 — 두
   // 페이지가 이 값을 공유하는 구조라 의도적으로 함께 적용).
-  const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePersistedState('marketMap.avgChangeRateUseSimple', true)
+  const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', true)
   // 종목 박스가 전체 트리맵 넓이에서 이 비중(%) 미만이면 종목명/등락률을 표시하지 않는다(카테고리 헤더와는 무관).
-  const [boxLabelMinAreaPercent, setBoxLabelMinAreaPercent] = usePersistedState('marketMap.boxLabelMinAreaPercent', 0.1)
+  const [boxLabelMinAreaPercent, setBoxLabelMinAreaPercent] = usePageSetting('marketMap.boxLabelMinAreaPercent', 0.1)
   // 종목 박스에 이름만/등락률만/둘 다/끄기 중 뭘 보여줄지 — 기본은 둘 다(기존 동작 유지, 배열 앞에
   // "끄기"가 추가되면서 both의 인덱스가 2에서 3으로 밀림).
-  const [stockLabelModeIndex, setStockLabelModeIndex] = usePersistedState('marketMap.stockLabelModeIndex', 3)
+  const [stockLabelModeIndex, setStockLabelModeIndex] = usePageSetting('marketMap.stockLabelModeIndex', 3)
   // 기존 저장값 0(끄기)도 유지하며, 켜고 끄는 동안 선택한 표기 방식은 보존한다.
-  const [stockLabelEnabled, setStockLabelEnabled] = usePersistedState('marketMap.stockLabelEnabled', stockLabelModeIndex !== 0)
+  const [stockLabelEnabled, setStockLabelEnabled] = usePageSetting('marketMap.stockLabelEnabled', stockLabelModeIndex !== 0)
   const selectedStockLabelModeIndex = stockLabelModeIndex || 3
   const stockLabelMode = stockLabelEnabled ? STOCK_LABEL_MODES[selectedStockLabelModeIndex] : 'off'
   // 지도 페이지에 표시되는 모든 등락률(%)의 소수점 자릿수 — 인덱스가 그대로 자릿수(0=정수, 1=소수
   // 1자리, 2=소수 2자리). 기본값 1(소수 1자리).
-  const [decimalPlacesIndex, setDecimalPlacesIndex] = usePersistedState('marketMap.decimalPlacesIndex', 1)
+  const [decimalPlacesIndex, setDecimalPlacesIndex] = usePageSetting('marketMap.decimalPlacesIndex', 1)
   const decimalPlaces = decimalPlacesIndex
   // 시가총액 구간 범위 필터 — 마켓맵/카테고리 랭킹 화면이 세션스토리지 키를 공유한다(useMarketValueTierRange 참고).
   const {
@@ -134,16 +146,16 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     },
   )
   // 섹터 제외를 목록별로 켜고 끄는 게 아니라, 제외 적용 자체를 통째로 켜고 끄는 마스터 스위치.
-  const [sectorFilterEnabled, setSectorFilterEnabled] = usePersistedState('marketMap.sectorFilterEnabled', true)
+  const [sectorFilterEnabled, setSectorFilterEnabled] = usePageSetting('marketMap.sectorFilterEnabled', true)
   // null = 제한 없음(전체 뎁스 표시). 슬라이더의 실제 상한(availableMaxDepth)은 트리 계산 후에 나온다.
   // 기본값 2(렌더러 캡처 기준 화면에 맞춤).
   const [selectedMaxDepth, setMaxDepth] = useState<number | null>(2)
   const [categoryLevelEnabled, setCategoryLevelEnabled] = useState(true)
   const maxDepth = categoryLevelEnabled ? selectedMaxDepth : 0
   // 선호 업종 — 선택한 절대 depth에서 등락률 상위 N개 카테고리를 지도 전체에 강조한다.
-  const [topPickDepth, setTopPickDepth] = usePersistedState('marketMap.topPickDepth', 1)
-  const [topPickCount, setTopPickCount] = usePersistedState('marketMap.topPickCount', 2)
-  const [topPickEnabled, setTopPickEnabled] = usePersistedState('marketMap.topPickEnabled', topPickCount !== 0)
+  const [topPickDepth, setTopPickDepth] = usePageSetting('marketMap.topPickDepth', 1)
+  const [topPickCount, setTopPickCount] = usePageSetting('marketMap.topPickCount', 2)
+  const [topPickEnabled, setTopPickEnabled] = usePageSetting('marketMap.topPickEnabled', topPickCount !== 0)
   const selectedTopPickCount = topPickCount || 2
   // 설정 팝업 열림 상태 — 색상 추가/수정 세션이 시작되면(아래) 잠깐 닫혔다가, 세션이 끝나면(적용/취소) 다시 열린다.
   // 페이지 컴포넌트가 새로 마운트될 때마다 설정창을 기본적으로 연다.
@@ -245,7 +257,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   }
   // "색상 커스텀 사용" 토글 — 순수 로컬(세션스토리지) 상태. draft(=저장 대상)와는 완전히 분리돼 있어서
   // 꺼도 draft에 저장해둔 값은 건드리지 않고, 그냥 실제 지도에 넘기는 값만 빈 스케일(=기본 프리셋)로 바꿔치기한다.
-  const [colorCustomOn, setColorCustomOn] = usePersistedState('marketMapColorCustomOn', true)
+  const [colorCustomOn, setColorCustomOn] = usePageSetting('marketMap.colorCustomOn', true)
   const colorScale = colorCustomOn ? (colorScaleDraft ?? EMPTY_COLOR_SCALE) : EMPTY_COLOR_SCALE
   const legendSwatches = resolveLegendSwatches(colorScale)
 
@@ -381,7 +393,15 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     ? colorEditIndices.map(i => colorScaleDraft.thresholds[i]).filter((t): t is ColorScaleThreshold => t !== undefined)
     : []
 
-  const handleToggleCustom = () => setIsCustom(prev => !prev)
+  // 비로그인이 커스텀 모드를 켜려 하면 토글 대신 로그인 팝업을 띄운다 — 로그인 성공 후 지금 페이지로
+  // 돌아온다(가입/로그인 전환 지시서 4). 이미 로그인 상태면 평소처럼 저장값을 토글한다.
+  const handleToggleCustom = () => {
+    if (!isLoggedIn) {
+      requireLogin(pathname)
+      return
+    }
+    setStoredIsCustom(prev => !prev)
+  }
 
   const handleChangeActiveDepthMetric = (metric: DepthMetric) => {
     lastActiveDepthMetricRef.current = metric
