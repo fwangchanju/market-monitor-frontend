@@ -1,24 +1,24 @@
 import { useState } from 'react'
 import {
-  useVersions,
-  useCurrentVersion,
-  useSaveVersion,
-  useOverwriteVersion,
-  useRestoreVersion,
-  useDeleteVersion,
-} from '@/hooks/useMarketMapAdmin'
+  useSnapshots,
+  useCurrentSnapshot,
+  useSaveSnapshot,
+  useOverwriteSnapshot,
+  useRestoreSnapshot,
+  useDeleteSnapshot,
+} from '@/hooks/useMarketMapCustom'
 import Spinner from './Spinner'
 
 export default function AdminVersionSaveSection() {
   const [label, setLabel] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const { data: versions, isLoading: isVersionsLoading } = useVersions()
-  const { data: currentVersion, isLoading: isCurrentVersionLoading } = useCurrentVersion()
+  const { data: versions, isLoading: isVersionsLoading } = useSnapshots()
+  const { data: currentVersion, isLoading: isCurrentVersionLoading } = useCurrentSnapshot()
   const isLoading = isVersionsLoading || isCurrentVersionLoading
-  const saveVersion = useSaveVersion()
-  const overwriteVersion = useOverwriteVersion()
-  const restoreVersion = useRestoreVersion()
-  const deleteVersion = useDeleteVersion()
+  const saveVersion = useSaveSnapshot()
+  const overwriteVersion = useOverwriteSnapshot()
+  const restoreVersion = useRestoreSnapshot()
+  const deleteVersion = useDeleteSnapshot()
 
   const handleLabelChange = (value: string) => {
     setLabel(value)

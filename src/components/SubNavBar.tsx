@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { useIsAdmin } from '@/hooks/useAccess'
+import { useIsLoggedIn } from '@/hooks/useSession'
+import { useLoginGate } from '@/hooks/useLoginGate'
 import { FONT_NAV_TAB } from '@/components/FontStyle'
 import type { MarketQuery } from '@/types/api'
 import { marketRoute } from '@/utils/marketRoute'
@@ -10,7 +11,9 @@ const BASE_LINKS = [
   { to: '/map/allstock', label: '지도' },
   { to: '/sector/allstock', label: '섹터' },
 ]
-const ADMIN_LINK = { to: '/admin/sector', label: '커스텀' }
+// 비로그인에게도 항상 보인다 — 로그인 여부와 무관하게 메뉴는 노출하고, 클릭 시점에만 로그인 팝업으로
+// 막는다(가입/로그인 전환 지시서 결정).
+const CUSTOM_LINK = { to: '/admin/sector', label: '커스텀' }
 
 // "지도"/"섹터" 탭 위에 마우스를 올리면 뜨는 마켓 목록 — 두 탭 다 같은 목록이고 이동할 경로(basePath)만
 // 다르다.
@@ -37,9 +40,9 @@ function MarketDropdownItems({ basePath }: { basePath: '/map' | '/sector' }) {
   )
 }
 
-// "커스텀" 탭 위에 마우스를 올리면 뜨는 목록 — 어드민 종목/카테고리 관리 전환(예전엔 좌측 사이드바).
-// 카테고리가 기본 모드(MarketMapAdminPage 참고)라 목록도 카테고리를 먼저 보여준다.
-const ADMIN_MODE_LIST_ITEMS: { label: string; mode: 'stock' | 'category' }[] = [
+// "커스텀" 탭 위에 마우스를 올리면 뜨는 목록 — 종목/카테고리 관리 전환(예전엔 좌측 사이드바).
+// 카테고리가 기본 모드(CustomManagePage 참고)라 목록도 카테고리를 먼저 보여준다.
+const CUSTOM_MODE_LIST_ITEMS: { label: string; mode: 'stock' | 'category' }[] = [
   { label: '카테고리', mode: 'category' },
   { label: '종목', mode: 'stock' },
 ]
@@ -66,8 +69,9 @@ function TabWithDropdown({ to, label, active, children }: { to: string; label: s
 // 탭 메뉴(왼쪽) + 페이지별 옵션 버튼(오른쪽)을 한 줄에 같이 보여주는 바.
 export default function SubNavBar({ actions }: Props) {
   const location = useLocation()
-  const isAdmin = useIsAdmin()
-  const links = isAdmin ? [...BASE_LINKS, ADMIN_LINK] : BASE_LINKS
+  const isLoggedIn = useIsLoggedIn()
+  const { requireLogin } = useLoginGate()
+  const links = [...BASE_LINKS, CUSTOM_LINK]
 
   const linkClassName = (to: string) =>
     `${FONT_NAV_TAB} whitespace-nowrap ${location.pathname === to ? 'text-[var(--accent)]' : 'text-gray-400 hover:text-white'}`
@@ -75,7 +79,15 @@ export default function SubNavBar({ actions }: Props) {
   const isMarketTab = (to: string) => to === '/map/allstock' || to === '/sector/allstock'
   const isMarketTabActive = (to: string) =>
     to === '/map/allstock' ? location.pathname.startsWith('/map/') : to === '/sector/allstock' ? location.pathname.startsWith('/sector/') : false
-  const isAdminTabActive = location.pathname === '/admin/sector' || location.pathname === '/admin/stock' || location.pathname === '/admin/market-map'
+  const isCustomTabActive = location.pathname === '/admin/sector' || location.pathname === '/admin/stock'
+
+  // 비로그인이 커스텀 메뉴(탭 자체 또는 카테고리/종목 하위 목록)를 클릭하면 실제 이동 대신 로그인
+  // 팝업을 띄운다 — 목적지 경로를 returnTo로 넘겨서 로그인 성공 후 그 화면으로 바로 돌아온다.
+  const guardCustomNavigate = (e: MouseEvent<HTMLAnchorElement>, to: string) => {
+    if (isLoggedIn) return
+    e.preventDefault()
+    requireLogin(to)
+  }
 
   return (
     <div className="flex h-8 shrink-0 items-center justify-between gap-3 bg-zinc-900 px-3 text-xs shadow-lg">
@@ -92,17 +104,30 @@ export default function SubNavBar({ actions }: Props) {
               <MarketDropdownItems basePath={link.to.startsWith('/map/') ? '/map' : '/sector'} />
             </TabWithDropdown>
           ) : link.to === '/admin/sector' ? (
-            <TabWithDropdown key={link.to} to={link.to} label={link.label} active={isAdminTabActive}>
-              {ADMIN_MODE_LIST_ITEMS.map(({ label, mode }) => (
-                <Link
-                  key={label}
-                  to={mode === 'stock' ? '/admin/stock' : '/admin/sector'}
-                  className="px-3 py-1 text-left text-lg font-normal whitespace-nowrap text-white hover:bg-gray-800"
-                >
-                  {label}
-                </Link>
-              ))}
-            </TabWithDropdown>
+            <div key={link.to} className="group relative flex h-8 items-center">
+              <Link
+                to={link.to}
+                onClick={e => guardCustomNavigate(e, link.to)}
+                className={`${FONT_NAV_TAB} whitespace-nowrap ${isCustomTabActive ? 'text-[var(--accent)]' : 'text-gray-400 group-hover:text-white'}`}
+              >
+                {link.label}
+              </Link>
+              <div className="absolute left-0 top-full z-30 hidden w-max flex-col bg-zinc-900 py-1 shadow-lg group-hover:flex">
+                {CUSTOM_MODE_LIST_ITEMS.map(({ label, mode }) => {
+                  const to = mode === 'stock' ? '/admin/stock' : '/admin/sector'
+                  return (
+                    <Link
+                      key={label}
+                      to={to}
+                      onClick={e => guardCustomNavigate(e, to)}
+                      className="px-3 py-1 text-left text-lg font-normal whitespace-nowrap text-white hover:bg-gray-800"
+                    >
+                      {label}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
           ) : (
             <Link key={link.to} to={link.to} className={linkClassName(link.to)}>
               {link.label}

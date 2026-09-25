@@ -253,60 +253,76 @@ export const ExcludedStockItemSchema = z.object({
   stockName: z.string(),
 })
 
-export const AllowedIpItemSchema = z.object({
-  ip: z.string(),
-  createdAt: z.string(),
-})
-
-export const CategoryItemSchema = z.object({
+// 백엔드 /api/admin/market-map/* → /api/custom/* 전환(가입/로그인 지시서)에 맞춰 DTO 필드명도
+// category* → sector* 로 바뀌었다. /api/map 응답의 categoryId 등은 그대로다(별개 계약).
+export const SectorItemSchema = z.object({
   id: z.number(),
   name: z.string(),
   parentId: z.number().nullable(),
   depth: z.number(),
 })
-export type CategoryItem = z.infer<typeof CategoryItemSchema>
+export type SectorItem = z.infer<typeof SectorItemSchema>
 
-// GET /admin/market-map/stock-categories 응답 (백엔드 StockCategoryListItem)
-export const StockCategoryListItemSchema = z.object({
+// GET /custom/stock-sectors 응답 (백엔드 StockSectorListItem)
+export const StockSectorListItemSchema = z.object({
   stockCode: z.string(),
   market: MarketSchema,
   stockName: z.string(),
   alias: z.string().nullable(),
   totalMarketValue: z.number().nullable(),
   marketValueTier: z.string().nullable(),
-  originCategoryName: z.string().nullable(),
-  parentCategoryName: z.string().nullable(),
-  categoryName: z.string(),
-  categoryId: z.number(),
+  industryName: z.string().nullable(),
+  parentSectorName: z.string().nullable(),
+  sectorName: z.string(),
+  sectorId: z.number(),
 })
-export type StockCategoryListItem = z.infer<typeof StockCategoryListItemSchema>
+export type StockSectorListItem = z.infer<typeof StockSectorListItemSchema>
 
-// PATCH /admin/market-map/stock-categories/bulk 응답. failedStockCodes가 비어있으면 전부 반영된 것.
+// PATCH /custom/stock-sectors/bulk 응답. failedStockCodes가 비어있으면 전부 반영된 것.
 export const BulkAssignResponseSchema = z.object({
   failedStockCodes: z.array(z.string()),
-  categoryId: z.number(),
+  sectorId: z.number(),
 })
 export type BulkAssignResponse = z.infer<typeof BulkAssignResponseSchema>
 
-// delete-preview API의 blockingStocks 항목 (백엔드 StockCategoryItem — 위 StockCategoryListItem과는
-// 다른 타입이라 market/totalMarketValue/parentCategoryName이 없음)
-export const StockCategoryItemSchema = z.object({
+// delete-preview API의 blockingStocks 항목 (백엔드 StockSectorItem — 위 StockSectorListItem과는
+// 다른 타입이라 market/totalMarketValue/parentSectorName이 없음)
+export const StockSectorItemSchema = z.object({
   stockCode: z.string(),
   stockName: z.string(),
-  categoryName: z.string(),
+  sectorName: z.string(),
 })
-export type StockCategoryItem = z.infer<typeof StockCategoryItemSchema>
+export type StockSectorItem = z.infer<typeof StockSectorItemSchema>
 
-export const CategoryDeletePreviewSchema = z.object({
-  categoryName: z.string(),
+export const SectorDeletePreviewSchema = z.object({
+  sectorName: z.string(),
   deletable: z.boolean(),
-  blockingStocks: z.array(StockCategoryItemSchema),
-  deletableCategories: z.array(z.string()),
+  blockingStocks: z.array(StockSectorItemSchema),
+  deletableSectors: z.array(z.string()),
 })
 
-export const VersionItemSchema = z.object({
+export const SnapshotItemSchema = z.object({
   id: z.number(),
   label: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
 })
+export type SnapshotItem = z.infer<typeof SnapshotItemSchema>
+
+// ─── Auth ──────────────────────────────────────────────────────────────────
+
+export const AuthRoleSchema = z.enum(['USER', 'ADMIN'])
+
+// GET /auth/session, POST /auth/refresh 응답 — 비로그인이면 authenticated=false에 나머지는 전부 null.
+export const AuthSessionResponseSchema = z.object({
+  authenticated: z.boolean(),
+  userId: z.number().nullable(),
+  email: z.string().nullable(),
+  role: AuthRoleSchema.nullable(),
+})
+export type AuthSessionResponse = z.infer<typeof AuthSessionResponseSchema>
+
+// GET/PUT /custom/preferences — 사용자가 바꾼 값만 담는 sparse JSON. 값 형태가 키마다 달라 값 자체는
+// 검증하지 않는다.
+export const CustomPreferencesSchema = z.record(z.string(), z.unknown())
+export type CustomPreferences = z.infer<typeof CustomPreferencesSchema>

@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
-import type { CategoryItem } from '@/types/api'
-import { useCreateCategory, useRenameCategory } from '@/hooks/useMarketMapAdmin'
+import type { SectorItem } from '@/types/api'
+import { useCreateSector, useRenameSector } from '@/hooks/useMarketMapCustom'
 import { useCategoryDeleteFlow } from '@/hooks/useCategoryDeleteFlow'
 import { useCategoryDragEnd } from '@/hooks/useCategoryDragEnd'
 import { halfOverlapCollisionDetection } from '@/utils/dndCollision'
 import { charTier } from '@/utils/koreanSort'
 
 interface Props {
-  categories: CategoryItem[]
+  categories: SectorItem[]
 }
 
 // 루트 카테고리를 몇 개 컬럼으로 나눠서 나란히 보여줄지 — 전체펼치기 시 한 컬럼이 과도하게
@@ -16,7 +16,7 @@ interface Props {
 const ROOT_COLUMN_COUNT = 3
 
 type Row =
-  | { type: 'category'; item: CategoryItem; siblingIndex: number }
+  | { type: 'category'; item: SectorItem; siblingIndex: number }
   | { type: 'add-child'; parentId: number; parentPath: string[]; depth: number }
 
 // 소분류(세부의 세부) 번호 표기용 원문자. 유니코드에 50까지만 있어서 그 이상은 괄호 표기로 대체.
@@ -29,7 +29,7 @@ function toCircledNumber(n: number): string {
   return CIRCLED_NUMBERS[n - 1] ?? `(${n})`
 }
 
-function compareCategoryName(a: CategoryItem, b: CategoryItem): number {
+function compareCategoryName(a: SectorItem, b: SectorItem): number {
   const tierA = charTier(a.name[0] ?? '')
   const tierB = charTier(b.name[0] ?? '')
   if (tierA !== tierB) return tierA - tierB
@@ -37,7 +37,7 @@ function compareCategoryName(a: CategoryItem, b: CategoryItem): number {
 }
 
 function buildVisibleRows(
-  categories: CategoryItem[],
+  categories: SectorItem[],
   parentId: number | null,
   parentPath: string[],
   expandedIds: Set<number>,
@@ -60,8 +60,8 @@ function buildVisibleRows(
 }
 
 function buildRowsForRoots(
-  categories: CategoryItem[],
-  roots: CategoryItem[],
+  categories: SectorItem[],
+  roots: SectorItem[],
   expandedIds: Set<number>,
   addingChildFor: number | null,
 ): Row[] {
@@ -133,10 +133,10 @@ export default function AdminCategoryTable({ categories }: Props) {
   const [renameValue, setRenameValue] = useState('')
   const [highlightedId, setHighlightedId] = useState<number | null>(null)
   const [isDraggingCategory, setIsDraggingCategory] = useState(false)
-  const [draggedCategory, setDraggedCategory] = useState<CategoryItem | null>(null)
+  const [draggedCategory, setDraggedCategory] = useState<SectorItem | null>(null)
 
-  const createCategory = useCreateCategory()
-  const renameCategory = useRenameCategory()
+  const createCategory = useCreateSector()
+  const renameCategory = useRenameSector()
   const { remove } = useCategoryDeleteFlow()
   const handleCategoryDragEnd = useCategoryDragEnd()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
@@ -178,14 +178,14 @@ export default function AdminCategoryTable({ categories }: Props) {
     setChildNameByParent(prev => ({ ...prev, [parentId]: '' }))
   }
 
-  const startRename = (category: CategoryItem) => {
+  const startRename = (category: SectorItem) => {
     setRenamingId(category.id)
     setRenameValue(category.name)
   }
 
   const cancelRename = () => setRenamingId(null)
 
-  const submitRename = (category: CategoryItem) => {
+  const submitRename = (category: SectorItem) => {
     const trimmed = renameValue.trim()
     setRenamingId(null)
     if (!trimmed || trimmed === category.name) return

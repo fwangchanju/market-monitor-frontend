@@ -1,5 +1,5 @@
 import { useRef, type ReactNode } from 'react'
-import { useIsAdmin } from '@/hooks/useAccess'
+import { useIsLoggedIn } from '@/hooks/useSession'
 import type { DepthMetric } from '@/hooks/useGlobalSettings'
 import type { ColorScaleConfig, ColorScaleThreshold, LegendSwatch } from '@/utils/marketMapColorScale'
 import { FONT_BAR_LEGEND } from '@/components/FontStyle'
@@ -803,8 +803,10 @@ export function SettingsColorSection({
   // 나온 값이라 실제 박스 색칠과 항상 일치한다(useGlobalSettings의 settingsModalProps에 포함).
   legendSwatches: LegendSwatch[]
 }) {
-  const isAdmin = useIsAdmin()
-  if (!isAdmin || colorScaleDraft === null) return null
+  // 색상 범위는 /api/custom/scale(로그인 사용자 본인 값)을 쓰는 커스텀 데이터라, admin 여부가 아니라
+  // 로그인 여부로 노출을 가른다(가입/로그인 전환 지시서: useIsAdmin 기반 커스텀 게이팅을 로그인 게이팅으로 전환).
+  const isLoggedIn = useIsLoggedIn()
+  if (!isLoggedIn || colorScaleDraft === null) return null
 
   const sortedColorThresholds = colorScaleDraft.thresholds
     .map((threshold, index) => ({ threshold, index }))

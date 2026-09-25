@@ -189,3 +189,27 @@ List<CategoryChangeRateItem>
 업종 톱픽은 전체 지도 기준 절대 depth 순위로 강조하고 등락률은 가중 토글을 따른다(2026-09-19).
 
 섹터 페이지는 /api/map 두 번(now, now−N분)으로 그린다. 카테고리 평균은 utils/categoryAverage 하나(하위 전체·구간만 거름)
+
+## 가입/로그인 전환 — 프론트 구현 (2026-09-25)
+
+`market-monitor-backend`의 `docs/instructions-signup-login.md`(섹션 1·4·5-3) 지시를 받아 구현. IP 화이트리스트·관리자 토큰 기반 접근을 Google 로그인(HttpOnly 쿠키)으로 전환하는 작업의 프론트 부분.
+
+**세션/로그인 팝업**: `GET /api/auth/session`으로 상태를 받고, `POST /api/auth/refresh`는 `api/client.ts`의 axios 응답 인터셉터가 아무 API의 401에서든 한 번만 자동 시도한 뒤 원요청을 재시도한다(그래도 실패하면 세션 캐시를 anonymous로 되돌린다 — 화면 코드가 직접 refresh를 부를 일은 없다). 로그인 팝업(`LoginModal`)은 `<a href="/api/auth/google?returnTo=...">`로 전체 페이지 이동을 트리거하고(XHR 아님), `LoginGateProvider`(App 루트)+`useLoginGate()`가 어느 화면에서든 같은 팝업을 열 수 있게 한다.
+
+**커스텀 모드 강제 해제**: `useGlobalSettings`가 `isCustom`을 `isLoggedIn ? storedIsCustom : false`로 계산 — 저장값이 true여도 비로그인이면 항상 꺼진다. "커스텀" 메뉴(SubNavBar)와 커스텀 모드 토글은 비로그인에게도 계속 보이되, 클릭 시 실제 이동/토글 대신 로그인 팝업을 연다(`requireLogin(목적지)` → 로그인 성공 후 그 경로로 복귀).
+
+**`/api/admin/market-map/*` → `/api/custom/*`**: `api/marketMapAdmin.ts`→`api/custom.ts`, `hooks/useMarketMapAdmin.ts`→`hooks/useMarketMapCustom.ts`, `pages/MarketMapAdminPage.tsx`→`pages/CustomManagePage.tsx`로 이름을 바꿨다(라우트 `/admin/sector`, `/admin/stock`은 유지 — 스코프 밖이라 안 건드림). DTO 필드명도 백엔드와 맞춰 `category*`→`sector*`(`categoryId`→`sectorId`, `categoryName`→`sectorName`, `originCategoryName`→`industryName`, `parentCategoryName`→`parentSectorName`, `deletableCategories`→`deletableSectors`)로 바꿨다. `/api/map` 응답 자체(`categoryId` 등)는 지시서대로 안 건드림. `AdminCategoryTable`/`AdminStockTable`처럼 "Admin" 이름이 남은 컴포넌트 파일은 이번 스코프에서 안 바꿨다(api/hook/page 파일만 대상으로 좁게 해석 — PR에 남김).
+
+이제 `/api/custom/scale`·`/api/custom/value-tiers`가 admin 전용이 아니라 로그인 사용자 각자의 값이라, 기존 `useIsAdmin` 게이팅(색상 범위 설정 노출, 커스텀 메뉴 노출)은 전부 `useIsLoggedIn`으로 바꿨다. `useAccess`/`api/access.ts`(admin-status)와 IP 관리 `AdminPage`·`useAllowedIps`·`api/allowedIp.ts`·`IpSegmentInput`은 삭제.
+
+**관심종목 UI 제거**: `WatchStockSidebar`/`WatchStockSection`/`MainStockSection`/`Sidebar`/`DraggableStockChip`/`StockSearchSection`/`useWatchStockDragEnd`를 지웠다 — 확인해보니 이미 어느 페이지에서도 안 쓰고 있던 죽은 코드였다(관심종목 사이드바 자체가 이전에 화면에서 빠져 있었음). `useWatchStocks`/`ShortSellingHistorySection`/`ProgramTradingHistorySection`은 남겨뒀다(자체적으로는 정상 동작하는 코드라 삭제 지시가 명확하지 않아 보존, `/summary`가 더는 그걸 렌더링하지 않아 자연히 호출 안 됨).
+
+**`/summary` 빈 껍데기화**: `MarketSummaryPage`에서 7개 섹션과 그 데이터 훅(`useMarketSummary`)·설정/공유/캡처 상태·`NavBarPageActions`를 전부 지웠다. `NavBar`/`SubNavBar`만 남기고 본문은 JSX 주석으로 뭘 뺐는지만 남겨둠 — dev:mock에서 확인한 결과 이 페이지에서 뜨는 API 요청은 `/api/auth/session`(NavBar의 로그인 상태 표시) 하나뿐이다.
+
+**사용자 설정(`/api/custom/preferences`)**: `usePageSetting(key, default)`을 만들어 `usePersistedState`(sessionStorage)와 같은 시그니처로 교체 가능하게 했다. 로그인 + 서버 값 로드 완료 전에는 기존처럼 sessionStorage만 쓰고, 로드 후에는 서버 sparse JSON이 출처가 된다(없는 키는 코드 기본값) — sessionStorage 기존값을 로그인 시점에 자동으로 올려보내지 않는다. 저장은 여러 `usePageSetting` 인스턴스가 각자 호출해도 `useCustomPreferences`의 모듈 스코프 디바운스 타이머 하나로 합쳐져 500ms 뒤 payload 전체를 한 번에 PUT한다. `useGlobalSettings`의 `marketMap.*` 저장값 전부(제외 섹터 목록 `excludedCategoryNames`는 제외 — 그건 서버의 섹터별 `isExcluded`를 그대로 미러링하는 캐시라 별개)와 `useMarketValueTierRange`의 구간 인덱스에 적용했다. `categoryChangeRate.beforeMinutes`(섹터 페이지) 등 그 외 사용자 설정은 이번 스코프에서 서버로 옮기지 않았다 — "페이지 설정"의 정확한 대상 목록이 지시서에 없어 범위를 좁게 잡았다(PR에 남김).
+
+**로그아웃/계정 전환**: `useLogout`이 `queryClient.clear()`로 react-query 캐시 전체를 비우고 세션을 anonymous로 즉시 세팅한다. `marketMap.isCustom`·`marketMap.excludedCategoryNames`(계정마다 뜻이 달라지는 sectorId 참조)는 sessionStorage에서도 지운다. `useSession`은 세션 응답의 `userId`를 마지막으로 본 값과 비교해서 달라지면(새로고침 중 로그아웃되어 있었다, 다른 계정으로 재로그인했다) 동일하게 정리한다 — 로그아웃 버튼을 안 거쳐도 계정이 바뀐 걸 감지해서 새는 걸 막는다.
+
+**새 UI는 기존 톤 재사용**: 로그인 팝업(`LoginModal`)은 `MarketMapShareModal`과 같은 오버레이·패널(`bg-black/70` + `var(--surface)` 패널, `nes-btn`) 스타일을, `NavBar`의 로그인/로그아웃 UI는 `SubNavBar`의 탭 hover 드롭다운 패턴과 `AdminCategoryTable`의 accent 버튼(`nes-btn` + `var(--accent)`) 톤을 그대로 재사용했다. 새 팝업/버튼 스타일을 만들지 않았고, 등락률 전용 색(`--stock-up`/`--stock-down`/`--negative`, red/blue 계열)은 강조·에러·버튼 어디에도 안 썼다 — accent(노랑)만 사용.
+
+**검증**: `tsc -b`(clean) 0 errors, `eslint .` 0 errors, `vite build` 성공. dev:mock으로 브라우저 콘솔·네트워크 로그를 확인 — 비로그인에서 `/map`·`/map/value-tiers`·`/map/scale`만 호출되고(`/custom/*` 없음), `/summary`에서는 `/api/auth/session` 외 요청이 없고, `/admin/sector`를 비로그인으로 열어도 `/custom/sectors`·`/custom/stock-sectors`가 호출되지 않음을 확인했다. 스크린샷 도구(claude-in-chrome)가 이 환경에서 계속 "document_idle 타임아웃"으로 실패해 화면을 눈으로 직접 보는 검증은 못 했다 — 콘솔/네트워크 로그 기반 검증까지만 했다.

@@ -1,48 +1,56 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
-import { isAxiosError } from 'axios'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
 import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
 import SettingsSidebar from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
-import PermissionDenied from '@/components/PermissionDenied'
 import AdminCategoryTable from '@/components/AdminCategoryTable'
 import AdminStockTable from '@/components/AdminStockTable'
 import Spinner from '@/components/Spinner'
 import NavBarPageActions from '@/components/NavBarPageActions'
-import { useAdminCategories, useStockCategories } from '@/hooks/useMarketMapAdmin'
+import { useCustomSectors, useStockSectors } from '@/hooks/useMarketMapCustom'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
+import { useSession, useIsLoggedIn } from '@/hooks/useSession'
+import { useLoginGate } from '@/hooks/useLoginGate'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
 
-export default function MarketMapAdminPage() {
+// 커스텀 섹터·종목 배정 관리 화면 — 옛 /admin/sector, /admin/stock(MarketMapAdminPage, IP 관리자 전용)를
+// 대체한다. 이제는 admin 역할이 아니라 로그인 여부로 접근을 가른다(가입/로그인 전환 지시서 4) — 누구든
+// 로그인하면 자신의 커스텀 섹터를 관리할 수 있다. 비로그인으로 직접 URL 진입/새로고침해도 로그인
+// 팝업을 띄우고, 성공하면 이 경로로 돌아온다.
+export default function CustomManagePage() {
   const { pathname } = useLocation()
   const [searchParams] = useSearchParams()
   // mode 파라미터 없이 "커스텀" 탭 자체를 클릭했을 때는 카테고리 페이지로 간다(SubNavBar의
-  // ADMIN_MODE_LIST_ITEMS와 동일하게 카테고리를 기본으로 취급).
+  // CUSTOM_MODE_LIST_ITEMS와 동일하게 카테고리를 기본으로 취급).
   const mode = pathname === '/admin/stock' || searchParams.get('mode') === 'stock' ? 'stock' : 'category'
   // AdminStockTable의 툴바(종목수/실행취소·다시실행/필터/엑셀 등)를 이 DOM 노드로 포털링해서 세
   // 번째 바 안에 그린다 — useRef 대신 useState인 이유는, ref 콜백이 커밋 단계에서 실행되므로
   // useState로 받아야 그 노드가 준비된 뒤 리렌더가 한 번 더 일어나 AdminStockTable에 null이 아닌
   // 실제 노드가 확실히 전달된다.
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
+
+  const { data: session, isLoading: isSessionLoading } = useSession()
+  const isLoggedIn = useIsLoggedIn()
+  const { requireLogin } = useLoginGate()
+
   const {
     data: categories,
-    error: categoriesError,
-    isLoading,
+    isLoading: isCategoriesLoading,
     refetch: refetchCategories,
     isRefetching: isRefetchingCategories,
-  } = useAdminCategories()
+  } = useCustomSectors({ enabled: isLoggedIn })
   const {
     data: stockCategories,
     refetch: refetchStockCategories,
     isRefetching: isRefetchingStockCategories,
-  } = useStockCategories()
+  } = useStockSectors({ enabled: isLoggedIn })
 
   const { settingsModalProps, colorEditorPanelProps } = useGlobalSettings({ needsTree: false })
   const [isShareOpen, setIsShareOpen] = useState(false)
@@ -50,6 +58,13 @@ export default function MarketMapAdminPage() {
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
   const { isNativeFullscreen, handleToggleNativeFullscreen } = useNativeFullscreen()
   const captureRef = useRef<HTMLDivElement>(null)
+
+  // 세션 확인이 끝났는데 비로그인이면 곧바로 로그인 팝업을 띄운다 — 메뉴 클릭이 아니라 직접 URL
+  // 진입/새로고침으로 들어온 경우도 동일하게 막는다. returnTo는 지금 이 경로 그대로.
+  useEffect(() => {
+    if (!isSessionLoading && session && !session.authenticated) requireLogin(pathname)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 세션 로딩이 끝나 인증 여부가 바뀔 때만 반응하면 됨
+  }, [isSessionLoading, session])
 
   const handleCopy = async () => {
     if (!captureRef.current) return
@@ -92,9 +107,9 @@ export default function MarketMapAdminPage() {
     />
   )
 
-  // 로딩 중엔 admin 여부를 아직 모르므로, 403으로 걸러지기 전까지 사이드바/테이블 같은 실제
-  // 콘텐츠가 먼저 그려졌다가 사라지지 않도록 상단바+스피너만 보여준다(AdminPage.tsx와 동일 패턴).
-  if (isLoading) {
+  // 세션 확인 중이거나(로그인 여부를 아직 모름) 로그인 사용자의 섹터 목록을 받아오는 동안은 상단바+
+  // 스피너만 보여준다 — 비로그인용 안내와 실제 테이블이 뒤섞여 잠깐 보였다 사라지는 걸 막는다.
+  if (isSessionLoading || (isLoggedIn && isCategoriesLoading)) {
     return (
       <div className="flex h-screen flex-col overflow-hidden">
         <NavBar />
@@ -106,8 +121,23 @@ export default function MarketMapAdminPage() {
     )
   }
 
-  if (isAxiosError(categoriesError) && categoriesError.response?.status === 403) {
-    return <PermissionDenied />
+  if (!isLoggedIn) {
+    return (
+      <div className="flex h-screen flex-col overflow-hidden">
+        <NavBar />
+        <SubNavBar />
+        <div className="flex flex-1 flex-col items-center justify-center gap-4">
+          <p className="text-sm text-white">로그인이 필요합니다.</p>
+          <button
+            type="button"
+            onClick={() => requireLogin(pathname)}
+            className="nes-btn border-[var(--accent)] bg-[var(--accent)] px-4 py-2 text-sm font-bold text-black hover:bg-[var(--accent-hover)]"
+          >
+            로그인
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
