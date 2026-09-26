@@ -20,12 +20,10 @@ interface Props {
   stockLabelMode: StockLabelMode
   // 등락률(%) 표시 소수점 자릿수(설정 사이드바의 "소수점 아래 표시" 슬라이더).
   decimalPlaces: number
-  tooltipAlignLeft: boolean
-  tooltipAlignTop: boolean
   // 박스 색칠은 이 설정 하나로만 결정된다(resolveMarketMapColor) — 범례 바(MarketMapCustomPage)도
   // 같은 설정 + 같은 함수를 거치므로 두 화면이 항상 수학적으로 일치한다.
   colorScale: ColorScaleConfig
-  onOpenPopup: (content: MarketMapPopupContent, target: HTMLElement, alignLeft: boolean, alignTop: boolean) => void
+  onOpenPopup: (content: MarketMapPopupContent, target: HTMLElement) => void
   // 지금 팝업이 떠 있는 섹터/종목의 식별 키('sector-<id>' | 'stock-<code>') — 이 종목의 키와 일치하면
   // 박스에 초록 하이라이트를 붙인다(MarketMapTreemap.highlightedKey).
   highlightedKey: string | null
@@ -45,8 +43,6 @@ export default function MarketMapBox({
   labelMinAreaPercent,
   stockLabelMode,
   decimalPlaces,
-  tooltipAlignLeft,
-  tooltipAlignTop,
   colorScale,
   onOpenPopup,
   highlightedKey,
@@ -80,7 +76,7 @@ export default function MarketMapBox({
             `시가총액: ${toJoEok(item.totalMarketValue / 100_000_000)}`,
           ],
           targetKey: `stock-${item.stockCode}`,
-        }, e.currentTarget, tooltipAlignLeft, tooltipAlignTop)
+        }, e.currentTarget)
       }}
       className={`market-map-stock flex flex-col items-center justify-center overflow-hidden border border-black/40 text-white ${isHighlighted ? 'outline outline-2 outline-[#22c55e] shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : ''}`}
     >

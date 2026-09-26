@@ -11,7 +11,7 @@ interface Props {
   sector: LaidOutSector
   // rect는 이 섹터 박스 전체의 화면상 위치 — 줌인 애니메이션이 어디서부터 확대되는지 계산하는 데 쓴다.
   onSelectSector: (sectorName: string, rect: DOMRect) => void
-  onOpenPopup: (content: MarketMapPopupContent, target: HTMLElement, alignLeft: boolean, alignTop: boolean) => void
+  onOpenPopup: (content: MarketMapPopupContent, target: HTMLElement) => void
   // 지금 팝업이 떠 있는 섹터/종목의 식별 키('sector-<id>' | 'stock-<code>') — 이 섹터의 키와 일치하면
   // 박스 전체에 초록 하이라이트를 붙인다(MarketMapTreemap.highlightedKey).
   highlightedKey: string | null
@@ -159,7 +159,7 @@ export default function MarketMapSectorSection({
                 ],
                 excludeSector: canExclude ? { id: sector.sectorId, name: sector.sectorName } : undefined,
                 targetKey: sectorKey,
-              }, boxRef.current ?? e.currentTarget, sector.tooltipAlignLeft, sector.tooltipAlignTop)
+              }, boxRef.current ?? e.currentTarget)
               // 우클릭도 좌클릭(위 onClick)과 마찬가지로 버튼에 포커스를 남기는데, 이 헤더는
               // :focus-visible에서 hover와 같은 강조 테두리를 보여주는 CSS 규칙이 있어(index.css)
               // blur 없이 두면 팝업이 뜬 뒤에도 그 테두리가 계속 남아 있었다. 새 초록 하이라이트만
@@ -213,8 +213,6 @@ export default function MarketMapSectorSection({
           labelMinAreaPercent={labelMinAreaPercent}
           stockLabelMode={stockLabelMode}
           decimalPlaces={decimalPlaces}
-          tooltipAlignLeft={box.tooltipAlignLeft}
-          tooltipAlignTop={box.tooltipAlignTop}
           colorScale={colorScale}
           onOpenPopup={onOpenPopup}
           highlightedKey={highlightedKey}
