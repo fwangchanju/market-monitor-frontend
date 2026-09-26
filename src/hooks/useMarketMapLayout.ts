@@ -22,8 +22,6 @@ interface LaidOutStockBox {
   // 최상위 컨테이너 기준(d3 treemap이 전체 트리를 한 좌표계에서 배치하므로, 어느 뎁스의 박스든
   // width*height를 컨테이너 전체 width*height로 나누면 바로 이 비중이 나온다).
   areaPercent: number
-  tooltipAlignLeft: boolean
-  tooltipAlignTop: boolean
 }
 
 export interface LaidOutSector {
@@ -39,8 +37,6 @@ export interface LaidOutSector {
   height: number
   boxes: LaidOutStockBox[]
   subSectors: LaidOutSector[]
-  tooltipAlignLeft: boolean
-  tooltipAlignTop: boolean
 }
 
 interface HierarchyDatum {
@@ -83,11 +79,6 @@ export const ITEM_SIBLING_GAP = 1
 // 겹치는데, 형제 간격(SECTOR_SIBLING_GAP)과 같은 이유로 문제없다(평소엔 같은 색이라 한 줄처럼
 // 보이고, hover 중인 쪽은 z-index로 항상 위에 그려짐). 상단 헤더 공간은 paddingTop으로 별도 처리.
 export const PADDING = 0
-// 최상위 섹터의 우측/하단 테두리가 컨테이너 너비/높이의 이 비율을 넘으면, 그 안의 모든 툴팁(섹터/종목)을
-// 각각 왼쪽/위쪽으로 뒤집는다. 실제 화면에서 툴팁이 잘리는지 보면서 이 값만 조정하면 됨
-// (0.75 = 우측(혹은 하단) 25% 구간에 걸치면 반전). 종목 툴팁의 좌우 오프셋을 56px로 늘리면서
-// (MarketMapBox의 TOOLTIP_OFFSET_X) 더 일찍 반전되도록 0.85 → 0.80으로 낮춤.
-const TOOLTIP_FLIP_EDGE_RATIO = 0.8
 
 // equalWeight(설정의 "동일 가중" 토글)가 켜지면 종목마다 실제 시가총액 대신 동일한 상수 값을 줘서,
 // 트리맵 박스 크기가 시가총액이 아니라 섹터별 "종목 개수" 비례로 나오게 한다(어떤 상수를 쓰든
@@ -163,8 +154,6 @@ export function useMarketMapLayout(
       node: HierarchyRectangularNode<HierarchyDatum>,
       originX: number,
       originY: number,
-      tooltipAlignLeft: boolean,
-      tooltipAlignTop: boolean,
     ): LaidOutSector => {
       const nx0 = node.x0 ?? 0
       const ny0 = node.y0 ?? 0
@@ -182,11 +171,9 @@ export function useMarketMapLayout(
             width: boxWidth,
             height: boxHeight,
             areaPercent: ((boxWidth * boxHeight) / (width * height)) * 100,
-            tooltipAlignLeft,
-            tooltipAlignTop,
           })
         } else {
-          subSectors.push(toLaidOutSector(child, nx0, ny0, tooltipAlignLeft, tooltipAlignTop))
+          subSectors.push(toLaidOutSector(child, nx0, ny0))
         }
       }
 
@@ -203,15 +190,9 @@ export function useMarketMapLayout(
         height: (node.y1 ?? 0) - ny0,
         boxes,
         subSectors,
-        tooltipAlignLeft,
-        tooltipAlignTop,
       }
     }
 
-    return (root.children ?? []).map(sectorNode => {
-      const tooltipAlignLeft = (sectorNode.x1 ?? 0) > width * TOOLTIP_FLIP_EDGE_RATIO
-      const tooltipAlignTop = (sectorNode.y1 ?? 0) > height * TOOLTIP_FLIP_EDGE_RATIO
-      return toLaidOutSector(sectorNode, 0, 0, tooltipAlignLeft, tooltipAlignTop)
-    })
+    return (root.children ?? []).map(sectorNode => toLaidOutSector(sectorNode, 0, 0))
   }, [groups, selfSectorName, width, height, equalWeight])
 }

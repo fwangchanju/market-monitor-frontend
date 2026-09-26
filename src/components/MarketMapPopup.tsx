@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { eulReul } from '@/utils/format'
 
@@ -11,11 +11,18 @@ export interface MarketMapPopupContent {
   targetKey: string
 }
 
-export interface MarketMapPopupState extends MarketMapPopupContent {
+// 우클릭한 박스(섹터 전체 박스 혹은 종목 박스)의 뷰포트 기준 rect. 팝업은 마우스 좌표가 아니라
+// 이 rect의 가장자리에 스티커 메모처럼 붙는다 — 실제 정렬(오른쪽/왼쪽, 위/아래) 계산은 팝업 자신의
+// 렌더된 크기를 알아야 하므로 아래 PopupBody에서 한다.
+export interface MarketMapPopupAnchorRect {
   left: number
   top: number
-  alignLeft: boolean
-  alignTop: boolean
+  right: number
+  bottom: number
+}
+
+export interface MarketMapPopupState extends MarketMapPopupContent {
+  anchorRect: MarketMapPopupAnchorRect
 }
 
 interface Props {
@@ -25,21 +32,70 @@ interface Props {
 }
 
 export default function MarketMapPopup({ popup, onExcludeSector, onClose }: Props) {
-  // 팝업이 닫힐 때마다(popup === null) 이 컴포넌트가 통째로 언마운트되므로, 다음에 다시 열릴 때
-  // confirming은 항상 false로 초기화된다 — 별도 리셋 로직 없이 훅 하나로 충분하다.
-  const [confirming, setConfirming] = useState(false)
+  // popup이 null이면 PopupBody를 트리에서 아예 뺀다 — 이래야 popup이 바뀔 때마다(닫혔다 다시 열릴
+  // 때마다) PopupBody가 실제로 언마운트·재마운트되어 confirming/위치 계산 state가 매번 새로 시작한다.
+  // MarketMapPopup 자신은 부모가 항상 렌더하는 컴포넌트라 여기 직접 훅을 두면 그 state가 다음 팝업까지
+  // 이어져버린다.
   if (!popup) return null
+  return createPortal(
+    <PopupBody popup={popup} onExcludeSector={onExcludeSector} onClose={onClose} />,
+    document.body,
+  )
+}
+
+const POPUP_GAP = 2
+const POPUP_MARGIN = 8
+
+interface PopupBodyProps {
+  popup: MarketMapPopupState
+  onExcludeSector: (sectorId: number, sectorName: string) => void
+  onClose: () => void
+}
+
+function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
+  const [confirming, setConfirming] = useState(false)
+  const elRef = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState({ left: 0, top: 0, ready: false })
+
+  // 팝업 크기는 내용(제목/행 목록 vs 삭제 확인 문구+버튼)에 따라 달라서 미리 알 수 없다. 일단
+  // 기본 위치(혹은 이전 위치)로 그려보고, 실제 렌더된 크기를 getBoundingClientRect로 잰 뒤
+  // 뷰포트를 넘치지 않는 최종 위치를 다시 계산한다 — useLayoutEffect라 이 보정은 브라우저가
+  // 화면을 그리기 전에 끝나서 위치가 튀는 게 눈에 보이지 않는다. confirming이 바뀌어 내용/크기가
+  // 달라질 때도 다시 재는게 필요해서 의존성에 넣는다.
+  useLayoutEffect(() => {
+    const el = elRef.current
+    if (!el) return
+    const { width, height } = el.getBoundingClientRect()
+    const { anchorRect } = popup
+
+    // X: 기본은 박스 오른쪽 바깥(2px 간격). 안 들어가면 왼쪽 바깥으로 뒤집고, 그마저 안 들어가면
+    // 뷰포트 안쪽으로 붙여 넣는다(이 경우 박스와 겹치는 것은 감수한다).
+    let left = anchorRect.right + POPUP_GAP
+    if (left + width > window.innerWidth - POPUP_MARGIN) {
+      const flippedLeft = anchorRect.left - POPUP_GAP - width
+      left = flippedLeft >= POPUP_MARGIN ? flippedLeft : window.innerWidth - POPUP_MARGIN - width
+    }
+    left = Math.max(POPUP_MARGIN, left)
+
+    // Y: 기본은 박스 위쪽 가장자리에 맞춘다. 화면 아래로 넘치면 박스 아래쪽 가장자리에 맞추고,
+    // 그래도 위/아래로 넘치면 뷰포트 안쪽으로 클램프한다.
+    let top = anchorRect.top
+    if (top + height > window.innerHeight - POPUP_MARGIN) {
+      top = anchorRect.bottom - height
+    }
+    top = Math.min(Math.max(top, POPUP_MARGIN), window.innerHeight - POPUP_MARGIN - height)
+
+    setPosition({ left, top, ready: true })
+  }, [popup, confirming])
+
   const excludeSector = popup.excludeSector
 
-  return createPortal(
+  return (
     <div
+      ref={elRef}
       data-market-map-popup
       className="fixed z-[9999] w-max whitespace-nowrap rounded border border-gray-600 bg-[var(--surface)] px-2 py-1 text-left text-base text-white shadow-lg"
-      style={{
-        left: popup.left,
-        top: popup.top,
-        transform: `translate(${popup.alignLeft ? '-100%' : '0'}, ${popup.alignTop ? '-100%' : '0'})`,
-      }}
+      style={{ left: position.left, top: position.top, visibility: position.ready ? 'visible' : 'hidden' }}
     >
       {confirming && excludeSector ? (
         <div className="flex flex-col gap-2">
@@ -92,7 +148,6 @@ export default function MarketMapPopup({ popup, onExcludeSector, onClose }: Prop
           </div>
         </>
       )}
-    </div>,
-    document.body,
+    </div>
   )
 }

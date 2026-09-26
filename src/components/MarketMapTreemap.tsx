@@ -136,20 +136,15 @@ export default function MarketMapTreemap({
   // 비례로 균등하게 그린다(useMarketMapLayout 참고).
   const sectors = useMarketMapLayout(groups, selfSectorName, size.width, size.height, avgChangeRateUseSimple)
 
-  // 팝업을 마우스 좌표가 아니라 우클릭한 박스(섹터 전체 박스, 혹은 종목 박스) 가장자리에 스티커 메모처럼
-  // 붙인다. X축은 오른쪽 바깥(2px 간격)이 기본, 공간이 없으면(alignLeft) 왼쪽 바깥으로 뒤집는다.
-  // Y축은 위쪽 가장자리를 맞추는 게 기본, 화면 아래로 넘치면(alignTop) 아래쪽 가장자리를 맞춘다.
-  // alignLeft/alignTop 판단 자체는 기존과 동일하게 레이아웃 단계에서 미리 계산해둔
-  // tooltipAlignLeft/tooltipAlignTop 신호를 그대로 재사용한다(useMarketMapLayout).
-  const POPUP_EDGE_GAP = 2
-  const handleOpenPopup = (content: MarketMapPopupContent, target: HTMLElement, alignLeft: boolean, alignTop: boolean) => {
+  // 팝업을 마우스 좌표가 아니라 우클릭한 박스(섹터 전체 박스, 혹은 종목 박스)의 화면상 위치에 붙인다.
+  // 여기서는 그 박스의 뷰포트 기준 rect만 그대로 popup 상태에 실어두고, 그 rect의 어느 가장자리에
+  // 어느 쪽으로 붙일지(오른쪽/왼쪽, 위/아래 뒤집기)는 실제 팝업 크기를 알아야 정확히 판단할 수 있어서
+  // MarketMapPopup 쪽에서 렌더 후 측정해서 계산한다(MarketMapPopup.tsx 참고).
+  const handleOpenPopup = (content: MarketMapPopupContent, target: HTMLElement) => {
     const rect = target.getBoundingClientRect()
     setPopup({
       ...content,
-      left: alignLeft ? rect.left - POPUP_EDGE_GAP : rect.right + POPUP_EDGE_GAP,
-      top: alignTop ? rect.bottom : rect.top,
-      alignLeft,
-      alignTop,
+      anchorRect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
     })
   }
 
