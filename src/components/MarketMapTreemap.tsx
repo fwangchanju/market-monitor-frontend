@@ -105,6 +105,11 @@ export default function MarketMapTreemap({
   // 사라지는 옛 화면을 실제 콘텐츠 위/아래에 겹쳐 그리는 고스트 — 형제 섹터들이 순간 사라지지 않고
   // 서서히 페이드아웃(줌인)/줄어들며 사라지도록(줌아웃) 보여준다.
   const [ghost, setGhost] = useState<GhostOverlay | null>(null)
+  // 좌클릭으로 줌인이 시작될 때 헤더 hover 테두리가 잠깐 반짝이지 않게 끈다 — onHeaderPressStart
+  // (헤더 pointerdown, 왼쪽 버튼만)로 눌리는 즉시 켜고, handleSelectSector(click, 줌인 시작)에서도
+  // 다시 켠다(중복이지만 무해). 줌 애니메이션이 끝나고 사용자가 다시 마우스를 움직이면(아래
+  // onPointerMove) 꺼진다. 예전엔 index.css의 CSS :active로 이 "누르는 순간"을 처리했는데, :active는
+  // 버튼을 구분 못 해서 우클릭(팝업) 프레스 중에도 같이 켜지는 버그가 있어 JS로 옮겼다.
   const [suppressSectorHoverBorder, setSuppressSectorHoverBorder] = useState(false)
   // 섹터 진입(클릭) 시점에 캡처한 "그 박스가 화면에서 차지하던 위치" — 뎁스별로 기억해뒀다가
   // 다시 나갈 때 정확히 그 자리로 줄어드는 반대 애니메이션에 재사용한다.
@@ -136,15 +141,21 @@ export default function MarketMapTreemap({
   // 비례로 균등하게 그린다(useMarketMapLayout 참고).
   const sectors = useMarketMapLayout(groups, selfSectorName, size.width, size.height, avgChangeRateUseSimple)
 
-  const handleOpenPopup = (content: MarketMapPopupContent, e: React.MouseEvent, alignLeft: boolean, alignTop: boolean) => {
+  // 팝업을 마우스 좌표가 아니라 우클릭한 박스(섹터 전체 박스, 혹은 종목 박스)의 화면상 위치에 붙인다.
+  // 여기서는 그 박스의 뷰포트 기준 rect만 그대로 popup 상태에 실어두고, 그 rect의 어느 가장자리에
+  // 어느 쪽으로 붙일지(오른쪽/왼쪽, 위/아래 뒤집기)는 실제 팝업 크기를 알아야 정확히 판단할 수 있어서
+  // MarketMapPopup 쪽에서 렌더 후 측정해서 계산한다(MarketMapPopup.tsx 참고).
+  const handleOpenPopup = (content: MarketMapPopupContent, target: HTMLElement) => {
+    const rect = target.getBoundingClientRect()
     setPopup({
       ...content,
-      left: e.clientX + (alignLeft ? -12 : 12),
-      top: e.clientY + (alignTop ? -8 : 8),
-      alignLeft,
-      alignTop,
+      anchorRect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
     })
   }
+
+  // 팝업이 떠 있는 대상(섹터/종목)의 식별 키 — 그 박스에만 초록 하이라이트를 붙이는 데 쓴다.
+  // popup 상태 자체가 곧 하이라이트 대상의 단일 출처라 별도 state 없이 파생시킨다.
+  const highlightedKey = popup?.targetKey ?? null
 
   useEffect(() => {
     if (!popup) return
@@ -295,6 +306,9 @@ export default function MarketMapTreemap({
               depthOffset={ghost.depth}
               onSelectSector={noop}
               onOpenPopup={noop}
+              onHeaderPressStart={noop}
+              highlightedKey={null}
+              ancestorPath=""
               marketValueDepthRange={marketValueDepthRange}
               avgChangeRateDepthRange={avgChangeRateDepthRange}
               upDownCountDepthRange={upDownCountDepthRange}
@@ -317,6 +331,9 @@ export default function MarketMapTreemap({
             depthOffset={depth}
             onSelectSector={handleSelectSector}
             onOpenPopup={handleOpenPopup}
+            onHeaderPressStart={() => setSuppressSectorHoverBorder(true)}
+            highlightedKey={highlightedKey}
+            ancestorPath=""
             marketValueDepthRange={marketValueDepthRange}
             avgChangeRateDepthRange={avgChangeRateDepthRange}
             upDownCountDepthRange={upDownCountDepthRange}
