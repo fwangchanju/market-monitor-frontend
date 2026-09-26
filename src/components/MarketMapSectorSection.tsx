@@ -168,6 +168,16 @@ export default function MarketMapSectorSection({
           <div className="market-map-sector-hover-overlay absolute inset-0 z-[1] pointer-events-none" aria-hidden="true" />
           <button
             type="button"
+            onMouseDown={e => {
+              // 오른쪽 버튼 mousedown의 "기본 동작"(포커스 이동)만 막는다 — contextmenu는 별개
+              // 이벤트라 여기서 preventDefault해도 그대로 뜬다. index.css에 전역 포커스 리셋 규칙
+              // (#root :where(button, ...):focus { outline/box-shadow: none !important })이 있어서,
+              // 우클릭으로 이 버튼이 포커스를 받으면 그 !important가 hover/고정 모양의 흰 inset
+              // box-shadow를 지워버려 테두리 선만 남는 버그가 있었다 — 애초에 포커스를 안 받게 막는다.
+              // pointerdown이 아니라 mousedown을 쓴 이유: preventDefault를 pointerdown에 걸어도
+              // 브라우저에 따라 포커스 이동을 못 막는 경우가 있다(마우스 전용 mousedown만 확실하다).
+              if (e.button === 2) e.preventDefault()
+            }}
             onPointerDown={e => {
               // 주 버튼(왼쪽, button === 0)을 눌렀을 때만 — 우클릭(팝업)까지 같이 걸리면 안 된다.
               // CSS :active는 버튼 구분이 안 돼서(왼쪽이든 오른쪽이든 눌려 있는 동안 매치) 우클릭
@@ -197,9 +207,8 @@ export default function MarketMapSectorSection({
                 excludeSector: canExclude ? { id: sector.sectorId, name: sector.sectorName } : undefined,
                 targetKey: sectorKey,
               }, boxRef.current ?? e.currentTarget)
-              // 우클릭도 좌클릭(위 onClick)과 마찬가지로 버튼에 포커스를 남기는데, 이 헤더는
-              // :focus-visible에서 hover와 같은 강조 테두리를 보여주는 CSS 규칙이 있어(index.css)
-              // blur 없이 두면 팝업이 뜬 뒤에도 그 테두리가 계속 남아 있었다. blur로 지워준다.
+              // 위 onMouseDown이 오른쪽 버튼의 포커스 이동 자체를 막아주지만, 혹시를 대비한 안전망으로
+              // 여기서도 한 번 더 blur — 이미 포커스가 없으면 아무 효과 없는 no-op이라 안전하다.
               e.currentTarget.blur()
             }}
             style={{
