@@ -325,7 +325,7 @@ a { color: var(--accent-light); text-decoration: none; }
   .market-map-stock.is-pinned {
     border-width: 2px;
     border-color: color-mix(in srgb, var(--market-map-base-color) 58%, white);
-    box-shadow: inset 0 0 0 999px rgb(255 255 255 / 42%);
+    box-shadow: inset 0 0 0 999px rgb(255 255 255 / 45%);
   }
 
   /* 종목과 같은 이유로(위 .market-map-stock 주석 참고) 헤더도 hover와 "팝업이 뜬 채 고정"을 같은
@@ -337,7 +337,7 @@ a { color: var(--accent-light); text-decoration: none; }
   .market-map-sector-box.is-pinned > .market-map-sector-header {
     border-width: 2px;
     border-color: color-mix(in srgb, var(--market-map-base-color) 50%, white);
-    box-shadow: inset 0 0 0 999px rgb(255 255 255 / 50%);
+    box-shadow: inset 0 0 0 999px rgb(255 255 255 / 45%);
   }
 
   .market-map-top-pick-header:hover,
@@ -360,11 +360,11 @@ a { color: var(--accent-light); text-decoration: none; }
   }
 
   /* 섹터 헤더를 hover(또는 팝업이 뜬 채 고정)했을 때 섹터 박스 전체를 옅게 덮는 오버레이
-     (MarketMapSectorSection.tsx) — 기본은 투명, 아래 두 트리거 중 하나가 켜지면 0.5로.
-     배경색은 헤더가 hover일 때 보여주는 색(color-mix ... 50%, white)과 동일한 "hover 색"을 쓰고,
-     그 위에 opacity를 한 번 더 걸어 아래 종목 박스가 옅게 비치게 한다. */
+     (MarketMapSectorSection.tsx) — 기본은 투명(opacity 0), 아래 두 트리거 중 하나가 켜지면 opacity 1로
+     바뀌어 보인다. 배경색 자체가 흰색 45% 알파(rgb(255 255 255 / 45%))라, 종목/섹터 헤더 hover의
+     box-shadow와 같은 흰색 불투명도로 통일된다. */
   .market-map-sector-hover-overlay {
-    background-color: color-mix(in srgb, var(--market-map-base-color) 50%, white);
+    background-color: rgb(255 255 255 / 45%);
     opacity: 0;
     transition: opacity 0.15s ease;
   }
@@ -375,7 +375,7 @@ a { color: var(--accent-light); text-decoration: none; }
   .market-map-sector-box:has(> .market-map-sector-header:hover) > .market-map-sector-hover-overlay,
   .market-map-sector-box:has(> .market-map-sector-header:focus-visible) > .market-map-sector-hover-overlay,
   .market-map-sector-box.is-pinned > .market-map-sector-hover-overlay {
-    opacity: 0.5;
+    opacity: 1;
   }
 
   /* 드래그/줌 전환 중에는(market-map-suppress-sector-border) 헤더 hover 테두리와 마찬가지로 이
