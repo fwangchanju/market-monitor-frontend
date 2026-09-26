@@ -150,13 +150,17 @@ export default function MarketMapSectorSection({
           없어 우클릭도 못 받으므로(팝업 대상이 될 수 없음) hover 오버레이도 같이 생략한다. */}
       {!sector.isSelf && (
         <>
-          {/* 헤더를 hover(또는 팝업이 뜬 채 고정)했을 때 섹터 박스 전체를 옅게 덮는 오버레이 —
-              DOM에서 헤더보다 먼저 그려서(같은 stacking level, 나중에 그려지는 쪽이 위) 헤더 글자가
-              항상 오버레이 위로 보이게 한다. 표시 여부는 순수 CSS(:has())로 판정한다(index.css) —
-              헤더 :hover/:focus-visible 자체를 트리거로 쓰고, 팝업이 뜬 상태는 위 is-pinned 클래스로
-              같은 규칙에 얹는다. 하위 섹터의 헤더를 hover해도 :has(> ...)의 '>'가 직계 자식만 보므로
-              이 오버레이는 안 뜨고, 그 하위 섹터 자신의 오버레이만 뜬다. */}
-          <div className="market-map-sector-hover-overlay absolute inset-0 pointer-events-none" aria-hidden="true" />
+          {/* 헤더를 hover(또는 팝업이 뜬 채 고정)했을 때 섹터 박스 전체를 옅게 덮는 오버레이. 표시
+              여부는 순수 CSS(:has())로 판정한다(index.css) — 헤더 :hover/:focus-visible 자체를
+              트리거로 쓰고, 팝업이 뜬 상태는 위 is-pinned 클래스로 같은 규칙에 얹는다. 하위 섹터의
+              헤더를 hover해도 :has(> ...)의 '>'가 직계 자식만 보므로 이 오버레이는 안 뜨고, 그
+              하위 섹터 자신의 오버레이만 뜬다(하위 섹터 전체가 이 오버레이에 옅게 덮이는 건 의도대로).
+              하위 섹터/종목 박스는 전부 z-index:auto라 그 위에 z-[1]만 얹으면 항상 그것들보다
+              위에 그려진다(DOM 순서와 무관 — z-index가 있는 요소는 auto인 형제들보다 항상 나중에
+              페인트된다). 톱픽 섹터는 자기 바깥 박스에 z-index:20을 따로 쓰는데(이 컴포넌트 자신,
+              위 style 참고) 이 1/2는 그보다 한참 낮게 잡아서 톱픽이 기존처럼 뭐든 위로 튀어나와
+              보이는 동작을 그대로 둔다. */}
+          <div className="market-map-sector-hover-overlay absolute inset-0 z-[1] pointer-events-none" aria-hidden="true" />
           <button
             type="button"
             onClick={e => {
@@ -192,7 +196,7 @@ export default function MarketMapSectorSection({
               left: PADDING,
               width: `calc(100% - ${PADDING * 2}px)`,
             } as CSSProperties}
-            className={`market-map-sector-header ${isTopPick ? 'market-map-top-pick-header' : ''} absolute top-0 flex items-center overflow-hidden truncate px-1 text-left font-bold leading-none ${headerStyle.border} ${headerStyle.text ?? ''} ${headerStyle.background}`}
+            className={`market-map-sector-header ${isTopPick ? 'market-map-top-pick-header' : ''} absolute top-0 z-[2] flex items-center overflow-hidden truncate px-1 text-left font-bold leading-none ${headerStyle.border} ${headerStyle.text ?? ''} ${headerStyle.background}`}
           >
             {displaySectorName}
             {headerSuffix && <span className="font-normal">{headerSuffix}</span>}
