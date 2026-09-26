@@ -12,7 +12,7 @@ interface Props {
 export default function WidgetSection({ title, unit, actions, stale, children }: Props) {
   return (
     <section
-      data-captureid={CAPTURE_ID.MARKET_SUMMARY}
+      data-captureid={CAPTURE_ID.SUMMARY}
       className={`section nes-container is-dark ${stale ? 'border-red-500' : ''}`}
     >
       <div className="relative z-10 mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-gray-600 pb-2">

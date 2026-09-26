@@ -1,26 +1,26 @@
-import type { MarketMapCategoryNode, MarketMapItem } from '@/types/api'
+import type { MarketMapSectorNode, MarketMapItem } from '@/types/api'
 
-export interface CategoryAverage {
+export interface SectorAverage {
   weightedAvg: number | null
   simpleAvg: number | null
 }
 
-// node.items + 모든 하위 카테고리의 items(재귀) — 하위 카테고리가 isExcluded여도 포함한다.
-function collectItems(node: MarketMapCategoryNode): MarketMapItem[] {
+// node.items + 모든 하위 섹터의 items(재귀) — 하위 섹터가 isExcluded여도 포함한다.
+function collectItems(node: MarketMapSectorNode): MarketMapItem[] {
   const items = [...node.items]
   for (const child of node.children) items.push(...collectItems(child))
   return items
 }
 
-// 카테고리(하위 전체 포함)의 등락률 평균 — 백엔드가 예전에 집계 테이블에 저장하던 규칙과 같게 계산한다
+// 섹터(하위 전체 포함)의 등락률 평균 — 백엔드가 예전에 집계 테이블에 저장하던 규칙과 같게 계산한다
 // (market-monitor-backend collectItems). 거르는 건 marketValueTier가 excludedTierLabels에 있는
-// 것 하나뿐이다 — 하위 제외 카테고리도, 시가총액 0인 종목도 전부 더한다. 지도 헤더·업종 톱픽·섹터
+// 것 하나뿐이다 — 하위 제외 섹터도, 시가총액 0인 종목도 전부 더한다. 지도 헤더·업종 톱픽·섹터
 // 그래프·텔레그램 캡션이 전부 이 값을 봐야 화면 숫자가 일치한다. 반드시 필터 전 원본 노드에 적용해야
 // 한다 — 필터로 거른 뒤의 items/children으로 새로 만든 노드에 적용하면 이 규칙이 깨진다.
-export function computeCategoryAverage(
-  node: MarketMapCategoryNode,
+export function computeSectorAverage(
+  node: MarketMapSectorNode,
   excludedTierLabels: Set<string>,
-): CategoryAverage {
+): SectorAverage {
   let weightedSum = 0
   let totalValue = 0
   let simpleSum = 0

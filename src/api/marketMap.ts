@@ -32,12 +32,12 @@ export const unregisterExcludedStock = (stockCode: string) =>
 
 export const deleteAllExcludedStocks = () => client.delete('/map/excluded-stocks')
 
-// 종목 단위 대신 카테고리 단위로 제외한다 — 상태(is_excluded)는 market_map_category에 저장되고,
-// 마켓맵 응답의 각 카테고리 노드에 isExcluded로 같이 내려온다.
-export const registerExcludedCategory = (categoryId: number) =>
-  client.post(`/map/excluded-categories/${categoryId}`)
+// 종목 단위 대신 섹터 단위로 제외한다 — 상태(is_excluded)는 market_map_category에 저장되고,
+// 마켓맵 응답의 각 섹터 노드에 isExcluded로 같이 내려온다.
+export const registerExcludedSector = (sectorId: number) =>
+  client.post(`/map/excluded-sectors/${sectorId}`)
 
-export const unregisterExcludedCategory = (categoryId: number) =>
-  client.delete(`/map/excluded-categories/${categoryId}`)
+export const unregisterExcludedSector = (sectorId: number) =>
+  client.delete(`/map/excluded-sectors/${sectorId}`)
 
-export const deleteAllExcludedCategories = () => client.delete('/map/excluded-categories')
+export const deleteAllExcludedSectors = () => client.delete('/map/excluded-sectors')

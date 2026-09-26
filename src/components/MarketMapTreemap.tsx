@@ -1,18 +1,18 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useMarketMapLayout, type DisplayGroup, type LaidOutCategory } from '@/hooks/useMarketMapLayout'
-import MarketMapCategorySection from './MarketMapCategorySection'
+import { useMarketMapLayout, type DisplayGroup, type LaidOutSector } from '@/hooks/useMarketMapLayout'
+import MarketMapSectorSection from './MarketMapSectorSection'
 import type { ColorScaleConfig } from '@/utils/marketMapColorScale'
 import type { StockLabelMode } from '@/hooks/useGlobalSettings'
 
 interface Props {
   groups: DisplayGroup[]
-  selfCategoryName: string | null
+  selfSectorName: string | null
   // depth는 지금 드릴다운 깊이(path.length) — 줌 방향(들어가는지/나가는지) 판단과, 뎁스별 진입 지점을
   // 기억해뒀다가 나갈 때 그대로 되감기 위한 키로 쓴다.
   depth: number
-  onSelectCategory: (categoryName: string) => void
-  onExcludeCategory: (categoryId: number, categoryName: string) => void
+  onSelectSector: (sectorName: string) => void
+  onExcludeSector: (sectorId: number, sectorName: string) => void
   heightClassName?: string
   // 셋 다 null = 전부 꺼짐. [min, max]면 그 뎁스 범위(현재 화면 기준 상대 뎁스)에서만 표시.
   marketValueDepthRange: [number, number] | null
@@ -20,7 +20,7 @@ interface Props {
   upDownCountDepthRange: [number, number] | null
   // true면 가중평균 대신 산술평균을 표시(태그/툴팁).
   avgChangeRateUseSimple: boolean
-  // 커스텀 모드가 아닐 때는(기본 분류 트리) 카테고리 제외 액션 자체를 제공하지 않는다.
+  // 커스텀 모드가 아닐 때는(기본 분류 트리) 섹터 제외 액션 자체를 제공하지 않는다.
   canExclude: boolean
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 박스 색칠 설정의 단일 출처(어드민 라이브 프리뷰에서는
   // 저장 전 draft config가 그대로 여기 들어와서 드래그 중에도 실시간으로 반영된다).
@@ -29,17 +29,17 @@ interface Props {
   labelMinAreaPercent: number
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명만/등락률만/둘 다 보여줄지.
   stockLabelMode: StockLabelMode
-  // 하위 MarketMapCategorySection/MarketMapBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
+  // 하위 MarketMapSectorSection/MarketMapBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
   decimalPlaces: number
-  topPickCategoryIds: Set<number>
+  topPickSectorIds: Set<number>
   // 0이 아닌 뎁스가 오면 그 뎁스로 진입할 때 썼던 위치로 줄어드는 애니메이션을 재생한다.
   zoomOutRequestDepth: number | null
   onZoomOutComplete: (depth: number) => void
 }
 
 interface ContextMenuState {
-  categoryId: number
-  categoryName: string
+  sectorId: number
+  sectorName: string
   left: number
   top: number
 }
@@ -56,7 +56,7 @@ interface RelativeRect {
 // 트랜지션 끝나면 치우는 "고스트" 레이어. direction에 따라 실제 콘텐츠보다 위/아래 어느 쪽에 그릴지가 다르다
 // (줌인: 실제 콘텐츠가 고스트를 덮으며 커짐 / 줌아웃: 고스트가 실제 콘텐츠를 덮은 채 줄어들며 사라짐).
 interface GhostOverlay {
-  categories: LaidOutCategory[]
+  sectors: LaidOutSector[]
   depth: number
   direction: 'in' | 'out'
   style: React.CSSProperties
@@ -86,10 +86,10 @@ function toShrinkTransform(rect: RelativeRect, containerRect: DOMRect): string {
 
 export default function MarketMapTreemap({
   groups,
-  selfCategoryName,
+  selfSectorName,
   depth,
-  onSelectCategory,
-  onExcludeCategory,
+  onSelectSector,
+  onExcludeSector,
   heightClassName = 'h-[70vh]',
   marketValueDepthRange,
   avgChangeRateDepthRange,
@@ -100,7 +100,7 @@ export default function MarketMapTreemap({
   labelMinAreaPercent,
   stockLabelMode,
   decimalPlaces,
-  topPickCategoryIds,
+  topPickSectorIds,
   zoomOutRequestDepth,
   onZoomOutComplete,
 }: Props) {
@@ -111,17 +111,17 @@ export default function MarketMapTreemap({
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   // 실제(현재) 콘텐츠 wrapper에 거는 transform/opacity — 줌인일 때만 쓴다(작게 시작해서 꽉 차게 커짐).
   const [zoomStyle, setZoomStyle] = useState<React.CSSProperties | undefined>(undefined)
-  // 사라지는 옛 화면을 실제 콘텐츠 위/아래에 겹쳐 그리는 고스트 — 형제 카테고리들이 순간 사라지지 않고
+  // 사라지는 옛 화면을 실제 콘텐츠 위/아래에 겹쳐 그리는 고스트 — 형제 섹터들이 순간 사라지지 않고
   // 서서히 페이드아웃(줌인)/줄어들며 사라지도록(줌아웃) 보여준다.
   const [ghost, setGhost] = useState<GhostOverlay | null>(null)
-  const [suppressCategoryHoverBorder, setSuppressCategoryHoverBorder] = useState(false)
-  // 카테고리 진입(클릭) 시점에 캡처한 "그 박스가 화면에서 차지하던 위치" — 뎁스별로 기억해뒀다가
+  const [suppressSectorHoverBorder, setSuppressSectorHoverBorder] = useState(false)
+  // 섹터 진입(클릭) 시점에 캡처한 "그 박스가 화면에서 차지하던 위치" — 뎁스별로 기억해뒀다가
   // 다시 나갈 때 정확히 그 자리로 줄어드는 반대 애니메이션에 재사용한다.
   const entryRectsRef = useRef<Map<number, RelativeRect>>(new Map())
   // 클릭~실제 path 반영(재렌더) 사이에 잠깐 들고 있는 값들 — 클릭 시점엔 아직 depth/groups가 안 바뀌어
   // 있어서, 새 depth로 렌더된 뒤(useLayoutEffect)에야 확정해서 쓴다.
   const pendingEnterRectRef = useRef<RelativeRect | null>(null)
-  const outgoingSnapshotRef = useRef<{ categories: LaidOutCategory[]; depth: number } | null>(null)
+  const outgoingSnapshotRef = useRef<{ sectors: LaidOutSector[]; depth: number } | null>(null)
   const prevDepthRef = useRef(depth)
 
   useEffect(() => {
@@ -143,10 +143,10 @@ export default function MarketMapTreemap({
 
   // "동일 가중" 토글(avgChangeRateUseSimple) — 켜지면 박스 크기도 시가총액이 아니라 종목 개수
   // 비례로 균등하게 그린다(useMarketMapLayout 참고).
-  const categories = useMarketMapLayout(groups, selfCategoryName, size.width, size.height, avgChangeRateUseSimple)
+  const sectors = useMarketMapLayout(groups, selfSectorName, size.width, size.height, avgChangeRateUseSimple)
 
-  const handleOpenExcludeMenu = (categoryId: number, categoryName: string, e: React.MouseEvent) => {
-    setContextMenu({ categoryId, categoryName, left: e.clientX, top: e.clientY })
+  const handleOpenExcludeMenu = (sectorId: number, sectorName: string, e: React.MouseEvent) => {
+    setContextMenu({ sectorId, sectorName, left: e.clientX, top: e.clientY })
   }
 
   useEffect(() => {
@@ -158,17 +158,17 @@ export default function MarketMapTreemap({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [contextMenu])
 
-  // 카테고리 클릭 시점의(=아직 이전 뎁스 화면인 상태의) 박스 위치와, 지금 화면 전체(형제 포함) 스냅샷을
+  // 섹터 클릭 시점의(=아직 이전 뎁스 화면인 상태의) 박스 위치와, 지금 화면 전체(형제 포함) 스냅샷을
   // 미리 잡아두고 실제 이동을 요청한다. 새 뎁스로 리렌더된 뒤 아래 useLayoutEffect가 이 값들을 읽어서
   // "그 자리에서 확대되면서, 형제들은 서서히 사라지는" 애니메이션을 만든다.
-  const handleSelectCategory = (categoryName: string, rect: DOMRect) => {
-    setSuppressCategoryHoverBorder(true)
+  const handleSelectSector = (sectorName: string, rect: DOMRect) => {
+    setSuppressSectorHoverBorder(true)
     const containerRect = containerRef.current?.getBoundingClientRect()
     if (containerRect && containerRect.width > 0 && containerRect.height > 0) {
       pendingEnterRectRef.current = toRelativeRect(rect, containerRect)
     }
-    outgoingSnapshotRef.current = { categories, depth }
-    onSelectCategory(categoryName)
+    outgoingSnapshotRef.current = { sectors, depth }
+    onSelectSector(sectorName)
   }
 
   useLayoutEffect(() => {
@@ -176,7 +176,7 @@ export default function MarketMapTreemap({
 
     if (depth > prevDepthRef.current) {
       // 줌인: 이번 뎁스 진입에 쓰인 rect를 건너뛴 구간 전부에 저장해두고(나중에 되감기용 — "전체" 화면에서는
-      // 세부 카테고리를 바로 클릭해서 여러 뎁스를 한 번에 건너뛸 수 있다), 방금 새로 그려진(꽉 찬 크기)
+      // 세부 섹터를 바로 클릭해서 여러 뎁스를 한 번에 건너뛸 수 있다), 방금 새로 그려진(꽉 찬 크기)
       // 실제 콘텐츠를 그 rect 자리/크기로 순간 이동시켰다가 다음 프레임에 원래 크기로 트랜지션한다 —
       // FLIP(First-Last-Invert-Play) 기법. 옛 화면 스냅샷은 고스트로 실제 콘텐츠 아래 깔아서, 실제
       // 콘텐츠가 커지며 덮어가는 동안 형제들이 서서히 페이드아웃하듯 보이게 한다.
@@ -190,7 +190,7 @@ export default function MarketMapTreemap({
         }
         setGhost(
           snapshot
-            ? { categories: snapshot.categories, depth: snapshot.depth, direction: 'in', style: { opacity: 1, transition: 'none' } }
+            ? { sectors: snapshot.sectors, depth: snapshot.depth, direction: 'in', style: { opacity: 1, transition: 'none' } }
             : null,
         )
         setZoomStyle({
@@ -212,7 +212,7 @@ export default function MarketMapTreemap({
       }
     } else if (depth < prevDepthRef.current) {
       // 줌아웃: onZoomOutComplete가 이미 실제 이동을 끝낸 뒤라(아래 useEffect에서 이동 전에 스냅샷만
-      // 먼저 떠둠), 지금 categories는 이미 "더 얕은 뎁스"의 실제 콘텐츠(형제 포함)다. 방금까지 보던
+      // 먼저 떠둠), 지금 sectors는 이미 "더 얕은 뎁스"의 실제 콘텐츠(형제 포함)다. 방금까지 보던
       // 화면(스냅샷)을 고스트로 그 위에 통째로 덮어 씌운 채, 나갈 때 썼던 rect 자리로 줄이면서
       // 페이드아웃시켜 걷어내고, 배경(실제 콘텐츠)도 같은 시간 동안 페이드인시켜 둘이 하나의
       // 전환처럼 이어지게 한다(배경만 트랜지션 없이 툭 나타나면 고스트랑 따로 노는 것처럼 보였다).
@@ -222,7 +222,7 @@ export default function MarketMapTreemap({
       if (rect && containerRect && snapshot) {
         setZoomStyle({ opacity: 0, transition: 'none' })
         setGhost({
-          categories: snapshot.categories,
+          sectors: snapshot.sectors,
           depth: snapshot.depth,
           direction: 'out',
           style: { transform: 'none', opacity: 1, transition: 'none' },
@@ -255,7 +255,7 @@ export default function MarketMapTreemap({
   // 줄어든 걸 감지해서 재생한다(이동이 이미 끝난 뒤라 실제 콘텐츠가 밑에 다 그려져 있는 상태).
   useEffect(() => {
     if (zoomOutRequestDepth == null) return
-    outgoingSnapshotRef.current = { categories, depth }
+    outgoingSnapshotRef.current = { sectors, depth }
     onZoomOutComplete(zoomOutRequestDepth)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoomOutRequestDepth])
@@ -267,11 +267,11 @@ export default function MarketMapTreemap({
     // 이어진다. overflow-hidden으로 이 삐져나옴 자체를 화면에서 잘라내 루프의 시작을 막는다.
     <div
       ref={containerRef}
-      className={`relative w-full overflow-hidden bg-black ${heightClassName} ${suppressCategoryHoverBorder ? 'market-map-suppress-category-border' : ''}`}
+      className={`relative w-full overflow-hidden bg-black ${heightClassName} ${suppressSectorHoverBorder ? 'market-map-suppress-sector-border' : ''}`}
       onPointerMove={() => {
-        if (suppressCategoryHoverBorder && !ghost) setSuppressCategoryHoverBorder(false)
+        if (suppressSectorHoverBorder && !ghost) setSuppressSectorHoverBorder(false)
       }}
-      onPointerLeave={() => setSuppressCategoryHoverBorder(false)}
+      onPointerLeave={() => setSuppressSectorHoverBorder(false)}
     >
       {/* 줌인일 땐 고스트(옛 화면)를 실제 콘텐츠보다 아래(zIndex -1)에 깔아서, 커지는 실제 콘텐츠가
           덮어가며 형제들을 가리게 하고, 줌아웃일 땐 반대로 위(zIndex 10)에 덮어서 줄어들며 걷히게 한다.
@@ -283,12 +283,12 @@ export default function MarketMapTreemap({
           className="absolute inset-0 pointer-events-none"
           style={{ transformOrigin: '0 0', zIndex: ghost.direction === 'out' ? 10 : -1, ...ghost.style }}
         >
-          {ghost.categories.map(category => (
-            <MarketMapCategorySection
-              key={category.categoryName}
-              category={category}
+          {ghost.sectors.map(sector => (
+            <MarketMapSectorSection
+              key={sector.sectorName}
+              sector={sector}
               depthOffset={ghost.depth}
-              onSelectCategory={noop}
+              onSelectSector={noop}
               onOpenExcludeMenu={noop}
               marketValueDepthRange={marketValueDepthRange}
               avgChangeRateDepthRange={avgChangeRateDepthRange}
@@ -299,18 +299,18 @@ export default function MarketMapTreemap({
               labelMinAreaPercent={labelMinAreaPercent}
               stockLabelMode={stockLabelMode}
               decimalPlaces={decimalPlaces}
-              topPickCategoryIds={topPickCategoryIds}
+              topPickSectorIds={topPickSectorIds}
             />
           ))}
         </div>
       )}
       <div className="absolute inset-0" style={{ transformOrigin: '0 0', ...zoomStyle }}>
-        {categories.map(category => (
-          <MarketMapCategorySection
-            key={category.categoryName}
-            category={category}
+        {sectors.map(sector => (
+          <MarketMapSectorSection
+            key={sector.sectorName}
+            sector={sector}
             depthOffset={depth}
-            onSelectCategory={handleSelectCategory}
+            onSelectSector={handleSelectSector}
             onOpenExcludeMenu={handleOpenExcludeMenu}
             marketValueDepthRange={marketValueDepthRange}
             avgChangeRateDepthRange={avgChangeRateDepthRange}
@@ -321,7 +321,7 @@ export default function MarketMapTreemap({
             labelMinAreaPercent={labelMinAreaPercent}
             stockLabelMode={stockLabelMode}
             decimalPlaces={decimalPlaces}
-            topPickCategoryIds={topPickCategoryIds}
+            topPickSectorIds={topPickSectorIds}
           />
         ))}
       </div>
@@ -336,12 +336,12 @@ export default function MarketMapTreemap({
               <button
                 type="button"
                 onClick={() => {
-                  onExcludeCategory(contextMenu.categoryId, contextMenu.categoryName)
+                  onExcludeSector(contextMenu.sectorId, contextMenu.sectorName)
                   setContextMenu(null)
                 }}
                 className="block w-full whitespace-nowrap border-0 bg-transparent px-3 py-1.5 text-left text-red-500 hover:bg-red-500/10"
               >
-                {contextMenu.categoryName} 제외
+                {contextMenu.sectorName} 제외
               </button>
             </div>
           </>,

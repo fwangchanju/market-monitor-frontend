@@ -13,12 +13,12 @@ import { CheckIcon, ChevronDownIcon, RedoIcon, RefreshIcon, SearchIcon, UndoIcon
 
 interface Props {
   items: StockSectorListItem[]
-  categories: SectorItem[]
+  sectors: SectorItem[]
   snapshotTime: string | null
-  // 다른 탭에서 카테고리를 추가/변경한 뒤 이 화면의 필터 상태를 유지한 채로 카테고리 목록만
+  // 다른 탭에서 섹터를 추가/변경한 뒤 이 화면의 필터 상태를 유지한 채로 섹터 목록만
   // 다시 불러오고 싶을 때 쓰는 버튼용 — 전체 새로고침(필터 초기화)을 피하기 위함.
-  onRefetchCategories: () => void
-  isRefetchingCategories: boolean
+  onRefetchSectors: () => void
+  isRefetchingSectors: boolean
   // 종목수/실행취소·다시실행/필터/엑셀 등 툴바를 이 컨테이너로 포털링한다 — 페이지 공통 세 번째 바
   // 안에 그려야 해서, 이 컴포넌트 안에서 직접 렌더링하지 않고 부모(MarketMapAdminPage)가 그 바 안에
   // 마련해준 DOM 노드로 옮겨 그린다. 상태/핸들러는 전부 이 컴포넌트에 그대로 남아있다.
@@ -32,9 +32,9 @@ type SortKey =
   | 'alias'
   | 'totalMarketValue'
   | 'originCategoryName'
-  | 'parentCategoryName'
-  | 'midCategoryName'
-  | 'subCategoryName'
+  | 'parentSectorName'
+  | 'midSectorName'
+  | 'subSectorName'
 type SortDirection = 'asc' | 'desc'
 
 const NUMBER_COLUMN_WIDTH = '5%'
@@ -47,9 +47,9 @@ const COLUMNS: { key: SortKey; header: string; width: string; align: 'center' | 
   { key: 'totalMarketValue', header: '시가총액', width: '10%', align: 'right' },
   { key: 'market', header: '마켓', width: '7%', align: 'center' },
   { key: 'originCategoryName', header: '거래소 분류', width: '11%', align: 'left' },
-  { key: 'parentCategoryName', header: '대분류', width: '11%', align: 'right' },
-  { key: 'midCategoryName', header: '중분류', width: '11%', align: 'right' },
-  { key: 'subCategoryName', header: '소분류', width: '11%', align: 'right' },
+  { key: 'parentSectorName', header: '대분류', width: '11%', align: 'right' },
+  { key: 'midSectorName', header: '중분류', width: '11%', align: 'right' },
+  { key: 'subSectorName', header: '소분류', width: '11%', align: 'right' },
 ]
 
 const alignClass = (align: 'center' | 'left' | 'right') =>
@@ -61,7 +61,7 @@ const marketColorClass = (market: 'KOSPI' | 'KOSDAQ') => (market === 'KOSPI' ? '
 
 const KOREAN_COLLATOR = new Intl.Collator('ko')
 
-// AdminCategoryTable의 compareCategoryName과 동일한 기준(charTier)을 utils/koreanSort에서
+// AdminSectorTable의 compareSectorName과 동일한 기준(charTier)을 utils/koreanSort에서
 // 같이 가져다 쓴다 — 종목명 검색 결과 전용(테이블 자체 컬럼 정렬은 그대로 KOREAN_COLLATOR만 씀).
 function compareStockName(a: string, b: string): number {
   const tierA = charTier(a[0] ?? '')
@@ -71,13 +71,13 @@ function compareStockName(a: string, b: string): number {
 }
 
 // 화면에 실제로 표시되는 값 기준 — 필터 옵션 목록/필터링/정렬 판정 전부 이 값으로 통일해서 화면과 어긋나지 않게 한다.
-type FilterKey = 'market' | 'originCategoryName' | 'parentCategoryName' | 'midCategoryName' | 'subCategoryName'
+type FilterKey = 'market' | 'originCategoryName' | 'parentSectorName' | 'midSectorName' | 'subSectorName'
 const FILTER_KEYS: readonly FilterKey[] = [
   'market',
   'originCategoryName',
-  'parentCategoryName',
-  'midCategoryName',
-  'subCategoryName',
+  'parentSectorName',
+  'midSectorName',
+  'subSectorName',
 ]
 
 function isFilterKey(key: SortKey): key is FilterKey {
@@ -101,17 +101,17 @@ function compareByKey(
   return KOREAN_COLLATOR.compare(a[key] ?? '', b[key] ?? '')
 }
 
-// 카테고리를 부모-자식 순서로 펼쳐서 검색 옵션으로 만든다 (자식은 들여쓰기 표시).
-function buildCategoryOptions(categories: SectorItem[]): CategoryOption[] {
+// 섹터를 부모-자식 순서로 펼쳐서 검색 옵션으로 만든다 (자식은 들여쓰기 표시).
+function buildSectorOptions(sectors: SectorItem[]): SectorOption[] {
   const byParent = new Map<number | null, SectorItem[]>()
-  for (const c of categories) {
+  for (const c of sectors) {
     const list = byParent.get(c.parentId)
     if (list) list.push(c)
     else byParent.set(c.parentId, [c])
   }
   for (const list of byParent.values()) list.sort((a, b) => a.name.localeCompare(b.name, 'ko'))
 
-  const options: CategoryOption[] = []
+  const options: SectorOption[] = []
   const walk = (parentId: number | null, depth: number) => {
     for (const c of byParent.get(parentId) ?? []) {
       options.push({
@@ -127,43 +127,43 @@ function buildCategoryOptions(categories: SectorItem[]): CategoryOption[] {
   return options
 }
 
-interface CategoryOption {
+interface SectorOption {
   id: number
   parentId: number | null
   name: string
   label: string
 }
 
-// Ctrl+Z/Y 실행취소·다시실행 대상 — 카테고리 변경만 관리한다(필터 걸어놓고 카테고리를 바꾸면
+// Ctrl+Z/Y 실행취소·다시실행 대상 — 섹터 변경만 관리한다(필터 걸어놓고 섹터를 바꾸면
 // 그 종목이 필터에서 바로 사라지는데, 잘못 눌렀을 때 다시 검색하지 않고 바로 되돌리기 위함).
 // 메모리에만(컴포넌트 상태) 두고, 종목 탭을 벗어나면(언마운트) 자연히 사라진다.
 type UndoableActionInput =
-  | { type: 'category'; stockCode: string; before: number; after: number }
-  | { type: 'bulkCategory'; categoryName: string; after: number; entries: { stockCode: string; before: number }[] }
+  | { type: 'sector'; stockCode: string; before: number; after: number }
+  | { type: 'bulkSector'; sectorName: string; after: number; entries: { stockCode: string; before: number }[] }
 // id는 실행취소/다시실행 "목록"에서 스택 순서와 무관하게 특정 항목 하나를 골라 가리키기 위한
 // 프론트 전용 식별자 — 백엔드 요청엔 실리지 않는다.
 type UndoableAction = UndoableActionInput & { id: string }
 const UNDO_STACK_LIMIT = 50
 
-// 실행취소/다시실행 목록에 보여줄 한 줄 설명 — "종목명: 이전 카테고리 → 이후 카테고리" 형태로,
+// 실행취소/다시실행 목록에 보여줄 한 줄 설명 — "종목명: 이전 섹터 → 이후 섹터" 형태로,
 // 지금 undo 목록에 있든 redo 목록에 있든(즉 아직 실행 전이든 이미 되돌린 뒤든) 항상 같은 문구를 쓴다.
 function describeUndoableAction(
   action: UndoableAction,
   items: StockSectorListItem[],
-  categoryOptionsById: Map<number, CategoryOption>,
+  sectorOptionsById: Map<number, SectorOption>,
 ): string {
-  const categoryLabel = (id: number) => categoryOptionsById.get(id)?.name ?? '(알 수 없음)'
-  if (action.type === 'category') {
+  const sectorLabel = (id: number) => sectorOptionsById.get(id)?.name ?? '(알 수 없음)'
+  if (action.type === 'sector') {
     const stockName = items.find(item => item.stockCode === action.stockCode)?.stockName ?? action.stockCode
-    return `${stockName}: ${categoryLabel(action.before)} → ${categoryLabel(action.after)} 변경`
+    return `${stockName}: ${sectorLabel(action.before)} → ${sectorLabel(action.after)} 변경`
   }
-  return `${action.entries.length}개 종목 → ${action.categoryName} 변경`
+  return `${action.entries.length}개 종목 → ${action.sectorName} 변경`
 }
 
-// 종목 응답엔 categoryId(실제 배정된 카테고리, 뎁스 무관)만 있어서, 대분류/중분류/소분류 3칸에 어떻게
-// 나눠 보여줄지는 이미 받아온 카테고리 트리를 parentId로 거슬러 올라가며 프론트에서 직접 계산한다.
+// 종목 응답엔 sectorId(실제 배정된 섹터, 뎁스 무관)만 있어서, 대분류/중분류/소분류 3칸에 어떻게
+// 나눠 보여줄지는 이미 받아온 섹터 트리를 parentId로 거슬러 올라가며 프론트에서 직접 계산한다.
 // 백엔드가 뎁스별 이름 필드를 따로 내려줄 필요가 없어서, 나중에 뎁스가 더 늘어나도 여기만 고치면 된다.
-interface CategoryChain {
+interface SectorChain {
   rootId: number | null
   rootName: string
   midId: number | null
@@ -172,12 +172,12 @@ interface CategoryChain {
   leafName: string | null
 }
 
-function resolveCategoryChain(categoryOptionsById: Map<number, CategoryOption>, categoryId: number): CategoryChain {
-  const chain: CategoryOption[] = []
-  let current = categoryOptionsById.get(categoryId)
+function resolveSectorChain(sectorOptionsById: Map<number, SectorOption>, sectorId: number): SectorChain {
+  const chain: SectorOption[] = []
+  let current = sectorOptionsById.get(sectorId)
   while (current) {
     chain.unshift(current)
-    current = current.parentId != null ? categoryOptionsById.get(current.parentId) : undefined
+    current = current.parentId != null ? sectorOptionsById.get(current.parentId) : undefined
   }
   return {
     rootId: chain[0]?.id ?? null,
@@ -192,26 +192,26 @@ function resolveCategoryChain(categoryOptionsById: Map<number, CategoryOption>, 
 interface ItemDisplayValues {
   market: string
   originCategoryName: string
-  parentCategoryName: string
-  midCategoryName: string
-  subCategoryName: string
+  parentSectorName: string
+  midSectorName: string
+  subSectorName: string
 }
 
-function computeDisplayValues(item: StockSectorListItem, categoryOptionsById: Map<number, CategoryOption>): ItemDisplayValues {
-  const chain = resolveCategoryChain(categoryOptionsById, item.sectorId)
+function computeDisplayValues(item: StockSectorListItem, sectorOptionsById: Map<number, SectorOption>): ItemDisplayValues {
+  const chain = resolveSectorChain(sectorOptionsById, item.sectorId)
   return {
     market: MARKET_LABEL[item.market],
     originCategoryName: item.industryName ?? '-',
-    parentCategoryName: chain.rootName,
-    midCategoryName: chain.midName ?? '-',
-    subCategoryName: chain.leafName ?? '-',
+    parentSectorName: chain.rootName,
+    midSectorName: chain.midName ?? '-',
+    subSectorName: chain.leafName ?? '-',
   }
 }
 
 // 검색어가 자기 이름이나 조상(부모/조부모...) 중 하나에라도 걸리면 매칭으로 본다.
 // 예: "반"으로 검색하면 "반도체"뿐 아니라 그 하위 "메모리"/"파운드리"도 같이 남는다.
-function matchesCategorySearch(option: CategoryOption, trimmed: string, byId: Map<number, CategoryOption>): boolean {
-  let current: CategoryOption | undefined = option
+function matchesSectorSearch(option: SectorOption, trimmed: string, byId: Map<number, SectorOption>): boolean {
+  let current: SectorOption | undefined = option
   while (current) {
     if (current.name.toLowerCase().includes(trimmed)) return true
     current = current.parentId != null ? byId.get(current.parentId) : undefined
@@ -233,7 +233,7 @@ const FILTER_LIST_ROW_HEIGHT = 24
 const FILTER_LIST_MAX_VISIBLE_ROWS = 15
 const FILTER_LIST_MAX_HEIGHT = FILTER_LIST_ROW_HEIGHT * FILTER_LIST_MAX_VISIBLE_ROWS
 
-// 팝업(카테고리 검색창/필터 드롭다운) 공통 로직 — 트리거 기준 위치 계산 + 바깥 클릭/스크롤 시 닫기.
+// 팝업(섹터 검색창/필터 드롭다운) 공통 로직 — 트리거 기준 위치 계산 + 바깥 클릭/스크롤 시 닫기.
 function usePopupPosition(
   isOpen: boolean,
   setIsOpen: (open: boolean) => void,
@@ -241,7 +241,7 @@ function usePopupPosition(
   popupRef: React.RefObject<HTMLElement | null>,
   onOpen?: () => void,
   // 팝업이 아래로 열렸을 때 화면 밖으로 잘리지 않게, 트리거가 화면 세로 기준 몇 % 아래부터 위로 뒤집을지.
-  // 팝업이 클수록(예: 카테고리 검색 목록) 더 일찍(작은 값) 뒤집어야 한다.
+  // 팝업이 클수록(예: 섹터 검색 목록) 더 일찍(작은 값) 뒤집어야 한다.
   flipThreshold = 0.8,
   // 트리거가 화면 우측 끝에 붙어있으면(예: 일괄변경 버튼) 왼쪽으로 열어야 화면 밖으로 안 잘린다.
   alignRight = false,
@@ -308,7 +308,7 @@ function UndoRedoHistoryPopup({
   actions,
   direction,
   items,
-  categoryOptionsById,
+  sectorOptionsById,
   onPick,
 }: {
   isOpen: boolean
@@ -317,7 +317,7 @@ function UndoRedoHistoryPopup({
   actions: UndoableAction[]
   direction: 'undo' | 'redo'
   items: StockSectorListItem[]
-  categoryOptionsById: Map<number, CategoryOption>
+  sectorOptionsById: Map<number, SectorOption>
   onPick: (id: string) => void
 }) {
   const popupRef = useRef<HTMLDivElement>(null)
@@ -350,7 +350,7 @@ function UndoRedoHistoryPopup({
               key={action.id}
               className="group flex items-center justify-between gap-3 whitespace-nowrap rounded px-1 py-0.5 hover:bg-[var(--accent)]/10"
             >
-              <span className="text-white">{describeUndoableAction(action, items, categoryOptionsById)}</span>
+              <span className="text-white">{describeUndoableAction(action, items, sectorOptionsById)}</span>
               <button
                 type="button"
                 onClick={() => {
@@ -369,10 +369,10 @@ function UndoRedoHistoryPopup({
   )
 }
 
-// 카테고리 검색창의 검색어/방향키 탐색 상태 — AdminStockCategoryCell과 BulkAssignButton이 공유.
+// 섹터 검색창의 검색어/방향키 탐색 상태 — AdminStockSectorCell과 BulkAssignButton이 공유.
 // isOpen이 false(팝업 닫힘)면 아무도 matches를 안 쓰므로 계산 자체를 건너뛴다 — 행이 수천 개라
 // 팝업 열림 여부와 무관하게 매 렌더마다 계산하면 그 비용이 그대로 누적된다.
-function useCategorySearchState(options: CategoryOption[], isOpen: boolean) {
+function useSectorSearchState(options: SectorOption[], isOpen: boolean) {
   const [query, setQuery] = useState('')
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
 
@@ -387,15 +387,15 @@ function useCategorySearchState(options: CategoryOption[], isOpen: boolean) {
   }
 
   const trimmed = query.trim().toLowerCase()
-  // 검색 전엔 전체 카테고리를 그대로 보여주고(방향키로 바로 탐색 가능), 검색어가 있으면 그 안에서만 필터링한다.
-  // 부모가 매칭되면 그 하위 카테고리도 같이 남겨서(예: "반" -> 반도체 + 메모리/파운드리), 트리 맥락이 끊기지 않게 한다.
+  // 검색 전엔 전체 섹터를 그대로 보여주고(방향키로 바로 탐색 가능), 검색어가 있으면 그 안에서만 필터링한다.
+  // 부모가 매칭되면 그 하위 섹터도 같이 남겨서(예: "반" -> 반도체 + 메모리/파운드리), 트리 맥락이 끊기지 않게 한다.
   const matches = useMemo(() => {
     if (!isOpen || !trimmed) return options
     const optionsById = new Map(options.map(opt => [opt.id, opt]))
-    return options.filter(opt => matchesCategorySearch(opt, trimmed, optionsById))
+    return options.filter(opt => matchesSectorSearch(opt, trimmed, optionsById))
   }, [isOpen, trimmed, options])
 
-  const handleArrowsAndEnter = (e: React.KeyboardEvent<HTMLInputElement>, onSelect: (categoryId: number) => void) => {
+  const handleArrowsAndEnter = (e: React.KeyboardEvent<HTMLInputElement>, onSelect: (sectorId: number) => void) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       if (matches.length === 0) return
@@ -414,8 +414,8 @@ function useCategorySearchState(options: CategoryOption[], isOpen: boolean) {
   return { query, handleQueryChange, matches, highlightedIndex, setHighlightedIndex, handleArrowsAndEnter, reset }
 }
 
-// 카테고리 검색 팝업(검색창 + 전체/필터링된 목록). 대분류·소분류 셀과 일괄변경 버튼이 트리거만 다르게 해서 같이 쓴다.
-function CategorySearchPopup({
+// 섹터 검색 팝업(검색창 + 전체/필터링된 목록). 대분류·소분류 셀과 일괄변경 버튼이 트리거만 다르게 해서 같이 쓴다.
+function SectorSearchPopup({
   popupRef,
   inputRef,
   position,
@@ -427,8 +427,8 @@ function CategorySearchPopup({
   popupRef: React.RefObject<HTMLDivElement | null>
   inputRef: React.RefObject<HTMLInputElement | null>
   position: PopupPosition
-  search: ReturnType<typeof useCategorySearchState>
-  onSelect: (categoryId: number) => void
+  search: ReturnType<typeof useSectorSearchState>
+  onSelect: (sectorId: number) => void
   onEscape: () => void
   // 소분류 팝업처럼 목록이 특정 대분류로 좁혀져 있을 때, 지금 어느 대분류 밑을 보고 있는지 알려주는 칩.
   contextLabel?: string
@@ -459,7 +459,7 @@ function CategorySearchPopup({
         value={search.query}
         onChange={e => search.handleQueryChange(e.target.value)}
         onKeyDown={e => (e.key === 'Escape' ? onEscape() : search.handleArrowsAndEnter(e, onSelect))}
-        placeholder="카테고리 검색"
+        placeholder="섹터 검색"
         className="nes-input is-dark w-full py-2 text-sm"
       />
       {contextLabel && (
@@ -498,7 +498,7 @@ function CategorySearchPopup({
 
 // 대분류/소분류 셀. 검색창 열림 상태를 이 컴포넌트 안에서만 갖고 있어서,
 // 타이핑해도 전체 종목 테이블(2700여 행)이 다시 렌더되지 않는다.
-function AdminStockCategoryCell({
+function AdminStockSectorCell({
   value,
   options,
   onAssign,
@@ -512,8 +512,8 @@ function AdminStockCategoryCell({
   disabledHint,
 }: {
   value: string
-  options: CategoryOption[]
-  onAssign: (categoryId: number) => void
+  options: SectorOption[]
+  onAssign: (sectorId: number) => void
   isHighlighted: boolean
   rowHoverClass: string
   onHoverStart: () => void
@@ -531,7 +531,7 @@ function AdminStockCategoryCell({
   const popupRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const hintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const search = useCategorySearchState(options, isOpen)
+  const search = useSectorSearchState(options, isOpen)
 
   // 셀 위치에 맞춰 펼치면 화면 오른쪽 끝에서 잘릴 걱정을 해야 해서, 그냥 화면 상단 중앙에 고정으로 띄운다.
   const showDisabledHint = (e: React.MouseEvent<HTMLTableCellElement>) => {
@@ -557,13 +557,13 @@ function AdminStockCategoryCell({
     if (open) onHoverEnd()
   }
 
-  // 카테고리 목록 팝업은 세로로 훨씬 커져서(약 12개 높이), 기본 임계값(80%)보다 일찍 위로 뒤집어야 화면 밖으로 안 잘린다.
+  // 섹터 목록 팝업은 세로로 훨씬 커져서(약 12개 높이), 기본 임계값(80%)보다 일찍 위로 뒤집어야 화면 밖으로 안 잘린다.
   // 대분류/소분류는 테이블 우측에 몰려있어 오른쪽으로 열면 화면 밖으로 잘리므로, 필터 팝업과 동일하게
   // 셀 우측 끝에 맞춰 왼쪽으로 열리게 한다.
   const position = usePopupPosition(isOpen, updateOpen, cellRef, popupRef, () => inputRef.current?.focus(), 0.6, true)
 
-  const handleSelect = (categoryId: number) => {
-    onAssign(categoryId)
+  const handleSelect = (sectorId: number) => {
+    onAssign(sectorId)
     updateOpen(false)
   }
 
@@ -588,7 +588,7 @@ function AdminStockCategoryCell({
     >
       {value}
       {!disabled && isOpen && position && (
-        <CategorySearchPopup
+        <SectorSearchPopup
           popupRef={popupRef}
           inputRef={inputRef}
           position={position}
@@ -610,7 +610,7 @@ function AdminStockCategoryCell({
   )
 }
 
-// 체크된 종목들을 한 카테고리로 한 번에 재배정하는 버튼. 팝업 자체는 AdminStockCategoryCell과 동일하게 동작한다.
+// 체크된 종목들을 한 섹터로 한 번에 재배정하는 버튼. 팝업 자체는 AdminStockSectorCell과 동일하게 동작한다.
 function BulkAssignButton({
   count,
   options,
@@ -621,13 +621,13 @@ function BulkAssignButton({
   disabledHint,
 }: {
   count: number
-  options: CategoryOption[]
-  onAssign: (categoryId: number) => void
+  options: SectorOption[]
+  onAssign: (sectorId: number) => void
   alignRight?: boolean
   // 아래 실제 컬럼(th) 폭에 맞추기 위한 값 — 없으면 버튼 기본(내용에 맞는) 폭을 그대로 쓴다.
   widthPx?: number
   // 선행 단계(1차/2차)가 아직 적용 안 된 상태의 2차/3차 버튼 — 버튼 자체는 평소와 똑같이 보이되,
-  // 클릭하면 팝업 대신 안내 문구만 잠깐 띄운다(AdminStockCategoryCell의 disabled 셀과 동일한 패턴).
+  // 클릭하면 팝업 대신 안내 문구만 잠깐 띄운다(AdminStockSectorCell의 disabled 셀과 동일한 패턴).
   disabled?: boolean
   disabledHint?: string
 }) {
@@ -637,7 +637,7 @@ function BulkAssignButton({
   const popupRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const hintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const search = useCategorySearchState(options, isOpen)
+  const search = useSectorSearchState(options, isOpen)
 
   const position = usePopupPosition(
     isOpen,
@@ -667,8 +667,8 @@ function BulkAssignButton({
     setIsOpen(true)
   }
 
-  const handleSelect = (categoryId: number) => {
-    onAssign(categoryId)
+  const handleSelect = (sectorId: number) => {
+    onAssign(sectorId)
     setIsOpen(false)
   }
 
@@ -684,7 +684,7 @@ function BulkAssignButton({
         일괄변경 ({count})
       </button>
       {isOpen && position && !disabled && (
-        <CategorySearchPopup
+        <SectorSearchPopup
           popupRef={popupRef}
           inputRef={inputRef}
           position={position}
@@ -999,7 +999,7 @@ function AdminStockNameFilterButton({
             (item.stockName.toLowerCase().includes(trimmed) || item.stockCode.includes(trimmed)) &&
             !selected.has(item.stockCode),
         )
-        // items는 테이블 기본 정렬 순서 그대로라 검색 결과가 뒤섞여 나온다 — 카테고리 트리(AdminCategoryTable)와
+        // items는 테이블 기본 정렬 순서 그대로라 검색 결과가 뒤섞여 나온다 — 섹터 트리(AdminSectorTable)와
         // 같은 기준(특수문자 < 숫자 < 영어 < 한글)으로 재정렬한다.
         .sort((a, b) => compareStockName(a.stockName, b.stockName))
     : []
@@ -1157,13 +1157,13 @@ const AdminStockRow = memo(function AdminStockRow({
   isSelected,
   onToggleSelected,
   hoveredKind,
-  onParentCategoryHoverStart,
-  onMidCategoryHoverStart,
-  onSubCategoryHoverStart,
+  onParentSectorHoverStart,
+  onMidSectorHoverStart,
+  onSubSectorHoverStart,
   onAliasHoverStart,
   onHoverEnd,
-  categoryOptions,
-  categoryOptionsById,
+  sectorOptions,
+  sectorOptionsById,
   onAssign,
   onUpdateAlias,
 }: {
@@ -1171,15 +1171,15 @@ const AdminStockRow = memo(function AdminStockRow({
   index: number
   isSelected: boolean
   onToggleSelected: (stockCode: string) => void
-  hoveredKind: 'parentCategory' | 'midCategory' | 'subCategory' | 'alias' | null
-  onParentCategoryHoverStart: (stockCode: string) => void
-  onMidCategoryHoverStart: (stockCode: string) => void
-  onSubCategoryHoverStart: (stockCode: string) => void
+  hoveredKind: 'parentSector' | 'midSector' | 'subSector' | 'alias' | null
+  onParentSectorHoverStart: (stockCode: string) => void
+  onMidSectorHoverStart: (stockCode: string) => void
+  onSubSectorHoverStart: (stockCode: string) => void
   onAliasHoverStart: (stockCode: string) => void
   onHoverEnd: () => void
-  categoryOptions: CategoryOption[]
-  categoryOptionsById: Map<number, CategoryOption>
-  onAssign: (stockCode: string, categoryId: number) => void
+  sectorOptions: SectorOption[]
+  sectorOptionsById: Map<number, SectorOption>
+  onAssign: (stockCode: string, sectorId: number) => void
   onUpdateAlias: (stockCode: string, alias: string | null) => void
 }) {
   // 행 어디에 마우스를 올려도(체크박스/#/시가총액 등 포함) 줄 전체가 옅게 강조되고, 대분류/소분류/약칭
@@ -1188,8 +1188,8 @@ const AdminStockRow = memo(function AdminStockRow({
   const [isRowHovered, setIsRowHovered] = useState(false)
   // 약칭 수정 중이거나 대분류/소분류 검색 팝업이 열려있는 동안은, 마우스가 그 행 위에 없어도
   // (예: 입력하다가 다른 곳으로 시선이 옮겨간 경우) 지금 어느 행을 수정 중인지 계속 보이도록 강조를 유지한다.
-  const [editingCells, setEditingCells] = useState<Set<'alias' | 'category1' | 'category2' | 'category3'>>(new Set())
-  const setCellEditing = (key: 'alias' | 'category1' | 'category2' | 'category3', editing: boolean) => {
+  const [editingCells, setEditingCells] = useState<Set<'alias' | 'sector1' | 'sector2' | 'sector3'>>(new Set())
+  const setCellEditing = (key: 'alias' | 'sector1' | 'sector2' | 'sector3', editing: boolean) => {
     setEditingCells(prev => {
       const next = new Set(prev)
       if (editing) next.add(key)
@@ -1199,18 +1199,18 @@ const AdminStockRow = memo(function AdminStockRow({
   }
   const rowHoverClass = isRowHovered || isSelected || editingCells.size > 0 ? 'bg-[var(--accent)]/20' : ''
 
-  // 대분류 팝업엔 최상위 카테고리만, 중분류 팝업엔 "지금 이 종목의 대분류"의 자식만, 소분류 팝업엔
-  // "지금 이 종목의 중분류"의 자식만 보여준다. categoryId(실제 배정된 카테고리)를 parentId로 거슬러
+  // 대분류 팝업엔 최상위 섹터만, 중분류 팝업엔 "지금 이 종목의 대분류"의 자식만, 소분류 팝업엔
+  // "지금 이 종목의 중분류"의 자식만 보여준다. sectorId(실제 배정된 섹터)를 parentId로 거슬러
   // 올라가서 전체 조상 체인을 구한 뒤, 뎁스별로 슬롯에 나눠 담는다.
-  const chain = resolveCategoryChain(categoryOptionsById, item.sectorId)
-  const parentCategoryOptions = categoryOptions.filter(opt => opt.parentId === null)
+  const chain = resolveSectorChain(sectorOptionsById, item.sectorId)
+  const parentSectorOptions = sectorOptions.filter(opt => opt.parentId === null)
   // 이미 한 단계 위로 좁혀진 목록이라 "- " 들여쓰기 접두어가 필요 없다 — 그냥 이름 그대로 보여준다.
-  const midCategoryOptions = categoryOptions
+  const midSectorOptions = sectorOptions
     .filter(opt => opt.parentId === chain.rootId)
     .map(opt => ({ ...opt, label: opt.name }))
-  const subCategoryOptions =
+  const subSectorOptions =
     chain.midId != null
-      ? categoryOptions.filter(opt => opt.parentId === chain.midId).map(opt => ({ ...opt, label: opt.name }))
+      ? sectorOptions.filter(opt => opt.parentId === chain.midId).map(opt => ({ ...opt, label: opt.name }))
       : []
 
   // 체크박스를 정확히 조준하지 않아도, hover 강조가 뜨는 영역(약칭/대분류/소분류 제외 전체) 아무 곳이나
@@ -1243,36 +1243,36 @@ const AdminStockRow = memo(function AdminStockRow({
       </td>
       <td className={`text-center ${marketColorClass(item.market)} ${rowHoverClass}`}>{MARKET_LABEL[item.market]}</td>
       <td className={`${alignClass('left')} text-gray-400 ${rowHoverClass}`}>{item.industryName ?? '-'}</td>
-      <AdminStockCategoryCell
+      <AdminStockSectorCell
         value={chain.rootName}
-        options={parentCategoryOptions}
-        onAssign={categoryId => onAssign(item.stockCode, categoryId)}
-        isHighlighted={hoveredKind === 'parentCategory'}
+        options={parentSectorOptions}
+        onAssign={sectorId => onAssign(item.stockCode, sectorId)}
+        isHighlighted={hoveredKind === 'parentSector'}
         rowHoverClass={rowHoverClass}
-        onHoverStart={() => onParentCategoryHoverStart(item.stockCode)}
+        onHoverStart={() => onParentSectorHoverStart(item.stockCode)}
         onHoverEnd={onHoverEnd}
-        onEditingChange={editing => setCellEditing('category1', editing)}
+        onEditingChange={editing => setCellEditing('sector1', editing)}
       />
-      <AdminStockCategoryCell
+      <AdminStockSectorCell
         value={chain.midName ?? '-'}
-        options={midCategoryOptions}
-        onAssign={categoryId => onAssign(item.stockCode, categoryId)}
-        isHighlighted={hoveredKind === 'midCategory'}
+        options={midSectorOptions}
+        onAssign={sectorId => onAssign(item.stockCode, sectorId)}
+        isHighlighted={hoveredKind === 'midSector'}
         rowHoverClass={rowHoverClass}
-        onHoverStart={() => onMidCategoryHoverStart(item.stockCode)}
+        onHoverStart={() => onMidSectorHoverStart(item.stockCode)}
         onHoverEnd={onHoverEnd}
-        onEditingChange={editing => setCellEditing('category2', editing)}
+        onEditingChange={editing => setCellEditing('sector2', editing)}
         contextLabel={chain.rootName}
       />
-      <AdminStockCategoryCell
+      <AdminStockSectorCell
         value={chain.leafName ?? '-'}
-        options={subCategoryOptions}
-        onAssign={categoryId => onAssign(item.stockCode, categoryId)}
-        isHighlighted={hoveredKind === 'subCategory'}
+        options={subSectorOptions}
+        onAssign={sectorId => onAssign(item.stockCode, sectorId)}
+        isHighlighted={hoveredKind === 'subSector'}
         rowHoverClass={rowHoverClass}
-        onHoverStart={() => onSubCategoryHoverStart(item.stockCode)}
+        onHoverStart={() => onSubSectorHoverStart(item.stockCode)}
         onHoverEnd={onHoverEnd}
-        onEditingChange={editing => setCellEditing('category3', editing)}
+        onEditingChange={editing => setCellEditing('sector3', editing)}
         contextLabel={chain.midName ?? undefined}
         disabled={chain.midId == null}
         disabledHint="중분류를 먼저 지정하세요"
@@ -1283,10 +1283,10 @@ const AdminStockRow = memo(function AdminStockRow({
 
 export default function AdminStockTable({
   items,
-  categories,
+  sectors,
   snapshotTime,
-  onRefetchCategories,
-  isRefetchingCategories,
+  onRefetchSectors,
+  isRefetchingSectors,
   toolbarContainer,
 }: Props) {
   const [sortKey, setSortKey] = usePersistedState<SortKey>('adminStockTable.sortKey', 'totalMarketValue')
@@ -1296,16 +1296,16 @@ export default function AdminStockTable({
   // 부모의 overflow에 잘린다 — body에 포털로 그려서 잘리지 않게 한다(MarketMapBox 등과 동일한 패턴).
   const [snapshotTooltipPos, setSnapshotTooltipPos] = useState<{ left: number; top: number } | null>(null)
 
-  const assignStockCategory = useAssignStockSector()
-  const bulkAssignStockCategory = useBulkAssignStockSector()
+  const assignStockSector = useAssignStockSector()
+  const bulkAssignStockSector = useBulkAssignStockSector()
   const updateAlias = useUpdateStockAlias()
-  // handleAssign/runBulkAssign에서 "변경 전" 카테고리를 읽어야 하는데, items를 그대로 의존성에 넣으면
-  // 카테고리가 바뀔 때마다(=매 변경마다) 콜백 identity가 바뀌어 AdminStockRow의 memo가 무력화된다 —
+  // handleAssign/runBulkAssign에서 "변경 전" 섹터를 읽어야 하는데, items를 그대로 의존성에 넣으면
+  // 섹터가 바뀔 때마다(=매 변경마다) 콜백 identity가 바뀌어 AdminStockRow의 memo가 무력화된다 —
   // ref로 최신 값만 따라가게 해서 콜백은 그대로 안정적으로 유지한다.
   const itemsRef = useRef(items)
   itemsRef.current = items
 
-  // Ctrl+Z/Y 실행취소·다시실행 스택(카테고리 변경만 대상, 메모리에만 유지).
+  // Ctrl+Z/Y 실행취소·다시실행 스택(섹터 변경만 대상, 메모리에만 유지).
   const [undoStack, setUndoStack] = useState<UndoableAction[]>([])
   const [redoStack, setRedoStack] = useState<UndoableAction[]>([])
   const actionIdRef = useRef(0)
@@ -1314,26 +1314,26 @@ export default function AdminStockTable({
     setUndoStack(prev => [...prev.slice(-UNDO_STACK_LIMIT + 1), withId])
     setRedoStack([])
   }, [])
-  const applyCategoryAction = (action: UndoableAction, direction: 'before' | 'after') => {
-    if (action.type === 'category') {
-      assignStockCategory.mutate({ stockCode: action.stockCode, sectorId: direction === 'before' ? action.before : action.after })
+  const applySectorAction = (action: UndoableAction, direction: 'before' | 'after') => {
+    if (action.type === 'sector') {
+      assignStockSector.mutate({ stockCode: action.stockCode, sectorId: direction === 'before' ? action.before : action.after })
     } else {
       for (const entry of action.entries) {
-        assignStockCategory.mutate({ stockCode: entry.stockCode, sectorId: direction === 'before' ? entry.before : action.after })
+        assignStockSector.mutate({ stockCode: entry.stockCode, sectorId: direction === 'before' ? entry.before : action.after })
       }
     }
   }
   const handleUndo = () => {
     const action = undoStack[undoStack.length - 1]
     if (!action) return
-    applyCategoryAction(action, 'before')
+    applySectorAction(action, 'before')
     setUndoStack(prev => prev.slice(0, -1))
     setRedoStack(prev => [...prev, action])
   }
   const handleRedo = () => {
     const action = redoStack[redoStack.length - 1]
     if (!action) return
-    applyCategoryAction(action, 'after')
+    applySectorAction(action, 'after')
     setRedoStack(prev => prev.slice(0, -1))
     setUndoStack(prev => [...prev, action])
   }
@@ -1342,14 +1342,14 @@ export default function AdminStockTable({
   const handleUndoItem = (id: string) => {
     const action = undoStack.find(a => a.id === id)
     if (!action) return
-    applyCategoryAction(action, 'before')
+    applySectorAction(action, 'before')
     setUndoStack(prev => prev.filter(a => a.id !== id))
     setRedoStack(prev => [...prev, action])
   }
   const handleRedoItem = (id: string) => {
     const action = redoStack.find(a => a.id === id)
     if (!action) return
-    applyCategoryAction(action, 'after')
+    applySectorAction(action, 'after')
     setRedoStack(prev => prev.filter(a => a.id !== id))
     setUndoStack(prev => [...prev, action])
   }
@@ -1383,23 +1383,23 @@ export default function AdminStockTable({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
-  // categories가 안 바뀌면 참조를 유지해야 AdminStockRow의 React.memo가 제대로 스킵된다.
-  const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories])
-  const categoryOptionsById = useMemo(() => new Map(categoryOptions.map(opt => [opt.id, opt])), [categoryOptions])
+  // sectors가 안 바뀌면 참조를 유지해야 AdminStockRow의 React.memo가 제대로 스킵된다.
+  const sectorOptions = useMemo(() => buildSectorOptions(sectors), [sectors])
+  const sectorOptionsById = useMemo(() => new Map(sectorOptions.map(opt => [opt.id, opt])), [sectorOptions])
   // 필터/정렬/컬럼 표시에 쓰는 대분류·중분류·소분류 문자열을 종목마다 한 번씩만 미리 계산해둔다.
   const displayByStockCode = useMemo(
-    () => new Map(items.map(item => [item.stockCode, computeDisplayValues(item, categoryOptionsById)])),
-    [items, categoryOptionsById],
+    () => new Map(items.map(item => [item.stockCode, computeDisplayValues(item, sectorOptionsById)])),
+    [items, sectorOptionsById],
   )
   // 대분류/중분류/소분류는 이제 각각 별도로 assign 요청을 보내는 독립된 액션이라, 셀마다 따로 강조한다.
   const [hoveredRow, setHoveredRow] = useState<{
     stockCode: string
-    kind: 'parentCategory' | 'midCategory' | 'subCategory' | 'alias'
+    kind: 'parentSector' | 'midSector' | 'subSector' | 'alias'
   } | null>(null)
   // 필터/정렬이 바뀌어도 선택 상태는 stockCode 기준으로 유지된다 (전체선택만 "지금 보이는 것" 기준으로 동작).
   const [selectedStockCodes, setSelectedStockCodes] = useState<Set<string>>(new Set())
   // 1차→2차→3차 순서로 일괄적용하는 단계형 플로우 상태 — 이번 선택 안에서 방금 일괄적용한 1차/2차를
-  // 기억해뒀다가, 2차/3차 버튼의 선택지를 그 하위 카테고리로만 좁힌다. 선택이 전부 풀리면(새 작업 시작) 초기화.
+  // 기억해뒀다가, 2차/3차 버튼의 선택지를 그 하위 섹터로만 좁힌다. 선택이 전부 풀리면(새 작업 시작) 초기화.
   const [bulkParentId, setBulkParentId] = useState<number | null>(null)
   const [bulkMidId, setBulkMidId] = useState<number | null>(null)
   useEffect(() => {
@@ -1444,14 +1444,14 @@ export default function AdminStockTable({
 
   // AdminStockRow에 props로 내려가는 콜백들 — 매 렌더마다 새 함수면 React.memo가 무력화되므로 useCallback으로 고정한다.
   const handleAssign = useCallback(
-    (stockCode: string, categoryId: number) => {
+    (stockCode: string, sectorId: number) => {
       const before = itemsRef.current.find(item => item.stockCode === stockCode)?.sectorId
-      assignStockCategory.mutate({ stockCode, sectorId: categoryId })
-      if (before != null && before !== categoryId) {
-        pushUndo({ type: 'category', stockCode, before, after: categoryId })
+      assignStockSector.mutate({ stockCode, sectorId: sectorId })
+      if (before != null && before !== sectorId) {
+        pushUndo({ type: 'sector', stockCode, before, after: sectorId })
       }
     },
-    [assignStockCategory, pushUndo],
+    [assignStockSector, pushUndo],
   )
 
   const handleUpdateAlias = useCallback(
@@ -1470,46 +1470,46 @@ export default function AdminStockTable({
     })
   }, [])
 
-  const handleParentCategoryHoverStart = useCallback(
-    (stockCode: string) => setHoveredRow({ stockCode, kind: 'parentCategory' }),
+  const handleParentSectorHoverStart = useCallback(
+    (stockCode: string) => setHoveredRow({ stockCode, kind: 'parentSector' }),
     [],
   )
-  const handleMidCategoryHoverStart = useCallback(
-    (stockCode: string) => setHoveredRow({ stockCode, kind: 'midCategory' }),
+  const handleMidSectorHoverStart = useCallback(
+    (stockCode: string) => setHoveredRow({ stockCode, kind: 'midSector' }),
     [],
   )
-  const handleSubCategoryHoverStart = useCallback(
-    (stockCode: string) => setHoveredRow({ stockCode, kind: 'subCategory' }),
+  const handleSubSectorHoverStart = useCallback(
+    (stockCode: string) => setHoveredRow({ stockCode, kind: 'subSector' }),
     [],
   )
   const handleAliasHoverStart = useCallback((stockCode: string) => setHoveredRow({ stockCode, kind: 'alias' }), [])
   const handleHoverEnd = useCallback(() => setHoveredRow(null), [])
 
-  // 1차→2차→3차 단계형 일괄적용 공통 로직. 각 단계는 독립된 assign 호출이라(서버 입장에선 categoryId를
+  // 1차→2차→3차 단계형 일괄적용 공통 로직. 각 단계는 독립된 assign 호출이라(서버 입장에선 sectorId를
   // 여러 번 덮어쓰는 흐름이지만), 다음 단계 버튼에서 계속 이어서 좁혀나갈 수 있도록 선택은 유지한다.
-  const runBulkAssign = (categoryId: number, onSuccessExtra?: () => void) => {
+  const runBulkAssign = (sectorId: number, onSuccessExtra?: () => void) => {
     const targets = [...selectedStockCodes]
-    // 실행취소용으로 각 종목의 "변경 전" 카테고리를 미리 스냅샷 — 일괄적용은 종목마다 원래 카테고리가
+    // 실행취소용으로 각 종목의 "변경 전" 섹터를 미리 스냅샷 — 일괄적용은 종목마다 원래 섹터가
     // 달랐을 수 있어서, 되돌릴 때도 종목별로 각자의 이전 값으로 복원해야 한다.
     const beforeByStockCode = new Map(targets.map(stockCode => [stockCode, itemsRef.current.find(item => item.stockCode === stockCode)?.sectorId]))
-    bulkAssignStockCategory.mutate(
-      { stockCodes: targets, sectorId: categoryId },
+    bulkAssignStockSector.mutate(
+      { stockCodes: targets, sectorId: sectorId },
       {
         onSuccess: result => {
           onSuccessExtra?.()
-          const categoryName = categoryOptions.find(opt => opt.id === result.sectorId)?.name ?? ''
+          const sectorName = sectorOptions.find(opt => opt.id === result.sectorId)?.name ?? ''
           const entries = targets
             .filter(stockCode => !result.failedStockCodes.includes(stockCode))
             .map(stockCode => ({ stockCode, before: beforeByStockCode.get(stockCode) }))
-            .filter((entry): entry is { stockCode: string; before: number } => entry.before != null && entry.before !== categoryId)
+            .filter((entry): entry is { stockCode: string; before: number } => entry.before != null && entry.before !== sectorId)
           if (entries.length > 0) {
-            pushUndo({ type: 'bulkCategory', categoryName, after: categoryId, entries })
+            pushUndo({ type: 'bulkSector', sectorName, after: sectorId, entries })
           }
           if (result.failedStockCodes.length === 0) {
-            window.alert(`카테고리: ${categoryName}\n일괄 적용 완료되었습니다.`)
+            window.alert(`섹터: ${sectorName}\n일괄 적용 완료되었습니다.`)
           } else {
             window.alert(
-              `카테고리: ${categoryName}\n다음 종목은 반영되지 않았습니다:\n${result.failedStockCodes.join(', ')}`,
+              `섹터: ${sectorName}\n다음 종목은 반영되지 않았습니다:\n${result.failedStockCodes.join(', ')}`,
             )
           }
         },
@@ -1517,31 +1517,31 @@ export default function AdminStockTable({
     )
   }
 
-  const handleBulkAssignParent = (categoryId: number) => {
-    runBulkAssign(categoryId, () => {
-      setBulkParentId(categoryId)
+  const handleBulkAssignParent = (sectorId: number) => {
+    runBulkAssign(sectorId, () => {
+      setBulkParentId(sectorId)
       setBulkMidId(null)
     })
   }
-  const handleBulkAssignMid = (categoryId: number) => {
-    runBulkAssign(categoryId, () => setBulkMidId(categoryId))
+  const handleBulkAssignMid = (sectorId: number) => {
+    runBulkAssign(sectorId, () => setBulkMidId(sectorId))
   }
-  const handleBulkAssignSub = (categoryId: number) => {
-    runBulkAssign(categoryId)
+  const handleBulkAssignSub = (sectorId: number) => {
+    runBulkAssign(sectorId)
   }
 
-  const bulkParentOptions = categoryOptions.filter(opt => opt.parentId === null)
-  const bulkMidOptions = bulkParentId != null ? categoryOptions.filter(opt => opt.parentId === bulkParentId) : []
-  const bulkSubOptions = bulkMidId != null ? categoryOptions.filter(opt => opt.parentId === bulkMidId) : []
+  const bulkParentOptions = sectorOptions.filter(opt => opt.parentId === null)
+  const bulkMidOptions = bulkParentId != null ? sectorOptions.filter(opt => opt.parentId === bulkParentId) : []
+  const bulkSubOptions = bulkMidId != null ? sectorOptions.filter(opt => opt.parentId === bulkMidId) : []
 
   const [excludedFilters, setExcludedFilters] = usePersistedState<Record<FilterKey, Set<string>>>(
-    'adminStockTable.excludedFilters',
+    'adminStockTable.excludedSectorFilters',
     {
       market: new Set(),
       originCategoryName: new Set(),
-      parentCategoryName: new Set(),
-      midCategoryName: new Set(),
-      subCategoryName: new Set(),
+      parentSectorName: new Set(),
+      midSectorName: new Set(),
+      subSectorName: new Set(),
     },
     {
       serialize: filters =>
@@ -1591,9 +1591,9 @@ export default function AdminStockTable({
     setExcludedFilters({
       market: new Set(),
       originCategoryName: new Set(),
-      parentCategoryName: new Set(),
-      midCategoryName: new Set(),
-      subCategoryName: new Set(),
+      parentSectorName: new Set(),
+      midSectorName: new Set(),
+      subSectorName: new Set(),
     })
     setNameFilterStockCodes(new Set())
     setExcludedMarketValueTiers(new Set())
@@ -1662,10 +1662,10 @@ export default function AdminStockTable({
   }
 
   // 화면에 보여줄 종목의 "집합"은 필터 조건(excludedFilters/nameFilterStockCodes/excludedMarketValueTiers)이
-  // 바뀔 때만 다시 계산한다 — items 자체가 바뀌어도(카테고리 변경으로 캐시가 패치돼도) 자동으로
-  // 다시 걸러내지 않는다. 그래야 필터링된 목록을 보면서 카테고리를 바꿔도 방금 바꾼 종목이 목록에서
+  // 바뀔 때만 다시 계산한다 — items 자체가 바뀌어도(섹터 변경으로 캐시가 패치돼도) 자동으로
+  // 다시 걸러내지 않는다. 그래야 필터링된 목록을 보면서 섹터를 바꿔도 방금 바꾼 종목이 목록에서
   // 갑자기 사라지지 않는다. 필터 조건을 직접 바꾸거나(토글/전체선택/전체해제/종목명 검색 등) "전체
-  // 필터 해제"를 누르면 그 시점 기준 items(itemsRef)로 다시 걸러진다. 각 행 자체의 표시값(카테고리
+  // 필터 해제"를 누르면 그 시점 기준 items(itemsRef)로 다시 걸러진다. 각 행 자체의 표시값(섹터
   // 등)은 items가 그대로 반영되므로 최신 상태로 보인다 — 여기서 고정하는 건 "포함 여부"뿐이다.
   const [visibleStockCodes, setVisibleStockCodes] = useState<Set<string> | null>(null)
   // 마운트 시점엔 items가 아직 도착 전(빈 배열)일 수 있어서, "필터 조건 변화" 이펙트가 그 순간의
@@ -1680,7 +1680,7 @@ export default function AdminStockTable({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- items 변화는 의도적으로 무시하고 필터 조건 변화에만 반응
   }, [excludedFilters, nameFilterStockCodes, excludedMarketValueTiers])
   // items가 마운트 이후 뒤늦게(비동기로) 처음 도착했을 때 한 번만 채워준다 — 그 이후 items 변경
-  // (카테고리 수정 등)은 위 이펙트와 마찬가지로 무시해야 하므로 hasComputedVisibleRef로 한 번만 실행되게 막는다.
+  // (섹터 수정 등)은 위 이펙트와 마찬가지로 무시해야 하므로 hasComputedVisibleRef로 한 번만 실행되게 막는다.
   useEffect(() => {
     if (hasComputedVisibleRef.current || items.length === 0) return
     hasComputedVisibleRef.current = true
@@ -1736,9 +1736,9 @@ export default function AdminStockTable({
         시가총액: item.totalMarketValue ?? '',
         마켓: display.market,
         '거래소 분류': display.originCategoryName,
-        '대분류': display.parentCategoryName,
-        '중분류': display.midCategoryName,
-        '소분류': display.subCategoryName,
+        '대분류': display.parentSectorName,
+        '중분류': display.midSectorName,
+        '소분류': display.subSectorName,
       }
     })
     exportRowsToExcel(filename, '종목관리', rows)
@@ -1815,7 +1815,7 @@ export default function AdminStockTable({
               actions={undoStack}
               direction="undo"
               items={items}
-              categoryOptionsById={categoryOptionsById}
+              sectorOptionsById={sectorOptionsById}
               onPick={handleUndoItem}
             />
             <div
@@ -1849,7 +1849,7 @@ export default function AdminStockTable({
               actions={redoStack}
               direction="redo"
               items={items}
-              categoryOptionsById={categoryOptionsById}
+              sectorOptionsById={sectorOptionsById}
               onPick={handleRedoItem}
             />
           </div>
@@ -1869,13 +1869,13 @@ export default function AdminStockTable({
           )}
           <button
             type="button"
-            onClick={onRefetchCategories}
-            disabled={isRefetchingCategories}
+            onClick={onRefetchSectors}
+            disabled={isRefetchingSectors}
             className="nes-btn flex items-center gap-1 border-[var(--accent)] bg-[var(--accent)] px-2 py-0.5 text-xs text-black hover:bg-[var(--accent-hover)] disabled:opacity-50"
-            title="다른 탭에서 추가/변경한 카테고리를 반영합니다 (필터는 유지됨)"
+            title="다른 탭에서 추가/변경한 섹터를 반영합니다 (필터는 유지됨)"
           >
-            <RefreshIcon className={`h-3.5 w-3.5 ${isRefetchingCategories ? 'animate-spin' : ''}`} />
-            {isRefetchingCategories ? '새로고침 중...' : '새로고침'}
+            <RefreshIcon className={`h-3.5 w-3.5 ${isRefetchingSectors ? 'animate-spin' : ''}`} />
+            {isRefetchingSectors ? '새로고침 중...' : '새로고침'}
           </button>
           <button
             type="button"
@@ -1958,11 +1958,11 @@ export default function AdminStockTable({
                   <th
                     key={col.key}
                     ref={
-                      col.key === 'parentCategoryName'
+                      col.key === 'parentSectorName'
                         ? parentThRef
-                        : col.key === 'midCategoryName'
+                        : col.key === 'midSectorName'
                           ? midThRef
-                          : col.key === 'subCategoryName'
+                          : col.key === 'subSectorName'
                             ? subThRef
                             : undefined
                     }
@@ -2055,13 +2055,13 @@ export default function AdminStockTable({
                       isSelected={selectedStockCodes.has(item.stockCode)}
                       onToggleSelected={toggleSelected}
                       hoveredKind={hoveredRow?.stockCode === item.stockCode ? hoveredRow.kind : null}
-                      onParentCategoryHoverStart={handleParentCategoryHoverStart}
-                      onMidCategoryHoverStart={handleMidCategoryHoverStart}
-                      onSubCategoryHoverStart={handleSubCategoryHoverStart}
+                      onParentSectorHoverStart={handleParentSectorHoverStart}
+                      onMidSectorHoverStart={handleMidSectorHoverStart}
+                      onSubSectorHoverStart={handleSubSectorHoverStart}
                       onAliasHoverStart={handleAliasHoverStart}
                       onHoverEnd={handleHoverEnd}
-                      categoryOptions={categoryOptions}
-                      categoryOptionsById={categoryOptionsById}
+                      sectorOptions={sectorOptions}
+                      sectorOptionsById={sectorOptionsById}
                       onAssign={handleAssign}
                       onUpdateAlias={handleUpdateAlias}
                     />

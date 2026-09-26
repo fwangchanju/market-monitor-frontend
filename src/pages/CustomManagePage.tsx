@@ -5,7 +5,7 @@ import SubNavBar from '@/components/SubNavBar'
 import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
 import SettingsSidebar from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
-import AdminCategoryTable from '@/components/AdminCategoryTable'
+import AdminSectorTable from '@/components/AdminSectorTable'
 import AdminStockTable from '@/components/AdminStockTable'
 import Spinner from '@/components/Spinner'
 import NavBarPageActions from '@/components/NavBarPageActions'
@@ -27,9 +27,9 @@ type DownloadStatus = 'idle' | 'downloading' | 'error'
 export default function CustomManagePage() {
   const { pathname } = useLocation()
   const [searchParams] = useSearchParams()
-  // mode 파라미터 없이 "커스텀" 탭 자체를 클릭했을 때는 카테고리 페이지로 간다(SubNavBar의
-  // CUSTOM_MODE_LIST_ITEMS와 동일하게 카테고리를 기본으로 취급).
-  const mode = pathname === '/admin/stock' || searchParams.get('mode') === 'stock' ? 'stock' : 'category'
+  // mode 파라미터 없이 "커스텀" 탭 자체를 클릭했을 때는 섹터 페이지로 간다(SubNavBar의
+  // CUSTOM_MODE_LIST_ITEMS와 동일하게 섹터를 기본으로 취급).
+  const mode = pathname === '/admin/stock' || searchParams.get('mode') === 'stock' ? 'stock' : 'sector'
   // AdminStockTable의 툴바(종목수/실행취소·다시실행/필터/엑셀 등)를 이 DOM 노드로 포털링해서 세
   // 번째 바 안에 그린다 — useRef 대신 useState인 이유는, ref 콜백이 커밋 단계에서 실행되므로
   // useState로 받아야 그 노드가 준비된 뒤 리렌더가 한 번 더 일어나 AdminStockTable에 null이 아닌
@@ -41,15 +41,15 @@ export default function CustomManagePage() {
   const { requireLogin } = useLoginGate()
 
   const {
-    data: categories,
-    isLoading: isCategoriesLoading,
-    refetch: refetchCategories,
-    isRefetching: isRefetchingCategories,
+    data: sectors,
+    isLoading: isSectorsLoading,
+    refetch: refetchSectors,
+    isRefetching: isRefetchingSectors,
   } = useCustomSectors({ enabled: isLoggedIn })
   const {
-    data: stockCategories,
-    refetch: refetchStockCategories,
-    isRefetching: isRefetchingStockCategories,
+    data: stockSectors,
+    refetch: refetchStockSectors,
+    isRefetching: isRefetchingStockSectors,
   } = useStockSectors({ enabled: isLoggedIn })
 
   const { settingsModalProps, colorEditorPanelProps } = useGlobalSettings({ needsTree: false })
@@ -97,8 +97,8 @@ export default function CustomManagePage() {
 
   const actions = (
     <NavBarPageActions
-      onRefresh={mode === 'stock' ? refetchStockCategories : refetchCategories}
-      isRefreshing={mode === 'stock' ? isRefetchingStockCategories : isRefetchingCategories}
+      onRefresh={mode === 'stock' ? refetchStockSectors : refetchSectors}
+      isRefreshing={mode === 'stock' ? isRefetchingStockSectors : isRefetchingSectors}
       onToggleSettings={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
       isSettingsOpen={settingsModalProps.isOpen}
       onOpenShare={() => setIsShareOpen(true)}
@@ -109,7 +109,7 @@ export default function CustomManagePage() {
 
   // 세션 확인 중이거나(로그인 여부를 아직 모름) 로그인 사용자의 섹터 목록을 받아오는 동안은 상단바+
   // 스피너만 보여준다 — 비로그인용 안내와 실제 테이블이 뒤섞여 잠깐 보였다 사라지는 걸 막는다.
-  if (isSessionLoading || (isLoggedIn && isCategoriesLoading)) {
+  if (isSessionLoading || (isLoggedIn && isSectorsLoading)) {
     return (
       <div className="flex h-screen flex-col overflow-hidden">
         <NavBar />
@@ -144,7 +144,7 @@ export default function CustomManagePage() {
     <div className="flex h-screen flex-col overflow-hidden">
       <NavBar />
       <SubNavBar actions={actions} />
-      {/* 좌측 사이드바(종목/카테고리 전환 + 버전관리 저장) 삭제 — 종목/카테고리 전환은 SubNavBar의
+      {/* 좌측 사이드바(종목/섹터 전환 + 버전관리 저장) 삭제 — 종목/섹터 전환은 SubNavBar의
           "커스텀" 탭 hover 목록으로 이동. 버전관리 저장(AdminVersionSaveSection)은 기능 검증과
           위치 재검토가 더 필요해서 일단 뺐다 — 다시 넣을 땐 이 컴포넌트를 재사용하면 된다. */}
       <div className="flex min-h-0 flex-1">
@@ -162,24 +162,24 @@ export default function CustomManagePage() {
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div className="flex h-7 w-full shrink-0 items-center bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
               {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다.
-                  카테고리 모드일 땐 그런 툴바 자체가 없어서 빈 채로 둔다. */}
+                  섹터 모드일 땐 그런 툴바 자체가 없어서 빈 채로 둔다. */}
               {mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 flex-1 items-center" />}
             </div>
             <div className="flex min-h-0 flex-1">
               <div
-                className={`flex min-h-0 flex-1 flex-col px-4 pt-2 pb-4 ${mode === 'category' ? 'overflow-y-auto' : ''}`}
+                className={`flex min-h-0 flex-1 flex-col px-4 pt-2 pb-4 ${mode === 'sector' ? 'overflow-y-auto' : ''}`}
               >
                 {mode === 'stock' ? (
                   <AdminStockTable
-                    items={stockCategories?.items ?? []}
-                    categories={categories ?? []}
-                    snapshotTime={stockCategories?.snapshotTime ?? null}
-                    onRefetchCategories={() => refetchCategories()}
-                    isRefetchingCategories={isRefetchingCategories}
+                    items={stockSectors?.items ?? []}
+                    sectors={sectors ?? []}
+                    snapshotTime={stockSectors?.snapshotTime ?? null}
+                    onRefetchSectors={() => refetchSectors()}
+                    isRefetchingSectors={isRefetchingSectors}
                     toolbarContainer={toolbarContainer}
                   />
                 ) : (
-                  <AdminCategoryTable categories={categories ?? []} />
+                  <AdminSectorTable sectors={sectors ?? []} />
                 )}
               </div>
             </div>

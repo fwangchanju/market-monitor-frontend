@@ -196,22 +196,22 @@ const MarketMapItemSchema = z.object({
 })
 export type MarketMapItem = z.infer<typeof MarketMapItemSchema>
 
-export interface MarketMapCategoryNode {
-  categoryId: number
-  categoryName: string
+export interface MarketMapSectorNode {
+  sectorId: number
+  sectorName: string
   totalMarketValue: number
   isExcluded: boolean
-  children: MarketMapCategoryNode[]
+  children: MarketMapSectorNode[]
   items: MarketMapItem[]
 }
 
-const MarketMapCategoryNodeSchema: z.ZodType<MarketMapCategoryNode> = z.lazy(() =>
+const MarketMapSectorNodeSchema: z.ZodType<MarketMapSectorNode> = z.lazy(() =>
   z.object({
-    categoryId: z.number(),
-    categoryName: z.string(),
+    sectorId: z.number(),
+    sectorName: z.string(),
     totalMarketValue: z.number(),
     isExcluded: z.boolean(),
-    children: z.array(MarketMapCategoryNodeSchema),
+    children: z.array(MarketMapSectorNodeSchema),
     items: z.array(MarketMapItemSchema),
   }),
 )
@@ -221,7 +221,7 @@ const MarketMapCategoryNodeSchema: z.ZodType<MarketMapCategoryNode> = z.lazy(() 
 // 참고). market이 ALL_STOCK처럼 마켓 여럿을 합친 조회면 단일 지수값이 없어 null.
 export const MarketMapResponseSchema = z.object({
   snapshotTime: z.string().nullable(),
-  items: z.array(MarketMapCategoryNodeSchema),
+  items: z.array(MarketMapSectorNodeSchema),
   marketOverview: MarketOverviewItemSchema.nullable(),
 })
 export type MarketMapResponse = z.infer<typeof MarketMapResponseSchema>
@@ -254,7 +254,8 @@ export const ExcludedStockItemSchema = z.object({
 })
 
 // 백엔드 /api/admin/market-map/* → /api/custom/* 전환(가입/로그인 지시서)에 맞춰 DTO 필드명도
-// category* → sector* 로 바뀌었다. /api/map 응답의 categoryId 등은 그대로다(별개 계약).
+// category* → sector* 로 바뀌었다. /api/map 응답도 category → sector 정리(instructions-sector-rename.md)로
+// 같은 sectorId/sectorName을 쓰게 됐지만, 두 응답은 여전히 별개 계약이다.
 export const SectorItemSchema = z.object({
   id: z.number(),
   name: z.string(),

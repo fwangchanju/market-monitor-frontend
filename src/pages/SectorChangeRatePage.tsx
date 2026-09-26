@@ -6,7 +6,7 @@ import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThres
 import SettingsSidebar, {
   SettingsCustomModeSection,
   SettingsEqualWeightSection,
-  SettingsCategoryLevelSection,
+  SettingsSectorLevelSection,
   SettingsMarketValueSection,
   SettingsExcludeSection,
   SettingsColorSection,
@@ -16,8 +16,8 @@ import Spinner from '@/components/Spinner'
 import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
-import { categoryHeaderFontSize } from '@/hooks/useMarketMapLayout'
-import { computeCategoryAverage } from '@/utils/categoryAverage'
+import { sectorHeaderFontSize } from '@/hooks/useMarketMapLayout'
+import { computeSectorAverage } from '@/utils/sectorAverage'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import NavBarPageActions from '@/components/NavBarPageActions'
 import { FONT_BAR_TITLE, FONT_BAR_TIME, FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
@@ -31,7 +31,7 @@ import {
   MARKET_INDEX_REFERENCE_COLOR,
   type ColorScaleConfig,
 } from '@/utils/marketMapColorScale'
-import type { Market, MarketMapCategoryNode, MarketQuery } from '@/types/api'
+import type { Market, MarketMapSectorNode, MarketQuery } from '@/types/api'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
@@ -42,20 +42,20 @@ const BEFORE_MINUTES_PRESETS = [15, 30, 60]
 const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
 // 지수 등락률 참조 막대에 붙는 한글 라벨 — ALL_STOCK은 단일 지수가 없어 대상에서 제외된다.
 const MARKET_INDEX_LABEL_KO: Record<Market, string> = { KOSPI: '코스피', KOSDAQ: '코스닥' }
-// 지수 참조 막대 전용 React key — 카테고리 이름(예: '코스피'라는 카테고리가 실제로 있을 수 있다)과
-// 겹치지 않도록 일반 카테고리 key(categoryKey)와 다른 접두사를 쓴다.
+// 지수 참조 막대 전용 React key — 섹터 이름(예: '코스피'라는 섹터가 실제로 있을 수 있다)과
+// 겹치지 않도록 일반 섹터 key(sectorKey)와 다른 접두사를 쓴다.
 const MARKET_INDEX_KEY = 'market-index'
-function categoryKey(categoryName: string): string {
-  return `category:${categoryName}`
+function sectorKey(sectorName: string): string {
+  return `sector:${sectorName}`
 }
-// 지도 페이지에서 최상위 뎁스 카테고리를 노란 글자로 표시하는 것과 같은 "기준" 색상 — 참조 막대도 동일하게 맞춘다.
+// 지도 페이지에서 최상위 뎁스 섹터를 노란 글자로 표시하는 것과 같은 "기준" 색상 — 참조 막대도 동일하게 맞춘다.
 const MARKET_INDEX_BAR_COLOR = MARKET_INDEX_REFERENCE_COLOR
 
 interface RankedItem {
   key: string
-  categoryName: string
+  sectorName: string
   value: number
-  // 지수 등락률 참조 막대 표시용 — 일반 카테고리 막대와 색을 다르게 칠하는 데만 쓴다.
+  // 지수 등락률 참조 막대 표시용 — 일반 섹터 막대와 색을 다르게 칠하는 데만 쓴다.
   isReference?: boolean
 }
 
@@ -103,7 +103,7 @@ function RankBars({
     // min-h-0: flex 아이템 기본값(min-height:auto)을 눌러서 부모가 준 높이보다 작게도 줄어들 수 있게
     // 한다(콘텐츠가 더 크면 그만큼 넘쳐서 조상의 overflow-y-auto가 스크롤 처리) — align-self:stretch
     // (flex 기본값)로 실제 높이는 부모 flex 행 높이를 그대로 받는다. content-between으로 헤더 행은
-    // 맨 위에 붙이고 종목 행들 사이 간격만 넓혀서, 카테고리 수가 적어도 컨테이너 높이를 채운다.
+    // 맨 위에 붙이고 종목 행들 사이 간격만 넓혀서, 섹터 수가 적어도 컨테이너 높이를 채운다.
     <div
       className="grid h-full min-h-0 w-full flex-1 content-between items-center gap-x-3 gap-y-2 text-[15px]"
       style={{ gridTemplateColumns: 'auto 1fr' }}
@@ -111,11 +111,11 @@ function RankBars({
       <span />
       {/* "현재"/"변화율" 헤더 둘 다 한 줄이라(라디오 줄 뒤에 "전 대비"만 붙이고 입력 줄은 없앰),
           별도 최소 높이 없이도 두 그래프의 첫 막대 행이 같은 위치에서 시작한다. 지도 페이지
-          대분류 카테고리 헤더와 같은 폰트 크기(categoryHeaderFontSize(0) === 15px)·색상
+          대분류 섹터 헤더와 같은 폰트 크기(sectorHeaderFontSize(0) === 15px)·색상
           (MARKET_INDEX_REFERENCE_COLOR)을 그대로 써서 두 페이지의 헤더 텍스트를 맞춘다. */}
       <div
         className="flex items-center whitespace-nowrap"
-        style={{ fontSize: categoryHeaderFontSize(0), color: MARKET_INDEX_REFERENCE_COLOR }}
+        style={{ fontSize: sectorHeaderFontSize(0), color: MARKET_INDEX_REFERENCE_COLOR }}
       >
         {header ?? ' '}
       </div>
@@ -133,7 +133,7 @@ function RankBars({
             className={`whitespace-nowrap text-right ${item.isReference ? 'font-bold' : ''}`}
             style={item.isReference ? { color: MARKET_INDEX_REFERENCE_COLOR } : undefined}
           >
-            {item.categoryName}
+            {item.sectorName}
           </span>
           {/* 퍼센트 텍스트를 막대 트랙(flex-1) 안에 막대 끝 위치(left: pct%)로 떠 있게 배치한다 —
               막대가 길어질수록 텍스트도 같이 따라간다. 오른쪽 w-[70px]는 막대가 축 최대치까지 길어져도
@@ -166,8 +166,8 @@ function RankBars({
   )
 }
 
-export default function CategoryChangeRatePage() {
-  const [beforeMinutes, setBeforeMinutes] = usePersistedState('categoryChangeRate.beforeMinutes', 15)
+export default function SectorChangeRatePage() {
+  const [beforeMinutes, setBeforeMinutes] = usePersistedState('sectorChangeRate.beforeMinutes', 15)
   const [searchParams, setSearchParams] = useSearchParams()
 
   const {
@@ -186,7 +186,7 @@ export default function CategoryChangeRatePage() {
     onChangeAvgChangeRateUseSimple,
     onChangeSectorFilterEnabled,
     excludedMarketValueTiers,
-    excludedCategoryIds,
+    excludedSectorIds,
     colorScale,
   } = useGlobalSettings()
 
@@ -285,7 +285,7 @@ export default function CategoryChangeRatePage() {
     if (!captureRef.current) return
     setDownloadStatus('downloading')
     try {
-      await captureElementToDownload(captureRef.current, 'category-change-rate.png')
+      await captureElementToDownload(captureRef.current, 'sector-change-rate.png')
     } catch {
       setDownloadStatus('error')
     } finally {
@@ -297,39 +297,39 @@ export default function CategoryChangeRatePage() {
     copyStatus === 'copying' ? 'Copying' : copyStatus === 'copied' ? 'Copied' : copyStatus === 'error' ? 'Failed' : 'Copy'
   const downloadLabel = downloadStatus === 'error' ? 'Failed' : 'Download'
 
-  // 대상 카테고리는 트리의 최상위 노드(response.items)다. 설정 사이드바의 "제외 설정"(섹터 기준)에
-  // 걸린 카테고리는 지도 페이지와 동일하게 여기서도 뺀다. now/before 짝은 categoryId가 아니라
-  // categoryName으로 맞춘다 — 기본 모드 노드는 categoryId가 전부 0(NO_CATEGORY_ID)이라 id로는 짝을
+  // 대상 섹터는 트리의 최상위 노드(response.items)다. 설정 사이드바의 "제외 설정"(섹터 기준)에
+  // 걸린 섹터는 지도 페이지와 동일하게 여기서도 뺀다. now/before 짝은 sectorId가 아니라
+  // sectorName으로 맞춘다 — 기본 모드 노드는 sectorId가 전부 0(NO_SECTOR_ID)이라 id로는 짝을
   // 맞출 수 없다(market-monitor-backend 지시서 결정 5). ALL_STOCK은 응답 하나가 이미 두 마켓을 합친
   // 트리라 마켓별로 따로 합칠 필요가 없다.
   const charts = useMemo(() => {
     if (!displayNow) return { current: buildRankChart([]), delta: buildRankChart([]) }
 
-    const beforeByName = new Map<string, MarketMapCategoryNode>(
-      (displayBefore?.items ?? []).map(node => [node.categoryName, node]),
+    const beforeByName = new Map<string, MarketMapSectorNode>(
+      (displayBefore?.items ?? []).map(node => [node.sectorName, node]),
     )
 
     const currentEntries: RankedItem[] = []
     const deltaEntries: RankedItem[] = []
 
     for (const node of displayNow.items) {
-      if (excludedCategoryIds.has(node.categoryId)) continue
+      if (excludedSectorIds.has(node.sectorId)) continue
 
-      const nowAverage = computeCategoryAverage(node, excludedMarketValueTiers)
+      const nowAverage = computeSectorAverage(node, excludedMarketValueTiers)
       const nowValue = avgChangeRateUseSimple ? nowAverage.simpleAvg : nowAverage.weightedAvg
-      // 새 트리는 종목이 하나도 없는 최상위 카테고리도 노드로 준다 — 그런 카테고리는 평균이 null이라
-      // 두 그래프 모두에서 뺀다(옛 /api/sector는 애초에 그런 카테고리를 안 내려줬다).
+      // 새 트리는 종목이 하나도 없는 최상위 섹터도 노드로 준다 — 그런 섹터는 평균이 null이라
+      // 두 그래프 모두에서 뺀다(옛 /api/sector는 애초에 그런 섹터를 안 내려줬다).
       if (nowValue === null) continue
-      currentEntries.push({ key: categoryKey(node.categoryName), categoryName: node.categoryName, value: nowValue })
+      currentEntries.push({ key: sectorKey(node.sectorName), sectorName: node.sectorName, value: nowValue })
 
-      const beforeNode = beforeByName.get(node.categoryName)
+      const beforeNode = beforeByName.get(node.sectorName)
       if (!beforeNode) continue
-      const beforeAverage = computeCategoryAverage(beforeNode, excludedMarketValueTiers)
+      const beforeAverage = computeSectorAverage(beforeNode, excludedMarketValueTiers)
       const beforeValue = avgChangeRateUseSimple ? beforeAverage.simpleAvg : beforeAverage.weightedAvg
       if (beforeValue === null) continue
       deltaEntries.push({
-        key: categoryKey(node.categoryName),
-        categoryName: node.categoryName,
+        key: sectorKey(node.sectorName),
+        sectorName: node.sectorName,
         value: nowValue - beforeValue,
       })
     }
@@ -340,7 +340,7 @@ export default function CategoryChangeRatePage() {
     if (nowOverview) {
       currentEntries.push({
         key: MARKET_INDEX_KEY,
-        categoryName: MARKET_INDEX_LABEL_KO[nowOverview.market],
+        sectorName: MARKET_INDEX_LABEL_KO[nowOverview.market],
         value: nowOverview.changeRate,
         isReference: true,
       })
@@ -348,7 +348,7 @@ export default function CategoryChangeRatePage() {
       if (beforeOverview) {
         deltaEntries.push({
           key: MARKET_INDEX_KEY,
-          categoryName: MARKET_INDEX_LABEL_KO[nowOverview.market],
+          sectorName: MARKET_INDEX_LABEL_KO[nowOverview.market],
           value: nowOverview.changeRate - beforeOverview.changeRate,
           isReference: true,
         })
@@ -356,7 +356,7 @@ export default function CategoryChangeRatePage() {
     }
 
     return { current: buildRankChart(currentEntries), delta: buildRankChart(deltaEntries) }
-  }, [displayNow, displayBefore, excludedCategoryIds, excludedMarketValueTiers, avgChangeRateUseSimple])
+  }, [displayNow, displayBefore, excludedSectorIds, excludedMarketValueTiers, avgChangeRateUseSimple])
 
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden">
@@ -386,7 +386,7 @@ export default function CategoryChangeRatePage() {
             세 번째 바(마켓명/커스텀 모드/시간)까지 같이 밀려서 좁아진다(본문만 밀리지 않는다). */}
         <div
           ref={captureRef}
-          data-captureid={CAPTURE_ID.CATEGORY_CHANGE_RATE}
+          data-captureid={CAPTURE_ID.SECTOR}
           data-capture-ready={isDataCaptureReady}
           className="flex min-h-0 flex-1 overflow-hidden bg-black text-white"
         >
@@ -442,7 +442,7 @@ export default function CategoryChangeRatePage() {
                       "N분 전 대비" 캡션은 각각 RankBars의 header로 넘겨서, 그래프(막대 트랙) 시작 위치와
                       캡션 시작 위치가 라벨 폭과 무관하게 항상 맞도록 한다. 바깥을 flex-col + min-h-0로
                       만들어 RankBars(그리드)가 실제 남는 높이를 그대로 받게 하고, RankBars 안에서
-                      content-between으로 행 사이 여백을 균등 분배해 컨테이너 높이를 꽉 채운다(카테고리
+                      content-between으로 행 사이 여백을 균등 분배해 컨테이너 높이를 꽉 채운다(섹터
                       수가 많아 다 못 채우면 자연스럽게 스크롤). px-[10%]로 좌우 바깥쪽에 폭 기준 10%씩
                       여백을 둬서 막대가 화면 양 끝까지 닿지 않게 한다. */}
                   <div className="flex min-h-0 flex-1 gap-x-8 px-[10%]">
@@ -497,7 +497,7 @@ export default function CategoryChangeRatePage() {
           <SettingsSidebar {...settingsModalProps} pageLabel="섹터">
             <SettingsCustomModeSection {...settingsModalProps} />
             <SettingsEqualWeightSection {...settingsModalProps} />
-            <SettingsCategoryLevelSection {...settingsModalProps} showDivider={false} />
+            <SettingsSectorLevelSection {...settingsModalProps} showDivider={false} />
             <SettingsMarketValueSection {...settingsModalProps} />
             <SettingsExcludeSection {...settingsModalProps} />
             <SettingsColorSection {...settingsModalProps} />

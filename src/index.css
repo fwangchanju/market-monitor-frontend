@@ -323,8 +323,8 @@ a { color: var(--accent-light); text-decoration: none; }
     box-shadow: inset 0 0 0 999px rgb(255 255 255 / 42%);
   }
 
-  .market-map-category-header:hover,
-  .market-map-category-header:focus-visible {
+  .market-map-sector-header:hover,
+  .market-map-sector-header:focus-visible {
     border-width: 2px;
     border-color: color-mix(in srgb, var(--market-map-base-color) 50%, white);
     box-shadow: inset 0 0 0 999px rgb(255 255 255 / 50%);
@@ -336,9 +336,9 @@ a { color: var(--accent-light); text-decoration: none; }
     border-color: transparent;
   }
 
-  .market-map-category-header:active,
-  .market-map-suppress-category-border .market-map-category-header:hover,
-  .market-map-suppress-category-border .market-map-category-header:focus-visible {
+  .market-map-sector-header:active,
+  .market-map-suppress-sector-border .market-map-sector-header:hover,
+  .market-map-suppress-sector-border .market-map-sector-header:focus-visible {
     border-color: transparent;
     transition: none;
   }

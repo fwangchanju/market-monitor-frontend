@@ -8,7 +8,7 @@ interface Props {
   children: React.ReactNode
 }
 
-// 마우스를 따라다니며 뜨는 공통 툴팁 — 종목 박스/카테고리 태그가 동일한 스타일로 사용한다.
+// 마우스를 따라다니며 뜨는 공통 툴팁 — 종목 박스/섹터 태그가 동일한 스타일로 사용한다.
 // 위치 계산(useTooltip)과 내용(children)은 호출부 책임, 이 컴포넌트는 렌더링만 담당한다.
 export default function Tooltip({ visible, position, alignLeft, alignTop, children }: Props) {
   if (!visible || !position) return null
