@@ -52,7 +52,7 @@ export default function MarketMapPopup({ popup, onExcludeSector, onClose }: Prop
           </button>
         )}
       </div>
-      <div className="pl-3">
+      <div className="pl-1">
         {popup.rows.map((row, index) => (
           <div key={index}>{row}</div>
         ))}
