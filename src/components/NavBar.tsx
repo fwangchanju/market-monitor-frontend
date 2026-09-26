@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom'
-import { useSession, useLogout } from '@/hooks/useSession'
+import { useSession, useLogout, useSessionKeepAlive } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
 
 // 모든 페이지에서 항상 똑같이 고정되는 최상단 바 — 로그인 상태 표시와 로그인/로그아웃만 담당한다.
@@ -13,6 +13,7 @@ export default function NavBar() {
   const { data: session, isLoading } = useSession()
   const { requireLogin } = useLoginGate()
   const logout = useLogout()
+  useSessionKeepAlive(!localAutoLogin && (session?.authenticated ?? false))
 
   return (
     <header className="sticky top-0 z-20 flex h-12 items-center justify-end bg-zinc-900 px-4 shadow-lg">

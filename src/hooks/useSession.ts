@@ -1,9 +1,15 @@
+import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import { getSession, logout } from '@/api/auth'
+import { getLastRefreshAt, markSessionAnonymous, refreshSessionOnce } from '@/api/client'
 import { authKeys } from './queryKeys'
 import { STATIC_REFERENCE_CACHE } from './cacheConfig'
 import { cancelPendingPreferenceSave } from './useCustomPreferences'
 import type { AuthSessionResponse } from '@/types/api'
+
+const KEEP_ALIVE_REFRESH_MS = 10 * 60_000
+const KEEP_ALIVE_CHECK_MS = 60_000
 
 const LAST_USER_ID_STORAGE_KEY = 'auth.lastUserId'
 // 계정마다 뜻이 달라지는 커스텀 모드 관련 저장값 — 로그아웃/계정 전환 시 이전 계정의 값이 새 계정
@@ -53,6 +59,38 @@ export function useSession() {
 export function useIsLoggedIn(): boolean {
   const { data } = useSession()
   return data?.authenticated ?? false
+}
+
+// 접근 토큰(15분)이 페이지를 켜둔 채로 만료되면 시세 폴링 같은 GET은 비로그인도 200이라 401이 안
+// 나오고, 화면은 로그인 상태인데 서버는 익명으로 처리하게 된다(예: 마켓맵이 기본 설정으로 계산됨).
+// 그래서 로그인 상태인 동안은 접근 토큰이 오래되기 전에 선제적으로 갱신한다.
+export function useSessionKeepAlive(authenticated: boolean) {
+  useEffect(() => {
+    if (!authenticated) return
+
+    const check = async () => {
+      if (Date.now() - getLastRefreshAt() < KEEP_ALIVE_REFRESH_MS) return
+      try {
+        await refreshSessionOnce()
+      } catch (error) {
+        // 다른 탭에서 로그아웃했거나 갱신 토큰이 만료된 경우에만 세션을 익명으로 되돌린다.
+        // 네트워크 오류 등 그 외 실패는 조용히 무시하고 다음 check에서 다시 시도한다.
+        if (isAxiosError(error) && error.response?.status === 401) markSessionAnonymous()
+      }
+    }
+
+    check()
+    const interval = setInterval(check, KEEP_ALIVE_CHECK_MS)
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') check()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [authenticated])
 }
 
 const ANONYMOUS_SESSION: AuthSessionResponse = { authenticated: false, userId: null, email: null, role: null }
