@@ -105,6 +105,11 @@ export default function MarketMapTreemap({
   // 사라지는 옛 화면을 실제 콘텐츠 위/아래에 겹쳐 그리는 고스트 — 형제 섹터들이 순간 사라지지 않고
   // 서서히 페이드아웃(줌인)/줄어들며 사라지도록(줌아웃) 보여준다.
   const [ghost, setGhost] = useState<GhostOverlay | null>(null)
+  // 좌클릭으로 줌인이 시작될 때 헤더 hover 테두리가 잠깐 반짝이지 않게 끈다 — onHeaderPressStart
+  // (헤더 pointerdown, 왼쪽 버튼만)로 눌리는 즉시 켜고, handleSelectSector(click, 줌인 시작)에서도
+  // 다시 켠다(중복이지만 무해). 줌 애니메이션이 끝나고 사용자가 다시 마우스를 움직이면(아래
+  // onPointerMove) 꺼진다. 예전엔 index.css의 CSS :active로 이 "누르는 순간"을 처리했는데, :active는
+  // 버튼을 구분 못 해서 우클릭(팝업) 프레스 중에도 같이 켜지는 버그가 있어 JS로 옮겼다.
   const [suppressSectorHoverBorder, setSuppressSectorHoverBorder] = useState(false)
   // 섹터 진입(클릭) 시점에 캡처한 "그 박스가 화면에서 차지하던 위치" — 뎁스별로 기억해뒀다가
   // 다시 나갈 때 정확히 그 자리로 줄어드는 반대 애니메이션에 재사용한다.
@@ -301,6 +306,7 @@ export default function MarketMapTreemap({
               depthOffset={ghost.depth}
               onSelectSector={noop}
               onOpenPopup={noop}
+              onHeaderPressStart={noop}
               highlightedKey={null}
               ancestorPath=""
               marketValueDepthRange={marketValueDepthRange}
@@ -325,6 +331,7 @@ export default function MarketMapTreemap({
             depthOffset={depth}
             onSelectSector={handleSelectSector}
             onOpenPopup={handleOpenPopup}
+            onHeaderPressStart={() => setSuppressSectorHoverBorder(true)}
             highlightedKey={highlightedKey}
             ancestorPath=""
             marketValueDepthRange={marketValueDepthRange}

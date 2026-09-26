@@ -12,6 +12,10 @@ interface Props {
   // rect는 이 섹터 박스 전체의 화면상 위치 — 줌인 애니메이션이 어디서부터 확대되는지 계산하는 데 쓴다.
   onSelectSector: (sectorName: string, rect: DOMRect) => void
   onOpenPopup: (content: MarketMapPopupContent, target: HTMLElement) => void
+  // 헤더를 좌클릭(주 버튼)으로 누르는 "순간"(pointerdown) 알림 — MarketMapTreemap이 이걸로
+  // suppressSectorHoverBorder를 곧장 켜서, 줌인 애니메이션 시작 전에 hover 테두리가 잠깐
+  // 반짝였다가 사라지는 걸 막는다. 우클릭(팝업)은 이 콜백을 아예 안 부른다.
+  onHeaderPressStart: () => void
   // 지금 팝업이 떠 있는 섹터/종목의 식별 키(sectorPath/stockPath 기반) — 이 섹터의 키와 일치하면
   // 호버 오버레이를 "고정(pinned)"으로 계속 보여준다(index.css의 .is-pinned). 아래 sectorPath 계산 참고.
   highlightedKey: string | null
@@ -70,6 +74,7 @@ export default function MarketMapSectorSection({
   sector,
   onSelectSector,
   onOpenPopup,
+  onHeaderPressStart,
   highlightedKey,
   ancestorPath,
   marketValueDepthRange,
@@ -163,6 +168,13 @@ export default function MarketMapSectorSection({
           <div className="market-map-sector-hover-overlay absolute inset-0 z-[1] pointer-events-none" aria-hidden="true" />
           <button
             type="button"
+            onPointerDown={e => {
+              // 주 버튼(왼쪽, button === 0)을 눌렀을 때만 — 우클릭(팝업)까지 같이 걸리면 안 된다.
+              // CSS :active는 버튼 구분이 안 돼서(왼쪽이든 오른쪽이든 눌려 있는 동안 매치) 우클릭
+              // 프레스 중에도 헤더 hover 테두리가 사라지는 버그가 있었다 — 그래서 JS로 왼쪽만 걸러
+              // 처리하고, index.css의 :active 규칙은 없앴다.
+              if (e.button === 0) onHeaderPressStart()
+            }}
             onClick={e => {
               const rect = boxRef.current?.getBoundingClientRect()
               onSelectSector(sector.sectorName, rect ?? e.currentTarget.getBoundingClientRect())
@@ -209,6 +221,7 @@ export default function MarketMapSectorSection({
           sector={sub}
           onSelectSector={onSelectSector}
           onOpenPopup={onOpenPopup}
+          onHeaderPressStart={onHeaderPressStart}
           highlightedKey={highlightedKey}
           ancestorPath={sectorPath}
           marketValueDepthRange={marketValueDepthRange}
