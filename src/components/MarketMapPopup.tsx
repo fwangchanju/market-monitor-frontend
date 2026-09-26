@@ -228,7 +228,7 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
                   type="button"
                   aria-label={`${excludeSector.name} 제외`}
                   title="섹터 제외"
-                  className="rounded p-0.5 text-gray-400 hover:text-[var(--accent)]"
+                  className="flex h-5 w-5 items-center justify-center border-0 bg-transparent p-0 outline-none text-gray-400 hover:text-[var(--accent)]"
                   onClick={() => setConfirming(true)}
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
