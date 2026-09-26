@@ -128,18 +128,12 @@ export default function MarketMapCustomPage() {
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
-  // 브레드크럼에서 지금 hover 중인 구간의 인덱스 — 이 인덱스 이하(자기 자신 포함) 구간을 전부 강조 표시한다.
-  const [breadcrumbHoverIndex, setBreadcrumbHoverIndex] = useState<number | null>(null)
   // null이 아니면 MarketMapTreemap이 해당 뎁스로 줄어드는 줌아웃 애니메이션을 재생하고, 끝나면
   // handleZoomOutComplete를 불러서 실제 이동을 한다 — 애니메이션 도중엔 path/groups를 먼저 바꾸지 않는다.
   const [zoomOutRequestDepth, setZoomOutRequestDepth] = useState<number | null>(null)
   const captureRef = useRef<HTMLDivElement>(null)
 
   const { path, currentNode, currentSiblings, enterCategory, goToDepth, reset } = useMarketMapDrilldown(filteredRootNodes)
-  // path가 바뀌면(어떤 방식의 이동이든) 이전 hover 상태를 무조건 지운다 — 안 그러면 브레드크럼 바가
-  // path 없을 때 사라졌다가 다시 나타날 때, 예전에 hover했던 값이 그대로 남아 있다가 새로 그려진
-  // 세그먼트에 적용돼버린다(마우스가 실제로 그 위에 있지 않은데도).
-  useEffect(() => setBreadcrumbHoverIndex(null), [path])
 
   // "업종 분류 레벨" 뎁스 제한을 "지금 보고 있는 위치"(currentNode, 없으면 최상위) 기준으로 매번 새로
   // 적용한다 — 진짜 루트 기준 절대값이 아니라, 어디로 드릴다운하든 거기서부터 다시 N단계가 보이는
@@ -324,34 +318,22 @@ export default function MarketMapCustomPage() {
             </div>
             <div className="flex min-h-0 flex-1">
               <div className="flex min-h-0 flex-1 flex-col bg-black">
-                {path.length > 0 && (
-                // mouseenter/leave 대신 mousemove로 실시간으로 "지금 커서 아래 요소"를 다시 계산한다.
-                // 구간 사이 하이픈/여백처럼 자체 핸들러가 없는 지점을 지나가도 강조가 예전 값에 멈춰있지
-                // 않도록(스테일 하이라이트 방지), 그리고 실제 마우스가 움직인 경우에만 값이 바뀌므로
-                // 클릭 직후 레이아웃이 바뀌면서 커서 아래에 새 버튼이 나타나 생기는 유령 hover도 막아준다.
+              {path.length > 0 && (
                 <div
                   onClick={() => handleGoToDepth(0)}
-                  onMouseMove={e => {
-                    const target = e.target instanceof Element ? e.target.closest<HTMLElement>('[data-breadcrumb-index]') : null
-                    setBreadcrumbHoverIndex(target ? Number(target.dataset.breadcrumbIndex) : 0)
-                  }}
-                  onMouseLeave={() => setBreadcrumbHoverIndex(null)}
-                  className="flex h-7 w-full shrink-0 cursor-pointer items-center gap-1 truncate bg-black/70 px-1 text-sm font-bold text-white"
+                  className="flex h-7 w-full shrink-0 cursor-pointer items-center gap-1 truncate bg-black/70 px-1 text-sm font-bold text-[var(--accent)]"
                 >
-                  <span data-breadcrumb-index={0} className={breadcrumbHoverIndex !== null ? 'text-[var(--accent)]' : ''}>
-                    {MARKET_LABEL[market]}
-                  </span>
+                  <span>{MARKET_LABEL[market]}</span>
                   {path.map((name, index) => {
                     const segmentIndex = index + 1
                     const isLastPath = index === path.length - 1
-                    const isHighlighted = breadcrumbHoverIndex !== null && breadcrumbHoverIndex >= segmentIndex
                     return (
-                      <span key={index} data-breadcrumb-index={segmentIndex} className="flex items-center gap-1">
-                        <span className={isHighlighted ? 'text-[var(--accent)]' : ''}>&gt;</span>
+                      <span key={index} className="flex items-center gap-1">
+                        <span>&gt;</span>
                         {isLastPath ? (
                           // 지금 보고 있는 카테고리라 클릭해도 아무 동작이 없어야 하므로, 버블링을 막아
                           // 바 전체의 onClick(goToDepth(0))으로 전체 화면으로 빠지지 않게 한다.
-                          <span onClick={e => e.stopPropagation()} className={isHighlighted ? 'text-[var(--accent)]' : ''}>
+                          <span onClick={e => e.stopPropagation()}>
                             {name}
                           </span>
                         ) : (
@@ -362,7 +344,7 @@ export default function MarketMapCustomPage() {
                               handleGoToDepth(segmentIndex)
                             }}
                             style={{ fontFamily: 'inherit' }}
-                            className={`border-0 bg-transparent p-0 text-sm font-bold ${isHighlighted ? 'text-[var(--accent)]' : 'text-white'}`}
+                            className="border-0 bg-transparent p-0 text-sm font-bold text-[var(--accent)]"
                           >
                             {name}
                           </button>

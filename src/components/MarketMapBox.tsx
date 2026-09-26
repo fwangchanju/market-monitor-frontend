@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import Tooltip from './Tooltip'
 import { useTooltip } from '@/hooks/useTooltip'
 import type { MarketMapItem } from '@/types/api'
@@ -66,11 +67,12 @@ export default function MarketMapBox({
         height,
         zIndex: tooltip.hover ? 20 : undefined,
         backgroundColor,
-      }}
+        '--market-map-base-color': backgroundColor,
+      } as CSSProperties}
       onMouseEnter={tooltip.onMouseEnter}
       onMouseMove={tooltip.onMouseMove}
       onMouseLeave={tooltip.onMouseLeave}
-      className="flex flex-col items-center justify-center overflow-hidden border border-black/40 text-white"
+      className="market-map-stock flex flex-col items-center justify-center overflow-hidden border border-black/40 text-white"
     >
       {showLabel && (
         <>

@@ -8,6 +8,7 @@ import { useLoginGate } from '@/hooks/useLoginGate'
 // (그룹 hover로 펼치는 bg-zinc-900 목록)을 그대로 재사용한다 — 새 팝업 스타일을 만들지 않는다.
 // 등락률 전용 색(--stock-up/--stock-down/--negative, 즉 red/blue 계열)은 쓰지 않는다.
 export default function NavBar() {
+  const localAutoLogin = import.meta.env.DEV && import.meta.env.VITE_LOCAL_AUTO_LOGIN === '1'
   const { pathname } = useLocation()
   const { data: session, isLoading } = useSession()
   const { requireLogin } = useLoginGate()
@@ -15,7 +16,13 @@ export default function NavBar() {
 
   return (
     <header className="sticky top-0 z-20 flex h-12 items-center justify-end bg-zinc-900 px-4 shadow-lg">
-      {!isLoading &&
+      {localAutoLogin ? (
+        session?.authenticated ? (
+          <span className="max-w-[12rem] truncate text-sm text-gray-300">
+            {session.email || `사용자 ${session.userId}`}
+          </span>
+        ) : null
+      ) : !isLoading &&
         (session?.authenticated ? (
           <div className="group relative flex h-12 items-center">
             <span className="max-w-[12rem] truncate text-sm text-gray-300 group-hover:text-white">
