@@ -136,15 +136,26 @@ export default function MarketMapTreemap({
   // 비례로 균등하게 그린다(useMarketMapLayout 참고).
   const sectors = useMarketMapLayout(groups, selfSectorName, size.width, size.height, avgChangeRateUseSimple)
 
-  const handleOpenPopup = (content: MarketMapPopupContent, e: React.MouseEvent, alignLeft: boolean, alignTop: boolean) => {
+  // 팝업을 마우스 좌표가 아니라 우클릭한 박스(섹터 전체 박스, 혹은 종목 박스) 가장자리에 스티커 메모처럼
+  // 붙인다. X축은 오른쪽 바깥(2px 간격)이 기본, 공간이 없으면(alignLeft) 왼쪽 바깥으로 뒤집는다.
+  // Y축은 위쪽 가장자리를 맞추는 게 기본, 화면 아래로 넘치면(alignTop) 아래쪽 가장자리를 맞춘다.
+  // alignLeft/alignTop 판단 자체는 기존과 동일하게 레이아웃 단계에서 미리 계산해둔
+  // tooltipAlignLeft/tooltipAlignTop 신호를 그대로 재사용한다(useMarketMapLayout).
+  const POPUP_EDGE_GAP = 2
+  const handleOpenPopup = (content: MarketMapPopupContent, target: HTMLElement, alignLeft: boolean, alignTop: boolean) => {
+    const rect = target.getBoundingClientRect()
     setPopup({
       ...content,
-      left: e.clientX + (alignLeft ? -12 : 12),
-      top: e.clientY + (alignTop ? -8 : 8),
+      left: alignLeft ? rect.left - POPUP_EDGE_GAP : rect.right + POPUP_EDGE_GAP,
+      top: alignTop ? rect.bottom : rect.top,
       alignLeft,
       alignTop,
     })
   }
+
+  // 팝업이 떠 있는 대상(섹터/종목)의 식별 키 — 그 박스에만 초록 하이라이트를 붙이는 데 쓴다.
+  // popup 상태 자체가 곧 하이라이트 대상의 단일 출처라 별도 state 없이 파생시킨다.
+  const highlightedKey = popup?.targetKey ?? null
 
   useEffect(() => {
     if (!popup) return
@@ -295,6 +306,7 @@ export default function MarketMapTreemap({
               depthOffset={ghost.depth}
               onSelectSector={noop}
               onOpenPopup={noop}
+              highlightedKey={null}
               marketValueDepthRange={marketValueDepthRange}
               avgChangeRateDepthRange={avgChangeRateDepthRange}
               upDownCountDepthRange={upDownCountDepthRange}
@@ -317,6 +329,7 @@ export default function MarketMapTreemap({
             depthOffset={depth}
             onSelectSector={handleSelectSector}
             onOpenPopup={handleOpenPopup}
+            highlightedKey={highlightedKey}
             marketValueDepthRange={marketValueDepthRange}
             avgChangeRateDepthRange={avgChangeRateDepthRange}
             upDownCountDepthRange={upDownCountDepthRange}

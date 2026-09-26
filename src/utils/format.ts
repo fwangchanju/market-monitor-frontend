@@ -154,6 +154,14 @@ export const investorLabel = (type: string): string => {
 export const rankingLabel = (type: string): string =>
   type === 'NET_BUY' ? '순매수' : '순매도'
 
+/** 한글 명사 뒤에 붙는 조사 "을"/"를" 선택 — 마지막 글자에 받침이 있으면 "을", 없으면 "를".
+ * 마지막 글자가 한글 완성형 음절이 아니면(영문/숫자 등) 판단할 수 없으니 "을(를)"로 안전하게 표기한다. */
+export const eulReul = (word: string): string => {
+  const lastCode = word.charCodeAt(word.length - 1)
+  if (lastCode < 0xac00 || lastCode > 0xd7a3) return '을(를)'
+  return (lastCode - 0xac00) % 28 === 0 ? '를' : '을'
+}
+
 /** 예상 수집 시각이 실제 데이터 시각보다 미래면 stale(수집 실패 의심) */
 export const isStale = (expected: string | null | undefined, actual: string | null | undefined): boolean => {
   if (!expected || !actual) return false

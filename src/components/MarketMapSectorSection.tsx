@@ -11,7 +11,10 @@ interface Props {
   sector: LaidOutSector
   // rect는 이 섹터 박스 전체의 화면상 위치 — 줌인 애니메이션이 어디서부터 확대되는지 계산하는 데 쓴다.
   onSelectSector: (sectorName: string, rect: DOMRect) => void
-  onOpenPopup: (content: MarketMapPopupContent, e: React.MouseEvent, alignLeft: boolean, alignTop: boolean) => void
+  onOpenPopup: (content: MarketMapPopupContent, target: HTMLElement, alignLeft: boolean, alignTop: boolean) => void
+  // 지금 팝업이 떠 있는 섹터/종목의 식별 키('sector-<id>' | 'stock-<code>') — 이 섹터의 키와 일치하면
+  // 박스 전체에 초록 하이라이트를 붙인다(MarketMapTreemap.highlightedKey).
+  highlightedKey: string | null
   // 셋 다 null = 전부 꺼짐. [min, max]면 그 뎁스 범위(현재 화면 기준 상대 뎁스)에서만 표시.
   marketValueDepthRange: [number, number] | null
   avgChangeRateDepthRange: [number, number] | null
@@ -62,6 +65,7 @@ export default function MarketMapSectorSection({
   sector,
   onSelectSector,
   onOpenPopup,
+  highlightedKey,
   marketValueDepthRange,
   avgChangeRateDepthRange,
   upDownCountDepthRange,
@@ -76,6 +80,8 @@ export default function MarketMapSectorSection({
   depth = 0,
 }: Props) {
   const boxRef = useRef<HTMLDivElement>(null)
+  const sectorKey = `sector-${sector.sectorId}`
+  const isHighlighted = highlightedKey === sectorKey
   const items = collectSectorItems(sector)
   // useFilteredMarketMapTree가 필터 전 원본 노드로 미리 계산해둔 값이다. null이면 지금 선택된 구간에
   // 해당하는 종목이 하나도 없다는 뜻 — 그 섹터는 등락률 칸을 비운다.
@@ -122,7 +128,7 @@ export default function MarketMapSectorSection({
         height: sector.height,
         zIndex: isTopPick ? 20 : undefined,
       }}
-      className={`box-content ${isTopPick ? 'border-2 border-[var(--accent)]' : ''}`}
+      className={`box-content ${isTopPick ? 'border-2 border-[var(--accent)]' : ''} ${isHighlighted ? 'outline outline-2 outline-[#22c55e] shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : ''}`}
     >
       {/* isSelf(드릴다운으로 들어온 자기 자신)는 헤더 태그를 안 그린다 — breadcrumb에 이미
           "KOSPI > 반도체"처럼 같은 이름이 떠 있어서 중복이기 때문(useMarketMapLayout의 paddingTop도
@@ -141,6 +147,7 @@ export default function MarketMapSectorSection({
             onContextMenu={e => {
               e.preventDefault()
               e.stopPropagation()
+              // 팝업 위치/하이라이트는 헤더가 아니라 섹터 박스 전체(boxRef) 기준이어야 한다.
               onOpenPopup({
                 title: sector.sectorName,
                 rows: [
@@ -151,7 +158,13 @@ export default function MarketMapSectorSection({
                   `시가총액 합: ${toJoEokDecimal(sector.totalMarketValue / 100_000_000)}`,
                 ],
                 excludeSector: canExclude ? { id: sector.sectorId, name: sector.sectorName } : undefined,
-              }, e, sector.tooltipAlignLeft, sector.tooltipAlignTop)
+                targetKey: sectorKey,
+              }, boxRef.current ?? e.currentTarget, sector.tooltipAlignLeft, sector.tooltipAlignTop)
+              // 우클릭도 좌클릭(위 onClick)과 마찬가지로 버튼에 포커스를 남기는데, 이 헤더는
+              // :focus-visible에서 hover와 같은 강조 테두리를 보여주는 CSS 규칙이 있어(index.css)
+              // blur 없이 두면 팝업이 뜬 뒤에도 그 테두리가 계속 남아 있었다. 새 초록 하이라이트만
+              // 보이도록 여기서도 blur로 지워준다.
+              e.currentTarget.blur()
             }}
             style={{
               height: sectorHeaderHeight(depth),
@@ -173,6 +186,7 @@ export default function MarketMapSectorSection({
           sector={sub}
           onSelectSector={onSelectSector}
           onOpenPopup={onOpenPopup}
+          highlightedKey={highlightedKey}
           marketValueDepthRange={marketValueDepthRange}
           avgChangeRateDepthRange={avgChangeRateDepthRange}
           upDownCountDepthRange={upDownCountDepthRange}
@@ -203,6 +217,7 @@ export default function MarketMapSectorSection({
           tooltipAlignTop={box.tooltipAlignTop}
           colorScale={colorScale}
           onOpenPopup={onOpenPopup}
+          highlightedKey={highlightedKey}
         />
       ))}
     </div>
