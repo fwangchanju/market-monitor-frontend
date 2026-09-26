@@ -47,6 +47,9 @@ export default function LoginModal({ returnTo, onClose }: Props) {
             닫기
           </button>
         </div>
+        <a href="/privacy" className="mt-4 block text-center text-xs text-gray-500 hover:text-gray-300">
+          개인정보처리방침
+        </a>
       </div>
     </div>
   )
