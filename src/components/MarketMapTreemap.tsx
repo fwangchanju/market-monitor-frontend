@@ -114,6 +114,7 @@ export default function MarketMapTreemap({
   // 사라지는 옛 화면을 실제 콘텐츠 위/아래에 겹쳐 그리는 고스트 — 형제 카테고리들이 순간 사라지지 않고
   // 서서히 페이드아웃(줌인)/줄어들며 사라지도록(줌아웃) 보여준다.
   const [ghost, setGhost] = useState<GhostOverlay | null>(null)
+  const [suppressCategoryHoverBorder, setSuppressCategoryHoverBorder] = useState(false)
   // 카테고리 진입(클릭) 시점에 캡처한 "그 박스가 화면에서 차지하던 위치" — 뎁스별로 기억해뒀다가
   // 다시 나갈 때 정확히 그 자리로 줄어드는 반대 애니메이션에 재사용한다.
   const entryRectsRef = useRef<Map<number, RelativeRect>>(new Map())
@@ -161,6 +162,7 @@ export default function MarketMapTreemap({
   // 미리 잡아두고 실제 이동을 요청한다. 새 뎁스로 리렌더된 뒤 아래 useLayoutEffect가 이 값들을 읽어서
   // "그 자리에서 확대되면서, 형제들은 서서히 사라지는" 애니메이션을 만든다.
   const handleSelectCategory = (categoryName: string, rect: DOMRect) => {
+    setSuppressCategoryHoverBorder(true)
     const containerRect = containerRef.current?.getBoundingClientRect()
     if (containerRect && containerRect.width > 0 && containerRect.height > 0) {
       pendingEnterRectRef.current = toRelativeRect(rect, containerRect)
@@ -263,7 +265,14 @@ export default function MarketMapTreemap({
     // 페이지 스크롤바를 만들고, 스크롤바가 생기면 컨테이너 너비가 줄어서 ResizeObserver가 다시 계산 →
     // 이번엔 안 넘쳐서 스크롤바가 사라지고 너비가 늘고 → 다시 계산... 무한 루프(우측 하단이 떨리는 현상)로
     // 이어진다. overflow-hidden으로 이 삐져나옴 자체를 화면에서 잘라내 루프의 시작을 막는다.
-    <div ref={containerRef} className={`relative w-full overflow-hidden bg-black ${heightClassName}`}>
+    <div
+      ref={containerRef}
+      className={`relative w-full overflow-hidden bg-black ${heightClassName} ${suppressCategoryHoverBorder ? 'market-map-suppress-category-border' : ''}`}
+      onPointerMove={() => {
+        if (suppressCategoryHoverBorder && !ghost) setSuppressCategoryHoverBorder(false)
+      }}
+      onPointerLeave={() => setSuppressCategoryHoverBorder(false)}
+    >
       {/* 줌인일 땐 고스트(옛 화면)를 실제 콘텐츠보다 아래(zIndex -1)에 깔아서, 커지는 실제 콘텐츠가
           덮어가며 형제들을 가리게 하고, 줌아웃일 땐 반대로 위(zIndex 10)에 덮어서 줄어들며 걷히게 한다.
           transform-origin은 항상 '0 0'으로 고정 — zoomStyle 쪽 객체에 넣으면 identity로 바뀔 때 origin

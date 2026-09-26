@@ -303,9 +303,49 @@ a { color: var(--accent-light); text-decoration: none; }
 .settings-subsection-list {
   counter-reset: settings-subsection;
 }
+
 .settings-subsection-num::before {
   counter-increment: settings-subsection;
   content: counter(settings-subsection) ") ";
 }
 
+}
+
+@layer utilities {
+  .market-map-stock {
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+
+  .market-map-stock:hover,
+  .market-map-stock:focus-visible {
+    border-width: 2px;
+    border-color: color-mix(in srgb, var(--market-map-base-color) 58%, white);
+    box-shadow: inset 0 0 0 999px rgb(255 255 255 / 42%);
+  }
+
+  .market-map-category-header:hover,
+  .market-map-category-header:focus-visible {
+    border-width: 2px;
+    border-color: color-mix(in srgb, var(--market-map-base-color) 50%, white);
+    box-shadow: inset 0 0 0 999px rgb(255 255 255 / 50%);
+  }
+
+  .market-map-top-pick-header:hover,
+  .market-map-top-pick-header:focus-visible {
+    border-width: 0;
+    border-color: transparent;
+  }
+
+  .market-map-category-header:active,
+  .market-map-suppress-category-border .market-map-category-header:hover,
+  .market-map-suppress-category-border .market-map-category-header:focus-visible {
+    border-color: transparent;
+    transition: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .market-map-stock {
+      transition: none;
+    }
+  }
 }

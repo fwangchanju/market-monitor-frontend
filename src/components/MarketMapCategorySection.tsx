@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, type CSSProperties } from 'react'
 import MarketMapBox from './MarketMapBox'
 import Tooltip from './Tooltip'
 import { useTooltip } from '@/hooks/useTooltip'
@@ -53,10 +53,10 @@ const TOOLTIP_OFFSET_X = 56
 
 // 절대 depth(트리 기준 실제 단계) → 배경/글자색. 배열 끝을 넘으면 마지막 값을 반복한다.
 const CATEGORY_HEADER_STYLES = [
-  { background: 'bg-black', text: 'text-[var(--accent)]', border: 'border-2 border-transparent' },
-  { background: 'bg-[#333333]', text: 'text-white', border: 'border-2 border-transparent' },
-  { background: 'bg-[#4d4d4d]', text: 'text-white', border: 'border-2 border-transparent' },
-  { background: 'bg-[#666666]', text: 'text-white', border: 'border-2 border-transparent' },
+  { background: 'bg-black', baseColor: '#000000', text: 'text-[var(--accent)]', border: 'border-2 border-transparent' },
+  { background: 'bg-[#333333]', baseColor: '#333333', text: 'text-white', border: 'border-2 border-transparent' },
+  { background: 'bg-[#4d4d4d]', baseColor: '#4d4d4d', text: 'text-white', border: 'border-2 border-transparent' },
+  { background: 'bg-[#666666]', baseColor: '#666666', text: 'text-white', border: 'border-2 border-transparent' },
 ]
 
 function categoryHeaderStyle(depth: number) {
@@ -104,12 +104,17 @@ export default function MarketMapCategorySection({
   ].filter((part): part is string => part !== null)
   const headerSuffix = headerParts.length > 0 ? `${TAB_GAP}${headerParts.join(TAB_GAP)}` : ''
   const absoluteDepth = depthOffset + depth
-  const displayCategoryName = absoluteDepth === 2 ? `└ ${category.categoryName}` : category.categoryName
+  const displayCategoryName = absoluteDepth === 2
+    ? `└ ${category.categoryName}`
+    : absoluteDepth === 1
+      ? `· ${category.categoryName}`
+      : category.categoryName
   const headerStyle = isTopPick
     ? {
         background: 'bg-[var(--accent)]',
+        baseColor: 'var(--accent)',
         text: 'text-black',
-        border: 'border-0',
+        border: 'border-0 border-transparent',
       }
     : categoryHeaderStyle(absoluteDepth)
 
@@ -157,8 +162,9 @@ export default function MarketMapCategorySection({
               fontSize: categoryHeaderFontSize(depth),
               left: PADDING,
               width: `calc(100% - ${PADDING * 2}px)`,
-            }}
-            className={`absolute top-0 flex items-center overflow-hidden truncate px-1 text-left font-bold leading-none ${headerStyle.border} ${headerStyle.text ?? ''} ${headerStyle.background}`}
+              '--market-map-base-color': headerStyle.baseColor,
+            } as CSSProperties}
+            className={`market-map-category-header ${isTopPick ? 'market-map-top-pick-header' : ''} absolute top-0 flex items-center overflow-hidden truncate px-1 text-left font-bold leading-none ${headerStyle.border} ${headerStyle.text ?? ''} ${headerStyle.background}`}
           >
             {displayCategoryName}
             {headerSuffix && <span className="font-normal">{headerSuffix}</span>}
