@@ -1,6 +1,5 @@
 import type { CSSProperties } from 'react'
-import Tooltip from './Tooltip'
-import { useTooltip } from '@/hooks/useTooltip'
+import type { MarketMapPopupContent } from './MarketMapPopup'
 import type { MarketMapItem } from '@/types/api'
 import { toJoEok, toPctSigned, toVolume } from '@/utils/format'
 import { resolveMarketMapColor, type ColorScaleConfig } from '@/utils/marketMapColorScale'
@@ -26,15 +25,12 @@ interface Props {
   // 박스 색칠은 이 설정 하나로만 결정된다(resolveMarketMapColor) — 범례 바(MarketMapCustomPage)도
   // 같은 설정 + 같은 함수를 거치므로 두 화면이 항상 수학적으로 일치한다.
   colorScale: ColorScaleConfig
+  onOpenPopup: (content: MarketMapPopupContent, e: React.MouseEvent, alignLeft: boolean, alignTop: boolean) => void
 }
 
 function fontSizePx(width: number, height: number): number {
   return Math.max(12, Math.min(22, Math.min(width, height) / 5))
 }
-
-// 마우스 커서(손모양 아이콘)가 툴팁 첫 글자를 가리지 않도록 두는 좌우 간격 — 임의값 대신 Tailwind
-// 스페이싱 스케일의 14(spacing-14 = 3.5rem = 56px, 루트 폰트 16px 기준)에 맞춘 값.
-const TOOLTIP_OFFSET_X = 56
 
 export default function MarketMapBox({
   item,
@@ -49,14 +45,13 @@ export default function MarketMapBox({
   tooltipAlignLeft,
   tooltipAlignTop,
   colorScale,
+  onOpenPopup,
 }: Props) {
   const showLabel = stockLabelMode !== 'off' && areaPercent >= labelMinAreaPercent
   const showName = stockLabelMode !== 'rateOnly'
   const showRate = stockLabelMode !== 'nameOnly'
   const fontSize = fontSizePx(width, height)
   const backgroundColor = resolveMarketMapColor(item.changeRate, colorScale)
-  const tooltip = useTooltip(TOOLTIP_OFFSET_X, 8, tooltipAlignLeft, tooltipAlignTop)
-
   return (
     <div
       style={{
@@ -65,13 +60,22 @@ export default function MarketMapBox({
         top: y,
         width,
         height,
-        zIndex: tooltip.hover ? 20 : undefined,
         backgroundColor,
         '--market-map-base-color': backgroundColor,
       } as CSSProperties}
-      onMouseEnter={tooltip.onMouseEnter}
-      onMouseMove={tooltip.onMouseMove}
-      onMouseLeave={tooltip.onMouseLeave}
+      onContextMenu={e => {
+        e.preventDefault()
+        e.stopPropagation()
+        onOpenPopup({
+          title: item.stockName,
+          rows: [
+            `등락률: ${toPctSigned(item.changeRate, decimalPlaces)}`,
+            `현재가: ${toVolume(item.currentPrice)}원`,
+            `전일종가: ${toVolume(item.lastPrice)}원`,
+            `시가총액: ${toJoEok(item.totalMarketValue / 100_000_000)}`,
+          ],
+        }, e, tooltipAlignLeft, tooltipAlignTop)
+      }}
       className="market-map-stock flex flex-col items-center justify-center overflow-hidden border border-black/40 text-white"
     >
       {showLabel && (
@@ -89,13 +93,6 @@ export default function MarketMapBox({
         </>
       )}
 
-      <Tooltip visible={tooltip.hover} position={tooltip.position} alignLeft={tooltipAlignLeft} alignTop={tooltipAlignTop}>
-        <div className="font-bold">{item.stockName}</div>
-        <div> 등락률: {toPctSigned(item.changeRate, decimalPlaces)}</div>
-        <div> 현재가: {toVolume(item.currentPrice)}원</div>
-        <div> 전일종가: {toVolume(item.lastPrice)}원</div>
-        <div> 시가총액: {toJoEok(item.totalMarketValue / 100_000_000)}</div>
-      </Tooltip>
     </div>
   )
 }

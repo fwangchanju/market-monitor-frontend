@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useMarketMapLayout, type DisplayGroup, type LaidOutSector } from '@/hooks/useMarketMapLayout'
 import MarketMapSectorSection from './MarketMapSectorSection'
+import MarketMapPopup, { type MarketMapPopupContent, type MarketMapPopupState } from './MarketMapPopup'
 import type { ColorScaleConfig } from '@/utils/marketMapColorScale'
 import type { StockLabelMode } from '@/hooks/useGlobalSettings'
 
@@ -35,13 +35,6 @@ interface Props {
   // 0이 아닌 뎁스가 오면 그 뎁스로 진입할 때 썼던 위치로 줄어드는 애니메이션을 재생한다.
   zoomOutRequestDepth: number | null
   onZoomOutComplete: (depth: number) => void
-}
-
-interface ContextMenuState {
-  sectorId: number
-  sectorName: string
-  left: number
-  top: number
 }
 
 // 컨테이너 기준 0~1 비율 좌표 — 컨테이너 크기가 나중에 달라져도(리사이즈) 값이 그대로 유효하다.
@@ -106,9 +99,7 @@ export default function MarketMapTreemap({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
-  // 헤더가 뎁스에 따라 아주 작아질 수 있어서(최소 16px), hover로 버튼을 끼워 넣는 대신
-  // 우클릭 컨텍스트 메뉴로 "이 섹터 제외"를 제공한다 — 박스 크기와 무관하게 항상 동작한다.
-  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [popup, setPopup] = useState<MarketMapPopupState | null>(null)
   // 실제(현재) 콘텐츠 wrapper에 거는 transform/opacity — 줌인일 때만 쓴다(작게 시작해서 꽉 차게 커짐).
   const [zoomStyle, setZoomStyle] = useState<React.CSSProperties | undefined>(undefined)
   // 사라지는 옛 화면을 실제 콘텐츠 위/아래에 겹쳐 그리는 고스트 — 형제 섹터들이 순간 사라지지 않고
@@ -145,18 +136,32 @@ export default function MarketMapTreemap({
   // 비례로 균등하게 그린다(useMarketMapLayout 참고).
   const sectors = useMarketMapLayout(groups, selfSectorName, size.width, size.height, avgChangeRateUseSimple)
 
-  const handleOpenExcludeMenu = (sectorId: number, sectorName: string, e: React.MouseEvent) => {
-    setContextMenu({ sectorId, sectorName, left: e.clientX, top: e.clientY })
+  const handleOpenPopup = (content: MarketMapPopupContent, e: React.MouseEvent, alignLeft: boolean, alignTop: boolean) => {
+    setPopup({
+      ...content,
+      left: e.clientX + (alignLeft ? -12 : 12),
+      top: e.clientY + (alignTop ? -8 : 8),
+      alignLeft,
+      alignTop,
+    })
   }
 
   useEffect(() => {
-    if (!contextMenu) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setContextMenu(null)
+    if (!popup) return
+    const handlePointerDown = (e: PointerEvent) => {
+      if (e.target instanceof Element && e.target.closest('[data-market-map-popup]')) return
+      setPopup(null)
     }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPopup(null)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
     document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [contextMenu])
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [popup])
 
   // 섹터 클릭 시점의(=아직 이전 뎁스 화면인 상태의) 박스 위치와, 지금 화면 전체(형제 포함) 스냅샷을
   // 미리 잡아두고 실제 이동을 요청한다. 새 뎁스로 리렌더된 뒤 아래 useLayoutEffect가 이 값들을 읽어서
@@ -289,7 +294,7 @@ export default function MarketMapTreemap({
               sector={sector}
               depthOffset={ghost.depth}
               onSelectSector={noop}
-              onOpenExcludeMenu={noop}
+              onOpenPopup={noop}
               marketValueDepthRange={marketValueDepthRange}
               avgChangeRateDepthRange={avgChangeRateDepthRange}
               upDownCountDepthRange={upDownCountDepthRange}
@@ -311,7 +316,7 @@ export default function MarketMapTreemap({
             sector={sector}
             depthOffset={depth}
             onSelectSector={handleSelectSector}
-            onOpenExcludeMenu={handleOpenExcludeMenu}
+            onOpenPopup={handleOpenPopup}
             marketValueDepthRange={marketValueDepthRange}
             avgChangeRateDepthRange={avgChangeRateDepthRange}
             upDownCountDepthRange={upDownCountDepthRange}
@@ -325,28 +330,7 @@ export default function MarketMapTreemap({
           />
         ))}
       </div>
-      {contextMenu &&
-        createPortal(
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} onContextMenu={e => e.preventDefault()} />
-            <div
-              className="fixed z-50 w-max border border-gray-700 bg-[var(--surface)] py-1 text-xs shadow-lg"
-              style={{ left: contextMenu.left, top: contextMenu.top }}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  onExcludeSector(contextMenu.sectorId, contextMenu.sectorName)
-                  setContextMenu(null)
-                }}
-                className="block w-full whitespace-nowrap border-0 bg-transparent px-3 py-1.5 text-left text-red-500 hover:bg-red-500/10"
-              >
-                {contextMenu.sectorName} 제외
-              </button>
-            </div>
-          </>,
-          document.body,
-        )}
+      <MarketMapPopup popup={popup} onExcludeSector={onExcludeSector} onClose={() => setPopup(null)} />
     </div>
   )
 }

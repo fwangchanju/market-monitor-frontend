@@ -1,7 +1,6 @@
 import { useRef, type CSSProperties } from 'react'
 import MarketMapBox from './MarketMapBox'
-import Tooltip from './Tooltip'
-import { useTooltip } from '@/hooks/useTooltip'
+import type { MarketMapPopupContent } from './MarketMapPopup'
 import { sectorHeaderFontSize, sectorHeaderHeight, PADDING, type LaidOutSector } from '@/hooks/useMarketMapLayout'
 import { TAB_GAP, avgChangeRateLabel, toJoEokDecimal, toPctSigned } from '@/utils/format'
 import type { MarketMapItem } from '@/types/api'
@@ -12,7 +11,7 @@ interface Props {
   sector: LaidOutSector
   // rect는 이 섹터 박스 전체의 화면상 위치 — 줌인 애니메이션이 어디서부터 확대되는지 계산하는 데 쓴다.
   onSelectSector: (sectorName: string, rect: DOMRect) => void
-  onOpenExcludeMenu: (sectorId: number, sectorName: string, e: React.MouseEvent) => void
+  onOpenPopup: (content: MarketMapPopupContent, e: React.MouseEvent, alignLeft: boolean, alignTop: boolean) => void
   // 셋 다 null = 전부 꺼짐. [min, max]면 그 뎁스 범위(현재 화면 기준 상대 뎁스)에서만 표시.
   marketValueDepthRange: [number, number] | null
   avgChangeRateDepthRange: [number, number] | null
@@ -47,10 +46,6 @@ function isInDepthRange(range: [number, number] | null, depth: number): boolean 
   return range !== null && depth >= range[0] && depth <= range[1]
 }
 
-// 마우스 커서(손모양 아이콘)가 툴팁 첫 글자를 가리지 않도록 두는 좌우 간격 — 종목 박스 툴팁과
-// 동일한 간격(56px)을 쓰지만, 이 컴포넌트 전용 값으로 별도 관리한다(MarketMapBox.tsx에서 import하지 않음).
-const TOOLTIP_OFFSET_X = 56
-
 // 절대 depth(트리 기준 실제 단계) → 배경/글자색. 배열 끝을 넘으면 마지막 값을 반복한다.
 const SECTOR_HEADER_STYLES = [
   { background: 'bg-black', baseColor: '#000000', text: 'text-[var(--accent)]', border: 'border-2 border-transparent' },
@@ -66,7 +61,7 @@ function sectorHeaderStyle(depth: number) {
 export default function MarketMapSectorSection({
   sector,
   onSelectSector,
-  onOpenExcludeMenu,
+  onOpenPopup,
   marketValueDepthRange,
   avgChangeRateDepthRange,
   upDownCountDepthRange,
@@ -81,8 +76,6 @@ export default function MarketMapSectorSection({
   depth = 0,
 }: Props) {
   const boxRef = useRef<HTMLDivElement>(null)
-  const tooltip = useTooltip(TOOLTIP_OFFSET_X, 8, sector.tooltipAlignLeft, sector.tooltipAlignTop)
-
   const items = collectSectorItems(sector)
   // useFilteredMarketMapTree가 필터 전 원본 노드로 미리 계산해둔 값이다. null이면 지금 선택된 구간에
   // 해당하는 종목이 하나도 없다는 뜻 — 그 섹터는 등락률 칸을 비운다.
@@ -127,8 +120,7 @@ export default function MarketMapSectorSection({
         top: sector.y,
         width: sector.width,
         height: sector.height,
-        // 툴팁이 형제 섹터 아래에 가려지지 않도록 hover 시 z-index만 올린다.
-        zIndex: isTopPick || tooltip.hover ? 20 : undefined,
+        zIndex: isTopPick ? 20 : undefined,
       }}
       className={`box-content ${isTopPick ? 'border-2 border-[var(--accent)]' : ''}`}
     >
@@ -146,17 +138,21 @@ export default function MarketMapSectorSection({
               // 클릭 후에도 이 버튼에 포커스가 남아서 브라우저 기본 포커스 링이 계속 보이는 걸 방지.
               e.currentTarget.blur()
             }}
-            onContextMenu={
-              !canExclude
-                ? undefined
-                : e => {
-                    e.preventDefault()
-                    onOpenExcludeMenu(sector.sectorId, sector.sectorName, e)
-                  }
-            }
-            onMouseEnter={tooltip.onMouseEnter}
-            onMouseMove={tooltip.onMouseMove}
-            onMouseLeave={tooltip.onMouseLeave}
+            onContextMenu={e => {
+              e.preventDefault()
+              e.stopPropagation()
+              onOpenPopup({
+                title: sector.sectorName,
+                rows: [
+                  ...(avgChangeRate !== null
+                    ? [`${avgChangeRateLabel(avgChangeRateUseSimple)}: ${toPctSigned(avgChangeRate, decimalPlaces)}`]
+                    : []),
+                  `상승 ${advancerCount} 하락 ${declinerCount} 보합 ${unchangedCount}`,
+                  `시가총액 합: ${toJoEokDecimal(sector.totalMarketValue / 100_000_000)}`,
+                ],
+                excludeSector: canExclude ? { id: sector.sectorId, name: sector.sectorName } : undefined,
+              }, e, sector.tooltipAlignLeft, sector.tooltipAlignTop)
+            }}
             style={{
               height: sectorHeaderHeight(depth),
               fontSize: sectorHeaderFontSize(depth),
@@ -169,19 +165,6 @@ export default function MarketMapSectorSection({
             {displaySectorName}
             {headerSuffix && <span className="font-normal">{headerSuffix}</span>}
           </button>
-          <Tooltip
-            visible={tooltip.hover}
-            position={tooltip.position}
-            alignLeft={sector.tooltipAlignLeft}
-            alignTop={sector.tooltipAlignTop}
-          >
-            <div className="font-bold">{sector.sectorName}</div>
-            {avgChangeRate !== null && (
-              <div> {avgChangeRateLabel(avgChangeRateUseSimple)}: {toPctSigned(avgChangeRate, decimalPlaces)}</div>
-            )}
-            <div> 상승 {advancerCount} 하락 {declinerCount} 보합 {unchangedCount}</div>
-            <div> 시가총액 합: {toJoEokDecimal(sector.totalMarketValue / 100_000_000)}</div>
-          </Tooltip>
         </>
       )}
       {sector.subSectors.map(sub => (
@@ -189,7 +172,7 @@ export default function MarketMapSectorSection({
           key={sub.sectorName}
           sector={sub}
           onSelectSector={onSelectSector}
-          onOpenExcludeMenu={onOpenExcludeMenu}
+          onOpenPopup={onOpenPopup}
           marketValueDepthRange={marketValueDepthRange}
           avgChangeRateDepthRange={avgChangeRateDepthRange}
           upDownCountDepthRange={upDownCountDepthRange}
@@ -219,6 +202,7 @@ export default function MarketMapSectorSection({
           tooltipAlignLeft={box.tooltipAlignLeft}
           tooltipAlignTop={box.tooltipAlignTop}
           colorScale={colorScale}
+          onOpenPopup={onOpenPopup}
         />
       ))}
     </div>
