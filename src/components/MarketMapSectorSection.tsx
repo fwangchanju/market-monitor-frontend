@@ -13,7 +13,7 @@ interface Props {
   onSelectSector: (sectorName: string, rect: DOMRect) => void
   onOpenPopup: (content: MarketMapPopupContent, target: HTMLElement) => void
   // 지금 팝업이 떠 있는 섹터/종목의 식별 키(sectorPath/stockPath 기반) — 이 섹터의 키와 일치하면
-  // 박스 전체에 초록 하이라이트를 붙인다(MarketMapTreemap.highlightedKey). 아래 sectorPath 계산 참고.
+  // 호버 오버레이를 "고정(pinned)"으로 계속 보여준다(index.css의 .is-pinned). 아래 sectorPath 계산 참고.
   highlightedKey: string | null
   // 루트부터 이 섹터의 부모까지 이어붙인 경로(각 마디는 '\u0000'로 구분) — 하이라이트 키를 sectorId나
   // 이름 하나만으로 만들면 충돌한다: 기본(비커스텀) 분류에서는 모든 노드의 sectorId가 0으로 오고,
@@ -89,7 +89,8 @@ export default function MarketMapSectorSection({
   // 이 섹터까지의 전체 경로(루트부터) — 하이라이트 키와 하위로 넘길 ancestorPath에 그대로 쓴다.
   const sectorPath = `${ancestorPath}\u0000${sector.sectorName}`
   const sectorKey = `sector:${sectorPath}`
-  const isHighlighted = highlightedKey === sectorKey
+  // 팝업이 이 섹터를 대상으로 떠 있는 동안 호버 오버레이를 고정해서 보여준다(index.css의 .is-pinned).
+  const isPinned = highlightedKey === sectorKey
   const items = collectSectorItems(sector)
   // useFilteredMarketMapTree가 필터 전 원본 노드로 미리 계산해둔 값이다. null이면 지금 선택된 구간에
   // 해당하는 종목이 하나도 없다는 뜻 — 그 섹터는 등락률 칸을 비운다.
@@ -135,15 +136,27 @@ export default function MarketMapSectorSection({
         width: sector.width,
         height: sector.height,
         zIndex: isTopPick ? 20 : undefined,
-      }}
-      className={`box-content ${isTopPick ? 'border-2 border-[var(--accent)]' : ''} ${isHighlighted ? 'outline outline-2 outline-[#22c55e] shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : ''}`}
+        // 헤더뿐 아니라 아래 hover 오버레이(market-map-sector-hover-overlay)도 이 값을 그대로
+        // 상속해서 쓴다 — 오버레이는 헤더의 형제라 헤더에 걸면 안 내려온다(CSS 변수는 자손에게만
+        // 상속), 그래서 둘의 공통 조상인 여기(box-content)에 한 번만 건다.
+        '--market-map-base-color': headerStyle.baseColor,
+      } as CSSProperties}
+      className={`market-map-sector-box box-content ${isTopPick ? 'border-2 border-[var(--accent)]' : ''} ${isPinned ? 'is-pinned' : ''}`}
     >
       {/* isSelf(드릴다운으로 들어온 자기 자신)는 헤더 태그를 안 그린다 — breadcrumb에 이미
           "KOSPI > 반도체"처럼 같은 이름이 떠 있어서 중복이기 때문(useMarketMapLayout의 paddingTop도
           이 섹터 몫의 헤더 공간을 아예 안 비워둔다). 그 대신 실제 하위 섹터들이 이 자리를 이어받아
-          맨 위(depth 0) 취급을 받는다(아래 subSectors map의 depth 전달 참고). */}
+          맨 위(depth 0) 취급을 받는다(아래 subSectors map의 depth 전달 참고). isSelf는 헤더가 아예
+          없어 우클릭도 못 받으므로(팝업 대상이 될 수 없음) hover 오버레이도 같이 생략한다. */}
       {!sector.isSelf && (
         <>
+          {/* 헤더를 hover(또는 팝업이 뜬 채 고정)했을 때 섹터 박스 전체를 옅게 덮는 오버레이 —
+              DOM에서 헤더보다 먼저 그려서(같은 stacking level, 나중에 그려지는 쪽이 위) 헤더 글자가
+              항상 오버레이 위로 보이게 한다. 표시 여부는 순수 CSS(:has())로 판정한다(index.css) —
+              헤더 :hover/:focus-visible 자체를 트리거로 쓰고, 팝업이 뜬 상태는 위 is-pinned 클래스로
+              같은 규칙에 얹는다. 하위 섹터의 헤더를 hover해도 :has(> ...)의 '>'가 직계 자식만 보므로
+              이 오버레이는 안 뜨고, 그 하위 섹터 자신의 오버레이만 뜬다. */}
+          <div className="market-map-sector-hover-overlay absolute inset-0 pointer-events-none" aria-hidden="true" />
           <button
             type="button"
             onClick={e => {
@@ -170,8 +183,7 @@ export default function MarketMapSectorSection({
               }, boxRef.current ?? e.currentTarget)
               // 우클릭도 좌클릭(위 onClick)과 마찬가지로 버튼에 포커스를 남기는데, 이 헤더는
               // :focus-visible에서 hover와 같은 강조 테두리를 보여주는 CSS 규칙이 있어(index.css)
-              // blur 없이 두면 팝업이 뜬 뒤에도 그 테두리가 계속 남아 있었다. 새 초록 하이라이트만
-              // 보이도록 여기서도 blur로 지워준다.
+              // blur 없이 두면 팝업이 뜬 뒤에도 그 테두리가 계속 남아 있었다. blur로 지워준다.
               e.currentTarget.blur()
             }}
             style={{
@@ -179,7 +191,6 @@ export default function MarketMapSectorSection({
               fontSize: sectorHeaderFontSize(depth),
               left: PADDING,
               width: `calc(100% - ${PADDING * 2}px)`,
-              '--market-map-base-color': headerStyle.baseColor,
             } as CSSProperties}
             className={`market-map-sector-header ${isTopPick ? 'market-map-top-pick-header' : ''} absolute top-0 flex items-center overflow-hidden truncate px-1 text-left font-bold leading-none ${headerStyle.border} ${headerStyle.text ?? ''} ${headerStyle.background}`}
           >

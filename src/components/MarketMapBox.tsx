@@ -25,7 +25,7 @@ interface Props {
   colorScale: ColorScaleConfig
   onOpenPopup: (content: MarketMapPopupContent, target: HTMLElement) => void
   // 지금 팝업이 떠 있는 섹터/종목의 식별 키(sectorPath/stockPath 기반) — 이 종목의 키와 일치하면
-  // 박스에 초록 하이라이트를 붙인다(MarketMapTreemap.highlightedKey).
+  // 이 박스의 hover 모양(2px 테두리 + 흰 오버레이, index.css)을 "고정(pinned)"으로 계속 보여준다.
   highlightedKey: string | null
   // 이 박스를 담고 있는 섹터의 전체 경로(MarketMapSectorSection.sectorPath) — stockCode만으로는
   // 같은 종목이 트리 여러 자리에 나타날 가능성을 배제할 수 없어, 종목 키도 경로로 유일하게 만든다.
@@ -57,7 +57,8 @@ export default function MarketMapBox({
   const fontSize = fontSizePx(width, height)
   const backgroundColor = resolveMarketMapColor(item.changeRate, colorScale)
   const stockKey = `stock:${ancestorPath}\u0000${item.stockCode}`
-  const isHighlighted = highlightedKey === stockKey
+  // 팝업이 이 종목을 대상으로 떠 있는 동안 hover 모양을 고정해서 보여준다(index.css의 .is-pinned).
+  const isPinned = highlightedKey === stockKey
   return (
     <div
       style={{
@@ -83,7 +84,7 @@ export default function MarketMapBox({
           targetKey: stockKey,
         }, e.currentTarget)
       }}
-      className={`market-map-stock flex flex-col items-center justify-center overflow-hidden border border-black/40 text-white ${isHighlighted ? 'outline outline-2 outline-[#22c55e] shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : ''}`}
+      className={`market-map-stock flex flex-col items-center justify-center overflow-hidden border border-black/40 text-white ${isPinned ? 'is-pinned' : ''}`}
     >
       {showLabel && (
         <>
