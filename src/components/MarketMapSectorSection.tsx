@@ -12,9 +12,14 @@ interface Props {
   // rect는 이 섹터 박스 전체의 화면상 위치 — 줌인 애니메이션이 어디서부터 확대되는지 계산하는 데 쓴다.
   onSelectSector: (sectorName: string, rect: DOMRect) => void
   onOpenPopup: (content: MarketMapPopupContent, target: HTMLElement) => void
-  // 지금 팝업이 떠 있는 섹터/종목의 식별 키('sector-<id>' | 'stock-<code>') — 이 섹터의 키와 일치하면
-  // 박스 전체에 초록 하이라이트를 붙인다(MarketMapTreemap.highlightedKey).
+  // 지금 팝업이 떠 있는 섹터/종목의 식별 키(sectorPath/stockPath 기반) — 이 섹터의 키와 일치하면
+  // 박스 전체에 초록 하이라이트를 붙인다(MarketMapTreemap.highlightedKey). 아래 sectorPath 계산 참고.
   highlightedKey: string | null
+  // 루트부터 이 섹터의 부모까지 이어붙인 경로(각 마디는 '\u0000'로 구분) — 하이라이트 키를 sectorId나
+  // 이름 하나만으로 만들면 충돌한다: 기본(비커스텀) 분류에서는 모든 노드의 sectorId가 0으로 오고,
+  // 드릴다운으로 들어간 섹터는 자기 자신과 같은 이름의 "self" 합성 노드로 다시 감싸일 수 있어(isSelf)
+  // 이름만으로도 조상/자손이 겹칠 수 있다. 루트에서부터의 전체 경로는 항상 유일하다.
+  ancestorPath: string
   // 셋 다 null = 전부 꺼짐. [min, max]면 그 뎁스 범위(현재 화면 기준 상대 뎁스)에서만 표시.
   marketValueDepthRange: [number, number] | null
   avgChangeRateDepthRange: [number, number] | null
@@ -66,6 +71,7 @@ export default function MarketMapSectorSection({
   onSelectSector,
   onOpenPopup,
   highlightedKey,
+  ancestorPath,
   marketValueDepthRange,
   avgChangeRateDepthRange,
   upDownCountDepthRange,
@@ -80,7 +86,9 @@ export default function MarketMapSectorSection({
   depth = 0,
 }: Props) {
   const boxRef = useRef<HTMLDivElement>(null)
-  const sectorKey = `sector-${sector.sectorId}`
+  // 이 섹터까지의 전체 경로(루트부터) — 하이라이트 키와 하위로 넘길 ancestorPath에 그대로 쓴다.
+  const sectorPath = `${ancestorPath}\u0000${sector.sectorName}`
+  const sectorKey = `sector:${sectorPath}`
   const isHighlighted = highlightedKey === sectorKey
   const items = collectSectorItems(sector)
   // useFilteredMarketMapTree가 필터 전 원본 노드로 미리 계산해둔 값이다. null이면 지금 선택된 구간에
@@ -187,6 +195,7 @@ export default function MarketMapSectorSection({
           onSelectSector={onSelectSector}
           onOpenPopup={onOpenPopup}
           highlightedKey={highlightedKey}
+          ancestorPath={sectorPath}
           marketValueDepthRange={marketValueDepthRange}
           avgChangeRateDepthRange={avgChangeRateDepthRange}
           upDownCountDepthRange={upDownCountDepthRange}
@@ -216,6 +225,7 @@ export default function MarketMapSectorSection({
           colorScale={colorScale}
           onOpenPopup={onOpenPopup}
           highlightedKey={highlightedKey}
+          ancestorPath={sectorPath}
         />
       ))}
     </div>

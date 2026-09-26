@@ -302,6 +302,7 @@ export default function MarketMapTreemap({
               onSelectSector={noop}
               onOpenPopup={noop}
               highlightedKey={null}
+              ancestorPath=""
               marketValueDepthRange={marketValueDepthRange}
               avgChangeRateDepthRange={avgChangeRateDepthRange}
               upDownCountDepthRange={upDownCountDepthRange}
@@ -325,6 +326,7 @@ export default function MarketMapTreemap({
             onSelectSector={handleSelectSector}
             onOpenPopup={handleOpenPopup}
             highlightedKey={highlightedKey}
+            ancestorPath=""
             marketValueDepthRange={marketValueDepthRange}
             avgChangeRateDepthRange={avgChangeRateDepthRange}
             upDownCountDepthRange={upDownCountDepthRange}

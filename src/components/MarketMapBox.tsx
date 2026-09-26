@@ -24,9 +24,12 @@ interface Props {
   // 같은 설정 + 같은 함수를 거치므로 두 화면이 항상 수학적으로 일치한다.
   colorScale: ColorScaleConfig
   onOpenPopup: (content: MarketMapPopupContent, target: HTMLElement) => void
-  // 지금 팝업이 떠 있는 섹터/종목의 식별 키('sector-<id>' | 'stock-<code>') — 이 종목의 키와 일치하면
+  // 지금 팝업이 떠 있는 섹터/종목의 식별 키(sectorPath/stockPath 기반) — 이 종목의 키와 일치하면
   // 박스에 초록 하이라이트를 붙인다(MarketMapTreemap.highlightedKey).
   highlightedKey: string | null
+  // 이 박스를 담고 있는 섹터의 전체 경로(MarketMapSectorSection.sectorPath) — stockCode만으로는
+  // 같은 종목이 트리 여러 자리에 나타날 가능성을 배제할 수 없어, 종목 키도 경로로 유일하게 만든다.
+  ancestorPath: string
 }
 
 function fontSizePx(width: number, height: number): number {
@@ -46,13 +49,15 @@ export default function MarketMapBox({
   colorScale,
   onOpenPopup,
   highlightedKey,
+  ancestorPath,
 }: Props) {
   const showLabel = stockLabelMode !== 'off' && areaPercent >= labelMinAreaPercent
   const showName = stockLabelMode !== 'rateOnly'
   const showRate = stockLabelMode !== 'nameOnly'
   const fontSize = fontSizePx(width, height)
   const backgroundColor = resolveMarketMapColor(item.changeRate, colorScale)
-  const isHighlighted = highlightedKey === `stock-${item.stockCode}`
+  const stockKey = `stock:${ancestorPath}\u0000${item.stockCode}`
+  const isHighlighted = highlightedKey === stockKey
   return (
     <div
       style={{
@@ -75,7 +80,7 @@ export default function MarketMapBox({
             `전일종가: ${toVolume(item.lastPrice)}원`,
             `시가총액: ${toJoEok(item.totalMarketValue / 100_000_000)}`,
           ],
-          targetKey: `stock-${item.stockCode}`,
+          targetKey: stockKey,
         }, e.currentTarget)
       }}
       className={`market-map-stock flex flex-col items-center justify-center overflow-hidden border border-black/40 text-white ${isHighlighted ? 'outline outline-2 outline-[#22c55e] shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : ''}`}
