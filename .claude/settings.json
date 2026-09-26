@@ -1,16 +1,17 @@
 {
   "permissions": {
     "deny": [
-      "mcp__github__merge_pull_request",
-      "Bash(gh pr merge*)",
-      "Bash(gh workflow run*)"
+      "Bash(sudo *)",
+      "Bash(ssh *)",
+      "Bash(scp *)",
+      "Bash(sftp *)",
+      "Bash(rsync *)",
+      "Bash(kubectl *)",
+      "Bash(helm *)"
     ],
     "ask": [
-      "Bash(git commit*)",
-      "Bash(git push*)",
-      "Bash(gh pr create*)",
-      "mcp__github__create_pull_request",
-      "mcp__github__update_pull_request"
+      "Bash(docker *)",
+      "Bash(docker-compose *)"
     ]
   }
 }
