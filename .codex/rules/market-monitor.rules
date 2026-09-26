@@ -1,0 +1,13 @@
+prefix_rule(
+    pattern = [["sudo", "ssh", "scp", "sftp", "rsync", "kubectl", "helm"]],
+    decision = "forbidden",
+    justification = "Production server access and direct deployment are forbidden; use GitHub Actions.",
+    match = ["ssh production.example"],
+)
+
+prefix_rule(
+    pattern = [["docker", "docker-compose"]],
+    decision = "prompt",
+    justification = "Confirm an isolated local Docker daemon; production Docker is forbidden.",
+    match = ["docker ps"],
+)
