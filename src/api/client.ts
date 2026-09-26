@@ -1,5 +1,5 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios'
-import { AuthSessionResponseSchema } from '@/types/api'
+import { AuthSessionResponseSchema, type AuthSessionResponse } from '@/types/api'
 import queryClient from './queryClient'
 import { authKeys } from '@/hooks/queryKeys'
 
@@ -16,10 +16,34 @@ type RetriableConfig = InternalAxiosRequestConfig & { _retriedAfterRefresh?: boo
 // 원래 요청을 재시도한다. refresh도 실패하면 로그아웃 상태로 간주하고(세션 캐시를 anonymous로
 // 되돌린다) 원래 에러를 그대로 던진다 — 화면은 이후 로그아웃 UI로 자연히 전환된다.
 // /auth/** 자체의 401(예: 세션 없음)은 재시도 대상이 아니다 — 무한 루프를 막는다.
-let refreshPromise: Promise<unknown> | null = null
+let refreshPromise: Promise<AuthSessionResponse> | null = null
+let lastRefreshAt = 0
 
-function markSessionAnonymous() {
+export function markSessionAnonymous() {
   queryClient.setQueryData(authKeys.session(), { authenticated: false, userId: null, email: null, role: null })
+}
+
+export function getLastRefreshAt() {
+  return lastRefreshAt
+}
+
+// 진행 중인 갱신이 있으면 그 promise를 공유하고, 없으면 새로 /auth/refresh를 호출한다. 401
+// 인터셉터와 useSessionKeepAlive(선제 갱신)가 동시에 갱신을 시도해도 요청이 한 번만 나가도록 한다.
+export function refreshSessionOnce(): Promise<AuthSessionResponse> {
+  if (!refreshPromise) {
+    refreshPromise = client
+      .post('/auth/refresh')
+      .then(response => {
+        const parsed = AuthSessionResponseSchema.parse(response.data)
+        queryClient.setQueryData(authKeys.session(), parsed)
+        lastRefreshAt = Date.now()
+        return parsed
+      })
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+  return refreshPromise
 }
 
 client.interceptors.response.use(
@@ -35,14 +59,7 @@ client.interceptors.response.use(
 
     config._retriedAfterRefresh = true
     try {
-      if (!refreshPromise) {
-        refreshPromise = client.post('/auth/refresh').finally(() => {
-          refreshPromise = null
-        })
-      }
-      const refreshResponse = await refreshPromise
-      const parsed = AuthSessionResponseSchema.safeParse((refreshResponse as { data: unknown }).data)
-      if (parsed.success) queryClient.setQueryData(authKeys.session(), parsed.data)
+      await refreshSessionOnce()
       return await client(config)
     } catch {
       markSessionAnonymous()

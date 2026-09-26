@@ -9,9 +9,4 @@ export const googleLoginUrl = (returnTo: string) =>
 export const getSession = () =>
   client.get('/auth/session').then(r => AuthSessionResponseSchema.parse(r.data))
 
-// api/client.ts의 401 인터셉터가 실패한 요청을 재시도하기 전에 내부적으로 직접 호출한다 — 화면
-// 코드에서 이 함수를 직접 부를 일은 거의 없다(세션 갱신이 필요하면 세션을 다시 조회하는 쪽이 맞다).
-export const refreshSession = () =>
-  client.post('/auth/refresh').then(r => AuthSessionResponseSchema.parse(r.data))
-
 export const logout = () => client.post('/auth/logout')
