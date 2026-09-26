@@ -1,6 +1,6 @@
 // 로컬 mock 서버(MSW)용 가짜 데이터. 실제 화면 확인용이라 값 자체의 정확성은 중요하지 않음.
 
-import type { MarketMapCategoryNode, MarketMapItem } from '@/types/api'
+import type { MarketMapSectorNode, MarketMapItem } from '@/types/api'
 
 const now = () => new Date().toISOString().slice(0, 19)
 
@@ -130,7 +130,7 @@ export const marketValueTiers = [
   { id: 4, label: '초대형주', thresholdValue: 200_000_000_000_000, isExcludedByDefault: false },
 ]
 
-// 카테고리 7~18처럼 종목 상세가 중요하지 않은 자리에 대표 종목 하나만 채울 때 쓴다.
+// 섹터 7~18처럼 종목 상세가 중요하지 않은 자리에 대표 종목 하나만 채울 때 쓴다.
 function soloItem(
   stockCode: string,
   stockName: string,
@@ -153,17 +153,17 @@ function soloItem(
   ]
 }
 
-export const marketMapTree: MarketMapCategoryNode[] = [
+export const marketMapTree: MarketMapSectorNode[] = [
   {
-    categoryId: 1,
-    categoryName: '반도체',
+    sectorId: 1,
+    sectorName: '반도체',
     totalMarketValue: 550_000_000_000_000,
     isExcluded: false,
     items: [],
     children: [
       {
-        categoryId: 4,
-        categoryName: '메모리',
+        sectorId: 4,
+        sectorName: '메모리',
         totalMarketValue: 420_000_000_000_000,
         isExcluded: false,
         items: [
@@ -173,8 +173,8 @@ export const marketMapTree: MarketMapCategoryNode[] = [
         children: [],
       },
       {
-        categoryId: 5,
-        categoryName: '파운드리',
+        sectorId: 5,
+        sectorName: '파운드리',
         totalMarketValue: 130_000_000_000_000,
         isExcluded: false,
         items: [
@@ -185,8 +185,8 @@ export const marketMapTree: MarketMapCategoryNode[] = [
     ],
   },
   {
-    categoryId: 2,
-    categoryName: '2차전지',
+    sectorId: 2,
+    sectorName: '2차전지',
     totalMarketValue: 122_000_000_000_000,
     isExcluded: false,
     items: [
@@ -194,8 +194,8 @@ export const marketMapTree: MarketMapCategoryNode[] = [
     ],
     children: [
       {
-        categoryId: 6,
-        categoryName: '양극재',
+        sectorId: 6,
+        sectorName: '양극재',
         totalMarketValue: 29_000_000_000_000,
         isExcluded: false,
         items: [
@@ -206,8 +206,8 @@ export const marketMapTree: MarketMapCategoryNode[] = [
     ],
   },
   {
-    categoryId: 3,
-    categoryName: '인터넷/플랫폼',
+    sectorId: 3,
+    sectorName: '인터넷/플랫폼',
     totalMarketValue: 50_000_000_000_000,
     isExcluded: false,
     items: [
@@ -217,31 +217,31 @@ export const marketMapTree: MarketMapCategoryNode[] = [
     children: [],
   },
   // 섹터 페이지가 화면을 꽉 채운 모습을 확인하기 위한 추가 대분류 — 실제 WICS 대분류 개수(15개 안팎)에
-  // 맞춰 늘렸다. 대표 종목 하나씩만 채운다 — computeCategoryAverage(결정 1)가 items로 평균을
+  // 맞춰 늘렸다. 대표 종목 하나씩만 채운다 — computeSectorAverage(결정 1)가 items로 평균을
   // 계산하므로, items가 비면 평균이 null이 되어 섹터 그래프에서 사라진다.
-  { categoryId: 7, categoryName: '자동차', totalMarketValue: 40_000_000_000_000, isExcluded: false, items: soloItem('900007', '자동차대표주', 40_000_000_000_000, '대형주', 0.85), children: [] },
-  { categoryId: 8, categoryName: '철강', totalMarketValue: 18_000_000_000_000, isExcluded: false, items: soloItem('900008', '철강대표주', 18_000_000_000_000, '중형주', -0.65), children: [] },
-  { categoryId: 9, categoryName: '제약', totalMarketValue: 22_000_000_000_000, isExcluded: false, items: soloItem('900009', '제약대표주', 22_000_000_000_000, '중형주', 2.1), children: [] },
-  { categoryId: 10, categoryName: '금융', totalMarketValue: 60_000_000_000_000, isExcluded: false, items: soloItem('900010', '금융대표주', 60_000_000_000_000, '초대형주', 0.15), children: [] },
-  { categoryId: 11, categoryName: '통신', totalMarketValue: 15_000_000_000_000, isExcluded: false, items: soloItem('900011', '통신대표주', 15_000_000_000_000, '대형주', -0.3), children: [] },
-  { categoryId: 12, categoryName: '조선', totalMarketValue: 12_000_000_000_000, isExcluded: false, items: soloItem('900012', '조선대표주', 12_000_000_000_000, '중형주', 1.4), children: [] },
-  { categoryId: 13, categoryName: '건설', totalMarketValue: 9_000_000_000_000, isExcluded: false, items: soloItem('900013', '건설대표주', 9_000_000_000_000, '중형주', -1.1), children: [] },
-  { categoryId: 14, categoryName: '유통', totalMarketValue: 11_000_000_000_000, isExcluded: false, items: soloItem('900014', '유통대표주', 11_000_000_000_000, '중형주', 0.55), children: [] },
-  { categoryId: 15, categoryName: '보험', totalMarketValue: 14_000_000_000_000, isExcluded: false, items: soloItem('900015', '보험대표주', 14_000_000_000_000, '중형주', 0.95), children: [] },
-  { categoryId: 16, categoryName: '은행', totalMarketValue: 25_000_000_000_000, isExcluded: false, items: soloItem('900016', '은행대표주', 25_000_000_000_000, '대형주', -0.25), children: [] },
-  { categoryId: 17, categoryName: '운송', totalMarketValue: 10_000_000_000_000, isExcluded: false, items: soloItem('900017', '운송대표주', 10_000_000_000_000, '중형주', 1.75), children: [] },
-  { categoryId: 18, categoryName: '미디어/엔터', totalMarketValue: 7_000_000_000_000, isExcluded: false, items: soloItem('900018', '미디어대표주', 7_000_000_000_000, '중형주', -0.85), children: [] },
+  { sectorId: 7, sectorName: '자동차', totalMarketValue: 40_000_000_000_000, isExcluded: false, items: soloItem('900007', '자동차대표주', 40_000_000_000_000, '대형주', 0.85), children: [] },
+  { sectorId: 8, sectorName: '철강', totalMarketValue: 18_000_000_000_000, isExcluded: false, items: soloItem('900008', '철강대표주', 18_000_000_000_000, '중형주', -0.65), children: [] },
+  { sectorId: 9, sectorName: '제약', totalMarketValue: 22_000_000_000_000, isExcluded: false, items: soloItem('900009', '제약대표주', 22_000_000_000_000, '중형주', 2.1), children: [] },
+  { sectorId: 10, sectorName: '금융', totalMarketValue: 60_000_000_000_000, isExcluded: false, items: soloItem('900010', '금융대표주', 60_000_000_000_000, '초대형주', 0.15), children: [] },
+  { sectorId: 11, sectorName: '통신', totalMarketValue: 15_000_000_000_000, isExcluded: false, items: soloItem('900011', '통신대표주', 15_000_000_000_000, '대형주', -0.3), children: [] },
+  { sectorId: 12, sectorName: '조선', totalMarketValue: 12_000_000_000_000, isExcluded: false, items: soloItem('900012', '조선대표주', 12_000_000_000_000, '중형주', 1.4), children: [] },
+  { sectorId: 13, sectorName: '건설', totalMarketValue: 9_000_000_000_000, isExcluded: false, items: soloItem('900013', '건설대표주', 9_000_000_000_000, '중형주', -1.1), children: [] },
+  { sectorId: 14, sectorName: '유통', totalMarketValue: 11_000_000_000_000, isExcluded: false, items: soloItem('900014', '유통대표주', 11_000_000_000_000, '중형주', 0.55), children: [] },
+  { sectorId: 15, sectorName: '보험', totalMarketValue: 14_000_000_000_000, isExcluded: false, items: soloItem('900015', '보험대표주', 14_000_000_000_000, '중형주', 0.95), children: [] },
+  { sectorId: 16, sectorName: '은행', totalMarketValue: 25_000_000_000_000, isExcluded: false, items: soloItem('900016', '은행대표주', 25_000_000_000_000, '대형주', -0.25), children: [] },
+  { sectorId: 17, sectorName: '운송', totalMarketValue: 10_000_000_000_000, isExcluded: false, items: soloItem('900017', '운송대표주', 10_000_000_000_000, '중형주', 1.75), children: [] },
+  { sectorId: 18, sectorName: '미디어/엔터', totalMarketValue: 7_000_000_000_000, isExcluded: false, items: soloItem('900018', '미디어대표주', 7_000_000_000_000, '중형주', -0.85), children: [] },
 ]
 
-// /api/map 목업(isCustom=false) 전용 — 실제 기본 모드는 어드민이 구성한 카테고리를 아예 안 쓰고
-// stock_info 카테고리 그대로 1뎁스로 묶어서, 노드 categoryId가 전부 0(NO_CATEGORY_ID)으로 내려온다.
-// marketMapTree를 그대로 쓰면 커스텀 트리와 구분이 안 돼서, 결정 5의 "now/before를 categoryName으로
-// 짝짓는다" 로직이 기본 모드에서 categoryId로 잘못 짝지어도 목업에서는 안 드러난다.
-function toDefaultModeNode(node: MarketMapCategoryNode): MarketMapCategoryNode {
-  return { ...node, categoryId: 0, children: node.children.map(toDefaultModeNode) }
+// /api/map 목업(isCustom=false) 전용 — 실제 기본 모드는 어드민이 구성한 섹터를 아예 안 쓰고
+// stock_info 섹터 그대로 1뎁스로 묶어서, 노드 sectorId가 전부 0(NO_SECTOR_ID)으로 내려온다.
+// marketMapTree를 그대로 쓰면 커스텀 트리와 구분이 안 돼서, 결정 5의 "now/before를 sectorName으로
+// 짝짓는다" 로직이 기본 모드에서 sectorId로 잘못 짝지어도 목업에서는 안 드러난다.
+function toDefaultModeNode(node: MarketMapSectorNode): MarketMapSectorNode {
+  return { ...node, sectorId: 0, children: node.children.map(toDefaultModeNode) }
 }
 
-export function toDefaultModeTree(nodes: MarketMapCategoryNode[]): MarketMapCategoryNode[] {
+export function toDefaultModeTree(nodes: MarketMapSectorNode[]): MarketMapSectorNode[] {
   return nodes.map(toDefaultModeNode)
 }
 
@@ -254,7 +254,7 @@ function shiftItemChangeRate(item: MarketMapItem): MarketMapItem {
   return { ...item, changeRate: item.changeRate - MOCK_BEFORE_CHANGE_RATE_DELTA }
 }
 
-function shiftNodeChangeRates(node: MarketMapCategoryNode): MarketMapCategoryNode {
+function shiftNodeChangeRates(node: MarketMapSectorNode): MarketMapSectorNode {
   return {
     ...node,
     items: node.items.map(shiftItemChangeRate),
@@ -262,7 +262,7 @@ function shiftNodeChangeRates(node: MarketMapCategoryNode): MarketMapCategoryNod
   }
 }
 
-export function shiftMarketMapTreeChangeRates(nodes: MarketMapCategoryNode[]): MarketMapCategoryNode[] {
+export function shiftMarketMapTreeChangeRates(nodes: MarketMapSectorNode[]): MarketMapSectorNode[] {
   return nodes.map(shiftNodeChangeRates)
 }
 

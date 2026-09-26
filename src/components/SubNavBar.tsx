@@ -40,10 +40,10 @@ function MarketDropdownItems({ basePath }: { basePath: '/map' | '/sector' }) {
   )
 }
 
-// "커스텀" 탭 위에 마우스를 올리면 뜨는 목록 — 종목/카테고리 관리 전환(예전엔 좌측 사이드바).
-// 카테고리가 기본 모드(CustomManagePage 참고)라 목록도 카테고리를 먼저 보여준다.
-const CUSTOM_MODE_LIST_ITEMS: { label: string; mode: 'stock' | 'category' }[] = [
-  { label: '카테고리', mode: 'category' },
+// "커스텀" 탭 위에 마우스를 올리면 뜨는 목록 — 종목/섹터 관리 전환(예전엔 좌측 사이드바).
+// 섹터가 기본 모드(CustomManagePage 참고)라 목록도 섹터를 먼저 보여준다.
+const CUSTOM_MODE_LIST_ITEMS: { label: string; mode: 'stock' | 'sector' }[] = [
+  { label: '섹터', mode: 'sector' },
   { label: '종목', mode: 'stock' },
 ]
 
@@ -81,7 +81,7 @@ export default function SubNavBar({ actions }: Props) {
     to === '/map/allstock' ? location.pathname.startsWith('/map/') : to === '/sector/allstock' ? location.pathname.startsWith('/sector/') : false
   const isCustomTabActive = location.pathname === '/admin/sector' || location.pathname === '/admin/stock'
 
-  // 비로그인이 커스텀 메뉴(탭 자체 또는 카테고리/종목 하위 목록)를 클릭하면 실제 이동 대신 로그인
+  // 비로그인이 커스텀 메뉴(탭 자체 또는 섹터/종목 하위 목록)를 클릭하면 실제 이동 대신 로그인
   // 팝업을 띄운다 — 목적지 경로를 returnTo로 넘겨서 로그인 성공 후 그 화면으로 바로 돌아온다.
   const guardCustomNavigate = (e: MouseEvent<HTMLAnchorElement>, to: string) => {
     if (isLoggedIn) return

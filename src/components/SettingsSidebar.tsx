@@ -5,9 +5,9 @@ import type { ColorScaleConfig, ColorScaleThreshold, LegendSwatch } from '@/util
 import { FONT_BAR_LEGEND } from '@/components/FontStyle'
 import type { MarketValueTierItem } from '@/types/api'
 
-interface ExcludedCategory {
-  categoryId: number
-  categoryName: string
+interface ExcludedSector {
+  sectorId: number
+  sectorName: string
 }
 
 // checked가 꺼지면 라벨 텍스트도 같이 옅어져서, 꺼져있다는 게 스위치 색뿐 아니라 글자로도 드러난다.
@@ -379,11 +379,11 @@ export function SettingsEqualWeightSection({
   )
 }
 
-export function SettingsCategoryLevelSection({
+export function SettingsSectorLevelSection({
   isCustom,
   maxDepth,
-  categoryLevelEnabled,
-  onToggleCategoryLevel,
+  sectorLevelEnabled,
+  onToggleSectorLevel,
   availableMaxDepth,
   onChangeMaxDepth,
   activeDepthMetric,
@@ -419,8 +419,8 @@ export function SettingsCategoryLevelSection({
   // null이면 제한 없음(=availableMaxDepth 전체 다 보여줌). 슬라이더가 다룰 수 있는 실제 상한은
   // 지금 트리(exclude/tier 필터링까지 반영된)의 최대 뎁스라 따로 내려받는다.
   maxDepth: number | null
-  categoryLevelEnabled: boolean
-  onToggleCategoryLevel: () => void
+  sectorLevelEnabled: boolean
+  onToggleSectorLevel: () => void
   availableMaxDepth: number
   onChangeMaxDepth: (value: number) => void
   // 등락률/등락 종목수/시가총액 합 중 하나만 라디오처럼 고른다 — 표시 여부는 별도 토글로 제어한다.
@@ -465,8 +465,8 @@ export function SettingsCategoryLevelSection({
   const depthValue = Math.min(maxDepth ?? depthLabelCount, depthLabelCount)
   const isDepthDisabled = !isCustom || availableMaxDepth <= 1
   const depthMetricMaxSelectableIndex = Math.max(0, Math.min(depthLabelCount, maxDepth ?? depthLabelCount) - 1)
-  const isDepthMetricDisabled = !isCustom || !categoryLevelEnabled
-  const isTopPickDisabled = !isCustom || !categoryLevelEnabled
+  const isDepthMetricDisabled = !isCustom || !sectorLevelEnabled
+  const isTopPickDisabled = !isCustom || !sectorLevelEnabled
   const depthMetricLabels = Array.from({ length: depthLabelCount }, (_, index) => DEPTH_LABELS[index] ?? `${index + 1}차 분류`)
   // 레벨 값은 1=대분류, 2=중분류, 3=소분류. 슬라이더 인덱스와 1만큼 차이 난다.
   const depthMetricSliderSteps = Math.max(depthLabelCount - 1, 1)
@@ -487,21 +487,21 @@ export function SettingsCategoryLevelSection({
             <div className="flex max-w-[16rem] items-center justify-between">
               <span className="settings-subsection-num block text-left text-white">업종 분류 레벨</span>
               <ToggleSwitch
-                checked={categoryLevelEnabled}
-                onChange={onToggleCategoryLevel}
+                checked={sectorLevelEnabled}
+                onChange={onToggleSectorLevel}
                 label="업종 분류 레벨 사용"
                 hideLabel
                 compact
                 disabled={isDepthDisabled}
               />
             </div>
-            <div className={`mt-2 max-w-[16rem] ${categoryLevelEnabled ? '' : 'opacity-40'}`}>
+            <div className={`mt-2 max-w-[16rem] ${sectorLevelEnabled ? '' : 'opacity-40'}`}>
               <SingleValueSlider
                 index={depthValue - 1}
                 labels={depthMetricLabels}
                 ariaLabel="업종 분류 레벨"
                 onChange={index => onChangeMaxDepth(index + 1)}
-                disabled={isDepthDisabled || !categoryLevelEnabled}
+                disabled={isDepthDisabled || !sectorLevelEnabled}
               />
             </div>
           </div>
@@ -691,7 +691,7 @@ export function SettingsMarketValueSection({
   showDivider?: boolean
 }) {
   // tiers/tierRangeMinIndex·MaxIndex는 오름차순(소형주→초대형주) 기준을 그대로 유지하고, 화면에
-  // 그릴 때만 좌우를 뒤집는다(초대형주가 왼쪽) — 저장값/다른 화면(카테고리 랭킹)과 공유하는 인덱스
+  // 그릴 때만 좌우를 뒤집는다(초대형주가 왼쪽) — 저장값/다른 화면(섹터 랭킹)과 공유하는 인덱스
   // 의미는 안 바뀐다.
   const tierSteps = Math.max(tiers.length - 1, 1)
   const tierDisplayLabels = [...tiers].reverse().map(tier => tier.label)
@@ -726,16 +726,16 @@ export function SettingsExcludeSection({
   isCustom,
   sectorFilterEnabled,
   onToggleSectorFilter,
-  excludedCategories,
-  onRemoveExcludedCategory,
+  excludedSectors,
+  onRemoveExcludedSector,
 }: {
   isCustom: boolean
   // 개별 섹터를 켜고 끄는 토글이 아니라, "섹터 제외를 적용할지 말지" 자체를 한 번에 켜고 끄는 스위치.
   // 어떤 섹터를 제외 목록에 넣을지는 마켓맵에서 우클릭으로 추가/이 목록에서 X로 제거하는 것으로만 관리한다.
   sectorFilterEnabled: boolean
   onToggleSectorFilter: () => void
-  excludedCategories: ExcludedCategory[]
-  onRemoveExcludedCategory: (categoryId: number) => void
+  excludedSectors: ExcludedSector[]
+  onRemoveExcludedSector: (sectorId: number) => void
 }) {
   return (
     <div className="mt-6 border-t border-gray-700 pt-8 text-white">
@@ -749,22 +749,22 @@ export function SettingsExcludeSection({
         />
         {isCustom && (
           <div className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto pl-2">
-            {excludedCategories.length === 0 ? (
+            {excludedSectors.length === 0 ? (
               <p className="text-xs text-gray-500">제외된 범위 없음</p>
             ) : (
-              excludedCategories.map(category => (
-                <div key={category.categoryId} className="flex items-center gap-1.5 px-1 py-0.5">
+              excludedSectors.map(sector => (
+                <div key={sector.sectorId} className="flex items-center gap-1.5 px-1 py-0.5">
                   <button
                     type="button"
                     onClick={() => {
-                      if (!window.confirm(`${category.categoryName}\n제외 목록에서 삭제하시겠습니까?`)) return
-                      onRemoveExcludedCategory(category.categoryId)
+                      if (!window.confirm(`${sector.sectorName}\n제외 목록에서 삭제하시겠습니까?`)) return
+                      onRemoveExcludedSector(sector.sectorId)
                     }}
                     className="shrink-0 border-0 bg-transparent text-red-500 hover:text-red-400"
                   >
                     ✕
                   </button>
-                  <span className="min-w-0 truncate text-xs text-white">{category.categoryName}</span>
+                  <span className="min-w-0 truncate text-xs text-white">{sector.sectorName}</span>
                 </div>
               ))
             )}

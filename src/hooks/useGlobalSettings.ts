@@ -13,19 +13,19 @@ import {
   useDeleteCustomScaleThreshold as useDeleteMarketMapScaleThreshold,
 } from './useMarketMapCustom'
 import {
-  collectCategoriesAtDepth,
+  collectSectorsAtDepth,
   useFilteredMarketMapTree,
-  type FilteredMarketMapCategoryNode,
+  type FilteredMarketMapSectorNode,
 } from './useFilteredMarketMapTree'
 import { useMarketValueTierRange } from './useMarketValueTierRange'
-import { registerExcludedCategory, unregisterExcludedCategory } from '@/api/marketMap'
+import { registerExcludedSector, unregisterExcludedSector } from '@/api/marketMap'
 import {
   resolveLegendSwatches,
   UNSET_COLOR_SCALE_THRESHOLD_COLOR,
   type ColorScaleConfig,
   type ColorScaleThreshold,
 } from '@/utils/marketMapColorScale'
-import type { MarketMapCategoryNode } from '@/types/api'
+import type { MarketMapSectorNode } from '@/types/api'
 
 // 조회 실패/로딩 중이거나 "색상 커스텀 사용"이 꺼져있을 때 쓰는 폴백 — thresholds가 비어있으면 어차피
 // 기본 프리셋으로 귀결된다(resolveMarketMapColor/resolveLegendSwatches 참고).
@@ -37,34 +37,34 @@ export type DepthMetric = 'avgChangeRate' | 'upDownCount' | 'marketValue'
 export type StockLabelMode = 'off' | 'nameOnly' | 'rateOnly' | 'both'
 const STOCK_LABEL_MODES: StockLabelMode[] = ['off', 'nameOnly', 'rateOnly', 'both']
 
-// categoryId -> "상위 - 하위" 형태의 전체 경로. "이 섹터가 제외 목록에 있는지"만 관리하고,
+// sectorId -> "상위 - 하위" 형태의 전체 경로. "이 섹터가 제외 목록에 있는지"만 관리하고,
 // 실제로 화면에서 걸러낼지는 별도의 sectorFilterEnabled 마스터 스위치가 결정한다.
-function seedExcludedCategoryNames(
-  nodes: MarketMapCategoryNode[],
+function seedExcludedSectorNames(
+  nodes: MarketMapSectorNode[],
   ancestors: string[] = [],
   out: Map<number, string> = new Map(),
 ) {
   for (const node of nodes) {
-    const path = [...ancestors, node.categoryName]
-    if (node.isExcluded) out.set(node.categoryId, path.join(' > '))
-    seedExcludedCategoryNames(node.children, path, out)
+    const path = [...ancestors, node.sectorName]
+    if (node.isExcluded) out.set(node.sectorId, path.join(' > '))
+    seedExcludedSectorNames(node.children, path, out)
   }
   return out
 }
 
-// 우클릭 제외 시점엔 리프 카테고리명만 알고 있으므로, 뎁스가 있으면(최상위가 아니면) 원본 트리에서
+// 우클릭 제외 시점엔 리프 섹터명만 알고 있으므로, 뎁스가 있으면(최상위가 아니면) 원본 트리에서
 // 조상 경로를 다시 찾아 "상위 - 하위" 형태로 만든다. 최상위면 경로 길이가 1이라 그대로 리프명만 나온다.
-function findCategoryPath(nodes: MarketMapCategoryNode[], targetId: number, ancestors: string[] = []): string[] | null {
+function findSectorPath(nodes: MarketMapSectorNode[], targetId: number, ancestors: string[] = []): string[] | null {
   for (const node of nodes) {
-    const path = [...ancestors, node.categoryName]
-    if (node.categoryId === targetId) return path
-    const found = findCategoryPath(node.children, targetId, path)
+    const path = [...ancestors, node.sectorName]
+    if (node.sectorId === targetId) return path
+    const found = findSectorPath(node.children, targetId, path)
     if (found) return found
   }
   return null
 }
 
-function topPickAverage(node: FilteredMarketMapCategoryNode, useSimple: boolean): number | null {
+function topPickAverage(node: FilteredMarketMapSectorNode, useSimple: boolean): number | null {
   return useSimple ? node.simpleAvgChangeRate : node.weightedAvgChangeRate
 }
 
@@ -86,13 +86,13 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 트리 조회 마켓은 경로를 따른다 — /map, /sector 둘 다 경로 세그먼트가 곧 마켓이라 여기서 바로
   // 우선순위(쿼리 > 경로 > 저장값 > 기본값)를 적용하면, 이 훅을 그대로 쓰는 지도 페이지는 물론
   // 트리 조회만 공유하는 섹터 페이지도 같은 마켓으로 트리를 받는다(docs/instructions-route-market-first-render.md 결정 2).
-  const [market, setMarket] = useRouteAwareMarket('marketMap.market', 'ALL_STOCK')
+  const [market] = useRouteAwareMarket('marketMap.market', 'ALL_STOCK')
   // 저장값은 로그인 사용자에 한해 서버(user_preference)에 남는다. 비로그인은 저장값이 true여도
   // 항상 false로 강제한다 — 비로그인은 커스텀 모드 자체를 쓸 수 없다(가입/로그인 전환 지시서 4).
   const [storedIsCustom, setStoredIsCustom] = usePageSetting('marketMap.isCustom', true)
   const isCustom = isLoggedIn ? storedIsCustom : false
   // 시가총액 합/등락률 평균/등락 종목수 태그를 셋 다 동시에 켤 수 있었는데, 한꺼번에 여러 개가 뜨면
-  // 카테고리 헤더가 너무 정신없어서 라디오처럼 하나만 고르게 했다 — 뎁스 범위 슬라이더도 셋의
+  // 섹터 헤더가 너무 정신없어서 라디오처럼 하나만 고르게 했다 — 뎁스 범위 슬라이더도 셋의
   // 내용(스텝/라벨)이 완전히 같으니 하나만 두고, 그 슬라이더가 지금 어느 지표에 적용되는지만
   // activeDepthMetric으로 고른다. 기능 전체의 표시 여부는 별도 토글(depthMetricEnabled)이 담당한다.
   const [activeDepthMetric, setActiveDepthMetric] = usePageSetting<DepthMetric | null>(
@@ -114,7 +114,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 기본값을 On으로 하기 위해 기본을 true로 변경(랭킹 페이지의 기본 정렬 기준도 산술평균으로 같이 바뀜 — 두
   // 페이지가 이 값을 공유하는 구조라 의도적으로 함께 적용).
   const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', true)
-  // 종목 박스가 전체 트리맵 넓이에서 이 비중(%) 미만이면 종목명/등락률을 표시하지 않는다(카테고리 헤더와는 무관).
+  // 종목 박스가 전체 트리맵 넓이에서 이 비중(%) 미만이면 종목명/등락률을 표시하지 않는다(섹터 헤더와는 무관).
   const [boxLabelMinAreaPercent, setBoxLabelMinAreaPercent] = usePageSetting('marketMap.boxLabelMinAreaPercent', 0.1)
   // 종목 박스에 이름만/등락률만/둘 다/끄기 중 뭘 보여줄지 — 기본은 둘 다(기존 동작 유지, 배열 앞에
   // "끄기"가 추가되면서 both의 인덱스가 2에서 3으로 밀림).
@@ -127,7 +127,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 1자리, 2=소수 2자리). 기본값 1(소수 1자리).
   const [decimalPlacesIndex, setDecimalPlacesIndex] = usePageSetting('marketMap.decimalPlacesIndex', 1)
   const decimalPlaces = decimalPlacesIndex
-  // 시가총액 구간 범위 필터 — 마켓맵/카테고리 랭킹 화면이 세션스토리지 키를 공유한다(useMarketValueTierRange 참고).
+  // 시가총액 구간 범위 필터 — 마켓맵/섹터 랭킹 화면이 세션스토리지 키를 공유한다(useMarketValueTierRange 참고).
   const {
     tiers: valueTiers,
     minIndex: tierRangeMinIndex,
@@ -137,8 +137,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     excludedMarketValueTiers,
     isTierRangeReady: isMarketValueTierRangeReady,
   } = useMarketValueTierRange(isCustom)
-  const [excludedCategoryNames, setExcludedCategoryNames] = usePersistedState<Map<number, string>>(
-    'marketMap.excludedCategoryNames',
+  const [excludedSectorNames, setExcludedSectorNames] = usePersistedState<Map<number, string>>(
+    'marketMap.excludedSectorNames',
     new Map(),
     {
       serialize: map => [...map.entries()],
@@ -150,9 +150,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // null = 제한 없음(전체 뎁스 표시). 슬라이더의 실제 상한(availableMaxDepth)은 트리 계산 후에 나온다.
   // 기본값 2(렌더러 캡처 기준 화면에 맞춤).
   const [selectedMaxDepth, setMaxDepth] = useState<number | null>(2)
-  const [categoryLevelEnabled, setCategoryLevelEnabled] = useState(true)
-  const maxDepth = categoryLevelEnabled ? selectedMaxDepth : 0
-  // 선호 업종 — 선택한 절대 depth에서 등락률 상위 N개 카테고리를 지도 전체에 강조한다.
+  const [sectorLevelEnabled, setSectorLevelEnabled] = useState(true)
+  const maxDepth = sectorLevelEnabled ? selectedMaxDepth : 0
+  // 선호 업종 — 선택한 절대 depth에서 등락률 상위 N개 섹터를 지도 전체에 강조한다.
   const [topPickDepth, setTopPickDepth] = usePageSetting('marketMap.topPickDepth', 1)
   const [topPickCount, setTopPickCount] = usePageSetting('marketMap.topPickCount', 2)
   const [topPickEnabled, setTopPickEnabled] = usePageSetting('marketMap.topPickEnabled', topPickCount !== 0)
@@ -190,16 +190,16 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     const key = `${market}:${isCustom}`
     if (seededKeyRef.current === key) return
     seededKeyRef.current = key
-    setExcludedCategoryNames(seedExcludedCategoryNames(data.items, []))
-  }, [data, market, isCustom, setExcludedCategoryNames])
+    setExcludedSectorNames(seedExcludedSectorNames(data.items, []))
+  }, [data, market, isCustom, setExcludedSectorNames])
 
-  // 커스텀 모드가 아니면(기본 분류 트리) isExcluded 자체를 무시한다 — 카테고리 제외는 커스텀 트리 전용 기능.
-  const excludedCategoryIds =
-    isCustom && sectorFilterEnabled ? new Set(excludedCategoryNames.keys()) : new Set<number>()
+  // 커스텀 모드가 아니면(기본 분류 트리) isExcluded 자체를 무시한다 — 섹터 제외는 커스텀 트리 전용 기능.
+  const excludedSectorIds =
+    isCustom && sectorFilterEnabled ? new Set(excludedSectorNames.keys()) : new Set<number>()
 
   const { filteredRootNodes, availableMaxDepth } = useFilteredMarketMapTree(
     rootNodes,
-    excludedCategoryIds,
+    excludedSectorIds,
     excludedMarketValueTiers,
   )
 
@@ -221,21 +221,21 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const upDownCountDepthRange = selectedDepthMetric === 'upDownCount' ? activeDepthRange : null
 
   // 선호 업종 라디오의 활성 상한은 업종 분류 레벨 설정을 따른다. 대/중/소분류 설정은 데이터가 얕아도
-  // 미리 선택할 수 있게 두고, 현재 데이터에 해당 카테고리가 없으면 강조 대상만 빈 Set으로 둔다.
+  // 미리 선택할 수 있게 두고, 현재 데이터에 해당 섹터가 없으면 강조 대상만 빈 Set으로 둔다.
   const topPickMaxSelectableDepth = maxDepth === null ? Math.max(3, availableMaxDepth) : maxDepth
-  const topPickCategoryIds = useMemo(() => {
+  const topPickSectorIds = useMemo(() => {
     if (!isCustom || !topPickEnabled || topPickDepth < 0 || topPickDepth >= topPickMaxSelectableDepth) {
       return new Set<number>()
     }
 
-    const candidates = collectCategoriesAtDepth(filteredRootNodes, topPickDepth)
+    const candidates = collectSectorsAtDepth(filteredRootNodes, topPickDepth)
       .map((node, index) => ({ node, index, average: topPickAverage(node, avgChangeRateUseSimple) }))
-      .filter((candidate): candidate is { node: FilteredMarketMapCategoryNode; index: number; average: number } => {
+      .filter((candidate): candidate is { node: FilteredMarketMapSectorNode; index: number; average: number } => {
         return candidate.average !== null
       })
       .sort((a, b) => b.average - a.average || b.node.totalMarketValue - a.node.totalMarketValue || a.index - b.index)
 
-    return new Set(candidates.slice(0, selectedTopPickCount).map(candidate => candidate.node.categoryId))
+    return new Set(candidates.slice(0, selectedTopPickCount).map(candidate => candidate.node.sectorId))
   }, [
     avgChangeRateUseSimple,
     filteredRootNodes,
@@ -424,27 +424,27 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     setDepthMetricMaxIndex(max)
   }
 
-  const handleExcludeCategory = (categoryId: number, categoryName: string) => {
-    const path = findCategoryPath(rootNodes, categoryId)
-    setExcludedCategoryNames(prev => new Map(prev).set(categoryId, path ? path.join(' > ') : categoryName))
-    registerExcludedCategory(categoryId).catch(e => console.error('카테고리 제외 실패', e))
+  const handleExcludeSector = (sectorId: number, sectorName: string) => {
+    const path = findSectorPath(rootNodes, sectorId)
+    setExcludedSectorNames(prev => new Map(prev).set(sectorId, path ? path.join(' > ') : sectorName))
+    registerExcludedSector(sectorId).catch(e => console.error('섹터 제외 실패', e))
   }
 
-  const handleRemoveExcludedCategory = (categoryId: number) => {
-    setExcludedCategoryNames(prev => {
+  const handleRemoveExcludedSector = (sectorId: number) => {
+    setExcludedSectorNames(prev => {
       const next = new Map(prev)
-      next.delete(categoryId)
+      next.delete(sectorId)
       return next
     })
-    unregisterExcludedCategory(categoryId).catch(e => console.error('카테고리 제외 해제 실패', e))
+    unregisterExcludedSector(sectorId).catch(e => console.error('섹터 제외 해제 실패', e))
   }
 
   const settingsModalProps = {
     isCustom,
     onToggleCustom: handleToggleCustom,
     maxDepth: selectedMaxDepth,
-    categoryLevelEnabled,
-    onToggleCategoryLevel: () => setCategoryLevelEnabled(prev => !prev),
+    sectorLevelEnabled,
+    onToggleSectorLevel: () => setSectorLevelEnabled(prev => !prev),
     availableMaxDepth,
     onChangeMaxDepth: handleChangeMaxDepth,
     activeDepthMetric: selectedDepthMetric,
@@ -480,8 +480,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     },
     sectorFilterEnabled,
     onToggleSectorFilter: () => setSectorFilterEnabled(prev => !prev),
-    excludedCategories: Array.from(excludedCategoryNames, ([categoryId, categoryName]) => ({ categoryId, categoryName })),
-    onRemoveExcludedCategory: handleRemoveExcludedCategory,
+    excludedSectors: Array.from(excludedSectorNames, ([sectorId, sectorName]) => ({ sectorId, sectorName })),
+    onRemoveExcludedSector: handleRemoveExcludedSector,
     colorScaleDraft,
     colorCustomOn,
     onChangeColorCustomOn: setColorCustomOn,
@@ -512,7 +512,6 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     colorEditorPanelProps,
     // 지도 페이지가 트리맵을 실제로 그리는 데 직접 필요한 값들.
     market,
-    setMarket,
     isCustom,
     data,
     refetchMarketMap,
@@ -531,7 +530,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     avgChangeRateDepthRange,
     upDownCountDepthRange,
     avgChangeRateUseSimple,
-    topPickCategoryIds,
+    topPickSectorIds,
     // URL 쿼리(avgMode/sectorFilter)로 값을 직접 세팅해야 하는 페이지용 — 토글(prev => !prev)과 달리
     // 원하는 값을 그대로 넘겨 세팅한다.
     onChangeAvgChangeRateUseSimple: setAvgChangeRateUseSimple,
@@ -540,13 +539,13 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     stockLabelMode,
     decimalPlaces,
     colorScale,
-    excludedCategoryNames,
+    excludedSectorNames,
     onChangeSectorFilterEnabled: setSectorFilterEnabled,
     // 커스텀 모드+섹터 기준 스위치가 둘 다 켜져있을 때만 실제로 적용되는 최종 제외 대상 ID 집합
-    // (filteredRootNodes를 만들 때 쓰는 것과 동일한 값) — 트리를 직접 그리지 않고 카테고리 ID
-    // 기준으로만 걸러내면 되는 페이지(카테고리 랭킹 등)를 위해 내보낸다.
-    excludedCategoryIds,
-    handleExcludeCategory,
-    handleRemoveExcludedCategory,
+    // (filteredRootNodes를 만들 때 쓰는 것과 동일한 값) — 트리를 직접 그리지 않고 섹터 ID
+    // 기준으로만 걸러내면 되는 페이지(섹터 랭킹 등)를 위해 내보낸다.
+    excludedSectorIds,
+    handleExcludeSector,
+    handleRemoveExcludedSector,
   }
 }

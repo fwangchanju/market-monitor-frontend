@@ -6,7 +6,7 @@ import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThres
 import SettingsSidebar, {
   SettingsCustomModeSection,
   SettingsMarketValueSection,
-  SettingsCategoryLevelSection,
+  SettingsSectorLevelSection,
   SettingsExcludeSection,
   SettingsColorSection,
 } from '@/components/SettingsSidebar'
@@ -23,21 +23,21 @@ import { toCount, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { captureElementToDownload } from '@/utils/captureToDownload'
-import { limitDepth, flattenAllItems, type FilteredMarketMapCategoryNode } from '@/hooks/useFilteredMarketMapTree'
-import type { MarketQuery, MarketMapCategoryNode, MarketMapItem } from '@/types/api'
+import { limitDepth, flattenAllItems, type FilteredMarketMapSectorNode } from '@/hooks/useFilteredMarketMapTree'
+import type { MarketQuery, MarketMapSectorNode, MarketMapItem } from '@/types/api'
 
 const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
 
-// "업종 분류 레벨" 슬라이더가 "끄기"(뎁스 0)일 때만 쓰는 합성 카테고리 — 실제 카테고리가 아니므로
-// categoryId는 실제 값과 겹치지 않는 sentinel을 쓰고, isSelf로 매칭해 헤더 자체를 안 그리게 한다
-// (드릴다운으로 들어온 카테고리의 헤더를 breadcrumb과 중복되지 않게 숨기는 것과 동일한 메커니즘).
-const FLAT_GROUP_CATEGORY_ID = -1
+// "업종 분류 레벨" 슬라이더가 "끄기"(뎁스 0)일 때만 쓰는 합성 섹터 — 실제 섹터가 아니므로
+// sectorId는 실제 값과 겹치지 않는 sentinel을 쓰고, isSelf로 매칭해 헤더 자체를 안 그리게 한다
+// (드릴다운으로 들어온 섹터의 헤더를 breadcrumb과 중복되지 않게 숨기는 것과 동일한 메커니즘).
+const FLAT_GROUP_SECTOR_ID = -1
 const FLAT_GROUP_NAME = '__flat__'
 
 function toFlatDisplayGroup(items: MarketMapItem[]): DisplayGroup {
   return {
-    categoryId: FLAT_GROUP_CATEGORY_ID,
-    categoryName: FLAT_GROUP_NAME,
+    sectorId: FLAT_GROUP_SECTOR_ID,
+    sectorName: FLAT_GROUP_NAME,
     totalMarketValue: items.reduce((sum, item) => sum + item.totalMarketValue, 0),
     weightedAvgChangeRate: null,
     simpleAvgChangeRate: null,
@@ -46,10 +46,10 @@ function toFlatDisplayGroup(items: MarketMapItem[]): DisplayGroup {
   }
 }
 
-function toDisplayGroup(node: FilteredMarketMapCategoryNode): DisplayGroup {
+function toDisplayGroup(node: FilteredMarketMapSectorNode): DisplayGroup {
   return {
-    categoryId: node.categoryId,
-    categoryName: node.categoryName,
+    sectorId: node.sectorId,
+    sectorName: node.sectorName,
     totalMarketValue: node.totalMarketValue,
     weightedAvgChangeRate: node.weightedAvgChangeRate,
     simpleAvgChangeRate: node.simpleAvgChangeRate,
@@ -59,7 +59,7 @@ function toDisplayGroup(node: FilteredMarketMapCategoryNode): DisplayGroup {
 }
 
 // 등락률 평균/상승·하락·보합 종목수는 개별 종목(changeRate) 기준이라, 지금 화면에 보이는
-// 그룹들의 종목을 전부(하위 카테고리 포함) 펼쳐서 모아야 한다.
+// 그룹들의 종목을 전부(하위 섹터 포함) 펼쳐서 모아야 한다.
 function collectItems(groups: DisplayGroup[]): MarketMapItem[] {
   const result: MarketMapItem[] = []
   for (const group of groups) {
@@ -69,9 +69,9 @@ function collectItems(groups: DisplayGroup[]): MarketMapItem[] {
   return result
 }
 
-// 카테고리 제외/시가총액 구간 필터를 적용하기 "전" 원본 트리 기준으로, 지금 보고 있는 뎁스(path)에
+// 섹터 제외/시가총액 구간 필터를 적용하기 "전" 원본 트리 기준으로, 지금 보고 있는 뎁스(path)에
 // 해당하는 종목을 전부 모은다 — "제외된 개수까지 포함한 전체 리스트 개수"를 보여주기 위한 분모.
-function collectRawItems(nodes: MarketMapCategoryNode[]): MarketMapItem[] {
+function collectRawItems(nodes: MarketMapSectorNode[]): MarketMapItem[] {
   const result: MarketMapItem[] = []
   for (const node of nodes) {
     result.push(...node.items)
@@ -80,11 +80,11 @@ function collectRawItems(nodes: MarketMapCategoryNode[]): MarketMapItem[] {
   return result
 }
 
-function findRawNodeByPath(nodes: MarketMapCategoryNode[], path: string[]): MarketMapCategoryNode | null {
-  let node: MarketMapCategoryNode | null = null
+function findRawNodeByPath(nodes: MarketMapSectorNode[], path: string[]): MarketMapSectorNode | null {
+  let node: MarketMapSectorNode | null = null
   let siblings = nodes
   for (const name of path) {
-    const found = siblings.find(n => n.categoryName === name)
+    const found = siblings.find(n => n.sectorName === name)
     if (!found) return null
     node = found
     siblings = found.children
@@ -113,14 +113,14 @@ export default function MarketMapCustomPage() {
     avgChangeRateDepthRange,
     upDownCountDepthRange,
     avgChangeRateUseSimple,
-    topPickCategoryIds,
+    topPickSectorIds,
     onChangeAvgChangeRateUseSimple,
     onChangeSectorFilterEnabled,
     boxLabelMinAreaPercent,
     stockLabelMode,
     decimalPlaces,
     colorScale,
-    handleExcludeCategory,
+    handleExcludeSector,
   } = useGlobalSettings()
 
   const [searchParams, setSearchParams] = useSearchParams()
@@ -133,7 +133,7 @@ export default function MarketMapCustomPage() {
   const [zoomOutRequestDepth, setZoomOutRequestDepth] = useState<number | null>(null)
   const captureRef = useRef<HTMLDivElement>(null)
 
-  const { path, currentNode, currentSiblings, enterCategory, goToDepth, reset } = useMarketMapDrilldown(filteredRootNodes)
+  const { path, currentNode, currentSiblings, enterSector, goToDepth, reset } = useMarketMapDrilldown(filteredRootNodes)
 
   // "업종 분류 레벨" 뎁스 제한을 "지금 보고 있는 위치"(currentNode, 없으면 최상위) 기준으로 매번 새로
   // 적용한다 — 진짜 루트 기준 절대값이 아니라, 어디로 드릴다운하든 거기서부터 다시 N단계가 보이는
@@ -143,7 +143,7 @@ export default function MarketMapCustomPage() {
   const effectiveMaxDepth = isCustom ? maxDepth : null
   // 뎁스 0("끄기")은 limitDepth로 표현할 수 없다(그 함수는 항상 최소 1뎁스 = 대분류 박스 하나는
   // 남긴다) — 완전 평탄화는 별도로 처리한다: 지금 보이는 위치 아래 종목을 전부 하나로 모아
-  // isSelf 처리되는 합성 카테고리 하나로 만들어서, 대분류 헤더까지 포함해 아무 카테고리 박스도
+  // isSelf 처리되는 합성 섹터 하나로 만들어서, 대분류 헤더까지 포함해 아무 섹터 박스도
   // 안 보이게 한다.
   const isFullyFlattened = effectiveMaxDepth === 0
   const displaySiblings =
@@ -158,7 +158,7 @@ export default function MarketMapCustomPage() {
       ? [toDisplayGroup(displayNode)]
       : displaySiblings.map(toDisplayGroup)
   const visibleItems = collectItems(groups)
-  // 지금 뎁스(path) 기준으로, 카테고리 제외/시가총액 구간 필터를 적용하기 전 원본 트리에 있는 전체 종목 수.
+  // 지금 뎁스(path) 기준으로, 섹터 제외/시가총액 구간 필터를 적용하기 전 원본 트리에 있는 전체 종목 수.
   const rawCurrentNode = findRawNodeByPath(rootNodes, path)
   const totalItemCount = collectRawItems(rawCurrentNode ? [rawCurrentNode] : rootNodes).length
 
@@ -282,7 +282,7 @@ export default function MarketMapCustomPage() {
             모드/시간)까지 같이 밀려서 좁아진다(본문만 밀리지 않는다). */}
         <div
           ref={captureRef}
-          data-captureid={CAPTURE_ID.MARKET_MAP}
+          data-captureid={CAPTURE_ID.MAP}
           data-capture-ready={!isLoading}
           className="flex min-h-0 flex-1 bg-black"
         >
@@ -331,7 +331,7 @@ export default function MarketMapCustomPage() {
                       <span key={index} className="flex items-center gap-1">
                         <span>&gt;</span>
                         {isLastPath ? (
-                          // 지금 보고 있는 카테고리라 클릭해도 아무 동작이 없어야 하므로, 버블링을 막아
+                          // 지금 보고 있는 섹터라 클릭해도 아무 동작이 없어야 하므로, 버블링을 막아
                           // 바 전체의 onClick(goToDepth(0))으로 전체 화면으로 빠지지 않게 한다.
                           <span onClick={e => e.stopPropagation()}>
                             {name}
@@ -365,10 +365,10 @@ export default function MarketMapCustomPage() {
               ) : (
                 <MarketMapTreemap
                   groups={groups}
-                  selfCategoryName={isFullyFlattened ? FLAT_GROUP_NAME : (currentNode?.categoryName ?? null)}
+                  selfSectorName={isFullyFlattened ? FLAT_GROUP_NAME : (currentNode?.sectorName ?? null)}
                   depth={path.length}
-                  onSelectCategory={enterCategory}
-                  onExcludeCategory={handleExcludeCategory}
+                  onSelectSector={enterSector}
+                  onExcludeSector={handleExcludeSector}
                   heightClassName="min-h-0 flex-1"
                   marketValueDepthRange={marketValueDepthRange}
                   avgChangeRateDepthRange={avgChangeRateDepthRange}
@@ -379,7 +379,7 @@ export default function MarketMapCustomPage() {
                   labelMinAreaPercent={boxLabelMinAreaPercent}
                   stockLabelMode={stockLabelMode}
                   decimalPlaces={decimalPlaces}
-                  topPickCategoryIds={topPickCategoryIds}
+                  topPickSectorIds={topPickSectorIds}
                   zoomOutRequestDepth={zoomOutRequestDepth}
                   onZoomOutComplete={handleZoomOutComplete}
                 />
@@ -400,7 +400,7 @@ export default function MarketMapCustomPage() {
             />
             <SettingsMarketValueSection {...settingsModalProps} showDivider={false} />
             <SettingsExcludeSection {...settingsModalProps} />
-            <SettingsCategoryLevelSection {...settingsModalProps} showTopPick showDecimalPlaces />
+            <SettingsSectorLevelSection {...settingsModalProps} showTopPick showDecimalPlaces />
             <SettingsColorSection {...settingsModalProps} />
           </SettingsSidebar>
         </div>

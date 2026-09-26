@@ -111,9 +111,9 @@ export const handlers = [
   http.post('/api/map/excluded-stocks/:stockCode', ok),
   http.delete('/api/map/excluded-stocks/:stockCode', ok),
   http.delete('/api/map/excluded-stocks', ok),
-  http.post('/api/map/excluded-categories/:categoryId', ok),
-  http.delete('/api/map/excluded-categories/:categoryId', ok),
-  http.delete('/api/map/excluded-categories', ok),
+  http.post('/api/map/excluded-sectors/:sectorId', ok),
+  http.delete('/api/map/excluded-sectors/:sectorId', ok),
+  http.delete('/api/map/excluded-sectors', ok),
   http.delete('/api/map/reset', ok),
 
   // ── 커스텀(로그인 사용자 전용, /api/admin/market-map/* → /api/custom/* 전환) ────────────────
