@@ -328,22 +328,29 @@ a { color: var(--accent-light); text-decoration: none; }
     box-shadow: inset 0 0 0 999px rgb(255 255 255 / 42%);
   }
 
+  /* 종목과 같은 이유로(위 .market-map-stock 주석 참고) 헤더도 hover와 "팝업이 뜬 채 고정"을 같은
+     정의로 묶는다 — 마우스가 팝업 쪽으로 옮겨가 헤더에서 벗어나도(:hover가 자연히 꺼져도) 섹터가
+     계속 hover된 것처럼 보이게 한다. .market-map-sector-box.is-pinned > .market-map-sector-header가
+     "이 섹터 박스가 고정 상태일 때의 직계 헤더"를 가리킨다. */
   .market-map-sector-header:hover,
-  .market-map-sector-header:focus-visible {
+  .market-map-sector-header:focus-visible,
+  .market-map-sector-box.is-pinned > .market-map-sector-header {
     border-width: 2px;
     border-color: color-mix(in srgb, var(--market-map-base-color) 50%, white);
     box-shadow: inset 0 0 0 999px rgb(255 255 255 / 50%);
   }
 
   .market-map-top-pick-header:hover,
-  .market-map-top-pick-header:focus-visible {
+  .market-map-top-pick-header:focus-visible,
+  .market-map-sector-box.is-pinned > .market-map-top-pick-header {
     border-width: 0;
     border-color: transparent;
   }
 
   .market-map-sector-header:active,
   .market-map-suppress-sector-border .market-map-sector-header:hover,
-  .market-map-suppress-sector-border .market-map-sector-header:focus-visible {
+  .market-map-suppress-sector-border .market-map-sector-header:focus-visible,
+  .market-map-suppress-sector-border .market-map-sector-box.is-pinned > .market-map-sector-header {
     border-color: transparent;
     transition: none;
   }
