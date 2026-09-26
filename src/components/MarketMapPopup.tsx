@@ -43,17 +43,18 @@ export default function MarketMapPopup({ popup, onExcludeSector, onClose }: Prop
   )
 }
 
-// 팝업 본체와 우클릭한 박스 사이의 간격 — 이 틈 전체를 꼬리(말풍선 삼각형)가 채운다.
-const POPUP_GAP = 12
+// 팝업 본체와 우클릭한 박스 사이의 간격 — 예전 스티커 메모 방식과 동일하게 다시 2px로 붙인다.
+// 꼬리는 이 틈이 아니라 대상 박스 "안쪽"으로 파고드는 모양이라 GAP 자체는 좁아도 된다.
+const POPUP_GAP = 2
 const POPUP_MARGIN = 8
-// 꼬리가 팝업 가장자리를 따라 뻗는 길이(대각선 변의 "밑변" 길이) — GAP과 같은 값을 써서 대략
-// 45도에 가까운 삼각형이 되게 한다. OVERLAP은 팝업 본체 쪽으로 1px 더 들어가서, 둥근 모서리 없이
-// 딱 맞붙는 사각형 팝업 테두리와 이어질 때 안티앨리어싱으로 인한 실선 사이 미세한 틈(seam)이
-// 안 보이게 팝업 배경 밑으로 살짝 깔리게 한다.
+// 꼬리 끝(뾰족한 점)이 대상 박스 모서리에서 안쪽으로 파고드는 거리 — 대상 박스가 이보다 좁으면
+// 반대쪽 가장자리를 넘지 않도록 clamp한다(아래 computeTail 참고).
+const TAIL_INSET = 12
+// 꼬리가 팝업 본체 가장자리를 따라 뻗는 길이(팝업 쪽 변의 길이).
 const TAIL_ALONG = 12
+// 팝업 본체 쪽으로 1px 더 들어가서, 둥근 모서리 없는 사각형 테두리와 이어질 때 안티앨리어싱으로
+// 인한 실선 사이 미세한 틈(seam)이 안 보이게 팝업 배경 밑으로 살짝 깔리게 한다.
 const TAIL_OVERLAP = 1
-
-type TailCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
 interface TailGeometry {
   left: number
@@ -63,23 +64,41 @@ interface TailGeometry {
   points: string
 }
 
-// corner는 "꼬리가 팝업의 어느 모서리에서 나오는지"를 뜻한다 — X가 오른쪽 배치면 팝업 왼쪽에서,
-// 왼쪽 배치(뒤집힘)면 팝업 오른쪽에서 나오고, Y가 위쪽 정렬이면 팝업 위쪽에서, 아래쪽 정렬(뒤집힘)이면
-// 팝업 아래쪽에서 나온다. 꼭짓점(뾰족한 끝, points의 (0,0) 혹은 그 대응점)은 항상 정확히 앵커 박스의
-// 그 대각 모서리를 가리키고, 나머지 두 점은 팝업 쪽 밑변(anchorRect 반대편, TAIL_OVERLAP만큼 더 들어감)이다.
-function computeTailGeometry(corner: TailCorner, anchorRect: MarketMapPopupAnchorRect): TailGeometry {
-  const w = TAIL_ALONG + TAIL_OVERLAP
-  const h = TAIL_ALONG
-  switch (corner) {
-    case 'top-left':
-      return { left: anchorRect.right, top: anchorRect.top, width: w, height: h, points: `0,0 ${w},0 ${w},${h}` }
-    case 'top-right':
-      return { left: anchorRect.left - w, top: anchorRect.top, width: w, height: h, points: `${w},0 0,0 0,${h}` }
-    case 'bottom-left':
-      return { left: anchorRect.right, top: anchorRect.bottom - h, width: w, height: h, points: `0,${h} ${w},${h} ${w},0` }
-    case 'bottom-right':
-      return { left: anchorRect.left - w, top: anchorRect.bottom - h, width: w, height: h, points: `${w},${h} 0,${h} 0,0` }
-  }
+// 꼬리는 이제 팝업 쪽에서 뻗어나와 대상 박스 "안쪽"을 가리킨다 — 뾰족한 끝(tip)은 대상 박스의
+// 위/아래 가장자리 위, 그 가장자리에서 TAIL_INSET만큼 안쪽 지점에 찍힌다(대상 박스가 그보다 좁으면
+// 반대쪽 가장자리를 넘지 않게 clamp). tip과 같은 y(위/아래 가장자리)에서 팝업 본체의 그쪽 모서리까지
+// 수평으로 이어지는 변이 팝업 테두리선의 연장처럼 보이고, 거기서 팝업 본체 가장자리를 따라
+// TAIL_ALONG만큼 더 간 점까지의 대각선 변이 실제로 보이는 "꼬리" 모양이다.
+// xMode: 팝업이 대상 박스 오른쪽(right)/왼쪽(left) 중 어디 붙었는지. yMode: 위(top)/아래(bottom)
+// 가장자리 중 어디 정렬됐는지. bodyLeft/bodyWidth는 이미 계산된 팝업 본체의 최종 위치/크기.
+function computeTail(
+  anchorRect: MarketMapPopupAnchorRect,
+  xMode: 'right' | 'left',
+  yMode: 'top' | 'bottom',
+  bodyLeft: number,
+  bodyWidth: number,
+): TailGeometry {
+  const tipX =
+    xMode === 'right'
+      ? Math.max(anchorRect.left + POPUP_GAP, anchorRect.right - TAIL_INSET)
+      : Math.min(anchorRect.right - POPUP_GAP, anchorRect.left + TAIL_INSET)
+  const tipY = yMode === 'top' ? anchorRect.top : anchorRect.bottom
+
+  // elbow = 팝업 본체와 맞닿는 모서리(예: 기본 배치면 팝업의 top-left) — tip과 같은 y, x는 팝업의
+  // 그쪽 가장자리(+겹침 보정). third = 거기서 팝업 가장자리를 따라 TAIL_ALONG만큼 더 간 점.
+  const elbowX = xMode === 'right' ? bodyLeft + TAIL_OVERLAP : bodyLeft + bodyWidth - TAIL_OVERLAP
+  const thirdY = yMode === 'top' ? tipY + TAIL_ALONG : tipY - TAIL_ALONG
+
+  const left = Math.min(tipX, elbowX)
+  const top = Math.min(tipY, thirdY)
+  const width = Math.abs(elbowX - tipX)
+  const height = Math.abs(thirdY - tipY)
+  const points = [
+    `${tipX - left},${tipY - top}`,
+    `${elbowX - left},${tipY - top}`,
+    `${elbowX - left},${thirdY - top}`,
+  ].join(' ')
+  return { left, top, width, height, points }
 }
 
 interface PopupBodyProps {
@@ -145,11 +164,9 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
     }
 
     // 말풍선 꼬리 — 오른쪽/왼쪽, 위/아래가 각각 "깔끔하게" 정해졌을 때만 그린다(둘 중 하나라도
-    // 뷰포트 클램프로 타협한 상태면 꼬리 끝이 앵커 모서리를 정확히 못 가리키니 아예 숨긴다).
+    // 뷰포트 클램프로 타협한 상태면 꼬리 끝이 대상 박스 가장자리를 정확히 못 가리키니 아예 숨긴다).
     const tail =
-      xMode !== 'clamped' && yMode !== 'clamped'
-        ? computeTailGeometry(`${yMode === 'top' ? 'top' : 'bottom'}-${xMode === 'right' ? 'left' : 'right'}`, anchorRect)
-        : null
+      xMode !== 'clamped' && yMode !== 'clamped' ? computeTail(anchorRect, xMode, yMode, left, width) : null
 
     setPosition({ left, top, ready: true, tail, tailStroke: getComputedStyle(el).borderColor })
   }, [popup, confirming])
