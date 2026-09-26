@@ -4,6 +4,7 @@ import MarketSummaryPage from './pages/MarketSummaryPage'
 import MarketMapCustomPage from './pages/MarketMapCustomPage'
 import CategoryChangeRatePage from './pages/CategoryChangeRatePage'
 import CustomManagePage from './pages/CustomManagePage'
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import LoginGateProvider from './components/LoginGateProvider'
 
 // 페이지 전체와 document.body로 포털 렌더링한 메뉴/팝업에 같은 숫자 폭 규칙을 적용한다.
@@ -46,6 +47,9 @@ export default function App() {
               그대로 쓴다(로그인 사용자 전용, 비로그인은 로그인 팝업). */}
           <Route path="/admin/sector" element={<CustomManagePage />} />
           <Route path="/admin/stock" element={<CustomManagePage />} />
+          {/* Google OAuth 동의 화면에 등록하는 공개 페이지 — 로그인 여부와 무관하게 누구나 볼 수
+              있어야 하고, 세션/시세 등 데이터 API를 호출하지 않는 순수 정적 페이지다. */}
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="*" element={<Navigate to="/map/allstock" replace />} />
         </Routes>
       </LoginGateProvider>
