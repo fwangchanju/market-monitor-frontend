@@ -197,7 +197,7 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
           <div className="flex flex-col gap-2">
             <span>
               {excludeSector.name}
-              {eulReul(excludeSector.name)} 제외 범위에 포함하시겠습니까?
+              {eulReul(excludeSector.name)} 히트맵에서 제외하시겠습니까?
             </span>
             <div className="flex justify-end gap-2">
               <button

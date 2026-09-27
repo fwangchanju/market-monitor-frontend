@@ -33,5 +33,5 @@ export default function SettingsSectionIcon({ icon, className = '' }: SettingsSe
     WebkitMaskSize: 'contain',
   }
 
-  return <span aria-hidden="true" className={`inline-block h-6 w-6 shrink-0 bg-current ${className}`} style={maskStyle} />
+  return <span aria-hidden="true" className={`inline-block h-5 w-5 shrink-0 bg-current ${className}`} style={maskStyle} />
 }

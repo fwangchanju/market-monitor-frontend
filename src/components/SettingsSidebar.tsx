@@ -1,4 +1,4 @@
-import { Children, Fragment, isValidElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
+import { Children, Fragment, isValidElement, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { useIsLoggedIn } from '@/hooks/useSession'
 import type { DepthMetric } from '@/hooks/useGlobalSettings'
 import type { ColorScaleConfig, ColorScaleThreshold, LegendSwatch } from '@/utils/marketMapColorScale'
@@ -26,6 +26,44 @@ const SETTINGS_SECTIONS: { id: SettingsSidebarSectionId; label: string; icon: Se
   { id: 'stockDisplay', label: '종목 표시', icon: 'stock-display' },
   { id: 'colors', label: '색상', icon: 'colors' },
 ]
+
+function SettingsFavoritesPlaceholder() {
+  return (
+    <div className="flex h-full flex-col pt-8 text-white">
+      <div className="flex items-center justify-between">
+        <p className="settings-section-num text-base">즐겨찾기</p>
+        <button
+          type="button"
+          disabled
+          aria-label="즐겨찾기 추가"
+          title="준비 중"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-600 bg-gray-700 text-xl text-gray-300 disabled:cursor-not-allowed"
+        >
+          +
+        </button>
+      </div>
+      <p className="mt-5 text-xs text-gray-400">저장된 설정이 없습니다.</p>
+      <div className="mt-auto flex flex-col gap-3 pb-4">
+        <button
+          type="button"
+          disabled
+          title="준비 중"
+          className="min-h-12 rounded border border-[var(--accent)] bg-[var(--accent)] px-3 text-sm font-medium text-black disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          현재 설정 저장
+        </button>
+        <button
+          type="button"
+          disabled
+          title="준비 중"
+          className="min-h-12 rounded border border-gray-600 bg-transparent px-3 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          선택한 설정으로 불러오기
+        </button>
+      </div>
+    </div>
+  )
+}
 
 interface ExcludedSector {
   sectorId: number
@@ -413,8 +451,8 @@ function SettingsClassificationSelector({ isCustom, onToggleCustom }: { isCustom
             role="radio"
             aria-checked={isCustom === option.value}
             onClick={() => isCustom !== option.value && onToggleCustom()}
-            className={`min-h-10 rounded px-2 py-2 text-sm transition-colors ${
-              isCustom === option.value ? 'bg-[var(--accent)] font-semibold text-black' : 'border-0 bg-transparent text-gray-300 hover:text-white'
+            className={`min-h-10 rounded px-1 py-2 text-[13px] font-medium whitespace-nowrap transition-colors ${
+              isCustom === option.value ? 'bg-[var(--accent)] text-black' : 'border-0 bg-transparent text-gray-300 hover:text-white'
             }`}
           >
             {option.label}
@@ -448,9 +486,9 @@ function SettingsStockSizeSelector({
             role="radio"
             aria-checked={avgChangeRateUseSimple === option.value}
             onClick={() => avgChangeRateUseSimple !== option.value && onToggleAvgChangeRateUseSimple()}
-            className={`min-h-10 rounded px-2 py-2 text-sm transition-colors ${
+            className={`min-h-10 rounded px-1 py-2 text-[13px] font-medium whitespace-nowrap transition-colors ${
               avgChangeRateUseSimple === option.value
-                ? 'bg-[var(--accent)] font-semibold text-black'
+                ? 'bg-[var(--accent)] text-black'
                 : 'border-0 bg-transparent text-gray-300 hover:text-white'
             }`}
           >
@@ -881,16 +919,6 @@ export function SettingsColorSection({
   legendSwatches: LegendSwatch[]
   colorEditorProps?: ColorThresholdEditorProps | null
 }) {
-  const colorEditorRef = useRef<HTMLDivElement>(null)
-  const wasColorEditorOpen = useRef(false)
-  useEffect(() => {
-    const isColorEditorOpen = Boolean(colorEditorProps)
-    if (isColorEditorOpen && !wasColorEditorOpen.current) {
-      colorEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }
-    wasColorEditorOpen.current = isColorEditorOpen
-  }, [colorEditorProps])
-
   // 색상 범위는 /api/custom/scale(로그인 사용자 본인 값)을 쓰는 커스텀 데이터라, admin 여부가 아니라
   // 로그인 여부로 노출을 가른다(가입/로그인 전환 지시서: useIsAdmin 기반 커스텀 게이팅을 로그인 게이팅으로 전환).
   const isLoggedIn = useIsLoggedIn()
@@ -899,7 +927,7 @@ export function SettingsColorSection({
   const thresholdIndices = new Map(colorScaleDraft.thresholds.map((threshold, index) => [threshold.thresholdPercent, index]))
 
   return (
-    <div className="pt-8 pb-20 text-white">
+    <div className="pt-8 text-white">
       {/* "색상 커스텀 모드" 토글을 별도 줄로 두지 않고, 제목 바로 우측에 스위치만 붙인다. */}
       <div className="flex items-center justify-between">
         <p className="settings-section-num text-base">등락률 색상 범위</p>
@@ -936,7 +964,7 @@ export function SettingsColorSection({
                       onClick={() => thresholdIndex === undefined
                         ? onAddColorThreshold({ thresholdPercent: percent, color, colorLabel: null })
                         : onEditColorThreshold(thresholdIndex)}
-                      className="px-3 py-1 text-left text-lg font-normal whitespace-nowrap text-white hover:bg-gray-800"
+                      className="border-0 bg-transparent px-3 py-1 text-left text-lg font-normal whitespace-nowrap text-white hover:bg-gray-800"
                     >
                       수정
                     </button>
@@ -945,7 +973,7 @@ export function SettingsColorSection({
                       disabled={thresholdIndex === undefined}
                       title={thresholdIndex === undefined ? '기본 색상은 삭제할 수 없습니다' : undefined}
                       onClick={() => thresholdIndex !== undefined && onDeleteColorThreshold(thresholdIndex)}
-                      className="px-3 py-1 text-left text-lg font-normal whitespace-nowrap text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="border-0 bg-transparent px-3 py-1 text-left text-lg font-normal whitespace-nowrap text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       삭제
                     </button>
@@ -957,7 +985,7 @@ export function SettingsColorSection({
         </div>
       </div>
       {colorEditorProps && (
-        <div ref={colorEditorRef}>
+        <div>
           <MarketMapColorThresholdEditorPanel {...colorEditorProps} />
         </div>
       )}
@@ -1000,7 +1028,7 @@ export default function SettingsSidebar({
   stockCountLabel,
   children,
 }: Props) {
-  const [activeSection, setActiveSection] = useState<SettingsSidebarSectionId>('favorites')
+  const [activeSection, setActiveSection] = useState<SettingsSidebarSectionId>('composition')
   const childNodes = Children.toArray(children)
   const sectionContent = new Map<SettingsSidebarSectionId, ReactNode[]>()
   const addSectionContent = (section: SettingsSidebarSectionId, content: ReactNode) => {
@@ -1018,12 +1046,16 @@ export default function SettingsSidebar({
   // 계속 표시한다. 각 페이지 통합이 끝나면 모든 설정이 명시적인 group 아래에 놓인다.
   const ungroupedNodes = childNodes.filter(node => !isSettingsSidebarGroup(node))
   if (ungroupedNodes.length > 0) addSectionContent('composition', ungroupedNodes)
+  if (sectionContent.size > 0 && !sectionContent.has('favorites')) {
+    addSectionContent('favorites', <SettingsFavoritesPlaceholder />)
+  }
 
   const hasClassificationSelector = typeof isCustom === 'boolean' && Boolean(onToggleCustom)
   const hasStockSizeSelector = typeof avgChangeRateUseSimple === 'boolean' && Boolean(onToggleAvgChangeRateUseSimple)
 
   const availableSections = SETTINGS_SECTIONS.filter(section => sectionContent.has(section.id))
   const selectedSection = availableSections.find(section => section.id === activeSection) ?? availableSections[0]
+  const isNonScrollingSection = selectedSection?.id === 'favorites' || selectedSection?.id === 'industry' || selectedSection?.id === 'colors'
 
   // 닫혀있을 땐 아예 렌더링하지 않는다(트리거 버튼은 더 이상 이 컴포넌트가 아니라 호출부가 따로 그린다).
   if (!isOpen) return null
@@ -1049,7 +1081,7 @@ export default function SettingsSidebar({
         </button>
       </div>
       {availableSections.length > 0 && (
-        <nav role="tablist" aria-label={`${pageLabel} 설정 분류`} className="flex h-[68px] shrink-0 border-b border-gray-700 px-1">
+        <nav role="tablist" aria-label={`${pageLabel} 설정 분류`} className="flex h-[62px] shrink-0 border-b border-gray-700 px-1">
           {availableSections.map(section => {
             const selected = section.id === selectedSection?.id
             return (
@@ -1081,7 +1113,9 @@ export default function SettingsSidebar({
           role="tabpanel"
           id={`settings-panel-${selectedSection.id}`}
           aria-labelledby={`settings-tab-${selectedSection.id}`}
-          className="settings-section-list settings-sidebar-tab-content min-h-0 flex-1 overflow-y-auto px-4 pb-8 text-sm"
+          className={`settings-section-list settings-sidebar-tab-content min-h-0 flex-1 px-4 text-sm ${
+            isNonScrollingSection ? 'overflow-y-clip pb-2' : 'overflow-y-auto pb-8'
+          }`}
         >
           {selectedSection.id === 'industry' && hasClassificationSelector && (
             <SettingsClassificationSelector isCustom={isCustom!} onToggleCustom={onToggleCustom!} />
