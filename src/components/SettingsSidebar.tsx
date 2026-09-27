@@ -1,10 +1,31 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { Children, Fragment, isValidElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { useIsLoggedIn } from '@/hooks/useSession'
 import type { DepthMetric } from '@/hooks/useGlobalSettings'
 import type { ColorScaleConfig, ColorScaleThreshold, LegendSwatch } from '@/utils/marketMapColorScale'
 import { FONT_BAR_LEGEND } from '@/components/FontStyle'
 import MarketMapColorThresholdEditorPanel, { type ColorThresholdEditorProps } from '@/components/MarketMapColorThresholdEditorPanel'
+import SettingsSectionIcon, { type SettingsSectionIconName } from '@/components/SettingsSectionIcon'
 import type { MarketValueTierItem } from '@/types/api'
+
+export type SettingsSidebarSectionId = 'favorites' | 'composition' | 'industry' | 'stockDisplay' | 'colors'
+
+interface SettingsSidebarGroupProps {
+  section: SettingsSidebarSectionId
+  children?: ReactNode
+}
+
+// 각 페이지가 자기 설정을 참조 탭 아래에 배치한다. SettingsSidebar는 활성 탭의 그룹만 렌더링한다.
+export function SettingsSidebarGroup({ children }: SettingsSidebarGroupProps) {
+  return <>{children}</>
+}
+
+const SETTINGS_SECTIONS: { id: SettingsSidebarSectionId; label: string; icon: SettingsSectionIconName }[] = [
+  { id: 'favorites', label: '즐겨찾기', icon: 'favorites' },
+  { id: 'composition', label: '종목 구성', icon: 'composition' },
+  { id: 'industry', label: '업종 분류', icon: 'industry' },
+  { id: 'stockDisplay', label: '종목 표시', icon: 'stock-display' },
+  { id: 'colors', label: '색상', icon: 'colors' },
+]
 
 interface ExcludedSector {
   sectorId: number
@@ -375,6 +396,72 @@ export function SettingsEqualWeightSection({
   )
 }
 
+function SettingsClassificationSelector({ isCustom, onToggleCustom }: { isCustom: boolean; onToggleCustom: () => void }) {
+  const options = [
+    { value: false, label: '거래소 분류' },
+    { value: true, label: 'MARKETRY 분류' },
+  ]
+
+  return (
+    <div className="mb-6 border-b border-gray-700 pt-8 pb-6 text-white">
+      <p className="settings-section-num text-base">분류 체계</p>
+      <div role="radiogroup" aria-label="분류 체계" className="mt-3 grid grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
+        {options.map(option => (
+          <button
+            key={option.label}
+            type="button"
+            role="radio"
+            aria-checked={isCustom === option.value}
+            onClick={() => isCustom !== option.value && onToggleCustom()}
+            className={`min-h-10 rounded px-2 py-2 text-sm transition-colors ${
+              isCustom === option.value ? 'bg-[var(--accent)] font-semibold text-black' : 'border-0 bg-transparent text-gray-300 hover:text-white'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SettingsStockSizeSelector({
+  avgChangeRateUseSimple,
+  onToggleAvgChangeRateUseSimple,
+}: {
+  avgChangeRateUseSimple: boolean
+  onToggleAvgChangeRateUseSimple: () => void
+}) {
+  const options = [
+    { value: false, label: '시가총액 비례' },
+    { value: true, label: '동일 크기' },
+  ]
+
+  return (
+    <div className="mb-6 border-b border-gray-700 pt-8 pb-6 text-white">
+      <p className="settings-section-num text-base">박스 크기</p>
+      <div role="radiogroup" aria-label="박스 크기" className="mt-3 grid grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
+        {options.map(option => (
+          <button
+            key={option.label}
+            type="button"
+            role="radio"
+            aria-checked={avgChangeRateUseSimple === option.value}
+            onClick={() => avgChangeRateUseSimple !== option.value && onToggleAvgChangeRateUseSimple()}
+            className={`min-h-10 rounded px-2 py-2 text-sm transition-colors ${
+              avgChangeRateUseSimple === option.value
+                ? 'bg-[var(--accent)] font-semibold text-black'
+                : 'border-0 bg-transparent text-gray-300 hover:text-white'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function SettingsSectorLevelSection({
   isCustom,
   maxDepth,
@@ -406,7 +493,9 @@ export function SettingsSectorLevelSection({
   onChangeDecimalPlacesIndex,
   showTopPick = false,
   showDecimalPlaces = false,
-  showDivider = true,
+  showDivider = false,
+  showClassification = true,
+  showStockDisplay = true,
 }: {
   isCustom: boolean
   // "업종 분류 탭" 위에 구분선(border-t)을 그릴지 — 스티키 커스텀모드 블록(또는 동일 가중) 바로 다음에
@@ -454,6 +543,9 @@ export function SettingsSectorLevelSection({
   // 등락률(%) 표시에 쓰이는 설정이라 지도 페이지에서만 켠다(섹터는 그래프 자체 소수점 포맷을 따로
   // 쓰므로 기본 false로 숨긴다).
   showDecimalPlaces?: boolean
+  // 업종 분류 설정과 종목 박스 표기를 서로 다른 사이드바 탭에서 보여줄 수 있다.
+  showClassification?: boolean
+  showStockDisplay?: boolean
 }) {
   // 설정에서 선택할 수 있는 최소 단계는 대/중/소분류까지 보장한다. 실제 데이터가 얕으면 해당 단계의
   // 화면 결과만 비어 있을 뿐, 사용자가 미리 설정해 둔 값을 UI가 임의로 막거나 지우지는 않는다.
@@ -476,8 +568,8 @@ export function SettingsSectorLevelSection({
           그리면 두 섹션이 바뀔 때(페이지마다 순서가 다름) 구분선이 두 줄이 되거나 아예 없어지는
           문제가 있었다. showDivider=false는 바로 위가 스티키 커스텀모드 블록(또는 동일 가중)이라
           이미 그 자체로 구분되는 경우에만 쓴다. */}
-      <div className={showDivider ? 'mt-6 border-t border-gray-700 pt-8' : 'pt-8'}>
-        <p className="settings-section-num text-base">업종 분류 탭</p>
+      {showClassification && <div className={showDivider ? 'mt-6 border-t border-gray-700 pt-8' : 'pt-0'}>
+        <p className="settings-section-num text-base">분류 단계</p>
         <div className="settings-subsection-list">
           <div className={`mt-2 pl-2 text-sm ${isDepthDisabled ? 'opacity-40' : ''}`}>
             <div className="flex max-w-[16rem] items-center justify-between">
@@ -597,13 +689,13 @@ export function SettingsSectorLevelSection({
             </div>
           )}
         </div>
-      </div>
+      </div>}
       {/* "종목 박스" 중제목 — "종목 박스 표기", "종목 텍스트 표시 기준", (지도 페이지 한정) "등락률
           소수점"을 하위 속성으로 묶는다. "업종 분류 탭" 바로 다음이라 구분선은 항상 그린다. */}
-      <div className="mt-6 border-t border-gray-700 pt-8">
-        <p className="settings-section-num text-base">종목 박스</p>
+      {showStockDisplay && <div className={showClassification ? 'mt-6 border-t border-gray-700 pt-8' : 'pt-0'}>
+        <p className="settings-section-num text-base">박스 내 표시</p>
         <div className="settings-subsection-list">
-          <div className={`mt-2 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
+          <div className="mt-2 pl-2 text-sm">
             <div className="flex max-w-[16rem] items-center justify-between">
               <span className="settings-subsection-num block text-left text-white">종목 박스 내 표기</span>
               <ToggleSwitch
@@ -612,7 +704,6 @@ export function SettingsSectorLevelSection({
                 label="종목 박스 내 표기 사용"
                 hideLabel
                 compact
-                disabled={!isCustom}
               />
             </div>
             <div className={`mt-2 max-w-[16rem] ${stockLabelEnabled ? '' : 'opacity-40'}`}>
@@ -621,11 +712,11 @@ export function SettingsSectorLevelSection({
                 labels={STOCK_LABEL_MODE_LABELS}
                 ariaLabel="종목 박스 내 표기"
                 onChange={index => onChangeStockLabelModeIndex(index + 1)}
-                disabled={!isCustom || !stockLabelEnabled}
+                disabled={!stockLabelEnabled}
               />
             </div>
           </div>
-          <div className={`mt-3 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
+          <div className="mt-3 pl-2 text-sm">
             {/* 퍼센티지 값은 우측 끝에 옅은 회색으로 — 그 값이 없다고 치면 라벨만 가운데 정렬된 것처럼
                 보이도록, 라벨을 flex-1로 남는 공간에서 가운데 정렬한다("업종 분류 레벨" + N/M 배지와
                 동일한 패턴). 값 변경은 아래 슬라이더로만 한다. */}
@@ -641,33 +732,30 @@ export function SettingsSectorLevelSection({
                 step={0.01}
                 value={boxLabelMinAreaPercent}
                 onChange={e => onChangeBoxLabelMinAreaPercent(Number(e.target.value))}
-                disabled={!isCustom}
                 className="w-full accent-[var(--accent)] disabled:cursor-not-allowed"
               />
             </div>
           </div>
           {showDecimalPlaces && (
-            <div className={`mt-3 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
-              <span className="settings-subsection-num block max-w-[16rem] text-left text-white">등락률 소수점 자릿수</span>
+            <div className="mt-3 pl-2 text-sm">
+              <span className="settings-subsection-num block max-w-[16rem] text-left text-white">등락률 자리수</span>
               <div className="mt-2 max-w-[16rem]">
                 <SingleValueSlider
                   index={decimalPlacesIndex}
                   labels={DECIMAL_PLACES_LABELS}
                   ariaLabel="등락률 소수점 자릿수"
                   onChange={onChangeDecimalPlacesIndex}
-                  disabled={!isCustom}
                 />
               </div>
             </div>
           )}
         </div>
-      </div>
+      </div>}
     </div>
   )
 }
 
 export function SettingsMarketValueSection({
-  isCustom,
   tiers,
   tierRangeMinIndex,
   tierRangeMaxIndex,
@@ -696,9 +784,8 @@ export function SettingsMarketValueSection({
 
   return (
     <div className={showDivider ? 'mt-6 border-t border-gray-700 pt-8 text-white' : 'pt-8 text-white'}>
-      <p className="settings-section-num text-base">종목 표시 범위</p>
-      <div className={`settings-subsection-list mt-2 pl-2 text-sm ${isCustom ? '' : 'opacity-40'}`}>
-        <span className="settings-subsection-num block max-w-[16rem] text-left text-white">시가총액</span>
+      <p className="settings-section-num text-base">시가총액 범위</p>
+      <div className="settings-subsection-list mt-2 pl-2 text-sm">
         <div className="mt-2 max-w-[16rem]">
           <RangeSlider
             minIndex={tierDisplayMinIndex}
@@ -710,7 +797,7 @@ export function SettingsMarketValueSection({
             onChange={(newDisplayMin, newDisplayMax) => {
               onChangeTierRange(tierSteps - newDisplayMax, tierSteps - newDisplayMin)
             }}
-            disabled={!isCustom || tiers.length === 0}
+            disabled={tiers.length === 0}
           />
         </div>
       </div>
@@ -719,13 +806,11 @@ export function SettingsMarketValueSection({
 }
 
 export function SettingsExcludeSection({
-  isCustom,
   sectorFilterEnabled,
   onToggleSectorFilter,
   excludedSectors,
   onRemoveExcludedSector,
 }: {
-  isCustom: boolean
   // 개별 섹터를 켜고 끄는 토글이 아니라, "섹터 제외를 적용할지 말지" 자체를 한 번에 켜고 끄는 스위치.
   // 어떤 섹터를 제외 목록에 넣을지는 마켓맵에서 우클릭으로 추가/이 목록에서 X로 제거하는 것으로만 관리한다.
   sectorFilterEnabled: boolean
@@ -739,12 +824,10 @@ export function SettingsExcludeSection({
         <ToggleSwitch
           checked={sectorFilterEnabled}
           onChange={onToggleSectorFilter}
-          label="종목 제외 범위"
+          label="제외 종목"
           labelClassName="text-base settings-section-num"
-          disabled={!isCustom}
         />
-        {isCustom && (
-          <div className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto pl-2">
+        <div className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto pl-2">
             {excludedSectors.length === 0 ? (
               <p className="text-xs text-gray-500">제외된 범위 없음</p>
             ) : (
@@ -764,15 +847,13 @@ export function SettingsExcludeSection({
                 </div>
               ))
             )}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   )
 }
 
 export function SettingsColorSection({
-  isCustom,
   colorScaleDraft,
   colorCustomOn,
   onChangeColorCustomOn,
@@ -818,19 +899,19 @@ export function SettingsColorSection({
   const thresholdIndices = new Map(colorScaleDraft.thresholds.map((threshold, index) => [threshold.thresholdPercent, index]))
 
   return (
-    <div className="mt-6 border-t border-gray-700 pt-8 pb-20 text-white">
-      {/* "색상 커스텀 모드" 토글을 별도 줄로 두지 않고, 제목("색상 범위") 바로 우측에 스위치만 붙인다. */}
+    <div className="pt-8 pb-20 text-white">
+      {/* "색상 커스텀 모드" 토글을 별도 줄로 두지 않고, 제목 바로 우측에 스위치만 붙인다. */}
       <div className="flex items-center justify-between">
-        <p className="settings-section-num text-base">색상 범위</p>
+        <p className="settings-section-num text-base">등락률 색상 범위</p>
         <ToggleSwitch
           checked={colorCustomOn}
           onChange={() => onChangeColorCustomOn(!colorCustomOn)}
           label="색상 범위 커스텀"
-          disabled={!isCustom || Boolean(colorEditorProps)}
+          disabled={Boolean(colorEditorProps)}
           hideLabel
         />
       </div>
-      <div className={`mt-3 flex flex-col gap-1 text-sm ${isCustom && colorCustomOn ? '' : 'pointer-events-none opacity-40'}`}>
+      <div className={`mt-3 flex flex-col gap-1 text-sm ${colorCustomOn ? '' : 'pointer-events-none opacity-40'}`}>
         {/* 범례 색상칸의 모양은 유지하고, hover/클릭 시 해당 값의 동작 메뉴를 띄운다. */}
         {colorEditorProps && <p className="text-[10px] text-gray-500">편집으로 비어진 부호의 기본 범례 칸은 숨깁니다.</p>}
         <div className="flex flex-wrap gap-0.5">
@@ -890,6 +971,13 @@ interface Props {
   // 사이드바 열림 상태는 페이지가 관리한다.
   isOpen: boolean
   onOpenChange: (open: boolean) => void
+  // 분류 체계 선택은 업종 분류 탭, 박스 크기 선택은 종목 표시 탭에 배치한다.
+  isCustom?: boolean
+  onToggleCustom?: () => void
+  avgChangeRateUseSimple?: boolean
+  onToggleAvgChangeRateUseSimple?: () => void
+  // 지도 페이지의 현재/전체 종목 수를 제목 바로 옆에 표시한다.
+  stockCountLabel?: string
   // 실제로 보여줄 옵션 섹션들 — 페이지가 자기한테 유효한 Settings*Section만 골라 조립한다.
   // 아무것도 안 넘기면(요약/어드민처럼 이 설정이 전혀 적용 안 되는 페이지) 헤더만 있는 빈 사이드바가 된다.
   children?: ReactNode
@@ -897,15 +985,60 @@ interface Props {
 
 // 팝업이 아니라 실제 렌더링 영역을 왼쪽으로 밀어내는 도킹형 사이드바 — 헤더 + 스크롤 바디만 그리는
 // 껍데기고, 실제 옵션 내용은 전부 위 Settings*Section들을 children으로 조립해서 채운다.
-export default function SettingsSidebar({ pageLabel, isOpen, onOpenChange, children }: Props) {
+function isSettingsSidebarGroup(node: ReactNode): node is ReactElement<SettingsSidebarGroupProps> {
+  return isValidElement<SettingsSidebarGroupProps>(node) && node.type === SettingsSidebarGroup
+}
+
+export default function SettingsSidebar({
+  pageLabel,
+  isOpen,
+  onOpenChange,
+  isCustom,
+  onToggleCustom,
+  avgChangeRateUseSimple,
+  onToggleAvgChangeRateUseSimple,
+  stockCountLabel,
+  children,
+}: Props) {
+  const [activeSection, setActiveSection] = useState<SettingsSidebarSectionId>('favorites')
+  const childNodes = Children.toArray(children)
+  const sectionContent = new Map<SettingsSidebarSectionId, ReactNode[]>()
+  const addSectionContent = (section: SettingsSidebarSectionId, content: ReactNode) => {
+    const existing = sectionContent.get(section) ?? []
+    existing.push(content)
+    sectionContent.set(section, existing)
+  }
+
+  for (const node of childNodes) {
+    if (!isSettingsSidebarGroup(node)) continue
+    addSectionContent(node.props.section, node.props.children)
+  }
+
+  // 기존 페이지에서 아직 group wrapper를 붙이지 않은 아이들은 종목 구성 탭에 넣어 이전 호출부도
+  // 계속 표시한다. 각 페이지 통합이 끝나면 모든 설정이 명시적인 group 아래에 놓인다.
+  const ungroupedNodes = childNodes.filter(node => !isSettingsSidebarGroup(node))
+  if (ungroupedNodes.length > 0) addSectionContent('composition', ungroupedNodes)
+
+  const hasClassificationSelector = typeof isCustom === 'boolean' && Boolean(onToggleCustom)
+  const hasStockSizeSelector = typeof avgChangeRateUseSimple === 'boolean' && Boolean(onToggleAvgChangeRateUseSimple)
+
+  const availableSections = SETTINGS_SECTIONS.filter(section => sectionContent.has(section.id))
+  const selectedSection = availableSections.find(section => section.id === activeSection) ?? availableSections[0]
+
   // 닫혀있을 땐 아예 렌더링하지 않는다(트리거 버튼은 더 이상 이 컴포넌트가 아니라 호출부가 따로 그린다).
   if (!isOpen) return null
 
   return (
-    // 슬라이더 자체 폭(max-w-[16rem])의 약 1.3배 — 실제 지도 너비를 덜 뺏도록 사이드바를 좁게 유지한다.
-    <div className="flex w-80 shrink-0 flex-col overflow-hidden border border-gray-700 bg-zinc-800">
+    <div className="flex w-72 shrink-0 flex-col overflow-hidden rounded-md border border-gray-700 bg-zinc-800">
       <div className="flex shrink-0 items-center justify-between border-b border-gray-700 p-4">
-        <p className="flex h-7 items-center text-lg font-bold leading-none text-white">{pageLabel} 설정</p>
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="flex h-7 items-center whitespace-nowrap text-lg font-bold leading-none text-white">{pageLabel} 설정</p>
+          {stockCountLabel && (
+            <span className="flex h-7 items-center whitespace-nowrap text-sm leading-none text-gray-400">
+              {stockCountLabel}
+            </span>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => onOpenChange(false)}
@@ -915,7 +1048,53 @@ export default function SettingsSidebar({ pageLabel, isOpen, onOpenChange, child
           ✕
         </button>
       </div>
-      <div className="settings-section-list min-h-0 flex-1 overflow-y-auto px-4 pb-8 text-sm">{children}</div>
+      {availableSections.length > 0 && (
+        <nav role="tablist" aria-label={`${pageLabel} 설정 분류`} className="flex h-[68px] shrink-0 border-b border-gray-700 px-1">
+          {availableSections.map(section => {
+            const selected = section.id === selectedSection?.id
+            return (
+              <button
+                key={section.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-controls={`settings-panel-${section.id}`}
+                id={`settings-tab-${section.id}`}
+                onClick={() => setActiveSection(section.id)}
+                className={`group relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 border-0 bg-transparent px-1 pt-2 pb-3 text-[11px] leading-tight transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--accent)] ${
+                  selected ? 'text-[var(--accent)]' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <SettingsSectionIcon icon={section.icon} />
+                <span className="max-w-full truncate">{section.label}</span>
+                <span
+                  aria-hidden="true"
+                  className={`absolute inset-x-2 bottom-0 h-0.5 bg-[var(--accent)] transition-opacity ${selected ? 'opacity-100' : 'opacity-0'}`}
+                />
+              </button>
+            )
+          })}
+        </nav>
+      )}
+      {selectedSection && (
+        <div
+          role="tabpanel"
+          id={`settings-panel-${selectedSection.id}`}
+          aria-labelledby={`settings-tab-${selectedSection.id}`}
+          className="settings-section-list settings-sidebar-tab-content min-h-0 flex-1 overflow-y-auto px-4 pb-8 text-sm"
+        >
+          {selectedSection.id === 'industry' && hasClassificationSelector && (
+            <SettingsClassificationSelector isCustom={isCustom!} onToggleCustom={onToggleCustom!} />
+          )}
+          {selectedSection.id === 'stockDisplay' && hasStockSizeSelector && (
+            <SettingsStockSizeSelector
+              avgChangeRateUseSimple={avgChangeRateUseSimple!}
+              onToggleAvgChangeRateUseSimple={onToggleAvgChangeRateUseSimple!}
+            />
+          )}
+          {sectionContent.get(selectedSection.id)?.map((content, index) => <Fragment key={index}>{content}</Fragment>)}
+        </div>
+      )}
     </div>
   )
 }

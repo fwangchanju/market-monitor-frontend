@@ -87,8 +87,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 우선순위(쿼리 > 경로 > 저장값 > 기본값)를 적용하면, 이 훅을 그대로 쓰는 지도 페이지는 물론
   // 트리 조회만 공유하는 섹터 페이지도 같은 마켓으로 트리를 받는다(docs/instructions-route-market-first-render.md 결정 2).
   const [market] = useRouteAwareMarket('marketMap.market', 'ALL_STOCK')
-  // 저장값은 로그인 사용자에 한해 서버(user_preference)에 남는다. 비로그인은 저장값이 true여도
-  // 항상 false로 강제한다 — 비로그인은 커스텀 모드 자체를 쓸 수 없다(가입/로그인 전환 지시서 4).
+  // 저장값은 로그인 사용자에 한해 서버(user_preference)에 남는다. 이 값은 분류 체계를 고르며,
+  // 비로그인은 저장값이 true여도 거래소 분류(false)로 고정한다 — MARKETRY 분류는 로그인이 필요하다.
   const [storedIsCustom, setStoredIsCustom] = usePageSetting('marketMap.isCustom', true)
   const isCustom = isLoggedIn ? storedIsCustom : false
   // 시가총액 합/등락률 평균/등락 종목수 태그를 셋 다 동시에 켤 수 있었는데, 한꺼번에 여러 개가 뜨면
@@ -107,6 +107,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   )
   // 예전 세션스토리지에 activeDepthMetric=null만 남아 있어도 토글을 다시 켜면 등락률을 복원한다.
   const selectedDepthMetric = activeDepthMetric ?? lastActiveDepthMetricRef.current
+  // MARKETRY 분류에서의 사용자 선택값. 거래소 분류에서는 이 값을 보존한 채 화면에 대분류(0)만
+  // 적용한다 — 분류를 다시 바꾸면 MARKETRY 분류에서 선택했던 범위가 돌아온다.
   // 기본값: 대분류~중분류(index 0~1) — 렌더러가 캡처하는 기본 화면에 등락률이 보이도록.
   const [depthMetricMinIndex, setDepthMetricMinIndex] = usePageSetting('marketMap.depthMetricMinIndex', 0)
   const [depthMetricMaxIndex, setDepthMetricMaxIndex] = usePageSetting('marketMap.depthMetricMaxIndex', 1)
@@ -128,6 +130,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const [decimalPlacesIndex, setDecimalPlacesIndex] = usePageSetting('marketMap.decimalPlacesIndex', 1)
   const decimalPlaces = decimalPlacesIndex
   // 시가총액 구간 범위 필터 — 마켓맵/섹터 랭킹 화면이 세션스토리지 키를 공유한다(useMarketValueTierRange 참고).
+  // 시가총액 구간 필터는 분류 체계와 무관한 표시 설정이라 두 분류 모두에서 적용한다.
   const {
     tiers: valueTiers,
     minIndex: tierRangeMinIndex,
@@ -136,7 +139,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     setMaxIndex: setTierRangeMaxIndex,
     excludedMarketValueTiers,
     isTierRangeReady: isMarketValueTierRangeReady,
-  } = useMarketValueTierRange(isCustom)
+  } = useMarketValueTierRange(true)
   const [excludedSectorNames, setExcludedSectorNames] = usePersistedState<Map<number, string>>(
     'marketMap.excludedSectorNames',
     new Map(),
@@ -151,7 +154,11 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 기본값 2(렌더러 캡처 기준 화면에 맞춤).
   const [selectedMaxDepth, setMaxDepth] = useState<number | null>(2)
   const [sectorLevelEnabled, setSectorLevelEnabled] = useState(true)
-  const maxDepth = sectorLevelEnabled ? selectedMaxDepth : 0
+  // 거래소 분류 트리는 1단계(대분류)만 제공한다. MARKETRY 분류의 사용자 설정은 건드리지 않고,
+  // 거래소 분류일 때만 화면 적용값을 대분류로 고정해 분류를 되돌리면 기존 설정을 복원한다.
+  const effectiveSectorLevelEnabled = isCustom ? sectorLevelEnabled : true
+  const effectiveSelectedMaxDepth = isCustom ? selectedMaxDepth : 1
+  const maxDepth = effectiveSectorLevelEnabled ? effectiveSelectedMaxDepth : 0
   // 선호 업종 — 선택한 절대 depth에서 등락률 상위 N개 섹터를 지도 전체에 강조한다.
   const [topPickDepth, setTopPickDepth] = usePageSetting('marketMap.topPickDepth', 1)
   const [topPickCount, setTopPickCount] = usePageSetting('marketMap.topPickCount', 2)
@@ -193,7 +200,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     setExcludedSectorNames(seedExcludedSectorNames(data.items, []))
   }, [data, market, isCustom, setExcludedSectorNames])
 
-  // 커스텀 모드가 아니면(기본 분류 트리) isExcluded 자체를 무시한다 — 섹터 제외는 커스텀 트리 전용 기능.
+  // 거래소 분류 트리는 사용자 정의 섹터를 쓰지 않으므로 isExcluded와 제외 목록을 적용하지 않는다.
   const excludedSectorIds =
     isCustom && sectorFilterEnabled ? new Set(excludedSectorNames.keys()) : new Set<number>()
 
@@ -209,11 +216,16 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 어긋나지 않는다.
   const depthMetricClampedMinIndex = Math.min(depthMetricMinIndex, depthMetricMaxIndex)
   const depthMetricClampedMaxIndex = depthMetricMaxIndex
-  const isDepthMetricRangeValid = depthMetricClampedMaxIndex < availableMaxDepth
+  const effectiveDepthMetricEnabled = isCustom ? depthMetricEnabled : true
+  const effectiveDepthMetricMinIndex = isCustom ? depthMetricClampedMinIndex : 0
+  const effectiveDepthMetricMaxIndex = isCustom ? depthMetricClampedMaxIndex : 0
+  const isDepthMetricRangeValid = isCustom
+    ? effectiveDepthMetricMaxIndex < availableMaxDepth
+    : availableMaxDepth > 0
 
   const activeDepthRange: [number, number] | null =
-    depthMetricEnabled && isDepthMetricRangeValid
-      ? [depthMetricClampedMinIndex, depthMetricClampedMaxIndex]
+    effectiveDepthMetricEnabled && isDepthMetricRangeValid
+      ? [effectiveDepthMetricMinIndex, effectiveDepthMetricMaxIndex]
       : null
 
   const marketValueDepthRange = selectedDepthMetric === 'marketValue' ? activeDepthRange : null
@@ -424,8 +436,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     ? colorEditIndices.map(i => colorScaleDraft.thresholds[i]).filter((t): t is ColorScaleThreshold => t !== undefined)
     : []
 
-  // 비로그인이 커스텀 모드를 켜려 하면 토글 대신 로그인 팝업을 띄운다 — 로그인 성공 후 지금 페이지로
-  // 돌아온다(가입/로그인 전환 지시서 4). 이미 로그인 상태면 평소처럼 저장값을 토글한다.
+  // 비로그인이 MARKETRY 분류를 선택하려 하면 로그인 팝업을 띄운다 — 로그인 성공 후 지금 페이지로
+  // 돌아온다(가입/로그인 전환 지시서 4). 이미 로그인 상태면 저장한 분류 선택을 토글한다.
   const handleToggleCustom = () => {
     if (!isLoggedIn) {
       requireLogin(pathname)
@@ -473,17 +485,17 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const settingsModalProps = {
     isCustom,
     onToggleCustom: handleToggleCustom,
-    maxDepth: selectedMaxDepth,
-    sectorLevelEnabled,
+    maxDepth: effectiveSelectedMaxDepth,
+    sectorLevelEnabled: effectiveSectorLevelEnabled,
     onToggleSectorLevel: () => setSectorLevelEnabled(prev => !prev),
     availableMaxDepth,
     onChangeMaxDepth: handleChangeMaxDepth,
     activeDepthMetric: selectedDepthMetric,
     onChangeActiveDepthMetric: handleChangeActiveDepthMetric,
-    depthMetricEnabled,
+    depthMetricEnabled: effectiveDepthMetricEnabled,
     onToggleDepthMetric: handleToggleDepthMetric,
-    depthMetricMinIndex: depthMetricClampedMinIndex,
-    depthMetricMaxIndex: depthMetricClampedMaxIndex,
+    depthMetricMinIndex: effectiveDepthMetricMinIndex,
+    depthMetricMaxIndex: effectiveDepthMetricMaxIndex,
     onChangeDepthMetricRange: handleChangeDepthMetricRange,
     topPickDepth,
     topPickCount: selectedTopPickCount,
@@ -554,8 +566,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     rootNodes,
     filteredRootNodes,
     availableMaxDepth,
-    // 뎁스 제한을 "지금 보고 있는 위치" 기준으로 다시 적용하는 건 페이지(MarketMapCustomPage)의
-    // 몫이라 원본 설정값을 그대로 내보낸다 — isCustom이 아닐 때 무시하는 것도 페이지에서 처리한다.
+    // MARKETRY 분류에서 선택한 값은 위에서 계산한 화면 적용값으로 내보낸다. 거래소 분류에서는
+    // 대분류만 적용해도 저장한 MARKETRY 설정이 바뀌지 않는다.
     maxDepth,
     marketValueDepthRange,
     avgChangeRateDepthRange,
@@ -572,7 +584,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     colorScale,
     excludedSectorNames,
     onChangeSectorFilterEnabled: setSectorFilterEnabled,
-    // 커스텀 모드+섹터 기준 스위치가 둘 다 켜져있을 때만 실제로 적용되는 최종 제외 대상 ID 집합
+    // MARKETRY 분류+섹터 기준 스위치가 둘 다 켜져있을 때만 실제로 적용되는 최종 제외 대상 ID 집합
     // (filteredRootNodes를 만들 때 쓰는 것과 동일한 값) — 트리를 직접 그리지 않고 섹터 ID
     // 기준으로만 걸러내면 되는 페이지(섹터 랭킹 등)를 위해 내보낸다.
     excludedSectorIds,

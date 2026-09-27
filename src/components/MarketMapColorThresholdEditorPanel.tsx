@@ -92,7 +92,7 @@ function ThresholdRow({ threshold, active, autoFocus, onFocusRow, onChangeThresh
         onChange={e => setMagnitudeText(e.target.value)}
         onBlur={() => commit(sign, magnitudeText)}
         autoFocus={autoFocus}
-        className="nes-input is-dark h-7 w-16 text-xs"
+        className="h-7 w-16 rounded border border-gray-600 bg-gray-800 px-2 text-xs text-white outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
       />
       <span className="text-xs text-gray-400">%</span>
       {isUnset ? (
@@ -206,13 +206,18 @@ export default function MarketMapColorThresholdEditorPanel({
       </div>
 
       <div className="mt-4 flex shrink-0 items-center gap-2">
-        <button type="button" onClick={onApply} disabled={isSaving} className="nes-btn is-save flex-1 text-xs">
+        <button
+          type="button"
+          onClick={onApply}
+          disabled={isSaving}
+          className="flex-1 rounded border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-black transition-colors hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
+        >
           {isSaving ? '적용 중...' : '적용'}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="nes-btn flex-1 border-gray-600 bg-black text-xs text-white hover:bg-gray-800"
+          className="flex-1 rounded border border-gray-600 bg-transparent px-3 py-1.5 text-xs text-gray-200 transition-colors hover:bg-white/10 hover:text-white"
         >
           취소
         </button>

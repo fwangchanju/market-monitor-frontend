@@ -309,6 +309,14 @@ a { color: var(--accent-light); text-decoration: none; }
   content: counter(settings-subsection) ") ";
 }
 
+/* 새 설정 탭은 시각적 섹션 번호 없이 디자인 참조의 제목 위계를 사용한다. */
+.settings-sidebar-tab-content .settings-section-num::before,
+.settings-sidebar-tab-content .settings-section-bullet::before,
+.settings-sidebar-tab-content .settings-subsection-num::before {
+  counter-increment: none;
+  content: none;
+}
+
 }
 
 @layer utilities {
