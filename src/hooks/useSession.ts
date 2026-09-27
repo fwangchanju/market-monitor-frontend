@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
-import { getSession, logout } from '@/api/auth'
+import { devLogin, getSession, logout } from '@/api/auth'
 import { getLastRefreshAt, markSessionAnonymous, refreshSessionOnce } from '@/api/client'
 import { authKeys } from './queryKeys'
 import { STATIC_REFERENCE_CACHE } from './cacheConfig'
@@ -59,6 +59,38 @@ export function useSession() {
 export function useIsLoggedIn(): boolean {
   const { data } = useSession()
   return data?.authenticated ?? false
+}
+
+// 페이지 로드당 한 번만 시도하도록 모듈 스코프에 둔다 — NavBar가 리마운트되거나 세션 쿼리가
+// 다시 실행돼도 재시도하지 않는다(prod 프로필로 떠 있거나 OWNER_USER_ID가 없는 경우 계속
+// 실패 요청을 반복하지 않기 위함).
+let devLoginAttempted = false
+
+// 로컬 개발 전용 자동 로그인 — VITE_LOCAL_AUTO_LOGIN=1이고 세션 조회가 끝났는데 비로그인이면
+// POST /auth/dev-login을 한 번 호출해 구글 로그인과 동일한 쿠키를 심고, 반환된 세션을 쿼리
+// 캐시에 바로 반영한다(새로고침 없이 로그인 상태가 된다). 실패하면(백엔드가 prod 프로필로 떠
+// 있거나 OWNER_USER_ID가 로컬 DB에 없는 경우 등) 콘솔 경고만 남기고 익명 상태로 남는다.
+export function useLocalDevLogin() {
+  const localAutoLogin = import.meta.env.DEV && import.meta.env.VITE_LOCAL_AUTO_LOGIN === '1'
+  const { data: session, isLoading } = useSession()
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    if (!localAutoLogin || isLoading || session?.authenticated || devLoginAttempted) return
+    devLoginAttempted = true
+
+    devLogin()
+      .then(parsed => queryClient.setQueryData(authKeys.session(), parsed))
+      .catch(error => {
+        const status = isAxiosError(error) ? error.response?.status : undefined
+        console.warn(
+          `[dev-login] 로컬 자동 로그인 실패(status=${status ?? 'unknown'}). ` +
+            '백엔드가 prod 프로필 없이 떠 있는지, OWNER_USER_ID가 로컬 DB에 있는 사용자를 ' +
+            '가리키는지 확인하세요.',
+          error,
+        )
+      })
+  }, [localAutoLogin, isLoading, session?.authenticated, queryClient])
 }
 
 // 접근 토큰(15분)이 페이지를 켜둔 채로 만료되면 시세 폴링 같은 GET은 비로그인도 200이라 401이 안

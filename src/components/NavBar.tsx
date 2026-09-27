@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom'
-import { useSession, useLogout, useSessionKeepAlive } from '@/hooks/useSession'
+import { useSession, useLogout, useSessionKeepAlive, useLocalDevLogin } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
 
 // 모든 페이지에서 항상 똑같이 고정되는 최상단 바 — 로그인 상태 표시와 로그인/로그아웃만 담당한다.
@@ -13,7 +13,10 @@ export default function NavBar() {
   const { data: session, isLoading } = useSession()
   const { requireLogin } = useLoginGate()
   const logout = useLogout()
-  useSessionKeepAlive(!localAutoLogin && (session?.authenticated ?? false))
+  useLocalDevLogin()
+  // dev-login도 구글 로그인과 같은 15분짜리 접근 토큰을 발급하므로, localAutoLogin 여부와 무관하게
+  // 로그인 상태면 동일하게 선제 갱신한다.
+  useSessionKeepAlive(session?.authenticated ?? false)
 
   return (
     <header className="sticky top-0 z-20 flex h-12 items-center justify-end bg-zinc-900 px-4 shadow-lg">

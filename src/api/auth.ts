@@ -10,3 +10,9 @@ export const getSession = () =>
   client.get('/auth/session').then(r => AuthSessionResponseSchema.parse(r.data))
 
 export const logout = () => client.post('/auth/logout')
+
+// 로컬 개발 전용 — VITE_LOCAL_AUTO_LOGIN=1일 때만 useLocalDevLogin이 호출한다. 백엔드가
+// prod 프로필이 아닐 때만 열어주는 엔드포인트로, 구글 로그인과 동일한 인증 쿠키를 심어주고
+// /auth/refresh와 같은 형식의 세션 응답을 돌려준다.
+export const devLogin = () =>
+  client.post('/auth/dev-login').then(r => AuthSessionResponseSchema.parse(r.data))
