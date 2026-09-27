@@ -60,10 +60,10 @@ function isInDepthRange(range: [number, number] | null, depth: number): boolean 
 
 // 절대 depth(트리 기준 실제 단계) → 배경/글자색. 배열 끝을 넘으면 마지막 값을 반복한다.
 const SECTOR_HEADER_STYLES = [
-  { background: 'bg-black', baseColor: '#000000', text: 'text-[var(--accent)]', border: 'border-2 border-transparent' },
-  { background: 'bg-[#333333]', baseColor: '#333333', text: 'text-white', border: 'border-2 border-transparent' },
-  { background: 'bg-[#4d4d4d]', baseColor: '#4d4d4d', text: 'text-white', border: 'border-2 border-transparent' },
-  { background: 'bg-[#666666]', baseColor: '#666666', text: 'text-white', border: 'border-2 border-transparent' },
+  { background: 'bg-black', baseColor: '#000000', text: 'text-[var(--accent)]', border: 'border-0' },
+  { background: 'bg-[#333333]', baseColor: '#333333', text: 'text-white', border: 'border-0' },
+  { background: 'bg-[#4d4d4d]', baseColor: '#4d4d4d', text: 'text-white', border: 'border-0' },
+  { background: 'bg-[#666666]', baseColor: '#666666', text: 'text-white', border: 'border-0' },
 ]
 
 function sectorHeaderStyle(depth: number) {
