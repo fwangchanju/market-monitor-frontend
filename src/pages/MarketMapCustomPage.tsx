@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
-import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
 import SettingsSidebar, {
-  SettingsCustomModeSection,
+  SettingsSidebarGroup,
   SettingsMarketValueSection,
   SettingsSectorLevelSection,
   SettingsExcludeSection,
@@ -139,8 +138,8 @@ export default function MarketMapCustomPage() {
   // 적용한다 — 진짜 루트 기준 절대값이 아니라, 어디로 드릴다운하든 거기서부터 다시 N단계가 보이는
   // 상대값이어야 한다(그래야 뎁스 제한 때문에 드릴다운 경로가 끊기거나 더 깊이 진입해도 항상 똑같이
   // 얕게만 보이는 문제가 없다). 드릴다운 상태에서는 헤더를 그리지 않는 자기 자신은 단계로 세지
-  // 않고 그 자식부터 1단계로 센다. 커스텀 모드가 아니면 뎁스 제한 자체를 무시한다.
-  const effectiveMaxDepth = isCustom ? maxDepth : null
+  // 않고 그 자식부터 1단계로 센다. 거래소 분류는 useGlobalSettings가 대분류(1단계)로 제한한다.
+  const effectiveMaxDepth = maxDepth
   // 뎁스 0("끄기")은 limitDepth로 표현할 수 없다(그 함수는 항상 최소 1뎁스 = 대분류 박스 하나는
   // 남긴다) — 완전 평탄화는 별도로 처리한다: 지금 보이는 위치 아래 종목을 전부 하나로 모아
   // isSelf 처리되는 합성 섹터 하나로 만들어서, 대분류 헤더까지 포함해 아무 섹터 박스도
@@ -162,8 +161,7 @@ export default function MarketMapCustomPage() {
   const rawCurrentNode = findRawNodeByPath(rootNodes, path)
   const totalItemCount = collectRawItems(rawCurrentNode ? [rawCurrentNode] : rootNodes).length
 
-  // 상단 바 표시: 커스텀 모드 on/off를 점등 표시로. 종목 수는 옵션 사이드바의 커스텀 모드 토글
-  // 옆으로 옮겨서, 여기서는 켜짐/꺼짐 상태만 보여준다.
+  // 상단 바는 현재 분류 체계를 점등 표시로 보여준다. 종목 수는 설정 사이드바에 표시한다.
   const modeStatusText = (
     <>
       <span
@@ -171,7 +169,7 @@ export default function MarketMapCustomPage() {
           isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-400'
         }`}
       />
-      <span className="text-gray-400">커스텀 모드</span>
+      <span className="text-gray-400">{isCustom ? 'MARKETRY 분류' : '거래소 분류'}</span>
     </>
   )
 
@@ -272,11 +270,6 @@ export default function MarketMapCustomPage() {
         }
       />
       <div className="flex min-h-0 flex-1">
-        {colorEditorPanelProps && (
-          <div className="w-56 shrink-0 overflow-y-auto bg-[var(--surface)]">
-            <MarketMapColorThresholdEditorPanel {...colorEditorPanelProps} />
-          </div>
-        )}
         {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 [세 번째 바+본문]
             열 + 사이드바를 감싸는 바깥 wrapper로 둔다 — 사이드바가 열리면 세 번째 바(마켓명/커스텀
             모드/시간)까지 같이 밀려서 좁아진다(본문만 밀리지 않는다). */}
@@ -387,21 +380,28 @@ export default function MarketMapCustomPage() {
               </div>
             </div>
           </div>
-          <SettingsSidebar {...settingsModalProps} pageLabel="지도">
-            {/* 지도 페이지에서만 커스텀 모드 토글이 드릴다운 경로도 같이 초기화해야 한다. */}
-            <SettingsCustomModeSection
-              {...settingsModalProps}
-              onToggleCustom={() => {
-                settingsModalProps.onToggleCustom()
-                reset()
-              }}
-              stockCountLabel={`${toCount(visibleItems.length)}/${toCount(totalItemCount)}종목`}
-              showEqualWeightToggle
-            />
-            <SettingsMarketValueSection {...settingsModalProps} showDivider={false} />
-            <SettingsExcludeSection {...settingsModalProps} />
-            <SettingsSectorLevelSection {...settingsModalProps} showTopPick showDecimalPlaces />
-            <SettingsColorSection {...settingsModalProps} />
+          <SettingsSidebar
+            {...settingsModalProps}
+            pageLabel="지도"
+            stockCountLabel={`${toCount(visibleItems.length)}/${toCount(totalItemCount)}종목`}
+            onToggleCustom={() => {
+              settingsModalProps.onToggleCustom()
+              reset()
+            }}
+          >
+            <SettingsSidebarGroup section="composition">
+              <SettingsMarketValueSection {...settingsModalProps} showDivider={false} />
+              <SettingsExcludeSection {...settingsModalProps} />
+            </SettingsSidebarGroup>
+            <SettingsSidebarGroup section="industry">
+              <SettingsSectorLevelSection {...settingsModalProps} showTopPick showDecimalPlaces showStockDisplay={false} />
+            </SettingsSidebarGroup>
+            <SettingsSidebarGroup section="stockDisplay">
+              <SettingsSectorLevelSection {...settingsModalProps} showClassification={false} />
+            </SettingsSidebarGroup>
+            <SettingsSidebarGroup section="colors">
+              <SettingsColorSection {...settingsModalProps} colorEditorProps={colorEditorPanelProps} />
+            </SettingsSidebarGroup>
           </SettingsSidebar>
         </div>
       </div>

@@ -68,7 +68,14 @@ function lerpColor(fromHex: string, toHex: string, t: number): string {
 // 순수 조회/렌더 시점 폴백). thresholdPercent 절댓값 오름차순 정렬.
 function thresholdsForSign(config: ColorScaleConfig, positive: boolean): ColorScaleThreshold[] {
   const own = config.thresholds.filter(t => (positive ? t.thresholdPercent > 0 : t.thresholdPercent < 0))
-  if (own.length > 0) return [...own].sort((a, b) => Math.abs(a.thresholdPercent) - Math.abs(b.thresholdPercent))
+  if (own.length > 0) {
+    // A draft can briefly contain two rows at the same signed percentage when an edited row is moved
+    // onto an existing threshold. Treat the later draft row as the effective value so the map and
+    // legend stay one-to-one while the user resolves/applies the edit.
+    const uniqueByPercent = new Map<number, ColorScaleThreshold>()
+    for (const threshold of own) uniqueByPercent.set(threshold.thresholdPercent, threshold)
+    return [...uniqueByPercent.values()].sort((a, b) => Math.abs(a.thresholdPercent) - Math.abs(b.thresholdPercent))
+  }
   return positive ? DEFAULT_PLUS_THRESHOLDS : DEFAULT_MINUS_THRESHOLDS
 }
 
@@ -135,11 +142,29 @@ export interface LegendSwatch {
   color: string
 }
 
-// 범례 바 — 실제 threshold들(및 0)을 그대로 샘플링해서 스와치를 만든다. resolveMarketMapColor와
-// 동일한 함수를 거치므로 박스 색칠과 항상 수학적으로 일치한다.
-export function resolveLegendSwatches(config: ColorScaleConfig): LegendSwatch[] {
-  const minusThresholds = thresholdsForSign(config, false)
-  const plusThresholds = thresholdsForSign(config, true)
+// 범례 바 — 실제 threshold들(및 0)을 resolveMarketMapColor로 샘플링한다. 기본 상태는 박스와
+// 같은 fallback을 표시하고, 편집 UI는 새로 비어진 부호의 fallback 슬롯만 숨길 수 있다.
+export function resolveLegendSwatches(
+  config: ColorScaleConfig,
+  options: { includeFallbacksForEmptySides?: boolean | { negative: boolean; positive: boolean } } = {},
+): LegendSwatch[] {
+  const includeFallbacksForEmptySides = options.includeFallbacksForEmptySides ?? true
+  const includeNegativeFallback = typeof includeFallbacksForEmptySides === 'boolean'
+    ? includeFallbacksForEmptySides
+    : includeFallbacksForEmptySides.negative
+  const includePositiveFallback = typeof includeFallbacksForEmptySides === 'boolean'
+    ? includeFallbacksForEmptySides
+    : includeFallbacksForEmptySides.positive
+  const configuredMinusThresholds = config.thresholds.filter(threshold => threshold.thresholdPercent < 0)
+  const configuredPlusThresholds = config.thresholds.filter(threshold => threshold.thresholdPercent > 0)
+  // 편집 중에는 실제 draft threshold가 없는 부호의 fallback 컬러칸을 범례에서 숨길 수 있다.
+  // 종목 색 계산은 계속 thresholdsForSign의 fallback을 쓰므로 이 옵션은 범례 표시에만 영향을 준다.
+  const minusThresholds = configuredMinusThresholds.length > 0 || includeNegativeFallback
+    ? thresholdsForSign(config, false)
+    : []
+  const plusThresholds = configuredPlusThresholds.length > 0 || includePositiveFallback
+    ? thresholdsForSign(config, true)
+    : []
   const zeroColor = resolveZeroColor(config)
 
   const minusSwatches = [...minusThresholds]

@@ -2,10 +2,8 @@ import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from '
 import { useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
-import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
 import SettingsSidebar, {
-  SettingsCustomModeSection,
-  SettingsEqualWeightSection,
+  SettingsSidebarGroup,
   SettingsSectorLevelSection,
   SettingsMarketValueSection,
   SettingsExcludeSection,
@@ -250,7 +248,7 @@ export default function SectorChangeRatePage() {
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 파라미터가 있을 때만 반응하면 됨
   }, [searchParams])
-  // 지도 페이지 상단 바와 동일한 위치/스타일의 커스텀 모드 점등 표시 — 켜짐/꺼짐 상태만 보여준다.
+  // 지도 페이지 상단 바와 동일하게 현재 분류 체계를 점등 표시한다.
   const modeStatusText = (
     <>
       <span
@@ -258,7 +256,7 @@ export default function SectorChangeRatePage() {
           settingsModalProps.isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-400'
         }`}
       />
-      <span className="text-sm text-gray-400">커스텀 모드</span>
+      <span className="text-sm text-gray-400">{settingsModalProps.isCustom ? 'MARKETRY 분류' : '거래소 분류'}</span>
     </>
   )
 
@@ -376,11 +374,6 @@ export default function SectorChangeRatePage() {
         }
       />
       <div className="flex min-h-0 flex-1">
-        {colorEditorPanelProps && (
-          <div className="w-56 shrink-0 overflow-y-auto bg-[var(--surface)]">
-            <MarketMapColorThresholdEditorPanel {...colorEditorPanelProps} />
-          </div>
-        )}
         {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 [세 번째 바+본문] 열 +
             사이드바를 감싸는 바깥 wrapper로 둔다 — 지도/요약 페이지와 동일한 구조. 사이드바가 열리면
             세 번째 바(마켓명/커스텀 모드/시간)까지 같이 밀려서 좁아진다(본문만 밀리지 않는다). */}
@@ -492,15 +485,20 @@ export default function SectorChangeRatePage() {
               </div>
             </div>
           </div>
-          {/* 지도 페이지 옵션 대부분을 그대로 재사용 중 — 실제로 섹터 화면에 유효한 항목만 남기는
-              정리는 나중에 검토해서 진행한다. */}
           <SettingsSidebar {...settingsModalProps} pageLabel="섹터">
-            <SettingsCustomModeSection {...settingsModalProps} />
-            <SettingsEqualWeightSection {...settingsModalProps} />
-            <SettingsSectorLevelSection {...settingsModalProps} showDivider={false} />
-            <SettingsMarketValueSection {...settingsModalProps} />
-            <SettingsExcludeSection {...settingsModalProps} />
-            <SettingsColorSection {...settingsModalProps} />
+            <SettingsSidebarGroup section="composition">
+              <SettingsMarketValueSection {...settingsModalProps} showDivider={false} />
+              <SettingsExcludeSection {...settingsModalProps} />
+            </SettingsSidebarGroup>
+            <SettingsSidebarGroup section="industry">
+              <SettingsSectorLevelSection {...settingsModalProps} showDivider={false} showTopPick={false} showStockDisplay={false} />
+            </SettingsSidebarGroup>
+            <SettingsSidebarGroup section="stockDisplay">
+              <SettingsSectorLevelSection {...settingsModalProps} showClassification={false} />
+            </SettingsSidebarGroup>
+            <SettingsSidebarGroup section="colors">
+              <SettingsColorSection {...settingsModalProps} colorEditorProps={colorEditorPanelProps} />
+            </SettingsSidebarGroup>
           </SettingsSidebar>
         </div>
       </div>

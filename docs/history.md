@@ -213,3 +213,11 @@ List<CategoryChangeRateItem>
 **새 UI는 기존 톤 재사용**: 로그인 팝업(`LoginModal`)은 `MarketMapShareModal`과 같은 오버레이·패널(`bg-black/70` + `var(--surface)` 패널, `nes-btn`) 스타일을, `NavBar`의 로그인/로그아웃 UI는 `SubNavBar`의 탭 hover 드롭다운 패턴과 `AdminCategoryTable`의 accent 버튼(`nes-btn` + `var(--accent)`) 톤을 그대로 재사용했다. 새 팝업/버튼 스타일을 만들지 않았고, 등락률 전용 색(`--stock-up`/`--stock-down`/`--negative`, red/blue 계열)은 강조·에러·버튼 어디에도 안 썼다 — accent(노랑)만 사용.
 
 **검증**: `tsc -b`(clean) 0 errors, `eslint .` 0 errors, `vite build` 성공. dev:mock으로 브라우저 콘솔·네트워크 로그를 확인 — 비로그인에서 `/map`·`/map/value-tiers`·`/map/scale`만 호출되고(`/custom/*` 없음), `/summary`에서는 `/api/auth/session` 외 요청이 없고, `/admin/sector`를 비로그인으로 열어도 `/custom/sectors`·`/custom/stock-sectors`가 호출되지 않음을 확인했다. 스크린샷 도구(claude-in-chrome)가 이 환경에서 계속 "document_idle 타임아웃"으로 실패해 화면을 눈으로 직접 보는 검증은 못 했다 — 콘솔/네트워크 로그 기반 검증까지만 했다.
+
+## 지도 설정 아이콘 탭 재구성 (2026-09-27, PR #73)
+
+지도와 섹터 설정은 config.png를 참조해 즐겨찾기, 종목 구성, 업종 분류, 종목 표시, 색상 아이콘 탭으로 나눴다. 기존 설정값을 그대로 사용하며 한 번에 한 탭만 표시한다. 즐겨찾기 탭은 선택할 수 있지만, 추가·현재 설정 저장·선택한 설정으로 불러오기 버튼은 기능 구현 전이라 비활성 상태다.
+
+기존 커스텀 모드 값은 업종 분류의 거래소 분류(false)/MARKETRY 분류(true) 선택으로 옮겼다. 거래소 분류는 한 단계 대분류와 대분류 지표만 적용하고, MARKETRY에서 선택한 분류 단계 및 지표 범위는 보존해 전환 시 복원한다. 시가총액 구간, 종목 박스 표시, 색상 설정은 양쪽 분류에서 사용한다. 기존 동일 가중 값은 종목 표시의 시가총액 비례/동일 크기 선택으로 옮겼다. 이 값은 기존대로 박스 면적과 평균 등락률 방식에 함께 적용된다.
+
+범례 편집 입력/적용/취소에서 NES 버튼 스타일을 제거했다. 상단 홈 아이콘은 첫 지도 경로로 이동하며, PR #71의 흰색 45% hover와 PR #72의 로컬 자동 로그인을 main 병합으로 함께 반영했다.

@@ -159,13 +159,10 @@ export default function MarketMapSectorSection({
               여부는 순수 CSS(:has())로 판정한다(index.css) — 헤더 :hover/:focus-visible 자체를
               트리거로 쓰고, 팝업이 뜬 상태는 위 is-pinned 클래스로 같은 규칙에 얹는다. 하위 섹터의
               헤더를 hover해도 :has(> ...)의 '>'가 직계 자식만 보므로 이 오버레이는 안 뜨고, 그
-              하위 섹터 자신의 오버레이만 뜬다(하위 섹터 전체가 이 오버레이에 옅게 덮이는 건 의도대로).
-              하위 섹터/종목 박스는 전부 z-index:auto라 그 위에 z-[1]만 얹으면 항상 그것들보다
-              위에 그려진다(DOM 순서와 무관 — z-index가 있는 요소는 auto인 형제들보다 항상 나중에
-              페인트된다). 톱픽 섹터는 자기 바깥 박스에 z-index:20을 따로 쓰는데(이 컴포넌트 자신,
-              위 style 참고) 이 1/2는 그보다 한참 낮게 잡아서 톱픽이 기존처럼 뭐든 위로 튀어나와
-              보이는 동작을 그대로 둔다. */}
-          <div className="market-map-sector-hover-overlay absolute inset-0 z-[1] pointer-events-none" aria-hidden="true" />
+              하위 섹터 자신의 오버레이만 뜬다. z-index:30은 하위 강세 업종 박스(z-index:20)와
+              하위 헤더보다 높다. 선택한 섹터 자신의 헤더는 활성 상태에서 CSS가 31로 올려 기존
+              헤더 hover 표기를 유지한다. */}
+          <div className="market-map-sector-hover-overlay absolute inset-0 z-[30] pointer-events-none" aria-hidden="true" />
           <button
             type="button"
             onMouseDown={e => {
