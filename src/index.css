@@ -378,6 +378,14 @@ a { color: var(--accent-light); text-decoration: none; }
     opacity: 0.5;
   }
 
+  /* 선택한 섹터 자신의 헤더는 전체 박스 오버레이(z-index:30) 위에 둔다. 하위 섹터 헤더는
+     오버레이 아래에 남아 부모 섹터의 흰색 강조가 가려지지 않는다. */
+  .market-map-sector-box:has(> .market-map-sector-header:hover) > .market-map-sector-header,
+  .market-map-sector-box:has(> .market-map-sector-header:focus-visible) > .market-map-sector-header,
+  .market-map-sector-box.is-pinned > .market-map-sector-header {
+    z-index: 31;
+  }
+
   /* 드래그/줌 전환 중에는(market-map-suppress-sector-border) 헤더 hover 테두리와 마찬가지로 이
      오버레이도 끈다 — 위 트리거들보다 우선해야 해서 !important를 쓴다(이미 위쪽 outline-none
      리셋에서도 쓰는 패턴). */

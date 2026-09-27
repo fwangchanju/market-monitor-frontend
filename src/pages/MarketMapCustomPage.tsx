@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
-import MarketMapColorThresholdEditorPanel from '@/components/MarketMapColorThresholdEditorPanel'
 import SettingsSidebar, {
   SettingsCustomModeSection,
   SettingsMarketValueSection,
@@ -272,11 +271,6 @@ export default function MarketMapCustomPage() {
         }
       />
       <div className="flex min-h-0 flex-1">
-        {colorEditorPanelProps && (
-          <div className="w-56 shrink-0 overflow-y-auto bg-[var(--surface)]">
-            <MarketMapColorThresholdEditorPanel {...colorEditorPanelProps} />
-          </div>
-        )}
         {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 [세 번째 바+본문]
             열 + 사이드바를 감싸는 바깥 wrapper로 둔다 — 사이드바가 열리면 세 번째 바(마켓명/커스텀
             모드/시간)까지 같이 밀려서 좁아진다(본문만 밀리지 않는다). */}
@@ -401,7 +395,7 @@ export default function MarketMapCustomPage() {
             <SettingsMarketValueSection {...settingsModalProps} showDivider={false} />
             <SettingsExcludeSection {...settingsModalProps} />
             <SettingsSectorLevelSection {...settingsModalProps} showTopPick showDecimalPlaces />
-            <SettingsColorSection {...settingsModalProps} />
+            <SettingsColorSection {...settingsModalProps} colorEditorProps={colorEditorPanelProps} />
           </SettingsSidebar>
         </div>
       </div>

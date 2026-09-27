@@ -1,8 +1,9 @@
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useSession, useLogout, useSessionKeepAlive } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
+import homeIcon from '@/assets/home_icon.jpg'
 
-// 모든 페이지에서 항상 똑같이 고정되는 최상단 바 — 로그인 상태 표시와 로그인/로그아웃만 담당한다.
+// 모든 페이지에서 항상 똑같이 고정되는 최상단 바 — 홈 이동과 로그인 상태/로그아웃을 담당한다.
 // 로그인 버튼은 SubNavBar 우측 "일괄변경"류 accent 버튼(nes-btn + var(--accent))과 같은 톤을 쓰고,
 // 로그인한 사용자의 이메일·로그아웃 목록은 SubNavBar의 마켓/커스텀 탭 hover 목록과 동일한 패턴
 // (그룹 hover로 펼치는 bg-zinc-900 목록)을 그대로 재사용한다 — 새 팝업 스타일을 만들지 않는다.
@@ -16,7 +17,14 @@ export default function NavBar() {
   useSessionKeepAlive(!localAutoLogin && (session?.authenticated ?? false))
 
   return (
-    <header className="sticky top-0 z-20 flex h-12 items-center justify-end bg-zinc-900 px-4 shadow-lg">
+    <header className="sticky top-0 z-20 flex h-12 items-center justify-between bg-zinc-900 px-4 shadow-lg">
+      <Link
+        to="/"
+        aria-label="홈으로 이동: 지도 전체 종목"
+        className="flex h-10 shrink-0 items-center"
+      >
+        <img src={homeIcon} alt="" className="h-9 w-auto max-w-[8rem] object-contain" />
+      </Link>
       {localAutoLogin ? (
         session?.authenticated ? (
           <span className="max-w-[12rem] truncate text-sm text-gray-300">

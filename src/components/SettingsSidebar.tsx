@@ -1,8 +1,9 @@
-import { useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { useIsLoggedIn } from '@/hooks/useSession'
 import type { DepthMetric } from '@/hooks/useGlobalSettings'
 import type { ColorScaleConfig, ColorScaleThreshold, LegendSwatch } from '@/utils/marketMapColorScale'
 import { FONT_BAR_LEGEND } from '@/components/FontStyle'
+import MarketMapColorThresholdEditorPanel, { type ColorThresholdEditorProps } from '@/components/MarketMapColorThresholdEditorPanel'
 import type { MarketValueTierItem } from '@/types/api'
 
 interface ExcludedSector {
@@ -194,7 +195,7 @@ function RangeSlider({
   const labelSteps = Math.max(labels.length - 1, 1)
 
   return (
-    <div>
+    <div className="isolate">
       <div
         ref={trackRef}
         className={`relative h-4 w-full ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
@@ -288,11 +289,6 @@ function SingleValueSlider({
       <SliderTickLabels labels={labels} steps={steps} />
     </div>
   )
-}
-
-function colorThresholdLabel(threshold: ColorScaleThreshold): string {
-  if (threshold.thresholdPercent === 0) return '0% (기준)'
-  return `${threshold.thresholdPercent > 0 ? '+' : ''}${threshold.thresholdPercent}%`
 }
 
 // 아래 섹션 컴포넌트들은 전부 페이지가 SettingsSidebar의 children으로 직접 골라서 조립한다 — 페이지마다
@@ -780,9 +776,11 @@ export function SettingsColorSection({
   colorScaleDraft,
   colorCustomOn,
   onChangeColorCustomOn,
+  onAddColorThreshold,
   onEditColorThreshold,
   onDeleteColorThreshold,
   legendSwatches,
+  colorEditorProps,
 }: {
   isCustom: boolean
   // 마켓맵 등락률 컬러 스케일 draft(및 그 setter) — null이면 아직 서버 조회 전. 실제 트리맵/범례에
@@ -793,27 +791,34 @@ export function SettingsColorSection({
   // 껐다 켜도 draft에 저장해둔 값은 건드리지 않는다.
   colorCustomOn: boolean
   onChangeColorCustomOn: (on: boolean) => void
-  // 추가/수정은 이 팝업이 아니라 좌측 필터 바 하단 패널(MarketMapColorThresholdEditorPanel)에서 진행된다
-  // — 이 팝업은 그 세션이 시작되면(onAddColorThreshold/onEditColorThreshold) 잠깐 닫히고, 세션이
-  // 끝나면(적용/취소) 페이지가 다시 열어준다. 저장은 그 패널의 "적용"과 이 팝업의 삭제-확인이 각자
-  // 알아서 하므로 이 팝업 자체엔 더 이상 "저장" 버튼이 없다.
+  // 범례 색상칸의 수정/삭제 메뉴를 제공하고, 편집기는 바로 아래에 표시한다.
+  onAddColorThreshold: (preset?: ColorScaleThreshold) => void
   onEditColorThreshold: (index: number) => void
   onDeleteColorThreshold: (index: number) => void
-  // 지도 상단 바에 있던 범례를 이 섹션으로 옮겨왔다 — resolveMarketMapColor와 동일한 함수를 거쳐
-  // 나온 값이라 실제 박스 색칠과 항상 일치한다(useGlobalSettings의 settingsModalProps에 포함).
+  // 지도 상단 바에 있던 범례를 이 섹션으로 옮겨왔다. 평소에는 박스와 같은 resolver 결과를 쓰고,
+  // 편집 중 새로 빈 부호의 fallback 칸만 잠시 숨긴다(useGlobalSettings에서 계산).
   legendSwatches: LegendSwatch[]
+  colorEditorProps?: ColorThresholdEditorProps | null
 }) {
+  const colorEditorRef = useRef<HTMLDivElement>(null)
+  const wasColorEditorOpen = useRef(false)
+  useEffect(() => {
+    const isColorEditorOpen = Boolean(colorEditorProps)
+    if (isColorEditorOpen && !wasColorEditorOpen.current) {
+      colorEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+    wasColorEditorOpen.current = isColorEditorOpen
+  }, [colorEditorProps])
+
   // 색상 범위는 /api/custom/scale(로그인 사용자 본인 값)을 쓰는 커스텀 데이터라, admin 여부가 아니라
   // 로그인 여부로 노출을 가른다(가입/로그인 전환 지시서: useIsAdmin 기반 커스텀 게이팅을 로그인 게이팅으로 전환).
   const isLoggedIn = useIsLoggedIn()
   if (!isLoggedIn || colorScaleDraft === null) return null
 
-  const sortedColorThresholds = colorScaleDraft.thresholds
-    .map((threshold, index) => ({ threshold, index }))
-    .sort((a, b) => b.threshold.thresholdPercent - a.threshold.thresholdPercent)
+  const thresholdIndices = new Map(colorScaleDraft.thresholds.map((threshold, index) => [threshold.thresholdPercent, index]))
 
   return (
-    <div className="mt-6 border-t border-gray-700 pt-8 text-white">
+    <div className="mt-6 border-t border-gray-700 pt-8 pb-20 text-white">
       {/* "색상 커스텀 모드" 토글을 별도 줄로 두지 않고, 제목("색상 범위") 바로 우측에 스위치만 붙인다. */}
       <div className="flex items-center justify-between">
         <p className="settings-section-num text-base">색상 범위</p>
@@ -821,49 +826,60 @@ export function SettingsColorSection({
           checked={colorCustomOn}
           onChange={() => onChangeColorCustomOn(!colorCustomOn)}
           label="색상 범위 커스텀"
-          disabled={!isCustom}
+          disabled={!isCustom || Boolean(colorEditorProps)}
           hideLabel
         />
       </div>
       <div className={`mt-3 flex flex-col gap-1 text-sm ${isCustom && colorCustomOn ? '' : 'pointer-events-none opacity-40'}`}>
-        {/* 지도 상단 바에 있던 범례 — 사이드바 폭에 맞춰 필요하면 다음 줄로 넘어간다(원래 바는
-            한 줄 고정폭이었지만 여기선 폭이 더 좁아 넘칠 수 있음). */}
+        {/* 범례 색상칸의 모양은 유지하고, hover/클릭 시 해당 값의 동작 메뉴를 띄운다. */}
+        {colorEditorProps && <p className="text-[10px] text-gray-500">편집으로 비어진 부호의 기본 범례 칸은 숨깁니다.</p>}
         <div className="flex flex-wrap gap-0.5">
-          {legendSwatches.map(({ label, color }) => (
-            <div key={label} style={{ backgroundColor: color }} className="flex h-6 w-9 shrink-0 items-center justify-center">
-              <span className={FONT_BAR_LEGEND}>{label}</span>
-            </div>
-          ))}
+          {legendSwatches.map(({ label, color }, swatchIndex) => {
+            const percent = Number.parseFloat(label)
+            const thresholdIndex = thresholdIndices.get(percent)
+            return (
+              <div key={label} className="group relative">
+                <button
+                  type="button"
+                  aria-label={`${label} ${thresholdIndex === undefined ? '기본 색상, 저장된 설정 아님' : '저장된 색상'} 동작`}
+                  title={thresholdIndex === undefined ? `${label} 기본 색상 · 저장된 설정 아님` : undefined}
+                  style={{ backgroundColor: color }}
+                  className="flex h-6 w-9 shrink-0 items-center justify-center border-0 p-0 text-white"
+                >
+                  <span className={FONT_BAR_LEGEND}>{label}</span>
+                </button>
+                {!colorEditorProps && (
+                  <div className={`absolute top-full z-30 hidden w-max flex-col bg-zinc-900 py-1 shadow-lg group-hover:flex group-focus-within:flex ${swatchIndex < legendSwatches.length / 2 ? 'left-0' : 'right-0'}`}>
+                    <button
+                      type="button"
+                      onClick={() => thresholdIndex === undefined
+                        ? onAddColorThreshold({ thresholdPercent: percent, color, colorLabel: null })
+                        : onEditColorThreshold(thresholdIndex)}
+                      className="px-3 py-1 text-left text-lg font-normal whitespace-nowrap text-white hover:bg-gray-800"
+                    >
+                      수정
+                    </button>
+                    <button
+                      type="button"
+                      disabled={thresholdIndex === undefined}
+                      title={thresholdIndex === undefined ? '기본 색상은 삭제할 수 없습니다' : undefined}
+                      onClick={() => thresholdIndex !== undefined && onDeleteColorThreshold(thresholdIndex)}
+                      className="px-3 py-1 text-left text-lg font-normal whitespace-nowrap text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
-        {sortedColorThresholds.length === 0 ? (
-          <p className="px-2 py-1 text-gray-500">설정된 값이 없습니다</p>
-        ) : (
-          sortedColorThresholds.map(({ threshold, index }) => (
-            <div key={index} className="group flex items-center justify-between gap-3 rounded px-2 py-1.5 hover:bg-white/5">
-              <div className="flex items-center gap-2">
-                <span className="h-3.5 w-3.5 shrink-0 rounded border border-gray-600" style={{ backgroundColor: threshold.color }} />
-                <span className="text-white">{colorThresholdLabel(threshold)}</span>
-              </div>
-              <div className="hidden items-center gap-3 group-hover:flex">
-                <button
-                  type="button"
-                  onClick={() => onEditColorThreshold(index)}
-                  className="border-0 bg-transparent text-xs text-white hover:text-[var(--accent)]"
-                >
-                  수정
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onDeleteColorThreshold(index)}
-                  className="border-0 bg-transparent text-xs text-red-500 hover:text-red-400"
-                >
-                  삭제
-                </button>
-              </div>
-            </div>
-          ))
-        )}
       </div>
+      {colorEditorProps && (
+        <div ref={colorEditorRef}>
+          <MarketMapColorThresholdEditorPanel {...colorEditorProps} />
+        </div>
+      )}
     </div>
   )
 }
@@ -871,7 +887,7 @@ export function SettingsColorSection({
 interface Props {
   // 헤더에 "{pageLabel} 설정"으로 표시 — SubNavBar 탭 이름과 동일한 문구를 각 페이지가 그대로 넘겨준다.
   pageLabel: string
-  // 사이드바 열림 상태를 페이지가 들고 있어야 색상 편집 세션 전환(잠깐 닫혔다가 다시 열리는 것)이 가능하다.
+  // 사이드바 열림 상태는 페이지가 관리한다.
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   // 실제로 보여줄 옵션 섹션들 — 페이지가 자기한테 유효한 Settings*Section만 골라 조립한다.

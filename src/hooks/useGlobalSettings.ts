@@ -157,7 +157,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const [topPickCount, setTopPickCount] = usePageSetting('marketMap.topPickCount', 2)
   const [topPickEnabled, setTopPickEnabled] = usePageSetting('marketMap.topPickEnabled', topPickCount !== 0)
   const selectedTopPickCount = topPickCount || 2
-  // 설정 팝업 열림 상태 — 색상 추가/수정 세션이 시작되면(아래) 잠깐 닫혔다가, 세션이 끝나면(적용/취소) 다시 열린다.
+  // 설정 사이드바 열림 상태. 색상 편집도 이 사이드바 안에서 진행한다.
   // 페이지 컴포넌트가 새로 마운트될 때마다 설정창을 기본적으로 연다.
   // 닫힘 상태는 현재 페이지에 머무는 동안만 유지하고, 라우트 이동 시 초기화한다.
   const [isSettingsOpen, setIsSettingsOpen] = useState(true)
@@ -258,15 +258,36 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // "색상 커스텀 사용" 토글 — 순수 로컬(세션스토리지) 상태. draft(=저장 대상)와는 완전히 분리돼 있어서
   // 꺼도 draft에 저장해둔 값은 건드리지 않고, 그냥 실제 지도에 넘기는 값만 빈 스케일(=기본 프리셋)로 바꿔치기한다.
   const [colorCustomOn, setColorCustomOn] = usePageSetting('marketMap.colorCustomOn', true)
-  const colorScale = colorCustomOn ? (colorScaleDraft ?? EMPTY_COLOR_SCALE) : EMPTY_COLOR_SCALE
-  const legendSwatches = resolveLegendSwatches(colorScale)
-
-  // 지금 좌측 편집 패널에서 편집 중인 threshold들 — colorScaleDraft.thresholds의 인덱스 목록.
-  // edit 모드는 항상 원소 1개, add 모드는 "+"로 여러 개가 될 수 있다. 빈 배열이면 세션 없음.
   const [colorEditIndices, setColorEditIndices] = useState<number[]>([])
   const [colorEditMode, setColorEditMode] = useState<'add' | 'edit'>('add')
-  // 세션 시작 시점의 draft 스냅샷 — "취소"를 누르면 이걸로 되돌린다.
+  // 세션 시작 시점의 draft 스냅샷 — 취소 복구와 편집 전 비어 있던 부호의 fallback 표시를 위해 보관한다.
   const colorEditSnapshotRef = useRef<ColorScaleConfig | null>(null)
+  // 같은 부호/퍼센트에 편집 중인 행이 이미 있는 임계값과 겹치면 편집 중인 값을 우선한다.
+  // resolver는 같은 thresholdPercent 중 마지막 값을 유효점으로 삼으므로, 저장 draft의 배열 순서를
+  // 바꾸지 않고 렌더링 입력에서만 편집 행을 뒤로 보낸다.
+  const editingColorIndexSet = new Set(colorEditIndices)
+  const colorScaleDraftForRendering = colorScaleDraft
+    ? {
+        thresholds: [
+          ...colorScaleDraft.thresholds.filter((_, index) => !editingColorIndexSet.has(index)),
+          ...colorEditIndices.map(index => colorScaleDraft.thresholds[index]).filter((threshold): threshold is ColorScaleThreshold => threshold !== undefined),
+        ],
+      }
+    : EMPTY_COLOR_SCALE
+  const colorScale = colorCustomOn ? colorScaleDraftForRendering : EMPTY_COLOR_SCALE
+  const legendSwatches = resolveLegendSwatches(colorScale, {
+    // 편집을 시작하기 전부터 비어 있던 부호는 기본 2/5/8 슬롯을 유지한다. 이번 편집으로 처음
+    // 비어진 부호만 숨겨 fallback 슬롯이 새로 늘어나는 것을 막는다.
+    includeFallbacksForEmptySides: colorEditIndices.length === 0 || !colorEditSnapshotRef.current
+      ? true
+      : {
+          negative: !colorEditSnapshotRef.current.thresholds.some(threshold => threshold.thresholdPercent < 0),
+          positive: !colorEditSnapshotRef.current.thresholds.some(threshold => threshold.thresholdPercent > 0),
+        },
+  })
+
+  // 설정 사이드바에서 편집 중인 threshold들 — colorScaleDraft.thresholds의 인덱스 목록.
+  // edit 모드는 항상 원소 1개, add 모드는 "+"로 여러 개가 될 수 있다. 빈 배열이면 세션 없음.
   const createThresholdMutation = useCreateMarketMapScaleThreshold()
   const updateThresholdMutation = useUpdateMarketMapScaleThreshold()
   const deleteThresholdMutation = useDeleteMarketMapScaleThreshold()
@@ -282,21 +303,19 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     colorLabel: null,
   })
 
-  const handleAddColorThreshold = () => {
+  const handleAddColorThreshold = (preset?: ColorScaleThreshold) => {
     if (!colorScaleDraft) return
     colorEditSnapshotRef.current = colorScaleDraft
-    const nextThresholds = [...colorScaleDraft.thresholds, createBlankColorThreshold()]
+    const nextThresholds = [...colorScaleDraft.thresholds, preset ?? createBlankColorThreshold()]
     setColorScaleDraft({ ...colorScaleDraft, thresholds: nextThresholds })
     setColorEditMode('add')
     setColorEditIndices([nextThresholds.length - 1])
-    setIsSettingsOpen(false)
   }
   const handleEditColorThreshold = (index: number) => {
     if (!colorScaleDraft) return
     colorEditSnapshotRef.current = colorScaleDraft
     setColorEditMode('edit')
     setColorEditIndices([index])
-    setIsSettingsOpen(false)
   }
   // add 모드 전용 — 값이 비어있는 새 행을 draft 끝에 추가하고, 그 인덱스를 세션에 편입시킨다.
   const handleAddColorThresholdRow = () => {
@@ -326,68 +345,80 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     if (!colorScaleDraft || colorEditIndices.length === 0) {
       colorEditSnapshotRef.current = null
       setColorEditIndices([])
-      setIsSettingsOpen(true)
       return
     }
     setIsApplyingColorEdit(true)
     try {
-      // 세션에서 편집한 행들 중 임계값이 같은 게 여럿이면 나중 값으로 덮어쓴다(마지막 값이 이김) —
-      // "수정"도 결국 update와 같은 개념이라, 세션 중에 동일 임계값이 여러 번 나와도 막지 않고 여기서
-      // 한 번에 정리한다. 이때 버려지는 쪽이 이미 서버에 저장된 행(id 있음)이면, 살아남는 행이 그
-      // id를 대신 물려받아 update로 처리되게 하고 — 서로 다른 두 기존 행이 겹친 드문 경우에만 버려지는
-      // 쪽을 별도로 삭제한다(id가 있는데 다른 id로 덮어써진 경우).
-      const byThreshold = new Map<number, ColorScaleThreshold>()
-      const idsToDelete: number[] = []
-      for (const index of colorEditIndices) {
-        const entry = colorScaleDraft.thresholds[index]
-        if (!entry) continue
-        const existing = byThreshold.get(entry.thresholdPercent)
-        if (existing?.id !== undefined && entry.id !== undefined && existing.id !== entry.id) {
-          idsToDelete.push(existing.id)
+      // 같은 signed percentage가 편집 행과 나머지 draft에 모두 있으면, 사용자가 방금 편집한 값을
+      // 남기고 기존 행은 제거한다. 그 외에도 이미 중복된 draft 값은 한 지점으로 정리한다.
+      const sessionIndexSet = new Set(colorEditIndices)
+      const candidatesByThreshold = new Map<number, { entry: ColorScaleThreshold; edited: boolean }[]>()
+      colorScaleDraft.thresholds.forEach((entry, index) => {
+        const candidates = candidatesByThreshold.get(entry.thresholdPercent) ?? []
+        candidates.push({ entry, edited: sessionIndexSet.has(index) })
+        candidatesByThreshold.set(entry.thresholdPercent, candidates)
+      })
+
+      const resolvedGroups = Array.from(candidatesByThreshold, ([thresholdPercent, candidates]) => {
+        const editedCandidates = candidates.filter(candidate => candidate.edited)
+        const winner = editedCandidates.at(-1) ?? candidates.at(-1)!
+        // 새 draft 행이 기존 값과 겹치면 기존 id를 재사용해 update한다. 사용자가 수정한 기존 행의
+        // id가 있으면 그 id를 유지하고, 겹친 나머지 id는 삭제 대상으로 모은다.
+        const savedId = winner.entry.id ?? candidates.find(candidate => candidate.entry.id !== undefined)?.entry.id
+        const losingIds = candidates
+          .map(candidate => candidate.entry.id)
+          .filter((id): id is number => id !== undefined && id !== savedId)
+        return {
+          entry: { ...winner.entry, id: savedId },
+          edited: editedCandidates.length > 0,
+          thresholdPercent,
+          losingIds,
         }
-        byThreshold.set(entry.thresholdPercent, { ...entry, id: entry.id ?? existing?.id })
-      }
-      const resolvedEntries = Array.from(byThreshold.values())
+      })
+      const idsToDelete = Array.from(new Set(resolvedGroups.flatMap(group => group.losingIds)))
+      const entriesToSave = resolvedGroups.filter(group => group.edited).map(group => group.entry)
 
-      const [savedEntries] = await Promise.all([
-        Promise.all(
-          resolvedEntries.map(entry => {
-            const payload = { thresholdPercent: entry.thresholdPercent, color: entry.color, colorLabel: entry.colorLabel }
-            return entry.id !== undefined
-              ? updateThresholdMutation.mutateAsync({ id: entry.id, payload })
-              : createThresholdMutation.mutateAsync(payload)
-          }),
-        ),
-        Promise.all(idsToDelete.map(id => deleteThresholdMutation.mutateAsync(id))),
-      ])
+      // 같은 thresholdPercent는 백엔드에서 중복 불가이므로, 충돌 행 삭제를 완료한 다음에 저장한다.
+      await Promise.all(idsToDelete.map(id => deleteThresholdMutation.mutateAsync(id)))
+      const savedEntries = await Promise.all(
+        entriesToSave.map(entry => {
+          const payload = { thresholdPercent: entry.thresholdPercent, color: entry.color, colorLabel: entry.colorLabel }
+          return entry.id !== undefined
+            ? updateThresholdMutation.mutateAsync({ id: entry.id, payload })
+            : createThresholdMutation.mutateAsync(payload)
+        }),
+      )
 
-      setColorScaleDraft(prev => {
-        if (!prev) return prev
-        const sessionIndexSet = new Set(colorEditIndices)
-        const untouched = prev.thresholds.filter((_, i) => !sessionIndexSet.has(i))
-        return { ...prev, thresholds: [...untouched, ...savedEntries] }
+      const savedByThreshold = new Map(savedEntries.map(entry => [entry.thresholdPercent, entry]))
+      setColorScaleDraft({
+        thresholds: resolvedGroups.map(group => group.edited ? savedByThreshold.get(group.thresholdPercent)! : group.entry),
       })
     } finally {
       setIsApplyingColorEdit(false)
       colorEditSnapshotRef.current = null
       setColorEditIndices([])
-      setIsSettingsOpen(true)
     }
   }
   const handleCancelColorEdit = () => {
     if (colorEditSnapshotRef.current) setColorScaleDraft(colorEditSnapshotRef.current)
     colorEditSnapshotRef.current = null
     setColorEditIndices([])
-    setIsSettingsOpen(true)
   }
   const handleDeleteColorThreshold = (index: number) => {
     if (!colorScaleDraft) return
     const target = colorScaleDraft.thresholds[index]
     if (!target) return
     if (!window.confirm('정말 삭제하시겠습니까?')) return
-    const next = { ...colorScaleDraft, thresholds: colorScaleDraft.thresholds.filter((_, i) => i !== index) }
+    // 범례는 같은 퍼센트의 중복 draft 행을 하나의 유효 지점으로 보여준다. 삭제도 그 signed
+    // percentage의 중복 행을 전부 제거해야 삭제한 swatch가 다시 나타나지 않는다.
+    const removed = colorScaleDraft.thresholds.filter(threshold => threshold.thresholdPercent === target.thresholdPercent)
+    const next = {
+      ...colorScaleDraft,
+      thresholds: colorScaleDraft.thresholds.filter(threshold => threshold.thresholdPercent !== target.thresholdPercent),
+    }
     setColorScaleDraft(next)
-    if (target.id !== undefined) deleteThresholdMutation.mutate(target.id)
+    const ids = Array.from(new Set(removed.map(threshold => threshold.id).filter((id): id is number => id !== undefined)))
+    ids.forEach(id => deleteThresholdMutation.mutate(id))
   }
   const colorEditThresholds = colorScaleDraft
     ? colorEditIndices.map(i => colorScaleDraft.thresholds[i]).filter((t): t is ColorScaleThreshold => t !== undefined)
