@@ -309,8 +309,12 @@ a { color: var(--accent-light); text-decoration: none; }
   content: counter(settings-subsection) ") ";
 }
 
-/* 새 설정 탭은 시각적 섹션 번호 없이 디자인 참조의 제목 위계를 사용한다. */
-.settings-sidebar-tab-content .settings-section-num::before,
+/* 탭 제목 아래의 중제목은 화면에 보이는 순서대로 1), 2)로 매긴다. */
+.settings-sidebar-tab-content .settings-section-num::before {
+  counter-increment: settings-section;
+  content: counter(settings-section) ") ";
+}
+
 .settings-sidebar-tab-content .settings-section-bullet::before,
 .settings-sidebar-tab-content .settings-subsection-num::before {
   counter-increment: none;
@@ -333,7 +337,7 @@ a { color: var(--accent-light); text-decoration: none; }
   .market-map-stock.is-pinned {
     border-width: 2px;
     border-color: color-mix(in srgb, var(--market-map-base-color) 58%, white);
-    box-shadow: inset 0 0 0 999px rgb(255 255 255 / 45%);
+    box-shadow: inset 0 0 0 999px rgb(255 255 255 / 35%);
   }
 
   /* 종목과 같은 이유로(위 .market-map-stock 주석 참고) 헤더도 hover와 "팝업이 뜬 채 고정"을 같은
@@ -343,9 +347,7 @@ a { color: var(--accent-light); text-decoration: none; }
   .market-map-sector-header:hover,
   .market-map-sector-header:focus-visible,
   .market-map-sector-box.is-pinned > .market-map-sector-header {
-    border-width: 2px;
-    border-color: color-mix(in srgb, var(--market-map-base-color) 50%, white);
-    box-shadow: inset 0 0 0 999px rgb(255 255 255 / 45%);
+    box-shadow: inset 0 0 0 999px rgb(255 255 255 / 35%);
   }
 
   .market-map-top-pick-header:hover,
@@ -355,24 +357,12 @@ a { color: var(--accent-light); text-decoration: none; }
     border-color: transparent;
   }
 
-  /* 줌인 진입 애니메이션 중(왼쪽 클릭으로 시작) hover 테두리를 끈다. 예전엔 여기 .market-map-sector-header:active도
-     같이 있었는데, CSS :active는 어떤 버튼으로 누르든(오른쪽 버튼도) 눌려 있는 동안 매치돼서 우클릭
-     팝업을 여는 프레스 중에도 헤더가 "안 눌린 원래 모습"으로 잠깐 돌아가 버렸다(우클릭은 mouseup에서야
-     contextmenu가 뜨니 그 사이엔 아직 아무 것도 고정 안 된 상태). 왼쪽 버튼 전용으로 걸러야 해서
-     MarketMapTreemap.tsx의 onHeaderPressStart(헤더 pointerdown, e.button===0만)로 옮겼다. */
-  .market-map-suppress-sector-border .market-map-sector-header:hover,
-  .market-map-suppress-sector-border .market-map-sector-header:focus-visible,
-  .market-map-suppress-sector-border .market-map-sector-box.is-pinned > .market-map-sector-header {
-    border-color: transparent;
-    transition: none;
-  }
-
   /* 섹터 헤더를 hover(또는 팝업이 뜬 채 고정)했을 때 섹터 박스 전체를 옅게 덮는 오버레이
      (MarketMapSectorSection.tsx) — 기본은 투명(opacity 0), 아래 두 트리거 중 하나가 켜지면 opacity 1로
-     바뀌어 보인다. 배경색 자체가 흰색 45% 알파(rgb(255 255 255 / 45%))라, 종목/섹터 헤더 hover의
+     바뀌어 보인다. 배경색 자체가 흰색 35% 알파(rgb(255 255 255 / 35%))라, 종목/섹터 헤더 hover의
      box-shadow와 같은 흰색 불투명도로 통일된다. */
   .market-map-sector-hover-overlay {
-    background-color: rgb(255 255 255 / 45%);
+    background-color: rgb(255 255 255 / 35%);
     opacity: 0;
     transition: opacity 0.15s ease;
   }
@@ -394,9 +384,7 @@ a { color: var(--accent-light); text-decoration: none; }
     z-index: 31;
   }
 
-  /* 드래그/줌 전환 중에는(market-map-suppress-sector-border) 헤더 hover 테두리와 마찬가지로 이
-     오버레이도 끈다 — 위 트리거들보다 우선해야 해서 !important를 쓴다(이미 위쪽 outline-none
-     리셋에서도 쓰는 패턴). */
+  /* 드래그/줌 전환 중에는 hover 오버레이를 끈다. 위 트리거들보다 우선한다. */
   .market-map-suppress-sector-border .market-map-sector-hover-overlay {
     opacity: 0 !important;
   }

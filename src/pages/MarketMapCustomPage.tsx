@@ -394,10 +394,10 @@ export default function MarketMapCustomPage() {
               <SettingsExcludeSection {...settingsModalProps} />
             </SettingsSidebarGroup>
             <SettingsSidebarGroup section="industry">
-              <SettingsSectorLevelSection {...settingsModalProps} showTopPick showDecimalPlaces showStockDisplay={false} />
+              <SettingsSectorLevelSection {...settingsModalProps} showTopPick showStockDisplay={false} />
             </SettingsSidebarGroup>
             <SettingsSidebarGroup section="stockDisplay">
-              <SettingsSectorLevelSection {...settingsModalProps} showClassification={false} />
+              <SettingsSectorLevelSection {...settingsModalProps} showClassification={false} showDecimalPlaces />
             </SettingsSidebarGroup>
             <SettingsSidebarGroup section="colors">
               <SettingsColorSection {...settingsModalProps} colorEditorProps={colorEditorPanelProps} />

@@ -320,7 +320,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     colorEditSnapshotRef.current = colorScaleDraft
     const nextThresholds = [...colorScaleDraft.thresholds, preset ?? createBlankColorThreshold()]
     setColorScaleDraft({ ...colorScaleDraft, thresholds: nextThresholds })
-    setColorEditMode('add')
+    // 기본 범례 칸을 눌렀을 때도 단일 색상 수정 패널로 연다.
+    setColorEditMode(preset ? 'edit' : 'add')
     setColorEditIndices([nextThresholds.length - 1])
   }
   const handleEditColorThreshold = (index: number) => {
@@ -415,22 +416,6 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     if (colorEditSnapshotRef.current) setColorScaleDraft(colorEditSnapshotRef.current)
     colorEditSnapshotRef.current = null
     setColorEditIndices([])
-  }
-  const handleDeleteColorThreshold = (index: number) => {
-    if (!colorScaleDraft) return
-    const target = colorScaleDraft.thresholds[index]
-    if (!target) return
-    if (!window.confirm('정말 삭제하시겠습니까?')) return
-    // 범례는 같은 퍼센트의 중복 draft 행을 하나의 유효 지점으로 보여준다. 삭제도 그 signed
-    // percentage의 중복 행을 전부 제거해야 삭제한 swatch가 다시 나타나지 않는다.
-    const removed = colorScaleDraft.thresholds.filter(threshold => threshold.thresholdPercent === target.thresholdPercent)
-    const next = {
-      ...colorScaleDraft,
-      thresholds: colorScaleDraft.thresholds.filter(threshold => threshold.thresholdPercent !== target.thresholdPercent),
-    }
-    setColorScaleDraft(next)
-    const ids = Array.from(new Set(removed.map(threshold => threshold.id).filter((id): id is number => id !== undefined)))
-    ids.forEach(id => deleteThresholdMutation.mutate(id))
   }
   const colorEditThresholds = colorScaleDraft
     ? colorEditIndices.map(i => colorScaleDraft.thresholds[i]).filter((t): t is ColorScaleThreshold => t !== undefined)
@@ -530,7 +515,6 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     onChangeColorCustomOn: setColorCustomOn,
     onAddColorThreshold: handleAddColorThreshold,
     onEditColorThreshold: handleEditColorThreshold,
-    onDeleteColorThreshold: handleDeleteColorThreshold,
     legendSwatches,
     isOpen: isSettingsOpen,
     onOpenChange: setIsSettingsOpen,

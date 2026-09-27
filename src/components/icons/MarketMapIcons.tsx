@@ -86,6 +86,15 @@ export function UndoIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+export function RestoreToMapIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="m9 5-5 5 5 5" />
+      <path d="M4 10h10a5 5 0 0 1 5 5v4" />
+    </svg>
+  )
+}
+
 export function RedoIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
