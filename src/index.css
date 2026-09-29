@@ -323,6 +323,37 @@ a { color: var(--accent-light); text-decoration: none; }
 
 }
 
+/* 지도 설정 탭마다 두 번째 제목을 같은 높이에서 시작한다.
+   첫 번째 항목과 조작부의 크기는 유지하고 제목 앞 간격만 조절한다. */
+.settings-sidebar-tab-content[data-align-second-heading] .settings-second-depth-metric {
+  margin-top: 50px;
+}
+
+.settings-sidebar-tab-content[data-align-second-heading] .settings-third-depth-range {
+  margin-top: 49px;
+}
+
+.settings-sidebar-tab-content[data-align-second-heading] .settings-fourth-top-pick {
+  margin-top: 54px;
+}
+
+.settings-sidebar-tab-content[data-align-second-heading] .settings-third-text-threshold {
+  margin-top: 50px;
+}
+
+.settings-sidebar-tab-content[data-align-second-heading] .settings-fourth-decimal-places {
+  margin-top: 69px;
+}
+
+.settings-sidebar-tab-content[data-align-second-heading] .settings-second-exclude {
+  margin-top: 30px;
+  border-color: transparent;
+}
+
+.settings-sidebar-tab-content[data-align-second-heading] .settings-first-stock-size {
+  border-color: transparent;
+}
+
 @layer utilities {
   .market-map-stock {
     transition: box-shadow 0.15s ease, border-color 0.15s ease;

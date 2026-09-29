@@ -31,7 +31,19 @@ import type { MarketMapSectorNode } from '@/types/api'
 // 기본 프리셋으로 귀결된다(resolveMarketMapColor/resolveLegendSwatches 참고).
 const EMPTY_COLOR_SCALE: ColorScaleConfig = { thresholds: [] }
 
-export type DepthMetric = 'avgChangeRate' | 'upDownCount' | 'marketValue'
+export type DepthMetric = 'weightedAvgChangeRate' | 'simpleAvgChangeRate' | 'upDownCount' | 'marketValue'
+type StoredDepthMetric = DepthMetric | 'avgChangeRate' | [number, number] | null
+const DEPTH_METRICS: DepthMetric[] = ['weightedAvgChangeRate', 'simpleAvgChangeRate', 'upDownCount', 'marketValue']
+
+function resolveDepthMetric(stored: StoredDepthMetric, useSimple: boolean): DepthMetric {
+  const previousAverage = useSimple ? 'simpleAvgChangeRate' : 'weightedAvgChangeRate'
+  if (Array.isArray(stored)) {
+    // 잠시 사용한 범위 저장값 [0, 1]은 이전 등락률 선택과 같은 평균 방식으로 돌린다.
+    if (stored[0] === 0 && stored[1] === 1) return previousAverage
+    return DEPTH_METRICS[stored[0]] ?? previousAverage
+  }
+  return stored === 'avgChangeRate' || stored === null ? previousAverage : stored
+}
 
 // 트리맵 종목 박스에 이름/등락률 중 뭘 보여줄지 — 슬라이더 인덱스로 저장(0~3). off는 둘 다 안 보여준다.
 export type StockLabelMode = 'off' | 'nameOnly' | 'rateOnly' | 'both'
@@ -91,31 +103,22 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 비로그인은 저장값이 true여도 거래소 분류(false)로 고정한다 — MARKETRY 분류는 로그인이 필요하다.
   const [storedIsCustom, setStoredIsCustom] = usePageSetting('marketMap.isCustom', true)
   const isCustom = isLoggedIn ? storedIsCustom : false
-  // 시가총액 합/등락률 평균/등락 종목수 태그를 셋 다 동시에 켤 수 있었는데, 한꺼번에 여러 개가 뜨면
-  // 섹터 헤더가 너무 정신없어서 라디오처럼 하나만 고르게 했다 — 뎁스 범위 슬라이더도 셋의
-  // 내용(스텝/라벨)이 완전히 같으니 하나만 두고, 그 슬라이더가 지금 어느 지표에 적용되는지만
-  // activeDepthMetric으로 고른다. 기능 전체의 표시 여부는 별도 토글(depthMetricEnabled)이 담당한다.
-  const [activeDepthMetric, setActiveDepthMetric] = usePageSetting<DepthMetric | null>(
+  // 박스 크기의 기본 선택과 예전 단일 지표 저장값을 읽고, 새 선택은 네 지표 중 하나로 저장한다.
+  const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', true)
+  const [storedDepthMetric, setStoredDepthMetric] = usePageSetting<StoredDepthMetric>(
     'marketMap.activeDepthMetric',
     'avgChangeRate',
   )
-  // 업종 표시 지표 토글을 다시 켤 때 직전에 고른 라디오 지표를 복원한다.
-  const lastActiveDepthMetricRef = useRef<DepthMetric>(activeDepthMetric ?? 'avgChangeRate')
+  const selectedDepthMetric = resolveDepthMetric(storedDepthMetric, avgChangeRateUseSimple)
   const [depthMetricEnabled, setDepthMetricEnabled] = usePageSetting(
     'marketMap.depthMetricEnabled',
-    activeDepthMetric !== null,
+    storedDepthMetric !== null,
   )
-  // 예전 세션스토리지에 activeDepthMetric=null만 남아 있어도 토글을 다시 켜면 등락률을 복원한다.
-  const selectedDepthMetric = activeDepthMetric ?? lastActiveDepthMetricRef.current
-  // MARKETRY 분류에서의 사용자 선택값. 거래소 분류에서는 이 값을 보존한 채 화면에 대분류(0)만
-  // 적용한다 — 분류를 다시 바꾸면 MARKETRY 분류에서 선택했던 범위가 돌아온다.
+  // 분류별 데이터 깊이에 맞춰 화면에 적용하되, 사용자가 고른 범위는 전환해도 보존한다.
   // 기본값: 대분류~중분류(index 0~1) — 렌더러가 캡처하는 기본 화면에 등락률이 보이도록.
   const [depthMetricMinIndex, setDepthMetricMinIndex] = usePageSetting('marketMap.depthMetricMinIndex', 0)
   const [depthMetricMaxIndex, setDepthMetricMaxIndex] = usePageSetting('marketMap.depthMetricMaxIndex', 1)
-  // 등락률 태그/툴팁에 가중평균 대신 산술평균을 보여줄지 — 마켓맵 커스텀 페이지의 "동일 가중" 토글
-  // 기본값을 On으로 하기 위해 기본을 true로 변경(랭킹 페이지의 기본 정렬 기준도 산술평균으로 같이 바뀜 — 두
-  // 페이지가 이 값을 공유하는 구조라 의도적으로 함께 적용).
-  const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', true)
+  // 위의 avgChangeRateUseSimple은 박스 크기와 섹터 랭킹의 기본 평균 방식에도 쓰인다.
   // 종목 박스가 전체 트리맵 넓이에서 이 비중(%) 미만이면 종목명/등락률을 표시하지 않는다(섹터 헤더와는 무관).
   const [boxLabelMinAreaPercent, setBoxLabelMinAreaPercent] = usePageSetting('marketMap.boxLabelMinAreaPercent', 0.1)
   // 종목 박스에 이름만/등락률만/둘 다/끄기 중 뭘 보여줄지 — 기본은 둘 다(기존 동작 유지, 배열 앞에
@@ -154,11 +157,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 기본값 2(렌더러 캡처 기준 화면에 맞춤).
   const [selectedMaxDepth, setMaxDepth] = useState<number | null>(2)
   const [sectorLevelEnabled, setSectorLevelEnabled] = useState(true)
-  // 거래소 분류 트리는 1단계(대분류)만 제공한다. MARKETRY 분류의 사용자 설정은 건드리지 않고,
-  // 거래소 분류일 때만 화면 적용값을 대분류로 고정해 분류를 되돌리면 기존 설정을 복원한다.
-  const effectiveSectorLevelEnabled = isCustom ? sectorLevelEnabled : true
-  const effectiveSelectedMaxDepth = isCustom ? selectedMaxDepth : 1
-  const maxDepth = effectiveSectorLevelEnabled ? effectiveSelectedMaxDepth : 0
+  const maxDepth = sectorLevelEnabled ? selectedMaxDepth : 0
   // 선호 업종 — 선택한 절대 depth에서 등락률 상위 N개 섹터를 지도 전체에 강조한다.
   const [topPickDepth, setTopPickDepth] = usePageSetting('marketMap.topPickDepth', 1)
   const [topPickCount, setTopPickCount] = usePageSetting('marketMap.topPickCount', 2)
@@ -210,34 +209,33 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     excludedMarketValueTiers,
   )
 
-  // 데이터가 얕아서(예: 기본값 중분류인데 실제 뎁스가 대분류까지밖에 없음) 저장된 범위가
-  // availableMaxDepth를 넘어설 수 있다 — 이럴 땐 어중간하게 줄여서 보여주는 대신 아예 꺼진 것으로
-  // 취급한다. 슬라이더에 내려보내는 값도 이 값으로 통일해야 슬라이더 내부 드래그/클릭 판정도
-  // 어긋나지 않는다.
+  // KRX 트리는 대분류까지만 있을 수 있으므로, 선택 범위 중 실제 존재하는 단계만 표시한다.
+  // MARKETRY는 기존처럼 선택 범위의 끝이 트리보다 깊으면 지표를 표시하지 않는다.
   const depthMetricClampedMinIndex = Math.min(depthMetricMinIndex, depthMetricMaxIndex)
   const depthMetricClampedMaxIndex = depthMetricMaxIndex
-  const effectiveDepthMetricEnabled = isCustom ? depthMetricEnabled : true
-  const effectiveDepthMetricMinIndex = isCustom ? depthMetricClampedMinIndex : 0
-  const effectiveDepthMetricMaxIndex = isCustom ? depthMetricClampedMaxIndex : 0
+  const visibleDepthMetricMaxIndex = isCustom
+    ? depthMetricClampedMaxIndex
+    : Math.min(depthMetricClampedMaxIndex, availableMaxDepth - 1)
   const isDepthMetricRangeValid = isCustom
-    ? effectiveDepthMetricMaxIndex < availableMaxDepth
-    : availableMaxDepth > 0
+    ? depthMetricClampedMaxIndex < availableMaxDepth
+    : depthMetricClampedMinIndex < availableMaxDepth
 
   const activeDepthRange: [number, number] | null =
-    effectiveDepthMetricEnabled && isDepthMetricRangeValid
-      ? [effectiveDepthMetricMinIndex, effectiveDepthMetricMaxIndex]
+    depthMetricEnabled && isDepthMetricRangeValid
+      ? [depthMetricClampedMinIndex, visibleDepthMetricMaxIndex]
       : null
 
-  const marketValueDepthRange = selectedDepthMetric === 'marketValue' ? activeDepthRange : null
-  const avgChangeRateDepthRange = selectedDepthMetric === 'avgChangeRate' ? activeDepthRange : null
+  const weightedAvgDepthRange = selectedDepthMetric === 'weightedAvgChangeRate' ? activeDepthRange : null
+  const simpleAvgDepthRange = selectedDepthMetric === 'simpleAvgChangeRate' ? activeDepthRange : null
   const upDownCountDepthRange = selectedDepthMetric === 'upDownCount' ? activeDepthRange : null
+  const marketValueDepthRange = selectedDepthMetric === 'marketValue' ? activeDepthRange : null
 
   // 선호 업종 라디오의 활성 상한은 업종 분류 레벨 설정을 따른다. 대/중/소분류 설정은 데이터가 얕아도
   // 미리 선택할 수 있게 두고, 현재 데이터에 해당 섹터가 없으면 강조 대상만 빈 Set으로 둔다.
   const topPickMaxSelectableDepth = maxDepth === null ? Math.max(3, availableMaxDepth) : maxDepth
-  const topPickSectorIds = useMemo(() => {
-    if (!isCustom || !topPickEnabled || topPickDepth < 0 || topPickDepth >= topPickMaxSelectableDepth) {
-      return new Set<number>()
+  const topPickSectorKeys = useMemo(() => {
+    if (!topPickEnabled || topPickDepth < 0 || topPickDepth >= topPickMaxSelectableDepth) {
+      return new Set<string>()
     }
 
     const candidates = collectSectorsAtDepth(filteredRootNodes, topPickDepth)
@@ -247,11 +245,13 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
       })
       .sort((a, b) => b.average - a.average || b.node.totalMarketValue - a.node.totalMarketValue || a.index - b.index)
 
-    return new Set(candidates.slice(0, selectedTopPickCount).map(candidate => candidate.node.sectorId))
+    // KRX 업종은 모두 sectorId=0이므로 이름까지 포함해 구별한다.
+    return new Set(candidates.slice(0, selectedTopPickCount).map(candidate =>
+      JSON.stringify([candidate.node.sectorId, candidate.node.sectorName]),
+    ))
   }, [
     avgChangeRateUseSimple,
     filteredRootNodes,
-    isCustom,
     topPickEnabled,
     selectedTopPickCount,
     topPickDepth,
@@ -431,15 +431,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     setStoredIsCustom(prev => !prev)
   }
 
-  const handleChangeActiveDepthMetric = (metric: DepthMetric) => {
-    lastActiveDepthMetricRef.current = metric
-    setActiveDepthMetric(metric)
-  }
+  const handleChangeActiveDepthMetric = (metric: DepthMetric) => setStoredDepthMetric(metric)
 
-  const handleToggleDepthMetric = () => {
-    if (!depthMetricEnabled) setActiveDepthMetric(lastActiveDepthMetricRef.current)
-    setDepthMetricEnabled(prev => !prev)
-  }
+  const handleToggleDepthMetric = () => setDepthMetricEnabled(prev => !prev)
 
   const handleChangeMaxDepth = (nextMaxDepth: number) => {
     setMaxDepth(nextMaxDepth)
@@ -470,17 +464,17 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const settingsModalProps = {
     isCustom,
     onToggleCustom: handleToggleCustom,
-    maxDepth: effectiveSelectedMaxDepth,
-    sectorLevelEnabled: effectiveSectorLevelEnabled,
+    maxDepth: selectedMaxDepth,
+    sectorLevelEnabled,
     onToggleSectorLevel: () => setSectorLevelEnabled(prev => !prev),
     availableMaxDepth,
     onChangeMaxDepth: handleChangeMaxDepth,
     activeDepthMetric: selectedDepthMetric,
     onChangeActiveDepthMetric: handleChangeActiveDepthMetric,
-    depthMetricEnabled: effectiveDepthMetricEnabled,
+    depthMetricEnabled,
     onToggleDepthMetric: handleToggleDepthMetric,
-    depthMetricMinIndex: effectiveDepthMetricMinIndex,
-    depthMetricMaxIndex: effectiveDepthMetricMaxIndex,
+    depthMetricMinIndex: depthMetricClampedMinIndex,
+    depthMetricMaxIndex: depthMetricClampedMaxIndex,
     onChangeDepthMetricRange: handleChangeDepthMetricRange,
     topPickDepth,
     topPickCount: selectedTopPickCount,
@@ -550,14 +544,14 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     rootNodes,
     filteredRootNodes,
     availableMaxDepth,
-    // MARKETRY 분류에서 선택한 값은 위에서 계산한 화면 적용값으로 내보낸다. 거래소 분류에서는
-    // 대분류만 적용해도 저장한 MARKETRY 설정이 바뀌지 않는다.
+    // 선택한 분류 단계는 KRX와 MARKETRY 히트맵에 동일하게 적용한다.
     maxDepth,
     marketValueDepthRange,
-    avgChangeRateDepthRange,
+    weightedAvgDepthRange,
+    simpleAvgDepthRange,
     upDownCountDepthRange,
     avgChangeRateUseSimple,
-    topPickSectorIds,
+    topPickSectorKeys,
     // URL 쿼리(avgMode/sectorFilter)로 값을 직접 세팅해야 하는 페이지용 — 토글(prev => !prev)과 달리
     // 원하는 값을 그대로 넘겨 세팅한다.
     onChangeAvgChangeRateUseSimple: setAvgChangeRateUseSimple,

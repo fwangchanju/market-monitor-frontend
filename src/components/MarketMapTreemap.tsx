@@ -16,9 +16,10 @@ interface Props {
   heightClassName?: string
   // 셋 다 null = 전부 꺼짐. [min, max]면 그 뎁스 범위(현재 화면 기준 상대 뎁스)에서만 표시.
   marketValueDepthRange: [number, number] | null
-  avgChangeRateDepthRange: [number, number] | null
+  weightedAvgDepthRange: [number, number] | null
+  simpleAvgDepthRange: [number, number] | null
   upDownCountDepthRange: [number, number] | null
-  // true면 가중평균 대신 산술평균을 표시(태그/툴팁).
+  // true면 종목 개수에 비례하도록 박스 크기를 계산한다.
   avgChangeRateUseSimple: boolean
   // 커스텀 모드가 아닐 때는(기본 분류 트리) 섹터 제외 액션 자체를 제공하지 않는다.
   canExclude: boolean
@@ -31,7 +32,7 @@ interface Props {
   stockLabelMode: StockLabelMode
   // 하위 MarketMapSectorSection/MarketMapBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
   decimalPlaces: number
-  topPickSectorIds: Set<number>
+  topPickSectorKeys: Set<string>
   // 0이 아닌 뎁스가 오면 그 뎁스로 진입할 때 썼던 위치로 줄어드는 애니메이션을 재생한다.
   zoomOutRequestDepth: number | null
   onZoomOutComplete: (depth: number) => void
@@ -85,7 +86,8 @@ export default function MarketMapTreemap({
   onExcludeSector,
   heightClassName = 'h-[70vh]',
   marketValueDepthRange,
-  avgChangeRateDepthRange,
+  weightedAvgDepthRange,
+  simpleAvgDepthRange,
   upDownCountDepthRange,
   avgChangeRateUseSimple,
   canExclude,
@@ -93,7 +95,7 @@ export default function MarketMapTreemap({
   labelMinAreaPercent,
   stockLabelMode,
   decimalPlaces,
-  topPickSectorIds,
+  topPickSectorKeys,
   zoomOutRequestDepth,
   onZoomOutComplete,
 }: Props) {
@@ -146,10 +148,14 @@ export default function MarketMapTreemap({
   // 어느 쪽으로 붙일지(오른쪽/왼쪽, 위/아래 뒤집기)는 실제 팝업 크기를 알아야 정확히 판단할 수 있어서
   // MarketMapPopup 쪽에서 렌더 후 측정해서 계산한다(MarketMapPopup.tsx 참고).
   const handleOpenPopup = (content: MarketMapPopupContent, target: HTMLElement) => {
+    const map = containerRef.current
+    if (!map) return
     const rect = target.getBoundingClientRect()
+    const mapRect = map.getBoundingClientRect()
     setPopup({
       ...content,
       anchorRect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
+      mapBounds: { left: mapRect.left, right: mapRect.right },
     })
   }
 
@@ -310,15 +316,15 @@ export default function MarketMapTreemap({
               highlightedKey={null}
               ancestorPath=""
               marketValueDepthRange={marketValueDepthRange}
-              avgChangeRateDepthRange={avgChangeRateDepthRange}
+              weightedAvgDepthRange={weightedAvgDepthRange}
+              simpleAvgDepthRange={simpleAvgDepthRange}
               upDownCountDepthRange={upDownCountDepthRange}
-              avgChangeRateUseSimple={avgChangeRateUseSimple}
               canExclude={false}
               colorScale={colorScale}
               labelMinAreaPercent={labelMinAreaPercent}
               stockLabelMode={stockLabelMode}
               decimalPlaces={decimalPlaces}
-              topPickSectorIds={topPickSectorIds}
+              topPickSectorKeys={topPickSectorKeys}
             />
           ))}
         </div>
@@ -335,15 +341,15 @@ export default function MarketMapTreemap({
             highlightedKey={highlightedKey}
             ancestorPath=""
             marketValueDepthRange={marketValueDepthRange}
-            avgChangeRateDepthRange={avgChangeRateDepthRange}
+            weightedAvgDepthRange={weightedAvgDepthRange}
+            simpleAvgDepthRange={simpleAvgDepthRange}
             upDownCountDepthRange={upDownCountDepthRange}
-            avgChangeRateUseSimple={avgChangeRateUseSimple}
             canExclude={canExclude}
             colorScale={colorScale}
             labelMinAreaPercent={labelMinAreaPercent}
             stockLabelMode={stockLabelMode}
             decimalPlaces={decimalPlaces}
-            topPickSectorIds={topPickSectorIds}
+            topPickSectorKeys={topPickSectorKeys}
           />
         ))}
       </div>
