@@ -21,6 +21,7 @@ const ICON_SOURCES: Record<SettingsSectionIconName, string> = {
 }
 
 export default function SettingsSectionIcon({ icon, className = '' }: SettingsSectionIconProps) {
+  const filterId = `settings-icon-${icon}-light-stroke`
   const iconMask = `url("${ICON_SOURCES[icon]}")`
   const maskStyle: CSSProperties = {
     maskImage: iconMask,
@@ -33,5 +34,19 @@ export default function SettingsSectionIcon({ icon, className = '' }: SettingsSe
     WebkitMaskSize: 'contain',
   }
 
-  return <span aria-hidden="true" className={`inline-block h-[30px] w-[30px] shrink-0 bg-current ${className}`} style={maskStyle} />
+  return (
+    <>
+      <svg aria-hidden="true" className="absolute h-0 w-0" focusable="false">
+        <filter id={filterId} colorInterpolationFilters="sRGB">
+          <feMorphology in="SourceAlpha" operator="erode" radius="0.35" result="thinner" />
+          <feComposite in="SourceGraphic" in2="thinner" operator="in" />
+        </filter>
+      </svg>
+      <span
+        aria-hidden="true"
+        className={`inline-block h-[30px] w-[30px] shrink-0 bg-current ${className}`}
+        style={{ ...maskStyle, filter: `url(#${filterId})` }}
+      />
+    </>
+  )
 }

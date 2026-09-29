@@ -19,8 +19,8 @@ interface Props {
   weightedAvgDepthRange: [number, number] | null
   simpleAvgDepthRange: [number, number] | null
   upDownCountDepthRange: [number, number] | null
-  // true면 종목 개수에 비례하도록 박스 크기를 계산한다.
-  avgChangeRateUseSimple: boolean
+  // 0이면 종목별 동일 크기, 100이면 시가총액 비례로 박스 크기를 계산한다.
+  boxSizeMarketCapRatio: number
   // 커스텀 모드가 아닐 때는(기본 분류 트리) 섹터 제외 액션 자체를 제공하지 않는다.
   canExclude: boolean
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 박스 색칠 설정의 단일 출처(어드민 라이브 프리뷰에서는
@@ -33,6 +33,7 @@ interface Props {
   // 하위 MarketMapSectorSection/MarketMapBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
   decimalPlaces: number
   topPickSectorKeys: Set<string>
+  strongIndustryColor: string
   // 0이 아닌 뎁스가 오면 그 뎁스로 진입할 때 썼던 위치로 줄어드는 애니메이션을 재생한다.
   zoomOutRequestDepth: number | null
   onZoomOutComplete: (depth: number) => void
@@ -89,13 +90,14 @@ export default function MarketMapTreemap({
   weightedAvgDepthRange,
   simpleAvgDepthRange,
   upDownCountDepthRange,
-  avgChangeRateUseSimple,
+  boxSizeMarketCapRatio,
   canExclude,
   colorScale,
   labelMinAreaPercent,
   stockLabelMode,
   decimalPlaces,
   topPickSectorKeys,
+  strongIndustryColor,
   zoomOutRequestDepth,
   onZoomOutComplete,
 }: Props) {
@@ -139,9 +141,8 @@ export default function MarketMapTreemap({
     return () => observer.disconnect()
   }, [])
 
-  // "동일 가중" 토글(avgChangeRateUseSimple) — 켜지면 박스 크기도 시가총액이 아니라 종목 개수
-  // 비례로 균등하게 그린다(useMarketMapLayout 참고).
-  const sectors = useMarketMapLayout(groups, selfSectorName, size.width, size.height, avgChangeRateUseSimple)
+  // 시가총액 차이를 거듭제곱으로 압축하는 비율을 레이아웃 계산에 전달한다.
+  const sectors = useMarketMapLayout(groups, selfSectorName, size.width, size.height, boxSizeMarketCapRatio)
 
   // 팝업을 마우스 좌표가 아니라 우클릭한 박스(섹터 전체 박스, 혹은 종목 박스)의 화면상 위치에 붙인다.
   // 여기서는 그 박스의 뷰포트 기준 rect만 그대로 popup 상태에 실어두고, 그 rect의 어느 가장자리에
@@ -325,6 +326,7 @@ export default function MarketMapTreemap({
               stockLabelMode={stockLabelMode}
               decimalPlaces={decimalPlaces}
               topPickSectorKeys={topPickSectorKeys}
+              strongIndustryColor={strongIndustryColor}
             />
           ))}
         </div>
@@ -350,6 +352,7 @@ export default function MarketMapTreemap({
             stockLabelMode={stockLabelMode}
             decimalPlaces={decimalPlaces}
             topPickSectorKeys={topPickSectorKeys}
+            strongIndustryColor={strongIndustryColor}
           />
         ))}
       </div>

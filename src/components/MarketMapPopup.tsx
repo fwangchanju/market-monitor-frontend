@@ -1,6 +1,5 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { eulReul } from '@/utils/format'
 
 export interface MarketMapPopupContent {
   title: string
@@ -56,7 +55,6 @@ interface PopupBodyProps {
 }
 
 function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
-  const [confirming, setConfirming] = useState(false)
   const elRef = useRef<HTMLDivElement>(null)
   const minLeft = Math.max(POPUP_MARGIN, popup.mapBounds.left + POPUP_MARGIN)
   const maxRight = Math.min(window.innerWidth - POPUP_MARGIN, popup.mapBounds.right - POPUP_MARGIN)
@@ -64,8 +62,7 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
   // 팝업 크기는 내용(제목/행 목록 vs 삭제 확인 문구+버튼)에 따라 달라서 미리 알 수 없다. 일단
   // 기본 위치(혹은 이전 위치)로 그려보고, 실제 렌더된 크기를 getBoundingClientRect로 잰 뒤
   // 뷰포트를 넘치지 않는 최종 위치를 다시 계산한다 — useLayoutEffect라 이 보정은 브라우저가
-  // 화면을 그리기 전에 끝나서 위치가 튀는 게 눈에 보이지 않는다. confirming이 바뀌어 내용/크기가
-  // 달라질 때도 다시 재는게 필요해서 의존성에 넣는다.
+  // 화면을 그리기 전에 끝나서 위치가 튀는 게 눈에 보이지 않는다.
   useLayoutEffect(() => {
     const el = elRef.current
     if (!el) return
@@ -101,7 +98,7 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
     el.style.left = `${left}px`
     el.style.top = `${top}px`
     el.style.visibility = 'visible'
-  }, [popup, confirming, minLeft, maxRight])
+  }, [popup, minLeft, maxRight])
 
   const excludeSector = popup.excludeSector
 
@@ -113,57 +110,31 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
         className="invisible fixed z-[9999] w-max break-words border border-[#7a6d55] px-2 py-1 text-left text-base text-black shadow-lg"
         style={{ maxWidth, backgroundColor: POPUP_BACKGROUND }}
       >
-        {confirming && excludeSector ? (
-          <div className="flex flex-col gap-2">
-            <span>
-              {excludeSector.name}
-              {eulReul(excludeSector.name)} 히트맵에서 제외하시겠습니까?
-            </span>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                className="nes-btn border-red-600 bg-red-600 px-2 py-0.5 text-xs text-white hover:bg-red-700"
-                onClick={() => {
-                  onExcludeSector(excludeSector.id, excludeSector.name)
-                  onClose()
-                }}
-              >
-                제외
-              </button>
-              <button
-                type="button"
-                className="nes-btn border-gray-600 bg-black px-2 py-0.5 text-xs text-white hover:bg-gray-800"
-                onClick={() => setConfirming(false)}
-              >
-                취소
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center justify-between gap-3 font-bold">
-              <span>{popup.title}</span>
-              {excludeSector && (
-                <button
-                  type="button"
-                  aria-label={`${excludeSector.name} 제외`}
-                  title="섹터 제외"
-                  className="flex h-5 w-5 items-center justify-center border-0 bg-transparent p-0 outline-none text-gray-700 hover:text-black"
-                  onClick={() => setConfirming(true)}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-                    <path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m5 4v7m4-7v7" />
-                  </svg>
-                </button>
-              )}
-            </div>
-            <div className="pl-1">
-              {popup.rows.map((row, index) => (
-                <div key={index}>{row}</div>
-              ))}
-            </div>
-          </>
-        )}
+        <div className="flex items-center justify-between gap-3 font-bold">
+          <span>{popup.title}</span>
+          {excludeSector && (
+            <button
+              type="button"
+              aria-label={`${excludeSector.name} 제외`}
+              title="섹터 제외"
+              className="flex h-5 w-5 items-center justify-center border-0 bg-transparent p-0 outline-none text-gray-700 hover:text-black"
+              onClick={() => {
+                if (!window.confirm(`${excludeSector.name}\n히트맵에서 제외하시겠습니까?`)) return
+                onExcludeSector(excludeSector.id, excludeSector.name)
+                onClose()
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                <path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m5 4v7m4-7v7" />
+              </svg>
+            </button>
+          )}
+        </div>
+        <div className="pl-1">
+          {popup.rows.map((row, index) => (
+            <div key={index}>{row}</div>
+          ))}
+        </div>
       </div>
     </>
   )
