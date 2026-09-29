@@ -160,8 +160,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const [sectorFilterEnabled, setSectorFilterEnabled] = usePageSetting('marketMap.sectorFilterEnabled', true)
   // null = 제한 없음(전체 뎁스 표시). 슬라이더의 실제 상한(availableMaxDepth)은 트리 계산 후에 나온다.
   // 기본값 2(렌더러 캡처 기준 화면에 맞춤).
-  const [selectedMaxDepth, setMaxDepth] = useState<number | null>(2)
-  const [sectorLevelEnabled, setSectorLevelEnabled] = useState(true)
+  const [selectedMaxDepth, setMaxDepth] = usePageSetting<number | null>('marketMap.selectedMaxDepth', 2)
+  const [sectorLevelEnabled, setSectorLevelEnabled] = usePageSetting('marketMap.sectorLevelEnabled', true)
   const maxDepth = sectorLevelEnabled ? selectedMaxDepth : 0
   // 선호 업종 — 선택한 절대 depth에서 등락률 상위 N개 섹터를 지도 전체에 강조한다.
   const [topPickDepth, setTopPickDepth] = usePageSetting('marketMap.topPickDepth', 1)
