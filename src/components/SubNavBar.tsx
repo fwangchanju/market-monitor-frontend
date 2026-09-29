@@ -94,15 +94,25 @@ export default function SubNavBar({ actions }: Props) {
       <div className="flex h-8 items-center gap-3">
         {links.map(link =>
           isMarketTab(link.to) ? (
-            // 클릭하면 기본값(ALL STOCK)으로 이동하고, 마우스를 올리면 목록에서 마켓을 골라 들어갈 수 있다.
-            <TabWithDropdown
-              key={link.to}
-              to={link.to}
-              label={link.label}
-              active={isMarketTabActive(link.to)}
-            >
-              <MarketDropdownItems basePath={link.to.startsWith('/map/') ? '/map' : '/sector'} />
-            </TabWithDropdown>
+            link.to.startsWith('/map/') ? (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={`${FONT_NAV_TAB} whitespace-nowrap ${isMarketTabActive(link.to) ? 'text-[var(--accent)]' : 'text-gray-400 hover:text-white'}`}
+              >
+                {link.label}
+              </Link>
+            ) : (
+              // 섹터 탭은 기존처럼 마켓 선택 목록을 펼친다.
+              <TabWithDropdown
+                key={link.to}
+                to={link.to}
+                label={link.label}
+                active={isMarketTabActive(link.to)}
+              >
+                <MarketDropdownItems basePath="/sector" />
+              </TabWithDropdown>
+            )
           ) : link.to === '/admin/sector' ? (
             <div key={link.to} className="group relative flex h-8 items-center">
               <Link
