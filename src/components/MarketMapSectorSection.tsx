@@ -2,7 +2,7 @@ import { useRef, type CSSProperties } from 'react'
 import MarketMapBox from './MarketMapBox'
 import type { MarketMapPopupContent } from './MarketMapPopup'
 import { sectorHeaderFontSize, sectorHeaderHeight, PADDING, type LaidOutSector } from '@/hooks/useMarketMapLayout'
-import { TAB_GAP, avgChangeRateLabel, toJoEokDecimal, toPctSigned } from '@/utils/format'
+import { TAB_GAP, toJoEokDecimal, toPctSigned } from '@/utils/format'
 import type { MarketMapItem } from '@/types/api'
 import type { ColorScaleConfig } from '@/utils/marketMapColorScale'
 import type { StockLabelMode } from '@/hooks/useGlobalSettings'
@@ -26,10 +26,9 @@ interface Props {
   ancestorPath: string
   // 셋 다 null = 전부 꺼짐. [min, max]면 그 뎁스 범위(현재 화면 기준 상대 뎁스)에서만 표시.
   marketValueDepthRange: [number, number] | null
-  avgChangeRateDepthRange: [number, number] | null
+  weightedAvgDepthRange: [number, number] | null
+  simpleAvgDepthRange: [number, number] | null
   upDownCountDepthRange: [number, number] | null
-  // true면 가중평균 대신 산술평균을 표시(태그/툴팁).
-  avgChangeRateUseSimple: boolean
   // 커스텀 모드가 아닐 때는(기본 분류 트리) 섹터 제외 액션 자체를 제공하지 않는다.
   canExclude: boolean
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 박스 색칠 설정의 단일 출처.
@@ -40,7 +39,7 @@ interface Props {
   stockLabelMode: StockLabelMode
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
   decimalPlaces: number
-  topPickSectorIds: Set<number>
+  topPickSectorKeys: Set<string>
   // 현재 화면의 상대 depth 0이 트리에서 몇 번째 단계인지 나타내는 절대 depth 오프셋.
   depthOffset?: number
   depth?: number
@@ -78,15 +77,15 @@ export default function MarketMapSectorSection({
   highlightedKey,
   ancestorPath,
   marketValueDepthRange,
-  avgChangeRateDepthRange,
+  weightedAvgDepthRange,
+  simpleAvgDepthRange,
   upDownCountDepthRange,
-  avgChangeRateUseSimple,
   canExclude,
   colorScale,
   labelMinAreaPercent,
   stockLabelMode,
   decimalPlaces,
-  topPickSectorIds,
+  topPickSectorKeys,
   depthOffset = 0,
   depth = 0,
 }: Props) {
@@ -97,18 +96,17 @@ export default function MarketMapSectorSection({
   // 팝업이 이 섹터를 대상으로 떠 있는 동안 호버 오버레이를 고정해서 보여준다(index.css의 .is-pinned).
   const isPinned = highlightedKey === sectorKey
   const items = collectSectorItems(sector)
-  // useFilteredMarketMapTree가 필터 전 원본 노드로 미리 계산해둔 값이다. null이면 지금 선택된 구간에
-  // 해당하는 종목이 하나도 없다는 뜻 — 그 섹터는 등락률 칸을 비운다.
-  const avgChangeRate = avgChangeRateUseSimple ? sector.simpleAvgChangeRate : sector.weightedAvgChangeRate
-  const isTopPick = topPickSectorIds.has(sector.sectorId) && !sector.isSelf
+  const isTopPick = topPickSectorKeys.has(JSON.stringify([sector.sectorId, sector.sectorName])) && !sector.isSelf
   const advancerCount = items.filter(item => item.changeRate > 0).length
   const declinerCount = items.filter(item => item.changeRate < 0).length
   const unchangedCount = items.length - advancerCount - declinerCount
-  // 태그는 공간이 좁아서 라벨 없이 값만 나열한다 — 표시되는 항목들 사이는 TAB_GAP으로 구분,
-  // 등락 종목수 안의 상승/하락/보합 사이는 스페이스 1칸. 순서는 등락률 → 등락 종목수 → 시총(표시 설정 순서와 동일).
+  // 선택한 한 항목의 값만 이름 없이 표시한다.
   const headerParts = [
-    isInDepthRange(avgChangeRateDepthRange, depth) && avgChangeRate !== null
-      ? toPctSigned(avgChangeRate, decimalPlaces)
+    isInDepthRange(weightedAvgDepthRange, depth) && sector.weightedAvgChangeRate !== null
+      ? toPctSigned(sector.weightedAvgChangeRate, decimalPlaces)
+      : null,
+    isInDepthRange(simpleAvgDepthRange, depth) && sector.simpleAvgChangeRate !== null
+      ? toPctSigned(sector.simpleAvgChangeRate, decimalPlaces)
       : null,
     isInDepthRange(upDownCountDepthRange, depth)
       ? `▲${advancerCount} ▼${declinerCount} ■${unchangedCount}`
@@ -195,11 +193,10 @@ export default function MarketMapSectorSection({
               onOpenPopup({
                 title: sector.sectorName,
                 rows: [
-                  ...(avgChangeRate !== null
-                    ? [`${avgChangeRateLabel(avgChangeRateUseSimple)}: ${toPctSigned(avgChangeRate, decimalPlaces)}`]
-                    : []),
-                  `상승 ${advancerCount} 하락 ${declinerCount} 보합 ${unchangedCount}`,
-                  `시가총액 합: ${toJoEokDecimal(sector.totalMarketValue / 100_000_000)}`,
+                  `시총 가중: ${sector.weightedAvgChangeRate === null ? '-' : toPctSigned(sector.weightedAvgChangeRate, decimalPlaces)}`,
+                  `동일 가중: ${sector.simpleAvgChangeRate === null ? '-' : toPctSigned(sector.simpleAvgChangeRate, decimalPlaces)}`,
+                  `등락 종목: ▲${advancerCount} ▼${declinerCount} ■${unchangedCount}`,
+                  `그룹 시총: ${toJoEokDecimal(sector.totalMarketValue / 100_000_000)}`,
                 ],
                 excludeSector: canExclude ? { id: sector.sectorId, name: sector.sectorName } : undefined,
                 targetKey: sectorKey,
@@ -231,15 +228,15 @@ export default function MarketMapSectorSection({
           highlightedKey={highlightedKey}
           ancestorPath={sectorPath}
           marketValueDepthRange={marketValueDepthRange}
-          avgChangeRateDepthRange={avgChangeRateDepthRange}
+          weightedAvgDepthRange={weightedAvgDepthRange}
+          simpleAvgDepthRange={simpleAvgDepthRange}
           upDownCountDepthRange={upDownCountDepthRange}
-          avgChangeRateUseSimple={avgChangeRateUseSimple}
           canExclude={canExclude}
           colorScale={colorScale}
           labelMinAreaPercent={labelMinAreaPercent}
           stockLabelMode={stockLabelMode}
           decimalPlaces={decimalPlaces}
-          topPickSectorIds={topPickSectorIds}
+          topPickSectorKeys={topPickSectorKeys}
           depthOffset={depthOffset}
           depth={sector.isSelf ? depth : depth + 1}
         />

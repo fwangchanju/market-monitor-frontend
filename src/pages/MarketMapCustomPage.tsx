@@ -8,6 +8,7 @@ import SettingsSidebar, {
   SettingsSectorLevelSection,
   SettingsExcludeSection,
   SettingsColorSection,
+  type SettingsSidebarSectionId,
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
@@ -21,11 +22,15 @@ import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
 import { toCount, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
+import { HEATMAP_NAMES } from '@/utils/heatmapNames'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { limitDepth, flattenAllItems, type FilteredMarketMapSectorNode } from '@/hooks/useFilteredMarketMapTree'
 import type { MarketQuery, MarketMapSectorNode, MarketMapItem } from '@/types/api'
 
 const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
+const MAP_SETTINGS_SECTION_ORDER: SettingsSidebarSectionId[] = [
+  'industry', 'composition', 'stockDisplay', 'colors', 'favorites',
+]
 
 // "업종 분류 레벨" 슬라이더가 "끄기"(뎁스 0)일 때만 쓰는 합성 섹터 — 실제 섹터가 아니므로
 // sectorId는 실제 값과 겹치지 않는 sentinel을 쓰고, isSelf로 매칭해 헤더 자체를 안 그리게 한다
@@ -109,10 +114,11 @@ export default function MarketMapCustomPage() {
     filteredRootNodes,
     maxDepth,
     marketValueDepthRange,
-    avgChangeRateDepthRange,
+    weightedAvgDepthRange,
+    simpleAvgDepthRange,
     upDownCountDepthRange,
     avgChangeRateUseSimple,
-    topPickSectorIds,
+    topPickSectorKeys,
     onChangeAvgChangeRateUseSimple,
     onChangeSectorFilterEnabled,
     boxLabelMinAreaPercent,
@@ -161,7 +167,7 @@ export default function MarketMapCustomPage() {
   const rawCurrentNode = findRawNodeByPath(rootNodes, path)
   const totalItemCount = collectRawItems(rawCurrentNode ? [rawCurrentNode] : rootNodes).length
 
-  // 상단 바는 현재 분류 체계를 점등 표시로 보여준다. 종목 수는 설정 사이드바에 표시한다.
+  // 상단 바는 현재 히트맵을 점등 표시로 보여준다. 종목 수는 설정 사이드바에 표시한다.
   const modeStatusText = (
     <>
       <span
@@ -169,7 +175,7 @@ export default function MarketMapCustomPage() {
           isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-400'
         }`}
       />
-      <span className="text-gray-400">{isCustom ? 'MARKETRY 분류' : '거래소 분류'}</span>
+      <span className="text-gray-400">{HEATMAP_NAMES[isCustom ? 'marketry' : 'krx'].title}</span>
     </>
   )
 
@@ -364,7 +370,8 @@ export default function MarketMapCustomPage() {
                   onExcludeSector={handleExcludeSector}
                   heightClassName="min-h-0 flex-1"
                   marketValueDepthRange={marketValueDepthRange}
-                  avgChangeRateDepthRange={avgChangeRateDepthRange}
+                  weightedAvgDepthRange={weightedAvgDepthRange}
+                  simpleAvgDepthRange={simpleAvgDepthRange}
                   upDownCountDepthRange={upDownCountDepthRange}
                   avgChangeRateUseSimple={avgChangeRateUseSimple}
                   canExclude={isCustom}
@@ -372,7 +379,7 @@ export default function MarketMapCustomPage() {
                   labelMinAreaPercent={boxLabelMinAreaPercent}
                   stockLabelMode={stockLabelMode}
                   decimalPlaces={decimalPlaces}
-                  topPickSectorIds={topPickSectorIds}
+                  topPickSectorKeys={topPickSectorKeys}
                   zoomOutRequestDepth={zoomOutRequestDepth}
                   onZoomOutComplete={handleZoomOutComplete}
                 />
@@ -383,6 +390,8 @@ export default function MarketMapCustomPage() {
           <SettingsSidebar
             {...settingsModalProps}
             pageLabel="지도"
+            sectionOrder={MAP_SETTINGS_SECTION_ORDER}
+            classificationAtBottom
             stockCountLabel={`${toCount(visibleItems.length)}/${toCount(totalItemCount)}종목`}
             onToggleCustom={() => {
               settingsModalProps.onToggleCustom()
