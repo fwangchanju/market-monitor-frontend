@@ -86,7 +86,7 @@
   --stock-up: #ef5350;
   --stock-down: #42a5f5;
   --negative: #ef5350;
-  --accent: #eab308;
+  --accent: #4dd0e1;
   --accent-hover: #facc15;
   --accent-light: var(--accent);
   /* 위 @font-face 주석 참고 — Pretendard에 없는 문자(글리프 자체가 없는 경우)만 Noto Sans KR로

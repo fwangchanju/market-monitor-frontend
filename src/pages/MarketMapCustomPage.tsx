@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
 import SettingsSidebar, {
@@ -8,13 +8,14 @@ import SettingsSidebar, {
   SettingsSectorLevelSection,
   SettingsExcludeSection,
   SettingsColorSection,
+  SettingsStrongIndustryColorSection,
   type SettingsSidebarSectionId,
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
 import Spinner from '@/components/Spinner'
 import NavBarPageActions from '@/components/NavBarPageActions'
-import { FONT_BAR_TITLE, FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
+import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
@@ -23,14 +24,152 @@ import { toCount, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { HEATMAP_NAMES } from '@/utils/heatmapNames'
+import { marketRoute } from '@/utils/marketRoute'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { limitDepth, flattenAllItems, type FilteredMarketMapSectorNode } from '@/hooks/useFilteredMarketMapTree'
 import type { MarketQuery, MarketMapSectorNode, MarketMapItem } from '@/types/api'
 
 const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
+const MARKET_OPTIONS: { market: MarketQuery; label: string }[] = [
+  { market: 'ALL_STOCK', label: 'ALL STOCK' },
+  { market: 'KOSPI', label: 'KOSPI' },
+  { market: 'KOSDAQ', label: 'KOSDAQ' },
+]
+const MAP_TIME_PERIODS = ['1 DAY', '1 WEEK', '1 MONTH', '3 MONTH', '6 MONTH', '1 YEAR', 'WTD', 'MTD', 'YTD'] as const
 const MAP_SETTINGS_SECTION_ORDER: SettingsSidebarSectionId[] = [
   'industry', 'composition', 'stockDisplay', 'colors', 'favorites',
 ]
+
+function MarketMapMarketCombobox({
+  market,
+  onSelect,
+}: {
+  market: MarketQuery
+  onSelect: (market: MarketQuery) => void
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setIsOpen(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen])
+
+  return (
+    <div ref={rootRef} className="relative z-40 flex items-center">
+      <button
+        type="button"
+        role="combobox"
+        aria-label="시장 선택"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        onClick={() => setIsOpen(open => !open)}
+        className="inline-flex h-7 w-[7.5rem] shrink-0 items-center justify-between gap-1 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-bold text-white hover:bg-[#484848]"
+      >
+        <span className="min-w-0 flex-1 truncate text-left">{MARKET_LABEL[market]}</span>
+        <svg aria-hidden="true" viewBox="0 0 16 16" className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m4 6 4 4 4-4" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div className="absolute left-0 top-full z-50 w-[7.5rem] rounded-md bg-[#202020] p-2 text-sm text-white shadow-md">
+          <div role="listbox" aria-label="시장 목록">
+            {MARKET_OPTIONS.map(option => (
+              <button
+                key={option.market}
+                type="button"
+                role="option"
+                aria-selected={market === option.market}
+                onClick={() => {
+                  onSelect(option.market)
+                  setIsOpen(false)
+                }}
+                className={`block w-full border-0 bg-transparent px-2.5 py-2 text-left ${market === option.market ? 'font-semibold text-[var(--accent)]' : 'text-gray-300 hover:text-white'}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MarketMapPeriodCombobox() {
+  const [selectedPeriod, setSelectedPeriod] = useState<(typeof MAP_TIME_PERIODS)[number]>('1 DAY')
+  const [isOpen, setIsOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setIsOpen(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen])
+
+  return (
+    <div ref={rootRef} className="relative z-40 flex items-center">
+      <button
+        type="button"
+        role="combobox"
+        aria-label="기간 선택"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        onClick={() => setIsOpen(open => !open)}
+        className="inline-flex h-7 w-28 shrink-0 items-center justify-between gap-1 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-bold text-white hover:bg-[#484848]"
+      >
+        <span className="min-w-0 flex-1 truncate text-left">{selectedPeriod}</span>
+        <svg aria-hidden="true" viewBox="0 0 16 16" className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m4 6 4 4 4-4" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div className="absolute left-0 top-full z-50 w-28 rounded-md bg-[#202020] p-2 text-sm text-white shadow-md">
+          <div role="listbox" aria-label="기간 목록">
+            {MAP_TIME_PERIODS.map((period, index) => (
+              <button
+                key={period}
+                type="button"
+                role="option"
+                aria-selected={selectedPeriod === period}
+                disabled={period !== '1 DAY'}
+                title={period === '1 DAY' ? undefined : '준비 중'}
+                onClick={() => {
+                  setSelectedPeriod(period)
+                  setIsOpen(false)
+                }}
+                className={`block w-full border-0 bg-transparent px-2.5 py-2 text-left disabled:cursor-not-allowed ${index === 6 ? 'mt-1 border-t border-[#555] pt-3' : ''} ${selectedPeriod === period ? 'font-semibold text-[var(--accent)]' : period === '1 DAY' ? 'text-gray-300 hover:text-white' : 'text-gray-600'}`}
+              >
+                {period}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 // "업종 분류 레벨" 슬라이더가 "끄기"(뎁스 0)일 때만 쓰는 합성 섹터 — 실제 섹터가 아니므로
 // sectorId는 실제 값과 겹치지 않는 sentinel을 쓰고, isSelf로 매칭해 헤더 자체를 안 그리게 한다
@@ -100,6 +239,7 @@ type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
 
 export default function MarketMapCustomPage() {
+  const navigate = useNavigate()
   const {
     settingsModalProps,
     colorEditorPanelProps,
@@ -117,8 +257,11 @@ export default function MarketMapCustomPage() {
     weightedAvgDepthRange,
     simpleAvgDepthRange,
     upDownCountDepthRange,
-    avgChangeRateUseSimple,
+    boxSizeMarketCapRatio,
+    onChangeBoxSizeMarketCapRatio,
     topPickSectorKeys,
+    strongIndustryColor,
+    onChangeStrongIndustryColor,
     onChangeAvgChangeRateUseSimple,
     onChangeSectorFilterEnabled,
     boxLabelMinAreaPercent,
@@ -172,7 +315,7 @@ export default function MarketMapCustomPage() {
     <>
       <span
         className={`mr-1.5 inline-block h-2 w-2 rounded-full ${
-          isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-400'
+          isCustom ? 'bg-[#c6ff00] shadow-[0_0_5px_1px_rgba(198,255,0,0.8)]' : 'bg-gray-400'
         }`}
       />
       <span className="text-gray-400">{HEATMAP_NAMES[isCustom ? 'marketry' : 'krx'].title}</span>
@@ -294,12 +437,14 @@ export default function MarketMapCustomPage() {
                 전체 기준으로는 중앙이 아니게 된다 — 바 전체 폭 기준 절대 중앙에 고정한다. */}
             <div className="relative flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
               <div className="flex items-center gap-2 whitespace-nowrap">
-                <span
-                  onClick={() => handleGoToDepth(0)}
-                  className={`${FONT_BAR_TITLE} ${path.length > 0 ? 'cursor-pointer hover:text-[var(--accent)]' : ''}`}
-                >
-                  {MARKET_LABEL[market]}
-                </span>
+                <MarketMapMarketCombobox
+                  market={market}
+                  onSelect={selectedMarket => {
+                    if (selectedMarket === market) handleGoToDepth(0)
+                    else navigate(marketRoute('/map', selectedMarket))
+                  }}
+                />
+                <MarketMapPeriodCombobox />
               </div>
               <span
                 className={`${FONT_BAR_MODE_STATUS} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-gray-400`}
@@ -373,13 +518,14 @@ export default function MarketMapCustomPage() {
                   weightedAvgDepthRange={weightedAvgDepthRange}
                   simpleAvgDepthRange={simpleAvgDepthRange}
                   upDownCountDepthRange={upDownCountDepthRange}
-                  avgChangeRateUseSimple={avgChangeRateUseSimple}
+                  boxSizeMarketCapRatio={boxSizeMarketCapRatio}
                   canExclude={isCustom}
                   colorScale={colorScale}
                   labelMinAreaPercent={boxLabelMinAreaPercent}
                   stockLabelMode={stockLabelMode}
                   decimalPlaces={decimalPlaces}
                   topPickSectorKeys={topPickSectorKeys}
+                  strongIndustryColor={strongIndustryColor}
                   zoomOutRequestDepth={zoomOutRequestDepth}
                   onZoomOutComplete={handleZoomOutComplete}
                 />
@@ -389,6 +535,8 @@ export default function MarketMapCustomPage() {
           </div>
           <SettingsSidebar
             {...settingsModalProps}
+            boxSizeMarketCapRatio={boxSizeMarketCapRatio}
+            onChangeBoxSizeMarketCapRatio={onChangeBoxSizeMarketCapRatio}
             pageLabel="지도"
             sectionOrder={MAP_SETTINGS_SECTION_ORDER}
             classificationAtBottom
@@ -409,6 +557,9 @@ export default function MarketMapCustomPage() {
               <SettingsSectorLevelSection {...settingsModalProps} showClassification={false} showDecimalPlaces />
             </SettingsSidebarGroup>
             <SettingsSidebarGroup section="colors">
+              {strongIndustryColor && onChangeStrongIndustryColor && (
+                <SettingsStrongIndustryColorSection color={strongIndustryColor} onChange={onChangeStrongIndustryColor} />
+              )}
               <SettingsColorSection {...settingsModalProps} colorEditorProps={colorEditorPanelProps} />
             </SettingsSidebarGroup>
           </SettingsSidebar>

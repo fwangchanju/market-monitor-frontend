@@ -40,6 +40,7 @@ interface Props {
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
   decimalPlaces: number
   topPickSectorKeys: Set<string>
+  strongIndustryColor: string
   // 현재 화면의 상대 depth 0이 트리에서 몇 번째 단계인지 나타내는 절대 depth 오프셋.
   depthOffset?: number
   depth?: number
@@ -86,6 +87,7 @@ export default function MarketMapSectorSection({
   stockLabelMode,
   decimalPlaces,
   topPickSectorKeys,
+  strongIndustryColor,
   depthOffset = 0,
   depth = 0,
 }: Props) {
@@ -142,7 +144,8 @@ export default function MarketMapSectorSection({
         // 헤더뿐 아니라 아래 hover 오버레이(market-map-sector-hover-overlay)도 이 값을 그대로
         // 상속해서 쓴다 — 오버레이는 헤더의 형제라 헤더에 걸면 안 내려온다(CSS 변수는 자손에게만
         // 상속), 그래서 둘의 공통 조상인 여기(box-content)에 한 번만 건다.
-        '--market-map-base-color': headerStyle.baseColor,
+        '--market-map-base-color': isTopPick ? strongIndustryColor : headerStyle.baseColor,
+        ...(isTopPick ? { borderColor: strongIndustryColor } : {}),
       } as CSSProperties}
       className={`market-map-sector-box box-content ${isTopPick ? 'border-2 border-[var(--accent)]' : ''} ${isPinned ? 'is-pinned' : ''}`}
     >
@@ -210,6 +213,7 @@ export default function MarketMapSectorSection({
               fontSize: sectorHeaderFontSize(depth),
               left: PADDING,
               width: `calc(100% - ${PADDING * 2}px)`,
+              ...(isTopPick ? { backgroundColor: strongIndustryColor, color: '#111827' } : absoluteDepth === 0 ? { color: strongIndustryColor } : {}),
             } as CSSProperties}
             className={`market-map-sector-header ${isTopPick ? 'market-map-top-pick-header' : ''} absolute top-0 z-[2] flex items-center overflow-hidden truncate px-1 text-left font-bold leading-none ${headerStyle.border} ${headerStyle.text ?? ''} ${headerStyle.background}`}
           >
@@ -237,6 +241,7 @@ export default function MarketMapSectorSection({
           stockLabelMode={stockLabelMode}
           decimalPlaces={decimalPlaces}
           topPickSectorKeys={topPickSectorKeys}
+          strongIndustryColor={strongIndustryColor}
           depthOffset={depthOffset}
           depth={sector.isSelf ? depth : depth + 1}
         />

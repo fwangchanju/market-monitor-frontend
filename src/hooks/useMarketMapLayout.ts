@@ -80,14 +80,14 @@ export const ITEM_SIBLING_GAP = 1
 // 보이고, hover 중인 쪽은 z-index로 항상 위에 그려짐). 상단 헤더 공간은 paddingTop으로 별도 처리.
 export const PADDING = 0
 
-// equalWeight(설정의 "동일 가중" 토글)가 켜지면 종목마다 실제 시가총액 대신 동일한 상수 값을 줘서,
-// 트리맵 박스 크기가 시가총액이 아니라 섹터별 "종목 개수" 비례로 나오게 한다(어떤 상수를 쓰든
-// 트리맵은 형제 간 상대 비율만 보므로 결과는 같다). 정렬 순서(큰 시가총액이 앞에 오는 것)까지 같이
-// 무의미해지지 않도록, sum에 쓰는 value와는 별개로 원본 totalMarketValue를 항상 같이 실어서
-// 정렬은 항상 실제 값 기준으로 한다.
-const EQUAL_WEIGHT_VALUE = 1
+// 시총 반영 비율을 0~100 지수로 변환한다. 0은 종목별 동일 크기, 100은 시가총액 비례,
+// 중간은 거듭제곱으로 시총 격차를 압축한다(예: 50이면 제곱근 비율).
+function boxValue(totalMarketValue: number, marketCapRatio: number): number {
+  if (marketCapRatio <= 0) return 1
+  return Math.pow(Math.max(totalMarketValue, 0), marketCapRatio / 100)
+}
 
-function toHierarchyDatum(group: DisplayGroup, equalWeight: boolean): HierarchyDatum {
+function toHierarchyDatum(group: DisplayGroup, marketCapRatio: number): HierarchyDatum {
   return {
     name: group.sectorName,
     sectorId: group.sectorId,
@@ -95,10 +95,10 @@ function toHierarchyDatum(group: DisplayGroup, equalWeight: boolean): HierarchyD
     weightedAvgChangeRate: group.weightedAvgChangeRate,
     simpleAvgChangeRate: group.simpleAvgChangeRate,
     children: [
-      ...group.children.map(child => toHierarchyDatum(child, equalWeight)),
+      ...group.children.map(child => toHierarchyDatum(child, marketCapRatio)),
       ...group.items.map(item => ({
         name: item.stockName,
-        value: equalWeight ? EQUAL_WEIGHT_VALUE : Math.max(item.totalMarketValue, 0),
+        value: boxValue(item.totalMarketValue, marketCapRatio),
         totalMarketValue: item.totalMarketValue,
         item,
       })),
@@ -111,14 +111,14 @@ export function useMarketMapLayout(
   selfSectorName: string | null,
   width: number,
   height: number,
-  equalWeight: boolean,
+  marketCapRatio: number,
 ): LaidOutSector[] {
   return useMemo(() => {
     if (width <= 0 || height <= 0 || groups.length === 0) return []
 
     const data: HierarchyDatum = {
       name: 'root',
-      children: groups.map(group => toHierarchyDatum(group, equalWeight)),
+      children: groups.map(group => toHierarchyDatum(group, marketCapRatio)),
     }
 
     const hierarchyRoot = hierarchy(data)
@@ -194,5 +194,5 @@ export function useMarketMapLayout(
     }
 
     return (root.children ?? []).map(sectorNode => toLaidOutSector(sectorNode, 0, 0))
-  }, [groups, selfSectorName, width, height, equalWeight])
+  }, [groups, selfSectorName, width, height, marketCapRatio])
 }

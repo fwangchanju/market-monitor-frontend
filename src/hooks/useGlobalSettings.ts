@@ -35,14 +35,14 @@ export type DepthMetric = 'weightedAvgChangeRate' | 'simpleAvgChangeRate' | 'upD
 type StoredDepthMetric = DepthMetric | 'avgChangeRate' | [number, number] | null
 const DEPTH_METRICS: DepthMetric[] = ['weightedAvgChangeRate', 'simpleAvgChangeRate', 'upDownCount', 'marketValue']
 
-function resolveDepthMetric(stored: StoredDepthMetric, useSimple: boolean): DepthMetric {
-  const previousAverage = useSimple ? 'simpleAvgChangeRate' : 'weightedAvgChangeRate'
+function resolveDepthMetric(stored: StoredDepthMetric): DepthMetric {
+  // 예전에는 박스 크기 옵션과 등락률 평균 방식이 연결돼 있었다. 이전 저장값은
+  // 독립 선택으로 전환하면서 동일 가중을 고정 기본값으로 사용해 더 이상 박스 크기를 따르지 않는다.
   if (Array.isArray(stored)) {
-    // 잠시 사용한 범위 저장값 [0, 1]은 이전 등락률 선택과 같은 평균 방식으로 돌린다.
-    if (stored[0] === 0 && stored[1] === 1) return previousAverage
-    return DEPTH_METRICS[stored[0]] ?? previousAverage
+    if (stored[0] === 0 && stored[1] === 1) return 'simpleAvgChangeRate'
+    return DEPTH_METRICS[stored[0]] ?? 'simpleAvgChangeRate'
   }
-  return stored === 'avgChangeRate' || stored === null ? previousAverage : stored
+  return stored === 'avgChangeRate' || stored === null ? 'simpleAvgChangeRate' : stored
 }
 
 // 트리맵 종목 박스에 이름/등락률 중 뭘 보여줄지 — 슬라이더 인덱스로 저장(0~3). off는 둘 다 안 보여준다.
@@ -76,8 +76,9 @@ function findSectorPath(nodes: MarketMapSectorNode[], targetId: number, ancestor
   return null
 }
 
-function topPickAverage(node: FilteredMarketMapSectorNode, useSimple: boolean): number | null {
-  return useSimple ? node.simpleAvgChangeRate : node.weightedAvgChangeRate
+function topPickAverage(node: FilteredMarketMapSectorNode, metric: DepthMetric): number | null {
+  // 강세 업종은 업종 탭 표시 지표를 따른다. 평균이 아닌 지표를 고르면 시총 가중으로 계산한다.
+  return metric === 'simpleAvgChangeRate' ? node.simpleAvgChangeRate : node.weightedAvgChangeRate
 }
 
 // "설정" 사이드바(SettingsSidebar) + 색상 구간 편집 패널이 필요로 하는 상태/로직 전부를
@@ -103,13 +104,17 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 비로그인은 저장값이 true여도 거래소 분류(false)로 고정한다 — MARKETRY 분류는 로그인이 필요하다.
   const [storedIsCustom, setStoredIsCustom] = usePageSetting('marketMap.isCustom', true)
   const isCustom = isLoggedIn ? storedIsCustom : false
-  // 박스 크기의 기본 선택과 예전 단일 지표 저장값을 읽고, 새 선택은 네 지표 중 하나로 저장한다.
+  // 섹터 랭킹/강세 업종 계산에 쓰는 평균 방식은 박스 크기 비율과 별도로 저장한다.
   const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', true)
+  // 0은 동일 크기, 100은 시가총액 비례이며 중간값은 시가총액 차이를 거듭제곱으로 압축한다.
+  const [storedBoxSizeMarketCapRatio, setBoxSizeMarketCapRatio] = usePageSetting('marketMap.boxSizeMarketCapRatio', 50)
+  const [strongIndustryColor, setStrongIndustryColor] = usePageSetting('marketMap.strongIndustryColor', '#eab308')
+  const boxSizeMarketCapRatio = Math.max(0, Math.min(100, Math.round(storedBoxSizeMarketCapRatio)))
   const [storedDepthMetric, setStoredDepthMetric] = usePageSetting<StoredDepthMetric>(
     'marketMap.activeDepthMetric',
-    'avgChangeRate',
+    'simpleAvgChangeRate',
   )
-  const selectedDepthMetric = resolveDepthMetric(storedDepthMetric, avgChangeRateUseSimple)
+  const selectedDepthMetric = resolveDepthMetric(storedDepthMetric)
   const [depthMetricEnabled, setDepthMetricEnabled] = usePageSetting(
     'marketMap.depthMetricEnabled',
     storedDepthMetric !== null,
@@ -118,7 +123,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 기본값: 대분류~중분류(index 0~1) — 렌더러가 캡처하는 기본 화면에 등락률이 보이도록.
   const [depthMetricMinIndex, setDepthMetricMinIndex] = usePageSetting('marketMap.depthMetricMinIndex', 0)
   const [depthMetricMaxIndex, setDepthMetricMaxIndex] = usePageSetting('marketMap.depthMetricMaxIndex', 1)
-  // 위의 avgChangeRateUseSimple은 박스 크기와 섹터 랭킹의 기본 평균 방식에도 쓰인다.
+  // avgChangeRateUseSimple은 섹터 랭킹에 사용한다. 강세 업종은 업종 탭 표시 지표를 따른다.
   // 종목 박스가 전체 트리맵 넓이에서 이 비중(%) 미만이면 종목명/등락률을 표시하지 않는다(섹터 헤더와는 무관).
   const [boxLabelMinAreaPercent, setBoxLabelMinAreaPercent] = usePageSetting('marketMap.boxLabelMinAreaPercent', 0.1)
   // 종목 박스에 이름만/등락률만/둘 다/끄기 중 뭘 보여줄지 — 기본은 둘 다(기존 동작 유지, 배열 앞에
@@ -163,9 +168,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const [topPickCount, setTopPickCount] = usePageSetting('marketMap.topPickCount', 2)
   const [topPickEnabled, setTopPickEnabled] = usePageSetting('marketMap.topPickEnabled', topPickCount !== 0)
   const selectedTopPickCount = topPickCount || 2
-  // 설정 사이드바 열림 상태. 색상 편집도 이 사이드바 안에서 진행한다.
-  // 페이지 컴포넌트가 새로 마운트될 때마다 설정창을 기본적으로 연다.
-  // 닫힘 상태는 현재 페이지에 머무는 동안만 유지하고, 라우트 이동 시 초기화한다.
+  // 설정 사이드바 열림 상태. 페이지 진입 시 기본으로 연다.
   const [isSettingsOpen, setIsSettingsOpen] = useState(true)
   const previousPathnameRef = useRef(pathname)
 
@@ -239,7 +242,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     }
 
     const candidates = collectSectorsAtDepth(filteredRootNodes, topPickDepth)
-      .map((node, index) => ({ node, index, average: topPickAverage(node, avgChangeRateUseSimple) }))
+      .map((node, index) => ({ node, index, average: topPickAverage(node, selectedDepthMetric) }))
       .filter((candidate): candidate is { node: FilteredMarketMapSectorNode; index: number; average: number } => {
         return candidate.average !== null
       })
@@ -250,7 +253,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
       JSON.stringify([candidate.node.sectorId, candidate.node.sectorName]),
     ))
   }, [
-    avgChangeRateUseSimple,
+    selectedDepthMetric,
     filteredRootNodes,
     topPickEnabled,
     selectedTopPickCount,
@@ -551,6 +554,10 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     simpleAvgDepthRange,
     upDownCountDepthRange,
     avgChangeRateUseSimple,
+    boxSizeMarketCapRatio,
+    strongIndustryColor,
+    onChangeStrongIndustryColor: setStrongIndustryColor,
+    onChangeBoxSizeMarketCapRatio: (value: number) => setBoxSizeMarketCapRatio(Math.max(0, Math.min(100, Math.round(value)))),
     topPickSectorKeys,
     // URL 쿼리(avgMode/sectorFilter)로 값을 직접 세팅해야 하는 페이지용 — 토글(prev => !prev)과 달리
     // 원하는 값을 그대로 넘겨 세팅한다.
