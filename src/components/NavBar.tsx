@@ -3,10 +3,9 @@ import { useSession, useLogout, useSessionKeepAlive, useLocalDevLogin } from '@/
 import { useLoginGate } from '@/hooks/useLoginGate'
 import homeIcon from '@/assets/home_icon.jpg'
 
-// 모든 페이지에서 항상 똑같이 고정되는 최상단 바 — 홈 이동과 로그인 상태/로그아웃을 담당한다.
+// 모든 페이지에서 항상 똑같이 고정되는 최상단 바 — 홈 이동과 로그인 상태/프로필 메뉴를 담당한다.
 // 로그인 버튼은 SubNavBar 우측 "일괄변경"류 accent 버튼(nes-btn + var(--accent))과 같은 톤을 쓰고,
-// 로그인한 사용자의 이메일·로그아웃 목록은 SubNavBar의 마켓/커스텀 탭 hover 목록과 동일한 패턴
-// (그룹 hover로 펼치는 bg-zinc-900 목록)을 그대로 재사용한다 — 새 팝업 스타일을 만들지 않는다.
+// 로그인한 사용자의 이메일 메뉴는 SubNavBar의 마켓/커스텀 탭 hover 목록과 동일한 패턴을 쓴다.
 // 등락률 전용 색(--stock-up/--stock-down/--negative, 즉 red/blue 계열)은 쓰지 않는다.
 export default function NavBar() {
   const localAutoLogin = import.meta.env.DEV && import.meta.env.VITE_LOCAL_AUTO_LOGIN === '1'
@@ -28,29 +27,29 @@ export default function NavBar() {
       >
         <img src={homeIcon} alt="" className="h-9 w-auto max-w-[8rem] object-contain" />
       </Link>
-      {localAutoLogin ? (
-        session?.authenticated ? (
-          <span className="max-w-[12rem] truncate text-sm text-gray-300">
-            {session.email || `사용자 ${session.userId}`}
-          </span>
-        ) : null
-      ) : !isLoading &&
+      {!isLoading &&
         (session?.authenticated ? (
           <div className="group relative flex h-12 items-center">
-            <span className="max-w-[12rem] truncate text-sm text-gray-300 group-hover:text-white">
-              {session.email}
-            </span>
-            <div className="absolute right-0 top-full z-30 hidden w-max flex-col bg-zinc-900 py-1 shadow-lg group-hover:flex">
-              <button
-                type="button"
-                onClick={() => logout.mutate()}
-                className="px-3 py-1 text-left text-sm whitespace-nowrap text-white hover:bg-gray-800"
-              >
-                로그아웃
-              </button>
-            </div>
+            <Link to="/profile" className="max-w-[12rem] truncate text-sm text-gray-300 hover:text-white focus:text-white">
+              {session.email || `사용자 ${session.userId}`}
+            </Link>
+            {!localAutoLogin && (
+              <div className="absolute right-0 top-full z-30 hidden w-max flex-col bg-zinc-900 py-1 shadow-lg group-hover:flex group-focus-within:flex">
+                <Link to="/profile" className="px-3 py-1 text-left text-sm whitespace-nowrap text-white hover:bg-gray-800">
+                  프로필
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => logout.mutate()}
+                  disabled={logout.isPending}
+                  className="px-3 py-1 text-left text-sm whitespace-nowrap text-white hover:bg-gray-800 disabled:opacity-50"
+                >
+                  로그아웃
+                </button>
+              </div>
+            )}
           </div>
-        ) : (
+        ) : localAutoLogin ? null : (
           <button
             type="button"
             onClick={() => requireLogin(pathname)}
