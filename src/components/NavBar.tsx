@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useSession, useLogout, useSessionKeepAlive, useLocalDevLogin } from '@/hooks/useSession'
+import { useLoginGate } from '@/hooks/useLoginGate'
 import accountAvatar from '@/assets/account_avatar.png'
-import homeIcon from '@/assets/home_icon.jpg'
+import marketryLogo from '@/assets/marketry-logo.png'
 
 // 모든 페이지에서 항상 똑같이 고정되는 최상단 바 — 홈 이동과 로그인 상태/프로필 메뉴를 담당한다.
 // 로그인 버튼은 SubNavBar 우측 "일괄변경"류 accent 버튼(nes-btn + var(--accent))과 같은 톤을 쓰고,
@@ -10,6 +11,8 @@ import homeIcon from '@/assets/home_icon.jpg'
 // 등락률 전용 색(--stock-up/--stock-down/--negative, 즉 red/blue 계열)은 쓰지 않는다.
 export default function NavBar() {
   const { data: session, isLoading } = useSession()
+  const { pathname, search, hash } = useLocation()
+  const { requireLogin } = useLoginGate()
   const logout = useLogout()
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement>(null)
@@ -41,29 +44,31 @@ export default function NavBar() {
   }, [isProfileMenuOpen])
 
   return (
-    <header className="sticky top-0 z-20 flex h-12 items-center justify-between bg-zinc-900 px-4 shadow-lg">
+    <header className="sticky top-0 z-20 flex h-16 items-center justify-between bg-zinc-900 px-4">
       <Link
         to="/"
         aria-label="홈으로 이동: 지도 전체 종목"
-        className="flex h-10 shrink-0 items-center"
+        className="flex h-[60px] shrink-0 items-center"
       >
-        <img src={homeIcon} alt="" className="h-9 w-auto max-w-[8rem] object-contain" />
+        <img src={marketryLogo} alt="" className="h-[48.3px] w-auto max-w-[18rem] object-contain" />
       </Link>
-      {!isLoading &&
-        (session?.authenticated ? (
-          <div ref={profileMenuRef} className="relative flex h-12 items-center">
-            <button
-              ref={profileButtonRef}
-              type="button"
-              aria-label={isProfileMenuOpen ? '계정 메뉴 닫기' : '계정 메뉴 열기'}
-              aria-expanded={isProfileMenuOpen}
-              onClick={() => setIsProfileMenuOpen(open => !open)}
-              className="size-9 overflow-hidden rounded-full ring-2 ring-transparent hover:ring-zinc-400 focus-visible:outline-none focus-visible:ring-[var(--accent)]"
-            >
-              <img src={accountAvatar} alt="" className="size-full object-cover" />
-            </button>
-            {isProfileMenuOpen && (
-              <div className="absolute right-0 top-full z-30 w-64 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-800 py-2 text-white shadow-xl">
+      <div ref={profileMenuRef} className="relative flex h-16 items-center">
+        <button
+          ref={profileButtonRef}
+          type="button"
+          aria-label={isProfileMenuOpen ? '계정 메뉴 닫기' : '계정 메뉴 열기'}
+          aria-expanded={isProfileMenuOpen}
+          onClick={() => setIsProfileMenuOpen(open => !open)}
+          className="size-9 overflow-hidden rounded-full ring-2 ring-transparent hover:ring-zinc-400 focus-visible:outline-none focus-visible:ring-[var(--accent)]"
+        >
+          <img src={accountAvatar} alt="" className="size-full object-cover" />
+        </button>
+        {isProfileMenuOpen && (
+          <div className="absolute right-0 top-full z-30 w-64 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-800 py-2 text-white shadow-xl">
+            {isLoading ? (
+              <p className="px-4 py-3 text-sm text-zinc-400">계정 확인 중...</p>
+            ) : session?.authenticated ? (
+              <>
                 <div className="flex items-center gap-3 border-b border-zinc-700 px-4 py-3 text-sm">
                   <img src={accountAvatar} alt="" className="size-10 shrink-0 rounded-full object-cover" />
                   <div className="min-w-0">
@@ -87,17 +92,24 @@ export default function NavBar() {
                     로그아웃
                   </button>
                 </div>
+              </>
+            ) : (
+              <div className="p-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfileMenuOpen(false)
+                    requireLogin(`${pathname}${search}${hash}`)
+                  }}
+                  className="nes-btn w-full border-[var(--accent)] bg-[var(--accent)] px-4 py-2 text-sm font-bold text-black hover:bg-[var(--accent-hover)]"
+                >
+                  로그인
+                </button>
               </div>
             )}
           </div>
-        ) : (
-          <Link
-            to="/profile"
-            className="nes-btn border-[var(--accent)] bg-transparent px-3 py-1 text-xs font-bold text-[var(--accent)] hover:bg-[var(--accent)] hover:text-black"
-          >
-            로그인
-          </Link>
-        ))}
+        )}
+      </div>
     </header>
   )
 }
