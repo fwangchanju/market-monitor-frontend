@@ -32,6 +32,8 @@ import type { MarketMapSectorNode } from '@/types/api'
 // 조회 실패/로딩 중이거나 "색상 커스텀 사용"이 꺼져있을 때 쓰는 폴백 — thresholds가 비어있으면 어차피
 // 기본 프리셋으로 귀결된다(resolveMarketMapColor/resolveLegendSwatches 참고).
 const EMPTY_COLOR_SCALE: ColorScaleConfig = { thresholds: [] }
+const DEFAULT_STRONG_INDUSTRY_COLOR = '#4dd0e1'
+const LEGACY_STRONG_INDUSTRY_COLOR = '#eab308'
 
 export type DepthMetric = 'weightedAvgChangeRate' | 'simpleAvgChangeRate' | 'upDownCount' | 'marketValue'
 type StoredDepthMetric = DepthMetric | 'avgChangeRate' | [number, number] | null
@@ -110,7 +112,20 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', true)
   // 0은 동일 크기, 100은 시가총액 비례이며 중간값은 시가총액 차이를 거듭제곱으로 압축한다.
   const [storedBoxSizeMarketCapRatio, setBoxSizeMarketCapRatio] = usePageSetting('marketMap.boxSizeMarketCapRatio', 50)
-  const [strongIndustryColor, setStrongIndustryColor] = usePageSetting('marketMap.strongIndustryColor', '#eab308')
+  const [storedStrongIndustryColor, setStrongIndustryColor] = usePageSetting(
+    'marketMap.strongIndustryColor',
+    DEFAULT_STRONG_INDUSTRY_COLOR,
+  )
+  const isLegacyStrongIndustryColor = storedStrongIndustryColor.toLowerCase() === LEGACY_STRONG_INDUSTRY_COLOR
+  const strongIndustryColor = isLegacyStrongIndustryColor
+    ? DEFAULT_STRONG_INDUSTRY_COLOR
+    : storedStrongIndustryColor
+
+  // 캡처 렌더러와 로그인 사용자 설정은 저장된 색을 사용한다. 예전 기본 금색 값이 남아 있으면
+  // 첫 화면부터 청록색으로 표시하고, sessionStorage 또는 서버 설정에도 새 값을 저장한다.
+  useEffect(() => {
+    if (isLegacyStrongIndustryColor) setStrongIndustryColor(DEFAULT_STRONG_INDUSTRY_COLOR)
+  }, [isLegacyStrongIndustryColor, setStrongIndustryColor])
   const boxSizeMarketCapRatio = Math.max(0, Math.min(100, Math.round(storedBoxSizeMarketCapRatio)))
   const [storedDepthMetric, setStoredDepthMetric] = usePageSetting<StoredDepthMetric>(
     'marketMap.activeDepthMetric',

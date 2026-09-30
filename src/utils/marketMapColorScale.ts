@@ -17,11 +17,11 @@ export interface ColorScaleConfig {
 }
 
 // 지도 페이지 최상위 뎁스(대분류) 섹터 헤더 글자색 & 섹터 페이지 지수 참조 막대/헤더 글자색이
-// 공유하는 "기준" 노란색. Tailwind 유틸리티 클래스(text-yellow-500 등)를 쓰면 v4의 oklch 정의를 브라우저가
+// 공유하는 "기준" 청록색. Tailwind 유틸리티 클래스를 쓰면 v4의 oklch 정의를 브라우저가
 // sRGB로 변환하는 과정에서 실제 렌더링 값이 미묘하게 달라질 수 있어(DEFAULT_ZERO_COLOR와 동일한
 // 이유), 두 페이지가 "정확히 같은 색"이어야 하는 이 값만은 hex 리터럴을 직접 공유해서 픽셀 단위로
 // 맞춘다.
-export const MARKET_INDEX_REFERENCE_COLOR = '#eab308'
+export const MARKET_INDEX_REFERENCE_COLOR = '#4dd0e1'
 
 // 0%일 때 색 — 저장된 threshold가 없으면 이 값(오늘의 bg-gray-600)으로 폴백.
 // Tailwind v4 theme.css의 실제 정의(oklch(44.6% 0.03 256.802))를 표준 OKLab→sRGB 변환식으로
