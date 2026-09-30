@@ -459,6 +459,81 @@ function SingleValueSlider({
 // 새 섹션 컴포넌트를 하나 추가해서 끼워 넣기만 하면 되고, 여기 다른 섹션이나 SettingsSidebar 껍데기
 // 자체는 안 건드려도 된다.
 
+// 그룹 페이지 등락률 평균 방식 — 시총 가중/동일 가중 중 하나를 고른다.
+export function SettingsAverageModeSection({
+  avgChangeRateUseSimple,
+  onChange,
+}: {
+  avgChangeRateUseSimple: boolean
+  onChange: (useSimple: boolean) => void
+}) {
+  const options = [
+    { value: false, label: '시총 가중' },
+    { value: true, label: '동일 가중' },
+  ]
+  return (
+    <div className="text-sm">
+      <span className="flex max-w-[16rem] items-center text-left text-[15px] text-white">
+        <span className="settings-section-num">등락률 평균</span>
+        <SettingHelpIcon label="등락률 평균" description="업종 등락률 계산에 적용할 평균 방식을 선택합니다." />
+      </span>
+      <div role="radiogroup" aria-label="등락률 평균" className="mt-2 grid max-w-[16rem] grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
+        {options.map(option => {
+          const selected = avgChangeRateUseSimple === option.value
+          return (
+            <button
+              key={option.label}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(option.value)}
+              className={`min-h-9 rounded px-1 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
+                selected ? 'bg-[var(--accent)] text-black' : 'border-0 bg-transparent text-gray-300 hover:text-white'
+              }`}
+            >
+              {option.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// 그룹 페이지 "N분 전 대비"의 비교 시점 — 15/30/45/60분 중 하나를 슬라이더로 고른다.
+const BEFORE_MINUTES_OPTIONS = [15, 30, 45, 60]
+
+export function SettingsBeforeMinutesSection({
+  beforeMinutes,
+  onChange,
+}: {
+  beforeMinutes: number
+  onChange: (minutes: number) => void
+}) {
+  // URL 파라미터로 옵션에 없는 값(예: 10)이 들어와도 슬라이더는 가장 가까운 칸을 가리킨다.
+  const index = BEFORE_MINUTES_OPTIONS.reduce(
+    (best, minutes, i) =>
+      Math.abs(minutes - beforeMinutes) < Math.abs(BEFORE_MINUTES_OPTIONS[best] - beforeMinutes) ? i : best,
+    0,
+  )
+  return (
+    <div className="mt-[49px] text-sm">
+      <span className="flex max-w-[16rem] items-center text-left text-[15px] text-white">
+        <span className="settings-section-num">비교 시점</span>
+        <SettingHelpIcon label="비교 시점" description="현재 등락률을 몇 분 전과 비교해 변화폭을 산출합니다." />
+      </span>
+      <div className="mt-2 max-w-[16rem]">
+        <SingleValueSlider
+          index={index}
+          labels={BEFORE_MINUTES_OPTIONS.map(minutes => `${minutes}분`)}
+          ariaLabel="비교 시점(분 전)"
+          onChange={i => onChange(BEFORE_MINUTES_OPTIONS[i])}
+        />
+      </div>
+    </div>
+  )
+}
+
 export function SettingsCustomModeSection({
   isCustom,
   onToggleCustom,
@@ -700,6 +775,8 @@ export function SettingsSectorLevelSection({
   onChangeBoxLabelMinAreaPercent,
   decimalPlacesIndex,
   onChangeDecimalPlacesIndex,
+  stockPopupOnHover,
+  onChangeStockPopupOnHover,
   showTopPick = false,
   showDecimalPlaces = false,
   showDivider = false,
@@ -745,6 +822,9 @@ export function SettingsSectorLevelSection({
   // 등락률(%) 표시 소수점 자릿수(0=정수, 1=소수 1자리, 2=소수 2자리).
   decimalPlacesIndex: number
   onChangeDecimalPlacesIndex: (index: number) => void
+  // 종목 설명 팝업을 우클릭(false)으로 띄울지, 커서를 박스 위로 옮길 때(true) 띄울지.
+  stockPopupOnHover: boolean
+  onChangeStockPopupOnHover: (onHover: boolean) => void
   // true면 지도 페이지에만 선호 업종 설정을 추가한다.
   showTopPick?: boolean
   // true면 "종목 박스" 그룹에 "등락률 소수점" 슬라이더를 같이 그린다 — 지도 페이지에서 실제로 트리맵
@@ -1091,6 +1171,45 @@ export function SettingsSectorLevelSection({
               </div>
             </div>
           )}
+          {showDecimalPlaces && (
+            <div className="settings-fifth-stock-popup mt-6 text-sm">
+              <span className="flex max-w-[16rem] items-center text-left text-[15px] text-white">
+                <span className="settings-section-num">종목 설명 팝업</span>
+                <SettingHelpIcon
+                  label="종목 설명 팝업"
+                  description="종목 박스의 설명 팝업을 여는 방식을 선택합니다. 대분류·중분류·소분류 박스는 항상 우클릭으로 엽니다."
+                />
+              </span>
+              <div
+                role="radiogroup"
+                aria-label="종목 설명 팝업 여는 방식"
+                className="mt-2 grid max-w-[16rem] grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5"
+              >
+                {[
+                  { label: '우클릭', onHover: false },
+                  { label: '커서 이동', onHover: true },
+                ].map(option => {
+                  const selected = stockPopupOnHover === option.onHover
+                  return (
+                    <button
+                      key={option.label}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => onChangeStockPopupOnHover(option.onHover)}
+                      className={`min-h-9 rounded px-1 py-1 text-xs font-medium transition-colors ${
+                        selected
+                          ? 'bg-[var(--accent)] text-black'
+                          : 'border-0 bg-transparent text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>}
     </div>
@@ -1249,7 +1368,7 @@ export function SettingsStockChangeSection({
   onChange: (value: StockChangeFilter) => void
 }) {
   return (
-    <div className="mt-4 pt-6 text-white">
+    <div className="settings-third-stock-change mt-4 pt-6 text-white">
       <p className="flex items-center text-[15px]">
         <span className="settings-section-num">종목 등락 방향</span>
         <SettingHelpIcon label="종목 등락 방향" description="상승 또는 하락한 종목만 지도에 표시합니다." />
@@ -1288,7 +1407,7 @@ export function SettingsExcludeSection({
   afterStockChange?: boolean
 }) {
   return (
-    <div className={`${afterStockChange ? '' : 'settings-second-exclude'} mt-4 pt-6 text-white`}>
+    <div className={`${afterStockChange ? 'settings-fourth-exclude' : 'settings-second-exclude'} mt-4 pt-6 text-white`}>
       <div className="text-sm">
         <ToggleSwitch
           checked={sectorFilterEnabled}
@@ -1359,7 +1478,7 @@ export function SettingsColorSection({
   const thresholdIndices = new Map(colorScaleDraft.thresholds.map((threshold, index) => [threshold.thresholdPercent, index]))
 
   return (
-    <div className="pt-5 text-white">
+    <div className="settings-second-color pt-5 text-white">
       {/* "색상 커스텀 모드" 토글을 별도 줄로 두지 않고, 제목 바로 우측에 스위치만 붙인다. */}
       <div className="flex items-center justify-between">
         <p className="flex items-center text-[15px]">
@@ -1464,7 +1583,11 @@ export function SettingsStrongIndustryColorSection({
 
 interface Props {
   // 헤더에 "{pageLabel} 설정"으로 표시 — SubNavBar 탭 이름과 동일한 문구를 각 페이지가 그대로 넘겨준다.
-  pageLabel: string
+  // 생략하면 페이지 이름 없이 "설정"만 표시한다(페이지 이름을 반복하는 동어 반복을 피하고 싶은 페이지용).
+  pageLabel?: string
+  // 탭 없이 패널 본문에 바로 그리는 내용 — 설정 항목이 한두 개뿐인 페이지(그룹)용. 탭 분류(children의
+  // SettingsSidebarGroup)와 같이 쓰지 않는다.
+  plainContent?: ReactNode
   sectionOrder?: readonly SettingsSidebarSectionId[]
   classificationAtBottom?: boolean
   // 사이드바 열림 상태는 페이지가 관리한다.
@@ -1506,6 +1629,7 @@ export default function SettingsSidebar({
   boxSizeMarketCapRatio,
   onChangeBoxSizeMarketCapRatio,
   stockCountLabel,
+  plainContent,
   children,
 }: Props) {
   const [activeSection, setActiveSection] = useState<SettingsSidebarSectionId>(sectionOrder?.[0] ?? 'composition')
@@ -1552,7 +1676,7 @@ export default function SettingsSidebar({
     >
       <div className="flex shrink-0 items-center border-b border-gray-500 p-4">
         <div className="flex min-w-0 items-center gap-2">
-          <p className="flex h-7 items-center whitespace-nowrap text-lg font-bold leading-none text-white">{pageLabel} 설정</p>
+          <p className="flex h-7 items-center whitespace-nowrap text-lg font-bold leading-none text-white">{pageLabel ? `${pageLabel} 설정` : '설정'}</p>
           {stockCountLabel && (
             <span className="flex h-7 w-[7rem] shrink-0 items-center justify-end whitespace-nowrap text-right text-sm leading-none text-gray-400">
               {stockCountLabel}
@@ -1570,8 +1694,13 @@ export default function SettingsSidebar({
           ✕
         </button>
       </div>
+      {plainContent && (
+        <div className="settings-section-list settings-sidebar-tab-content min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-8 text-sm">
+          {plainContent}
+        </div>
+      )}
       {availableSections.length > 0 && (
-      <nav role="tablist" aria-label={`${pageLabel} 설정 분류`} className="flex h-[68px] shrink-0 items-stretch border-b border-gray-500 bg-[#363639] px-1">
+      <nav role="tablist" aria-label={pageLabel ? `${pageLabel} 설정 분류` : '설정 분류'} className="flex h-[68px] shrink-0 items-stretch border-b border-gray-500 bg-[#363639] px-1">
           {availableSections.map(section => {
             const selected = section.id === selectedSection?.id
             return (
@@ -1583,7 +1712,7 @@ export default function SettingsSidebar({
                 aria-controls={`settings-panel-${section.id}`}
                 id={`settings-tab-${section.id}`}
                 onClick={() => setActiveSection(section.id)}
-                className={`group relative box-border flex h-full min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-1 border-0 bg-transparent px-1 pt-2 pb-3 text-[11px] leading-tight transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--accent)] ${
+                className={`group relative box-border flex h-full min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-1 border-0 bg-transparent px-1 pt-2 pb-3 text-[12px] leading-tight transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--accent)] ${
                   selected ? 'text-[var(--accent)]' : 'text-gray-400 hover:text-white'
                 }`}
               >
@@ -1608,12 +1737,6 @@ export default function SettingsSidebar({
             isNonScrollingSection ? 'overflow-y-clip pb-2' : 'overflow-y-auto pb-8'
           }`}
         >
-          <h2 className="mb-2 flex pt-4 pb-2 text-lg font-bold text-white">
-            <span className="w-6 shrink-0 tabular-nums">
-              {availableSections.findIndex(section => section.id === selectedSection.id) + 1}.
-            </span>
-            <span>{selectedSection.label}</span>
-          </h2>
           {!classificationAtBottom && selectedSection.id === classificationSection && hasClassificationSelector && (
             <SettingsClassificationSelector isCustom={isCustom!} onToggleCustom={onToggleCustom!} />
           )}

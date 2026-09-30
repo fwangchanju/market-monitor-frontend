@@ -12,6 +12,10 @@ interface Props {
   // rect는 이 섹터 박스 전체의 화면상 위치 — 줌인 애니메이션이 어디서부터 확대되는지 계산하는 데 쓴다.
   onSelectSector: (sectorName: string, rect: DOMRect) => void
   onOpenPopup: (content: MarketMapPopupContent, target: HTMLElement) => void
+  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목 팝업을 커서 이동으로 띄울 때 박스를 벗어나면 닫는다.
+  onClosePopup: (targetKey: string) => void
+  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목 팝업을 우클릭(false)/커서 이동(true) 중 뭘로 띄울지.
+  stockPopupOnHover: boolean
   // 헤더를 좌클릭(주 버튼)으로 누르는 "순간"(pointerdown) 알림 — MarketMapTreemap이 이걸로
   // suppressSectorHoverBorder를 곧장 켜서, 줌인 애니메이션 시작 전에 hover 테두리가 잠깐
   // 반짝였다가 사라지는 걸 막는다. 우클릭(팝업)은 이 콜백을 아예 안 부른다.
@@ -74,6 +78,8 @@ export default function MarketMapSectorSection({
   sector,
   onSelectSector,
   onOpenPopup,
+  onClosePopup,
+  stockPopupOnHover,
   onHeaderPressStart,
   highlightedKey,
   ancestorPath,
@@ -228,6 +234,8 @@ export default function MarketMapSectorSection({
           sector={sub}
           onSelectSector={onSelectSector}
           onOpenPopup={onOpenPopup}
+          onClosePopup={onClosePopup}
+          stockPopupOnHover={stockPopupOnHover}
           onHeaderPressStart={onHeaderPressStart}
           highlightedKey={highlightedKey}
           ancestorPath={sectorPath}
@@ -260,6 +268,8 @@ export default function MarketMapSectorSection({
           decimalPlaces={decimalPlaces}
           colorScale={colorScale}
           onOpenPopup={onOpenPopup}
+          onClosePopup={onClosePopup}
+          stockPopupOnHover={stockPopupOnHover}
           highlightedKey={highlightedKey}
           ancestorPath={sectorPath}
         />

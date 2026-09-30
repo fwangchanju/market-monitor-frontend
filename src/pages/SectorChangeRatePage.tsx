@@ -1,21 +1,14 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
 import { MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/MarketMapControls'
-import SettingsSidebar, {
-  SettingsSidebarGroup,
-  SettingsSectorLevelSection,
-  SettingsMarketValueSection,
-  SettingsExcludeSection,
-  SettingsColorSection,
-} from '@/components/SettingsSidebar'
+import SettingsSidebar, { SettingsAverageModeSection, SettingsBeforeMinutesSection } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Spinner from '@/components/Spinner'
 import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
-import { sectorHeaderFontSize } from '@/hooks/useMarketMapLayout'
 import { computeSectorAverage } from '@/utils/sectorAverage'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import NavBarPageActions from '@/components/NavBarPageActions'
@@ -28,7 +21,6 @@ import { marketRoute } from '@/utils/marketRoute'
 import {
   resolveMarketMapColor,
   resolveMarketMapExtremeColor,
-  MARKET_INDEX_REFERENCE_COLOR,
   type ColorScaleConfig,
 } from '@/utils/marketMapColorScale'
 import type { Market, MarketMapSectorNode } from '@/types/api'
@@ -36,7 +28,6 @@ import type { Market, MarketMapSectorNode } from '@/types/api'
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
 
-const BEFORE_MINUTES_PRESETS = [15, 30, 60]
 
 // 지수 등락률 참조 막대에 붙는 한글 라벨 — ALL_STOCK은 단일 지수가 없어 대상에서 제외된다.
 const MARKET_INDEX_LABEL_KO: Record<Market, string> = { KOSPI: '코스피', KOSDAQ: '코스닥' }
@@ -46,8 +37,6 @@ const MARKET_INDEX_KEY = 'market-index'
 function sectorKey(sectorName: string): string {
   return `sector:${sectorName}`
 }
-// 지도 페이지에서 최상위 뎁스 섹터를 노란 글자로 표시하는 것과 같은 "기준" 색상 — 참조 막대도 동일하게 맞춘다.
-const MARKET_INDEX_BAR_COLOR = MARKET_INDEX_REFERENCE_COLOR
 
 interface RankedItem {
   key: string
@@ -86,12 +75,13 @@ function toChartValueLabel(value: number, unit: string): string {
 // header 텍스트가 시작하는 위치가 라벨 폭과 무관하게 항상 맞도록 한다.
 function RankBars({
   chart,
-  header,
+  highlightColor,
   unit = '%',
   colorScale,
 }: {
   chart: RankChart
-  header?: ReactNode
+  // 헤더 글자/기준 업종 이름·막대에 쓰는 강조 색 — 지도 설정의 "강조 색상"(strongIndustryColor) 그대로.
+  highlightColor: string
   unit?: string
   // 지도 페이지 트리맵 박스와 동일한 등락률 컬러 스케일(설정 사이드바의 "색상 설정") — 막대 색도
   // 고정된 상승/하락 2색 대신 이 스케일로 칠한다.
@@ -103,22 +93,10 @@ function RankBars({
     // (flex 기본값)로 실제 높이는 부모 flex 행 높이를 그대로 받는다. content-between으로 헤더 행은
     // 맨 위에 붙이고 종목 행들 사이 간격만 넓혀서, 섹터 수가 적어도 컨테이너 높이를 채운다.
     <div
-      className="grid h-full min-h-0 w-full flex-1 content-between items-center gap-x-3 gap-y-2 text-[15px]"
+      className="grid h-full min-h-0 w-full flex-1 content-between items-center gap-x-3 gap-y-2 text-[18px]"
       style={{ gridTemplateColumns: 'auto 1fr' }}
     >
-      <span />
-      {/* "현재"/"변화율" 헤더 둘 다 한 줄이라(라디오 줄 뒤에 "전 대비"만 붙이고 입력 줄은 없앰),
-          별도 최소 높이 없이도 두 그래프의 첫 막대 행이 같은 위치에서 시작한다. 지도 페이지
-          대분류 섹터 헤더와 같은 폰트 크기(sectorHeaderFontSize(0) === 15px)·색상
-          (MARKET_INDEX_REFERENCE_COLOR)을 그대로 써서 두 페이지의 헤더 텍스트를 맞춘다. */}
-      <div
-        className="flex items-center whitespace-nowrap"
-        style={{ fontSize: sectorHeaderFontSize(0), color: MARKET_INDEX_REFERENCE_COLOR }}
-      >
-        {header ?? ' '}
-      </div>
-      {/* before 데이터가 없어 rankedItems가 비어도 위 헤더(15/30/60분 라디오 등)는 계속 조작할 수
-          있어야 하므로, 빈 상태는 헤더를 감춘 채로 그리지 않고 막대 자리에만 안내 문구를 넣는다. */}
+      {/* 데이터가 비어도 헤더(페이지의 별도 헤더 줄)는 그대로 보이므로, 막대 자리에만 안내 문구를 넣는다. */}
       {chart.rankedItems.length === 0 && (
         <>
           <span />
@@ -128,14 +106,14 @@ function RankBars({
       {chart.rankedItems.map(item => (
         <Fragment key={item.key}>
           <span
-            className={`whitespace-nowrap text-right ${item.isReference ? 'font-bold' : ''}`}
-            style={item.isReference ? { color: MARKET_INDEX_REFERENCE_COLOR } : undefined}
+            className="whitespace-nowrap text-right font-bold"
+            style={item.isReference ? { color: highlightColor } : undefined}
           >
             {item.sectorName}
           </span>
           {/* 퍼센트 텍스트를 막대 트랙(flex-1) 안에 막대 끝 위치(left: pct%)로 떠 있게 배치한다 —
-              막대가 길어질수록 텍스트도 같이 따라간다. 오른쪽 w-[70px]는 막대가 축 최대치까지 길어져도
-              텍스트가 열 밖으로 밀려나지 않도록 미리 비워두는 여백(15px 폰트 기준으로 폭을 넉넉히 잡음)
+              막대가 길어질수록 텍스트도 같이 따라간다. 오른쪽 w-[84px]는 막대가 축 최대치까지 길어져도
+              텍스트가 열 밖으로 밀려나지 않도록 미리 비워두는 여백(18px 폰트 기준으로 폭을 넉넉히 잡음)
               — 보이는 내용은 없고 폭만 차지한다. */}
           <div className="flex h-[25px] items-center gap-1.5">
             <div className="relative h-full flex-1">
@@ -143,11 +121,11 @@ function RankBars({
                 className="h-full rounded-sm"
                 style={{
                   width: `${(Math.abs(item.value) / chart.axisMax) * 100}%`,
-                  backgroundColor: item.isReference ? MARKET_INDEX_BAR_COLOR : resolveMarketMapColor(item.value, colorScale),
+                  backgroundColor: item.isReference ? highlightColor : resolveMarketMapColor(item.value, colorScale),
                 }}
               />
               <span
-                className="absolute top-0 flex h-full items-center pl-1.5 font-bold whitespace-nowrap"
+                className="absolute top-0 flex h-full items-center pl-1.5 whitespace-nowrap"
                 style={{
                   left: `${(Math.abs(item.value) / chart.axisMax) * 100}%`,
                   color: resolveMarketMapExtremeColor(item.value, colorScale),
@@ -156,7 +134,7 @@ function RankBars({
                 {toChartValueLabel(item.value, unit)}
               </span>
             </div>
-            <span className="w-[70px] shrink-0" />
+            <span className="w-[84px] shrink-0" />
           </div>
         </Fragment>
       ))}
@@ -171,7 +149,9 @@ export default function SectorChangeRatePage() {
 
   const {
     settingsModalProps,
-    colorEditorPanelProps,
+    strongIndustryColor,
+    avgChangeRateUseSimple,
+    onChangeAvgChangeRateUseSimple,
     market,
     isCustom,
     data,
@@ -181,8 +161,6 @@ export default function SectorChangeRatePage() {
     isMarketValueTierRangeReady,
     isRefetchingMarketMap,
     refetchMarketMap,
-    avgChangeRateUseSimple,
-    onChangeAvgChangeRateUseSimple,
     onChangeSectorFilterEnabled,
     excludedMarketValueTiers,
     excludedSectorIds,
@@ -257,7 +235,7 @@ export default function SectorChangeRatePage() {
           settingsModalProps.isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-400'
         }`}
       />
-      <span className="text-sm text-gray-400">{settingsModalProps.isCustom ? 'MARKETRY 분류' : '거래소 분류'}</span>
+      <span className="text-gray-400">{settingsModalProps.isCustom ? 'MARKETRY' : '거래소'}</span>
     </>
   )
 
@@ -294,7 +272,7 @@ export default function SectorChangeRatePage() {
 
   const copyLabel =
     copyStatus === 'copying' ? 'Copying' : copyStatus === 'copied' ? 'Copied' : copyStatus === 'error' ? 'Failed' : 'Copy'
-  const downloadLabel = downloadStatus === 'error' ? 'Failed' : 'Download'
+  const downloadLabel = downloadStatus === 'error' ? '다운로드 실패' : '다운로드'
 
   // 대상 섹터는 트리의 최상위 노드(response.items)다. 설정 사이드바의 "제외 설정"(섹터 기준)에
   // 걸린 섹터는 지도 페이지와 동일하게 여기서도 뺀다. now/before 짝은 sectorId가 아니라
@@ -358,7 +336,7 @@ export default function SectorChangeRatePage() {
   }, [displayNow, displayBefore, excludedSectorIds, excludedMarketValueTiers, avgChangeRateUseSimple])
 
   return (
-    <div className="flex h-screen select-none flex-col overflow-hidden">
+    <div className="flex h-screen select-none flex-col overflow-hidden bg-black">
       <NavBar />
       <SubNavBar
         actions={
@@ -375,21 +353,19 @@ export default function SectorChangeRatePage() {
         }
       />
       <div className="flex min-h-0 flex-1">
-        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 [세 번째 바+본문] 열 +
-            사이드바를 감싸는 바깥 wrapper로 둔다 — 지도/요약 페이지와 동일한 구조. 사이드바가 열리면
-            세 번째 바(마켓명/커스텀 모드/시간)까지 같이 밀려서 좁아진다(본문만 밀리지 않는다). */}
+        {/* 공유 캡처(captureRef)는 [세 번째 바+본문] 열만 찍는다 — 설정 사이드바는 캡처에 넣지 않는다.
+            data-captureid는 백엔드 렌더러가 잡는 셀렉터라 바깥 wrapper에 그대로 둔다. */}
         <div
-          ref={captureRef}
           data-captureid={CAPTURE_ID.SECTOR}
           data-capture-ready={isDataCaptureReady}
-          className="flex min-h-0 flex-1 overflow-hidden bg-black text-white"
+          className="relative z-10 -mt-[10.5px] flex min-h-0 flex-1 overflow-hidden bg-black text-white"
         >
           {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서(overflow: visible이면 내부 콘텐츠의
               min-content 폭을 그대로 강제해서 사이드바 쪽을 밀어냄) 창을 좁혀도 사이드바(w-80)가
               항상 같은 폭을 유지하게 한다(지도 페이지와 동일) — 내부 그래프가 넘치면 이 컬럼
               안에서만 처리된다. */}
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className="relative flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
+          <div ref={captureRef} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black text-white">
+            <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-2 pr-3 text-sm font-bold text-white">
               <div className="flex items-center gap-2 whitespace-nowrap">
                 <MarketMapMarketCombobox
                   market={market}
@@ -398,6 +374,12 @@ export default function SectorChangeRatePage() {
                   }}
                 />
                 <MarketMapPeriodCombobox />
+                {displayNow?.snapshotTime && (
+                  <span className={`${FONT_BAR_TIME} ml-1 flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
+                    <span>{toMarketMapSnapshotDateLabel(displayNow.snapshotTime)}</span>
+                    <span>{toMarketMapSnapshotTimeOnlyLabel(displayNow.snapshotTime)}</span>
+                  </span>
+                )}
               </div>
               {/* 지도 페이지와 동일하게 바 전체 폭 기준 절대 중앙에 고정 — 좌/우 칸 폭에 영향받지 않는다. */}
               <span
@@ -405,12 +387,6 @@ export default function SectorChangeRatePage() {
               >
                 {modeStatusText}
               </span>
-              {displayNow?.snapshotTime && (
-                <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
-                  <span>{toMarketMapSnapshotDateLabel(displayNow.snapshotTime)}</span>
-                  <span>{toMarketMapSnapshotTimeOnlyLabel(displayNow.snapshotTime)}</span>
-                </span>
-              )}
             </div>
             {/* 지도/어드민 페이지와 동일하게 본문이 화면을 꽉 채우는 형태 — 가운데 정렬/폭 제한을 없애서
                 설정 사이드바가 열려도 본문이 밀리는 게 자연스럽게 느껴지도록 한다(밀림 자체는 다른
@@ -445,68 +421,53 @@ export default function SectorChangeRatePage() {
                       content-between으로 행 사이 여백을 균등 분배해 컨테이너 높이를 꽉 채운다(섹터
                       수가 많아 다 못 채우면 자연스럽게 스크롤). px-[10%]로 좌우 바깥쪽에 폭 기준 10%씩
                       여백을 둬서 막대가 화면 양 끝까지 닿지 않게 한다. */}
+                  {/* 헤더는 그래프가 아니라 본문 전체 폭을 2:1로 나눈 구간의 가운데에 놓는다(좌 2/3, 우 1/3).
+                      오른쪽은 설정창 슬라이더로 고른 비교 시점 하나만 보여준다. */}
+                  <div
+                    className="mb-2 flex w-full shrink-0 items-center font-bold whitespace-nowrap"
+                    style={{ fontSize: 20, color: strongIndustryColor }}
+                  >
+                    <div className="flex flex-[2] justify-center">{avgChangeRateLabel(avgChangeRateUseSimple)}</div>
+                    <div className="flex flex-[1] justify-center">
+                      <span>{beforeMinutes}분 전 대비</span>
+                    </div>
+                  </div>
                   <div className="flex min-h-0 flex-1 gap-x-8 px-[10%]">
-                    <RankBars
-                      chart={charts.current}
-                      colorScale={colorScale}
-                      header={avgChangeRateLabel(avgChangeRateUseSimple)}
-                    />
-                    <RankBars
-                      chart={charts.delta}
-                      unit="%p"
-                      colorScale={colorScale}
-                      header={
-                        // "15/30/60분 전 대비"를 한 줄로 — 라디오 버튼들 뒤에 "전 대비" 고정 텍스트만 붙인다.
-                        <div className="flex items-center gap-3" role="radiogroup" aria-label="N분 전 대비 바로가기">
-                          {BEFORE_MINUTES_PRESETS.map(minutes => (
-                            <button
-                              key={minutes}
-                              type="button"
-                              role="radio"
-                              aria-checked={beforeMinutes === minutes}
-                              onClick={() => setBeforeMinutes(minutes)}
-                              // button은 nes.css 리셋에 color: inherit이 없어 부모 색을 상속받지 못하고
-                              // 브라우저 기본값(검정)으로 떨어진다 — 명시적으로 다시 지정해야 한다.
-                              style={{ color: MARKET_INDEX_REFERENCE_COLOR }}
-                              className="inline-flex items-center gap-1 border-0 bg-transparent outline-none hover:brightness-125"
-                            >
-                              {/* 커스텀 모드 점등 표시(SubNavBar)와 동일한 초록 발광 스타일 — 선택 상태를
-                                  "불이 들어온다"는 느낌으로 통일한다. */}
-                              <span
-                                className={`h-2.5 w-2.5 rounded-full border ${
-                                  beforeMinutes === minutes
-                                    ? 'border-green-500 bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]'
-                                    : 'border-gray-500'
-                                }`}
-                              />
-                              {minutes}분
-                            </button>
-                          ))}
-                          <span>전 대비</span>
-                        </div>
-                      }
-                    />
+                    {/* 좌(현재) 2 : 우(변화율) 1 비율 — 변화율 쪽은 막대가 항상 더 짧아서 면적을 덜 준다. */}
+                    <div className="flex min-h-0 min-w-0 flex-[2]">
+                      <RankBars
+                        chart={charts.current}
+                        highlightColor={strongIndustryColor}
+                        colorScale={colorScale}
+                      />
+                    </div>
+                    <div className="flex min-h-0 min-w-0 flex-[1]">
+                      <RankBars
+                        chart={charts.delta}
+                        highlightColor={strongIndustryColor}
+                        unit="%p"
+                        colorScale={colorScale}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
               </div>
             </div>
           </div>
-          <SettingsSidebar {...settingsModalProps} pageLabel="섹터">
-            <SettingsSidebarGroup section="composition">
-              <SettingsMarketValueSection {...settingsModalProps} showDivider={false} />
-              <SettingsExcludeSection {...settingsModalProps} />
-            </SettingsSidebarGroup>
-            <SettingsSidebarGroup section="industry">
-              <SettingsSectorLevelSection {...settingsModalProps} showDivider={false} showTopPick={false} showStockDisplay={false} />
-            </SettingsSidebarGroup>
-            <SettingsSidebarGroup section="stockDisplay">
-              <SettingsSectorLevelSection {...settingsModalProps} showClassification={false} />
-            </SettingsSidebarGroup>
-            <SettingsSidebarGroup section="colors">
-              <SettingsColorSection {...settingsModalProps} colorEditorProps={colorEditorPanelProps} />
-            </SettingsSidebarGroup>
-          </SettingsSidebar>
+          <SettingsSidebar
+            {...settingsModalProps}
+            pageLabel="그룹"
+            plainContent={
+              <>
+                <SettingsAverageModeSection
+                  avgChangeRateUseSimple={avgChangeRateUseSimple}
+                  onChange={onChangeAvgChangeRateUseSimple}
+                />
+                <SettingsBeforeMinutesSection beforeMinutes={beforeMinutes} onChange={setBeforeMinutes} />
+              </>
+            }
+          />
         </div>
       </div>
 

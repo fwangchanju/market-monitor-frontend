@@ -9,13 +9,13 @@ function confirmDeletable(sectorName: string, deletableSectors: string[]) {
 }
 
 function alertBlocked(sectorName: string, blockingStocks: StockSectorItem[]) {
-  const base = `${sectorName}\n이 섹터는 삭제할 수 없습니다.`
-  if (blockingStocks.length === 0) {
-    window.alert(base)
+  // 같은 종목이 하위 섹터 여러 곳에 걸려 있을 수 있어 종목 코드로 중복을 없애서 센다.
+  const stockCount = new Set(blockingStocks.map(s => s.stockCode)).size
+  if (stockCount === 0) {
+    window.alert(`${sectorName}\n이 섹터는 삭제할 수 없습니다.`)
     return
   }
-  const list = blockingStocks.map(s => `${s.sectorName} - ${s.stockName}`).join('\n')
-  window.alert(`${base}\n${list}`)
+  window.alert(`${sectorName}\n${stockCount}종목이 있어 삭제할 수 없습니다.`)
 }
 
 function alertDeleteFailed(sectorName: string, error: unknown) {

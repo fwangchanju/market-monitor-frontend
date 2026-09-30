@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { captureElementToDataUrl } from '@/utils/captureToPreview'
-import { DownloadIcon, RefreshIcon } from '@/components/icons/MarketMapIcons'
+import { CheckIcon, CopyIcon, DownloadIcon, TelegramIcon } from '@/components/icons/MarketMapIcons'
 import Spinner from '@/components/Spinner'
 
 interface Props {
@@ -25,19 +25,12 @@ export default function MarketMapShareModal({
   captureTarget,
 }: Props) {
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
-  const [showCopiedNotice, setShowCopiedNotice] = useState(false)
-  const [prevCopyLabel, setPrevCopyLabel] = useState(copyLabel)
-  const hasAutoCopiedRef = useRef(false)
-  // 상태가 바뀌어도 위치·크기·타이포는 그대로 두고 내용과 색상만 교체한다.
-  const copyStatusClassName = 'nes-btn col-span-2 col-start-1 row-start-1 m-0 flex h-9 w-48 items-center justify-center justify-self-center gap-2 whitespace-nowrap border-gray-600 px-3 py-1.5 text-sm font-normal leading-5 shadow-lg sm:col-span-1 sm:col-start-2'
-
-  // copyLabel이 막 'Copied'로 바뀐 시점을 렌더 중에 감지해서 알림을 켠다(React가 권장하는 "prop 변화에
-  // 맞춰 상태 조정" 패턴 — effect 안에서 무조건 setState부터 부르는 것보다 이쪽이 더 안전하다).
-  if (copyLabel !== prevCopyLabel) {
-    setPrevCopyLabel(copyLabel)
-    if (copyLabel === 'Copied') setShowCopiedNotice(true)
-  }
-
+  // 미리보기 이미지의 가로/세로 비율 — 이미지가 로드되면 잰다. 화면에 꽉 차는 폭을 이 비율로 계산한다.
+  const [previewRatio, setPreviewRatio] = useState<number | null>(null)
+  // 공유용 이미지 파일 — 미리보기 캡처가 끝나는 즉시 만들어 둔다. 클릭 시점에 캡처/변환을 기다리면
+  // 브라우저가 "사용자 클릭 직후"로 인정해 주는 시간이 지나 공유 창이 안 열릴 수 있어서, 클릭 때는
+  // 이미 만들어 둔 파일로 바로 navigator.share를 부른다.
+  const shareFileRef = useRef<File | null>(null)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -69,69 +62,134 @@ export default function MarketMapShareModal({
     }
   }, [captureTarget])
 
-  // 미리보기 캡처(스피너)가 끝나자마자 버튼 없이 곧바로 클립보드로 복사한다 — 세션당 한 번만.
   useEffect(() => {
-    if (!previewSrc || hasAutoCopiedRef.current) return
-    hasAutoCopiedRef.current = true
+    if (!previewSrc) return
+    shareFileRef.current = dataUrlToFile(previewSrc, 'marketry.png')
+  }, [previewSrc])
+
+  // 텔레그램 공유 — 이미지 파일 공유(navigator.share)가 되는 환경(모바일, 맥 사파리 등)에서는 공유 창에서
+  // 텔레그램을 고르면 이미지가 그대로 전달된다. 파일 공유가 안 되는 환경(윈도우 크롬 데스크톱 등)은
+  // 이미지를 못 붙이므로 텔레그램 공유 링크(t.me/share)로 대체하고, 이미지는 클립보드에 복사해 둔다 —
+  // 열린 텔레그램 대화창에 붙여넣으면 된다.
+  const handleTelegramShare = async () => {
+    const file = shareFileRef.current
+    if (file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'MARKETRY' })
+      } catch (error) {
+        // 사용자가 공유 창을 그냥 닫은 경우는 오류가 아니다.
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          console.error('share failed', error)
+        }
+      }
+      return
+    }
+    const url = `${window.location.origin}${window.location.pathname}`
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent('MARKETRY')}`, '_blank', 'noopener,noreferrer')
+    // 링크에는 이미지를 붙일 수 없으니, 클립보드에 이미지를 복사해 두어 텔레그램 대화창에 붙여넣게 한다.
     onCopy()
-  }, [previewSrc, onCopy])
+  }
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70" onClick={onClose}>
-      {/* 팝업 크기는 페이지와 무관하게 뷰포트 비율로 고정한다. 페이지마다 캡처 비율이 달라서(지도는
-          가로로 넓고 섹터는 세로로 길다) 이미지에 맞추면 팝업이 페이지마다 다른 크기로 뜨고, 고정 크기에
-          이미지를 폭 기준으로 채우면 낮은 이미지 아래가 빈다. 대신 미리보기 칸을 고정하고 이미지는
-          object-contain으로 그 안에 최대한 크게 넣는다. 남는 여백은 위아래(또는 좌우) 대칭이라
-          레터박스로 읽힌다. */}
+      {/* 팝업은 미리보기 이미지 크기에 딱 맞게 줄어든다(w-fit) — 이미지 주변에 빈 여백(레터박스)이 생기지
+          않는다. 이미지는 화면(폭 95vw, 높이 85dvh에서 버튼 줄을 뺀 만큼) 안에서 비율을 유지한 채 최대한
+          크게 그린다. 캡처 전(스피너)에는 임시 크기 칸으로 자리를 잡는다. */}
       <div
-        className="flex h-[85dvh] w-[calc(100%-2rem)] max-w-6xl flex-col border border-gray-700 bg-[var(--surface)] p-4 sm:w-4/5"
+        className="flex max-w-[calc(100vw-2rem)] flex-col border border-gray-500 bg-[#363639]"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex min-h-0 flex-1 items-center justify-center border border-gray-700 bg-black/30">
-          {previewSrc ? (
-            <img src={previewSrc} alt="마켓맵 미리보기" className="h-full w-full object-contain" />
-          ) : (
-            <Spinner />
-          )}
-        </div>
-        {/* 양끝 칸의 폭을 같게 유지해 문구 길이와 무관하게 복사 상태를 정중앙에 둔다.
-            좁은 화면에서는 복사 상태 아래로 양끝 버튼을 내려 겹치지 않게 한다. */}
-        <div className="mt-4 grid shrink-0 grid-cols-2 items-center gap-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-          <button
-            type="button"
-            onClick={onDownload}
-            disabled={isDownloading}
-            className="nes-btn col-start-1 row-start-2 flex items-center justify-self-start gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800 sm:row-start-1"
-          >
-            {isDownloading ? <Spinner className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
-            {downloadLabel}
-          </button>
-          {isCopying ? (
-            <p role="status" className={`${copyStatusClassName} bg-black text-white`}>
-              <Spinner className="h-4 w-4" />
-              클립보드 복사 중..
-            </p>
-          ) : (
-            showCopiedNotice && (
-              <button
-                type="button"
-                onClick={onCopy}
-                className={`${copyStatusClassName} bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)] hover:text-black`}
-              >
-                <RefreshIcon className="h-4 w-4" />
-                클립보드 복사 완료
-              </button>
-            )
-          )}
+        {/* 설정창 헤더와 같은 모양 — 왼쪽 제목, 오른쪽 ✕, 아래 구분선. */}
+        <div className="flex shrink-0 items-center border-b border-gray-500 p-4">
+          <p className="flex h-7 items-center whitespace-nowrap text-lg font-bold leading-none text-white">공유</p>
           <button
             type="button"
             onClick={onClose}
-            className="nes-btn col-start-2 row-start-2 flex items-center justify-self-end gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800 sm:col-start-3 sm:row-start-1"
+            aria-label="닫기"
+            className="ml-auto shrink-0 border-0 bg-transparent text-xl text-gray-400 hover:text-white"
           >
-            Close
+            ✕
           </button>
+        </div>
+        <div className="flex flex-col p-4">
+        {previewSrc ? (
+          <img
+            src={previewSrc}
+            alt="마켓맵 미리보기"
+            onLoad={e => setPreviewRatio(e.currentTarget.naturalWidth / e.currentTarget.naturalHeight)}
+            // 높이는 화면(85dvh에서 버튼 줄을 뺀 만큼), 폭은 화면 폭 안에서 이미지 비율로 정한다 — 원래
+            // 크기보다 작으면 키우고 크면 줄여서 화면에 최대한 꽉 채운다.
+            style={previewRatio ? { width: `min(calc(100vw - 4rem), calc((85dvh - 11rem) * ${previewRatio}))` } : undefined}
+            className="block h-auto max-w-full self-center"
+          />
+        ) : (
+          <div className="flex h-[50dvh] w-[60vw] items-center justify-center">
+            <Spinner />
+          </div>
+        )}
+        {/* 양끝 칸의 폭을 같게 유지해 문구 길이와 무관하게 복사 상태를 정중앙에 둔다.
+            좁은 화면에서는 복사 상태 아래로 양끝 버튼을 내려 겹치지 않게 한다. */}
+        <div className="mt-4 flex shrink-0 items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={onDownload}
+              disabled={isDownloading}
+              className="nes-btn flex items-center gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800"
+            >
+              {isDownloading ? <Spinner className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
+              {downloadLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleTelegramShare()}
+              disabled={!previewSrc}
+              aria-label="텔레그램으로 공유"
+              title="텔레그램으로 공유"
+              className="nes-btn flex items-center gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800 disabled:opacity-50"
+            >
+              <TelegramIcon className="h-4 w-4" />
+              텔레그램
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* 복사는 자동으로 하지 않고 이 버튼으로만 한다. 글자는 다른 버튼과 같은 4글자로 고정하고, 상태는
+                아이콘(복사 중=스피너, 완료=체크)과 색(완료=강조색)으로 보여준다. 실패만 "복사실패"(4글자). */}
+            <button
+              type="button"
+              onClick={onCopy}
+              disabled={!previewSrc || isCopying}
+              className={`nes-btn flex items-center gap-2 px-3 py-1.5 text-sm disabled:opacity-50 ${
+                copyLabel === 'Copied'
+                  ? 'border-[var(--accent)] bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)] hover:text-black'
+                  : 'border-gray-600 bg-black text-white hover:bg-gray-800'
+              }`}
+            >
+              {isCopying ? <Spinner className="h-4 w-4" /> : copyLabel === 'Copied' ? <CheckIcon className="h-4 w-4" /> : <CopyIcon className="h-4 w-4" />}
+              {copyLabel === 'Failed' ? '복사실패' : '클립보드'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="nes-btn flex items-center gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
         </div>
       </div>
     </div>
   )
+}
+
+// data URL(미리보기 캡처 결과)을 File로 바꾼다 — atob으로 동기 변환해서 클릭 시점 지연이 없다.
+function dataUrlToFile(dataUrl: string, fileName: string): File | null {
+  const match = /^data:([^;,]+)(;base64)?,(.*)$/.exec(dataUrl)
+  if (!match) return null
+  const [, mime, isBase64, payload] = match
+  const binary = isBase64 ? atob(payload) : decodeURIComponent(payload)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return new File([bytes], fileName, { type: mime })
 }

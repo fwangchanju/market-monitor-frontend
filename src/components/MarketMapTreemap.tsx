@@ -30,6 +30,8 @@ interface Props {
   labelMinAreaPercent: number
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명만/등락률만/둘 다 보여줄지.
   stockLabelMode: StockLabelMode
+  // 종목 설명 팝업을 우클릭(false)/커서 이동(true) 중 뭘로 띄울지 — 섹터 팝업은 항상 우클릭.
+  stockPopupOnHover: boolean
   // 하위 MarketMapSectorSection/MarketMapBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
   decimalPlaces: number
   topPickSectorKeys: Set<string>
@@ -95,6 +97,7 @@ export default function MarketMapTreemap({
   colorScale,
   labelMinAreaPercent,
   stockLabelMode,
+  stockPopupOnHover,
   decimalPlaces,
   topPickSectorKeys,
   strongIndustryColor,
@@ -158,6 +161,11 @@ export default function MarketMapTreemap({
       anchorRect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
       mapBounds: { left: mapRect.left, right: mapRect.right },
     })
+  }
+
+  // 커서 이동 방식 팝업을 닫는다 — 이미 다른 대상의 팝업으로 바뀌었으면(targetKey 불일치) 건드리지 않는다.
+  const handleClosePopup = (targetKey: string) => {
+    setPopup(prev => (prev?.targetKey === targetKey ? null : prev))
   }
 
   // 팝업이 떠 있는 대상(섹터/종목)의 식별 키 — 그 박스에만 초록 하이라이트를 붙이는 데 쓴다.
@@ -313,6 +321,8 @@ export default function MarketMapTreemap({
               depthOffset={ghost.depth}
               onSelectSector={noop}
               onOpenPopup={noop}
+              onClosePopup={noop}
+              stockPopupOnHover={false}
               onHeaderPressStart={noop}
               highlightedKey={null}
               ancestorPath=""
@@ -339,6 +349,8 @@ export default function MarketMapTreemap({
             depthOffset={depth}
             onSelectSector={handleSelectSector}
             onOpenPopup={handleOpenPopup}
+            onClosePopup={handleClosePopup}
+            stockPopupOnHover={stockPopupOnHover}
             onHeaderPressStart={() => setSuppressSectorHoverBorder(true)}
             highlightedKey={highlightedKey}
             ancestorPath=""

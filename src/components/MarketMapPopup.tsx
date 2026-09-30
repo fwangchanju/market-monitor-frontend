@@ -8,6 +8,9 @@ export interface MarketMapPopupContent {
   // 우클릭한 섹터/종목 박스를 식별하는 키('sector-<id>' | 'stock-<code>') — 팝업이 떠 있는 동안
   // 해당 박스에만 초록 하이라이트를 붙이는 데 쓴다(MarketMapTreemap.highlightedKey).
   targetKey: string
+  // true면 커서 이동(hover)으로 뜬 임시 팝업 — 마우스 이벤트를 받지 않아서 커서가 팝업 위로 가도
+  // 박스의 pointerleave가 튀지 않는다.
+  transient?: boolean
 }
 
 // 우클릭한 박스(섹터 전체 박스 혹은 종목 박스)의 뷰포트 기준 rect. 팝업은 마우스 좌표가 아니라
@@ -107,7 +110,7 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
       <div
         ref={elRef}
         data-market-map-popup
-        className="invisible fixed z-[9999] w-max break-words border border-[#7a6d55] px-2 py-1 text-left text-base text-black shadow-lg"
+        className={`invisible fixed z-[9999] w-max break-words border border-[#7a6d55] px-2 py-1 text-left text-base text-black shadow-lg ${popup.transient ? 'pointer-events-none' : ''}`}
         style={{ maxWidth, backgroundColor: POPUP_BACKGROUND }}
       >
         <div className="flex items-center justify-between gap-3 font-bold">
