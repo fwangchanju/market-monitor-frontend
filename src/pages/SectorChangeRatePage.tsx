@@ -11,7 +11,7 @@ import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { computeSectorAverage } from '@/utils/sectorAverage'
 import { CAPTURE_ID } from '@/utils/captureIds'
-import NavBarPageActions from '@/components/NavBarPageActions'
+import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/components/NavBarPageActions'
 import { FONT_BAR_TIME, FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
@@ -349,6 +349,7 @@ export default function SectorChangeRatePage() {
             isNativeFullscreen={isNativeFullscreen}
             onToggleFullscreen={handleToggleNativeFullscreen}
             showSnapshotControls={Boolean(displayNow?.snapshotTime)}
+            showRefresh={false}
           />
         }
       />
@@ -380,6 +381,7 @@ export default function SectorChangeRatePage() {
                     <span>{toMarketMapSnapshotTimeOnlyLabel(displayNow.snapshotTime)}</span>
                   </span>
                 )}
+                <PageRefreshButton onRefresh={refetchMarketMap} isRefreshing={isRefreshing} className="-ml-[10px]" helpText={SNAPSHOT_REFRESH_HELP} />
               </div>
               {/* 지도 페이지와 동일하게 바 전체 폭 기준 절대 중앙에 고정 — 좌/우 칸 폭에 영향받지 않는다. */}
               <span

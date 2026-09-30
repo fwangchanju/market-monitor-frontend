@@ -40,7 +40,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={handleLogout}
                   disabled={logout.isPending}
-                  className="rounded border border-gray-500 px-4 py-2 text-sm text-white hover:bg-zinc-700 disabled:cursor-wait disabled:opacity-50"
+                  className="rounded border border-gray-500 bg-transparent px-4 py-2 text-sm text-white hover:bg-zinc-700 disabled:cursor-wait disabled:opacity-50"
                 >
                   {logout.isPending ? '로그아웃 중...' : '로그아웃'}
                 </button>

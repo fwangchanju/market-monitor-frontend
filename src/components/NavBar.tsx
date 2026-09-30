@@ -18,6 +18,8 @@ export default function NavBar() {
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const profileButtonRef = useRef<HTMLButtonElement>(null)
   useLocalDevLogin()
+  // 세션 확인이 끝났고 로그인하지 않은 상태 — 확인 중(isLoading)에는 깜빡임 없이 프로필 아이콘을 유지한다.
+  const isLoggedOut = !isLoading && !session?.authenticated
   // dev-login도 구글 로그인과 같은 15분짜리 접근 토큰을 발급하므로, localAutoLogin 여부와 무관하게
   // 로그인 상태면 동일하게 선제 갱신한다.
   useSessionKeepAlive(session?.authenticated ?? false)
@@ -52,6 +54,16 @@ export default function NavBar() {
       >
         <img src={marketryLogo} alt="" className="h-[40.9px] w-auto max-w-[18rem] object-contain" />
       </Link>
+      {isLoggedOut ? (
+        // 비로그인은 프로필 아이콘 대신 "로그인" 버튼을 바로 보여줘서 로그인/비로그인 상태가 한눈에 구분된다.
+        <button
+          type="button"
+          onClick={() => requireLogin(`${pathname}${search}${hash}`)}
+          className="nes-btn border-[var(--accent)] bg-transparent px-3 py-1 text-xs font-bold text-[var(--accent)] hover:bg-[var(--accent)] hover:text-black"
+        >
+          로그인
+        </button>
+      ) : (
       <div ref={profileMenuRef} className="relative flex h-16 items-center">
         <button
           ref={profileButtonRef}
@@ -93,23 +105,11 @@ export default function NavBar() {
                   </button>
                 </div>
               </>
-            ) : (
-              <div className="p-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsProfileMenuOpen(false)
-                    requireLogin(`${pathname}${search}${hash}`)
-                  }}
-                  className="nes-btn w-full border-[var(--accent)] bg-[var(--accent)] px-4 py-2 text-sm font-bold text-black hover:bg-[var(--accent-hover)]"
-                >
-                  로그인
-                </button>
-              </div>
-            )}
+            ) : null}
           </div>
         )}
       </div>
+      )}
     </header>
   )
 }

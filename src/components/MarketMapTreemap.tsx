@@ -59,8 +59,19 @@ interface GhostOverlay {
   style: React.CSSProperties
 }
 
-const ZOOM_IN_DURATION = 320
-const ZOOM_OUT_DURATION = 280
+const ZOOM_IN_DURATION = 500
+const ZOOM_OUT_DURATION = 440
+// 처음에 빠르게 튀어나오고 끝에서 부드럽게 멈추는 곡선 — 누른 박스에서 "터져 나오는" 느낌을 준다.
+const ZOOM_EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+// 진입은 시작이 부드러운 표준 곡선 — 빠르게 튀어나가는 곡선을 쓰면 첫 프레임에서 박스가 툭 튀어나와 보인다.
+const ZOOM_IN_EASE = 'cubic-bezier(0.4, 0, 0.2, 1)'
+// 진입 때 새 화면이 투명에서 나타나는 시간 비율(시작 박스 자리에서 갑자기 나타나지 않게 한다).
+const ZOOM_IN_FADE_RATIO = 0.35
+// 진입/복귀 때 주변(형제) 화면에 덮는 어두운 막 — 누른 박스만 밝게 남아서 "여기서 시작했다"는 인상을 준다.
+const DIM_OPACITY = 0.55
+// 진입 때 옛 화면이 누른 박스를 중심으로 이 배율까지 커지며 사라진다 — 나갈 때 큰 화면이 줄어드는 움직임과 대칭.
+const OLD_SCREEN_SCALE = 1.15
+const DIM_IN_DURATION = 120 // 진입: 막이 어두워지는 시간(이후 나머지 시간 동안 걷힌다)
 const noop = () => {}
 
 function toRelativeRect(rect: DOMRect, containerRect: DOMRect): RelativeRect {
@@ -112,6 +123,11 @@ export default function MarketMapTreemap({
   // 사라지는 옛 화면을 실제 콘텐츠 위/아래에 겹쳐 그리는 고스트 — 형제 섹터들이 순간 사라지지 않고
   // 서서히 페이드아웃(줌인)/줄어들며 사라지도록(줌아웃) 보여준다.
   const [ghost, setGhost] = useState<GhostOverlay | null>(null)
+  // 주변을 어둡게 덮는 막 — zIndex 0은 실제 콘텐츠 아래(진입: 커지는 박스는 덮지 않고 고스트만 어둡게),
+  // 5는 실제 콘텐츠 위·복귀 고스트(10) 아래(복귀: 위쪽 화면이 덮여 있다가 걷힌다).
+  const [dim, setDim] = useState<{ zIndex: number; style: React.CSSProperties } | null>(null)
+  // 진입 때 커지는 박스 테두리 강조 — 실제 콘텐츠 wrapper 안에 그려서 박스와 함께 커지며 옅어진다.
+  const [startHighlight, setStartHighlight] = useState<React.CSSProperties | null>(null)
   // 좌클릭으로 줌인이 시작될 때 헤더 hover 테두리가 잠깐 반짝이지 않게 끈다 — onHeaderPressStart
   // (헤더 pointerdown, 왼쪽 버튼만)로 눌리는 즉시 켜고, handleSelectSector(click, 줌인 시작)에서도
   // 다시 켠다(중복이지만 무해). 줌 애니메이션이 끝나고 사용자가 다시 마우스를 움직이면(아래
@@ -219,27 +235,62 @@ export default function MarketMapTreemap({
         for (let d = prevDepthRef.current; d < depth; d++) {
           entryRectsRef.current.set(d, pendingRect)
         }
+        const originX = (pendingRect.left + pendingRect.width / 2) * containerRect.width
+        const originY = (pendingRect.top + pendingRect.height / 2) * containerRect.height
+        const ghostOrigin = `${originX}px ${originY}px`
         setGhost(
           snapshot
-            ? { sectors: snapshot.sectors, depth: snapshot.depth, direction: 'in', style: { opacity: 1, transition: 'none' } }
+            ? {
+                sectors: snapshot.sectors,
+                depth: snapshot.depth,
+                direction: 'in',
+                style: { opacity: 1, transform: 'none', transformOrigin: ghostOrigin, transition: 'none' },
+              }
             : null,
         )
+        setStartHighlight({ opacity: 1, transition: 'none' })
         setZoomStyle({
           transform: toShrinkTransform(pendingRect, containerRect),
-          opacity: 1,
+          opacity: 0,
           transition: 'none',
         })
+        setDim({ zIndex: 0, style: { opacity: 0, transition: 'none' } })
         requestAnimationFrame(() => {
-          setGhost(prev => (prev ? { ...prev, style: { opacity: 0, transition: `opacity ${ZOOM_IN_DURATION}ms ease-out` } } : null))
+          setGhost(prev =>
+            prev
+              ? {
+                  ...prev,
+                  style: {
+                    opacity: 0,
+                    transform: `scale(${OLD_SCREEN_SCALE})`,
+                    transformOrigin: ghostOrigin,
+                    transition: `opacity ${ZOOM_IN_DURATION}ms ease-out, transform ${ZOOM_IN_DURATION}ms ${ZOOM_IN_EASE}`,
+                  },
+                }
+              : null,
+          )
+          setStartHighlight({ opacity: 0, transition: `opacity ${ZOOM_IN_DURATION}ms ease-out` })
           setZoomStyle({
             transform: 'none',
             opacity: 1,
-            transition: `transform ${ZOOM_IN_DURATION}ms ease-out`,
+            transition: `transform ${ZOOM_IN_DURATION}ms ${ZOOM_IN_EASE}, opacity ${ZOOM_IN_DURATION * ZOOM_IN_FADE_RATIO}ms ease-out`,
           })
+          setDim({ zIndex: 0, style: { opacity: DIM_OPACITY, transition: `opacity ${DIM_IN_DURATION}ms ease-out` } })
         })
-        const timer = window.setTimeout(() => setGhost(null), ZOOM_IN_DURATION)
+        const dimFadeTimer = window.setTimeout(
+          () => setDim({ zIndex: 0, style: { opacity: 0, transition: `opacity ${ZOOM_IN_DURATION - DIM_IN_DURATION}ms ease-in` } }),
+          DIM_IN_DURATION,
+        )
+        const timer = window.setTimeout(() => {
+          setGhost(null)
+          setDim(null)
+          setStartHighlight(null)
+        }, ZOOM_IN_DURATION)
         prevDepthRef.current = depth
-        return () => window.clearTimeout(timer)
+        return () => {
+          window.clearTimeout(timer)
+          window.clearTimeout(dimFadeTimer)
+        }
       }
     } else if (depth < prevDepthRef.current) {
       // 줌아웃: onZoomOutComplete가 이미 실제 이동을 끝낸 뒤라(아래 useEffect에서 이동 전에 스냅샷만
@@ -258,7 +309,9 @@ export default function MarketMapTreemap({
           direction: 'out',
           style: { transform: 'none', opacity: 1, transition: 'none' },
         })
+        setDim({ zIndex: 5, style: { opacity: DIM_OPACITY, transition: 'none' } })
         requestAnimationFrame(() => {
+          setDim({ zIndex: 5, style: { opacity: 0, transition: `opacity ${ZOOM_OUT_DURATION}ms ease-in` } })
           setZoomStyle({ opacity: 1, transition: `opacity ${ZOOM_OUT_DURATION}ms ease-in` })
           setGhost(prev =>
             prev
@@ -267,13 +320,16 @@ export default function MarketMapTreemap({
                   style: {
                     transform: toShrinkTransform(rect, containerRect),
                     opacity: 0,
-                    transition: `transform ${ZOOM_OUT_DURATION}ms ease-in, opacity ${ZOOM_OUT_DURATION}ms ease-in`,
+                    transition: `transform ${ZOOM_OUT_DURATION}ms ${ZOOM_EASE}, opacity ${ZOOM_OUT_DURATION}ms ease-in`,
                   },
                 }
               : null,
           )
         })
-        const timer = window.setTimeout(() => setGhost(null), ZOOM_OUT_DURATION)
+        const timer = window.setTimeout(() => {
+          setGhost(null)
+          setDim(null)
+        }, ZOOM_OUT_DURATION)
         prevDepthRef.current = depth
         return () => window.clearTimeout(timer)
       }
@@ -298,7 +354,7 @@ export default function MarketMapTreemap({
     // 이어진다. overflow-hidden으로 이 삐져나옴 자체를 화면에서 잘라내 루프의 시작을 막는다.
     <div
       ref={containerRef}
-      className={`relative w-full overflow-hidden bg-black ${heightClassName} ${suppressSectorHoverBorder ? 'market-map-suppress-sector-border' : ''}`}
+      className={`relative isolate w-full overflow-hidden bg-black ${heightClassName} ${suppressSectorHoverBorder ? 'market-map-suppress-sector-border' : ''}`}
       onPointerMove={() => {
         if (suppressSectorHoverBorder && !ghost) setSuppressSectorHoverBorder(false)
       }}
@@ -341,7 +397,14 @@ export default function MarketMapTreemap({
           ))}
         </div>
       )}
+      {dim && <div className="pointer-events-none absolute inset-0 bg-black" style={{ zIndex: dim.zIndex, ...dim.style }} />}
       <div className="absolute inset-0" style={{ transformOrigin: '0 0', ...zoomStyle }}>
+        {startHighlight && (
+          <div
+            className="pointer-events-none absolute inset-0 z-[5]"
+            style={{ boxShadow: `inset 0 0 0 10px ${strongIndustryColor}`, ...startHighlight }}
+          />
+        )}
         {sectors.map(sector => (
           <MarketMapSectorSection
             key={sector.sectorName}
