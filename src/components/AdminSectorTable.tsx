@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import type { SectorItem } from '@/types/api'
 import { useCreateSector, useRenameSector } from '@/hooks/useMarketMapCustom'
@@ -9,11 +10,12 @@ import { charTier } from '@/utils/koreanSort'
 
 interface Props {
   sectors: SectorItem[]
+  toolbarContainer: HTMLDivElement | null
 }
 
 // 루트 섹터를 몇 개 컬럼으로 나눠서 나란히 보여줄지 — 전체펼치기 시 한 컬럼이 과도하게
 // 길어지는 걸 줄이기 위해 나눈다.
-const ROOT_COLUMN_COUNT = 3
+const ROOT_COLUMN_COUNT = 1
 
 type Row =
   | { type: 'sector'; item: SectorItem; siblingIndex: number }
@@ -123,7 +125,7 @@ function DroppableSectorRow({
   )
 }
 
-export default function AdminSectorTable({ sectors }: Props) {
+export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
   const [newName, setNewName] = useState('')
   const [childNameByParent, setChildNameByParent] = useState<Record<number, string>>({})
@@ -357,10 +359,9 @@ export default function AdminSectorTable({ sectors }: Props) {
         setDraggedSector(null)
       }}
     >
-      <div>
-        <div className="mb-2 flex min-h-[38px] items-center justify-between px-2">
-          <div className="flex items-center gap-3">
-            <p className="text-sm font-bold text-white">섹터 목록</p>
+      <div className="flex min-h-0 flex-1 flex-col">
+        {toolbarContainer ? createPortal(
+          <div className="ml-2 flex items-center gap-2">
             <button
               type="button"
               onClick={handleExpandAll}
@@ -375,15 +376,16 @@ export default function AdminSectorTable({ sectors }: Props) {
             >
               접기
             </button>
-          </div>
-          {isDraggingSector && (
-            <p className="text-sm text-[var(--accent)]">다른 섹터 위에 놓으면 그 밑으로, 빈 곳에 놓으면 최상위로 이동합니다</p>
-          )}
-        </div>
-        <div className="grid grid-cols-3 gap-4">
+          </div>,
+          toolbarContainer,
+        ) : null}
+        {isDraggingSector && (
+          <p className="px-2 py-2 text-sm text-[var(--accent)]">다른 섹터 위에 놓으면 그 밑으로, 빈 곳에 놓으면 최상위로 이동합니다</p>
+        )}
+        <div className="grid min-h-0 flex-1 grid-cols-1">
           {columnRows.map((rows, columnIndex) => (
-            <div key={columnIndex} className="overflow-x-auto scrollbar-hide">
-              <table className="nes-table is-dark is-bordered w-full text-sm [&_td]:border-white/10">
+            <div key={columnIndex} className="h-full overflow-auto scrollbar-hide">
+              <table className="nes-table is-dark custom-page-table custom-sector-table h-full w-full text-sm [&_td]:border-white/10">
                 <tbody>
                   {columnIndex === 0 && (
                     <tr>

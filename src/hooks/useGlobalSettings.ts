@@ -16,6 +16,8 @@ import {
   collectSectorsAtDepth,
   useFilteredMarketMapTree,
   type FilteredMarketMapSectorNode,
+  type StockChangeFilter,
+  type SectorChangeFilter,
 } from './useFilteredMarketMapTree'
 import { useMarketValueTierRange } from './useMarketValueTierRange'
 import { registerExcludedSector, unregisterExcludedSector } from '@/api/marketMap'
@@ -158,6 +160,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   )
   // 섹터 제외를 목록별로 켜고 끄는 게 아니라, 제외 적용 자체를 통째로 켜고 끄는 마스터 스위치.
   const [sectorFilterEnabled, setSectorFilterEnabled] = usePageSetting('marketMap.sectorFilterEnabled', true)
+  const [stockChangeFilter, setStockChangeFilter] = usePageSetting<StockChangeFilter>('marketMap.stockChangeFilter', 'all')
+  const [sectorChangeFilter, setSectorChangeFilter] = usePageSetting<SectorChangeFilter>('marketMap.sectorChangeFilter', 'all')
+  const [sectorChangeDepth, setSectorChangeDepth] = usePageSetting('marketMap.sectorChangeDepth', 0)
   // null = 제한 없음(전체 뎁스 표시). 슬라이더의 실제 상한(availableMaxDepth)은 트리 계산 후에 나온다.
   // 기본값 2(렌더러 캡처 기준 화면에 맞춤).
   const [selectedMaxDepth, setMaxDepth] = usePageSetting<number | null>('marketMap.selectedMaxDepth', 2)
@@ -203,13 +208,23 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   }, [data, market, isCustom, setExcludedSectorNames])
 
   // 거래소 분류 트리는 사용자 정의 섹터를 쓰지 않으므로 isExcluded와 제외 목록을 적용하지 않는다.
-  const excludedSectorIds =
-    isCustom && sectorFilterEnabled ? new Set(excludedSectorNames.keys()) : new Set<number>()
+  const excludedSectorIds = useMemo(
+    () => isCustom && sectorFilterEnabled ? new Set(excludedSectorNames.keys()) : new Set<number>(),
+    [isCustom, sectorFilterEnabled, excludedSectorNames],
+  )
+
+  const directionFilters = useMemo(() => ({
+    stockChangeFilter: pathname.startsWith('/map/') ? stockChangeFilter : 'all' as StockChangeFilter,
+    sectorChangeFilter: pathname.startsWith('/map/') ? sectorChangeFilter : 'all' as SectorChangeFilter,
+    sectorChangeDepth,
+    sectorUseSimpleAverage: selectedDepthMetric === 'simpleAvgChangeRate',
+  }), [pathname, stockChangeFilter, sectorChangeFilter, sectorChangeDepth, selectedDepthMetric])
 
   const { filteredRootNodes, availableMaxDepth } = useFilteredMarketMapTree(
     rootNodes,
     excludedSectorIds,
     excludedMarketValueTiers,
+    directionFilters,
   )
 
   // KRX 트리는 대분류까지만 있을 수 있으므로, 선택 범위 중 실제 존재하는 단계만 표시한다.
@@ -546,6 +561,12 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     isMarketValueTierRangeReady,
     rootNodes,
     filteredRootNodes,
+    stockChangeFilter,
+    onChangeStockChangeFilter: setStockChangeFilter,
+    sectorChangeFilter,
+    onChangeSectorChangeFilter: setSectorChangeFilter,
+    sectorChangeDepth,
+    onChangeSectorChangeDepth: setSectorChangeDepth,
     availableMaxDepth,
     // 선택한 분류 단계는 KRX와 MARKETRY 히트맵에 동일하게 적용한다.
     maxDepth,

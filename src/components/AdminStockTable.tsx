@@ -1926,7 +1926,7 @@ export default function AdminStockTable({
           테두리가 같이 스크롤돼 사라지고, 맨 아래 테두리도 끝까지 스크롤해야만 보이는 문제가 있었다). */}
       <div className="min-h-0 flex-1 border border-white">
         <div ref={scrollContainerRef} className="h-full overflow-auto scrollbar-thin">
-          <table className="nes-table is-dark w-full text-sm [&_td]:border-white/10 [&_td]:py-0.5 [&_th]:border-white/10 [&_th]:py-1">
+          <table className="nes-table is-dark custom-page-table w-full text-sm [&_td]:border-white/10 [&_td]:py-0.5 [&_th]:border-white/10 [&_th]:py-1">
           <thead className="sticky top-0 z-10">
             <tr>
               <th

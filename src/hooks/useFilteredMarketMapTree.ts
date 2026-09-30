@@ -2,7 +2,17 @@ import { useMemo } from 'react'
 import type { MarketMapSectorNode, MarketMapItem } from '@/types/api'
 import { computeSectorAverage } from '@/utils/sectorAverage'
 
-// 필터링(섹터 제외/시가총액 구간)까지 반영된 뒤에도 화면이 필요로 하는 등락률 평균 두 개를 들고
+export type StockChangeFilter = 'all' | 'rising' | 'falling'
+export type SectorChangeFilter = StockChangeFilter
+
+interface DirectionFilters {
+  stockChangeFilter: StockChangeFilter
+  sectorChangeFilter: SectorChangeFilter
+  sectorChangeDepth: number
+  sectorUseSimpleAverage: boolean
+}
+
+// 필터링(섹터 제외/시가총액 구간/등락 방향)까지 반영된 뒤에도 화면이 필요로 하는 등락률 평균 두 개를 들고
 // 있는 노드 — 종목을 매번 다시 순회하지 않도록 필터링 시점에 한 번만 계산해서 붙여둔다.
 // weightedAvgChangeRate/simpleAvgChangeRate가 null이면 지금 선택된 구간에 해당하는 종목이 하나도
 // 없다는 뜻이다.
@@ -14,26 +24,52 @@ export interface FilteredMarketMapSectorNode extends MarketMapSectorNode {
 
 // 섹터 exclude는 하위 전체로 자동 전파된다 — 제외된 노드는 자식을 아예 살펴보지 않고 통째로 버리므로,
 // 자식이 스스로 isExcluded=false여도 부모가 제외되면 같이 사라진다.
-// 시총 0(또는 tier로 다 걸러진) 종목/섹터는 트리맵에 빈 슬리버로 남지 않도록 재귀적으로 가지치기한다.
+// 시총 0(또는 tier/방향으로 다 걸러진) 종목/섹터는 트리맵에 빈 슬리버로 남지 않도록 재귀적으로 가지치기한다.
 function filterNodes(
   nodes: MarketMapSectorNode[],
   excludedSectorIds: Set<number>,
   excludedMarketValueTiers: Set<string>,
+  filters: DirectionFilters,
+  depth = 0,
 ): FilteredMarketMapSectorNode[] {
   const result: FilteredMarketMapSectorNode[] = []
   for (const node of nodes) {
     if (excludedSectorIds.has(node.sectorId)) continue
 
-    const items = node.items.filter(
-      item => item.totalMarketValue > 0 && !excludedMarketValueTiers.has(item.marketValueTier),
+    // 업종은 선택한 분류 단계에서만 판정한다. 종목 방향과 독립적으로 유지하기 위해
+    // 해당 업종의 원래 평균(시총 구간 제외는 반영)을 먼저 사용한다.
+    const originalAverage = computeSectorAverage(node, excludedMarketValueTiers)
+    if (filters.sectorChangeFilter !== 'all' && depth === filters.sectorChangeDepth) {
+      const directionValue = filters.sectorUseSimpleAverage ? originalAverage.simpleAvg : originalAverage.weightedAvg
+      if (directionValue === null || (filters.sectorChangeFilter === 'rising' ? directionValue <= 0 : directionValue >= 0)) continue
+    }
+
+    // 선택 단계보다 위에 직접 속한 종목은 선택된 업종에 속하지 않으므로 표시하지 않는다.
+    const items = filters.sectorChangeFilter !== 'all' && depth < filters.sectorChangeDepth ? [] : node.items.filter(
+      item => item.totalMarketValue > 0 && !excludedMarketValueTiers.has(item.marketValueTier) &&
+        (filters.stockChangeFilter === 'all' || (filters.stockChangeFilter === 'rising' ? item.changeRate > 0 : item.changeRate < 0)),
     )
-    const children = filterNodes(node.children, excludedSectorIds, excludedMarketValueTiers)
+    const children = filterNodes(node.children, excludedSectorIds, excludedMarketValueTiers, filters, depth + 1)
     const totalMarketValue =
       items.reduce((sum, item) => sum + item.totalMarketValue, 0) +
       children.reduce((sum, child) => sum + child.totalMarketValue, 0)
     if (totalMarketValue <= 0) continue
 
-    const { weightedAvg, simpleAvg } = computeSectorAverage(node, excludedMarketValueTiers)
+    // 전체 모드는 기존 집계 규칙을 보존한다. 등락 필터가 켜진 동안에는 화면에 남은 종목으로 계산한다.
+    const { weightedAvg, simpleAvg } = filters.stockChangeFilter === 'all' && filters.sectorChangeFilter === 'all'
+      ? originalAverage
+      : (() => {
+          const visibleItems = [...items, ...children.flatMap(collectAllItems)]
+          const totalValue = visibleItems.reduce((sum, item) => sum + item.totalMarketValue, 0)
+          return {
+            weightedAvg: totalValue > 0
+              ? visibleItems.reduce((sum, item) => sum + item.changeRate * item.totalMarketValue, 0) / totalValue
+              : null,
+            simpleAvg: visibleItems.length > 0
+              ? visibleItems.reduce((sum, item) => sum + item.changeRate, 0) / visibleItems.length
+              : null,
+          }
+        })()
     result.push({
       ...node,
       items,
@@ -116,10 +152,11 @@ export function useFilteredMarketMapTree(
   rootNodes: MarketMapSectorNode[],
   excludedSectorIds: Set<number>,
   excludedMarketValueTiers: Set<string>,
+  filters: DirectionFilters,
 ) {
   const excludeTierFiltered = useMemo(
-    () => filterNodes(rootNodes, excludedSectorIds, excludedMarketValueTiers),
-    [rootNodes, excludedSectorIds, excludedMarketValueTiers],
+    () => filterNodes(rootNodes, excludedSectorIds, excludedMarketValueTiers, filters),
+    [rootNodes, excludedSectorIds, excludedMarketValueTiers, filters],
   )
   // 슬라이더 분모(전체 뎁스) — exclude/tier 필터링까지 반영된 트리 기준으로, 실제로 의미 있는 뎁스만
   // 센다. 뎁스 제한(limitDepth)은 여기서 미리 적용하지 않는다 — 드릴다운이 실제 뎁스를 그대로 오갈 수

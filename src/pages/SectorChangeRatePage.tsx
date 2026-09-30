@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
+import { MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/MarketMapControls'
 import SettingsSidebar, {
   SettingsSidebarGroup,
   SettingsSectorLevelSection,
@@ -18,26 +19,25 @@ import { sectorHeaderFontSize } from '@/hooks/useMarketMapLayout'
 import { computeSectorAverage } from '@/utils/sectorAverage'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import NavBarPageActions from '@/components/NavBarPageActions'
-import { FONT_BAR_TITLE, FONT_BAR_TIME, FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
+import { FONT_BAR_TIME, FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload } from '@/utils/captureToDownload'
 import { toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel, avgChangeRateLabel } from '@/utils/format'
+import { marketRoute } from '@/utils/marketRoute'
 import {
   resolveMarketMapColor,
   resolveMarketMapExtremeColor,
   MARKET_INDEX_REFERENCE_COLOR,
   type ColorScaleConfig,
 } from '@/utils/marketMapColorScale'
-import type { Market, MarketMapSectorNode, MarketQuery } from '@/types/api'
+import type { Market, MarketMapSectorNode } from '@/types/api'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
 
 const BEFORE_MINUTES_PRESETS = [15, 30, 60]
 
-// 지도 페이지(MarketMapCustomPage)와 동일한 마켓 라벨 표기.
-const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
 // 지수 등락률 참조 막대에 붙는 한글 라벨 — ALL_STOCK은 단일 지수가 없어 대상에서 제외된다.
 const MARKET_INDEX_LABEL_KO: Record<Market, string> = { KOSPI: '코스피', KOSDAQ: '코스닥' }
 // 지수 참조 막대 전용 React key — 섹터 이름(예: '코스피'라는 섹터가 실제로 있을 수 있다)과
@@ -165,6 +165,7 @@ function RankBars({
 }
 
 export default function SectorChangeRatePage() {
+  const navigate = useNavigate()
   const [beforeMinutes, setBeforeMinutes] = usePersistedState('sectorChangeRate.beforeMinutes', 15)
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -389,8 +390,14 @@ export default function SectorChangeRatePage() {
               안에서만 처리된다. */}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div className="relative flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
-              <div className="flex items-center whitespace-nowrap">
-                <span className={FONT_BAR_TITLE}>{MARKET_LABEL[market]}</span>
+              <div className="flex items-center gap-2 whitespace-nowrap">
+                <MarketMapMarketCombobox
+                  market={market}
+                  onSelect={selectedMarket => {
+                    if (selectedMarket !== market) navigate(marketRoute('/group', selectedMarket))
+                  }}
+                />
+                <MarketMapPeriodCombobox />
               </div>
               {/* 지도 페이지와 동일하게 바 전체 폭 기준 절대 중앙에 고정 — 좌/우 칸 폭에 영향받지 않는다. */}
               <span
