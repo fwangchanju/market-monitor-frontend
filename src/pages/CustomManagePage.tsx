@@ -95,7 +95,7 @@ export default function CustomManagePage() {
 
   const copyLabel =
     copyStatus === 'copying' ? 'Copying' : copyStatus === 'copied' ? 'Copied' : copyStatus === 'error' ? 'Failed' : 'Copy'
-  const downloadLabel = downloadStatus === 'error' ? 'Failed' : 'Download'
+  const downloadLabel = downloadStatus === 'error' ? '다운로드 실패' : '다운로드'
 
   const actions = (
     <NavBarPageActions
@@ -113,7 +113,7 @@ export default function CustomManagePage() {
   // 스피너만 보여준다 — 비로그인용 안내와 실제 테이블이 뒤섞여 잠깐 보였다 사라지는 걸 막는다.
   if (isSessionLoading || (isLoggedIn && isSectorsLoading)) {
     return (
-      <div className="flex h-screen flex-col overflow-hidden">
+      <div className="flex h-screen flex-col overflow-hidden bg-black">
         <NavBar />
         <SubNavBar />
         <div className="flex justify-center p-16">
@@ -125,7 +125,7 @@ export default function CustomManagePage() {
 
   if (!isLoggedIn) {
     return (
-      <div className="flex h-screen flex-col overflow-hidden">
+      <div className="flex h-screen flex-col overflow-hidden bg-black">
         <NavBar />
         <SubNavBar />
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
@@ -143,7 +143,7 @@ export default function CustomManagePage() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex h-screen flex-col overflow-hidden bg-black">
       <NavBar />
       <SubNavBar actions={actions} />
       {/* 좌측 사이드바(종목/섹터 전환 + 버전관리 저장) 삭제 — 종목/섹터 전환은 SubNavBar의
@@ -155,14 +155,12 @@ export default function CustomManagePage() {
             <MarketMapColorThresholdEditorPanel {...colorEditorPanelProps} />
           </div>
         )}
-        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 [세 번째 바+본문] 열 +
-            사이드바를 감싸는 바깥 wrapper로 둔다 — 다른 페이지와 동일한 구조. 사이드바가 열리면 세
-            번째 바(툴바)까지 같이 밀려서 좁아진다(본문만 밀리지 않는다). */}
-        <div ref={captureRef} className="flex min-h-0 flex-1 overflow-hidden bg-black text-white">
+        {/* 공유 캡처(captureRef)는 [세 번째 바+본문] 열만 찍는다 — 설정 사이드바는 캡처에 넣지 않는다. */}
+        <div className="relative z-10 -mt-[10.5px] flex min-h-0 flex-1 overflow-hidden bg-black text-white">
           {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서 창을 좁혀도 사이드바(w-80)가 항상 같은
               폭을 유지하게 한다(지도/섹터/요약 페이지와 동일). */}
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className="flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
+          <div ref={captureRef} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black text-white">
+            <div className="mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-2 pr-3 text-sm font-bold text-white">
               <div className="flex h-full items-center">
                 <CustomManageModeCombobox
                   mode={mode === 'stock' ? 'stock' : 'category'}
@@ -192,7 +190,7 @@ export default function CustomManagePage() {
               </div>
             </div>
           </div>
-          <SettingsSidebar {...settingsModalProps} pageLabel="커스텀" />
+          <SettingsSidebar {...settingsModalProps} />
         </div>
       </div>
 

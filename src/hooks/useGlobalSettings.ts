@@ -153,6 +153,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 지도 페이지에 표시되는 모든 등락률(%)의 소수점 자릿수 — 인덱스가 그대로 자릿수(0=정수, 1=소수
   // 1자리, 2=소수 2자리). 기본값 1(소수 1자리).
   const [decimalPlacesIndex, setDecimalPlacesIndex] = usePageSetting('marketMap.decimalPlacesIndex', 1)
+  // 종목 박스 설명 팝업을 여는 방식 — false=우클릭(기존 동작), true=커서를 박스 위로 옮길 때. 섹터(대/중/소분류)
+  // 팝업은 이 설정과 무관하게 항상 우클릭이다.
+  const [stockPopupOnHover, setStockPopupOnHover] = usePageSetting('marketMap.stockPopupOnHover', false)
   const decimalPlaces = decimalPlacesIndex
   // 시가총액 구간 범위 필터 — 마켓맵/섹터 랭킹 화면이 세션스토리지 키를 공유한다(useMarketValueTierRange 참고).
   // 시가총액 구간 필터는 분류 체계와 무관한 표시 설정이라 두 분류 모두에서 적용한다.
@@ -526,6 +529,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     onChangeStockLabelModeIndex: setStockLabelModeIndex,
     decimalPlacesIndex,
     onChangeDecimalPlacesIndex: setDecimalPlacesIndex,
+    stockPopupOnHover,
+    onChangeStockPopupOnHover: setStockPopupOnHover,
     tiers: valueTiers,
     tierRangeMinIndex: tierRangeMinIndex === -1 ? 0 : tierRangeMinIndex,
     tierRangeMaxIndex: tierRangeMaxIndex === -1 ? Math.max(valueTiers.length - 1, 0) : tierRangeMaxIndex,
@@ -602,6 +607,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     boxLabelMinAreaPercent,
     stockLabelMode,
     decimalPlaces,
+    stockPopupOnHover,
     colorScale,
     excludedSectorNames,
     onChangeSectorFilterEnabled: setSectorFilterEnabled,

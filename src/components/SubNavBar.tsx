@@ -43,7 +43,7 @@ export default function SubNavBar({ actions }: Props) {
   }
 
   return (
-    <div className="flex h-8 shrink-0 items-center justify-between gap-3 bg-zinc-900 px-3 text-xs shadow-lg">
+    <div className="relative z-30 -top-[13px] flex h-8 after:absolute after:inset-x-0 after:top-full after:h-[2.5px] after:bg-zinc-900 shrink-0 items-center justify-between gap-3 bg-zinc-900 px-3 text-xs">
       <div className="flex h-8 items-center gap-3">
         {links.map(link => (
           <Link

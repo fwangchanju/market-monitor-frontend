@@ -349,22 +349,43 @@ a { color: var(--accent-light); text-decoration: none; }
 
 }
 
-/* 지도 설정 탭마다 두 번째 제목을 같은 높이에서 시작한다.
-   첫 번째 항목과 조작부의 크기는 유지하고 제목 앞 간격만 조절한다. */
+/* 지도 설정 탭마다 1) 2) 3) 4) 5) 제목을 같은 높이에서 시작한다(탭 내용 상단 기준 20/140/280/400/520px).
+   각 항목과 조작부의 크기는 유지하고 제목 앞 간격만 조절한다. 값은 실제 렌더 위치를 측정해서 맞춘 것이라,
+   항목 내용 높이가 바뀌면 다시 측정해서 고쳐야 한다. */
 .settings-sidebar-tab-content[data-align-second-heading] .settings-second-depth-metric {
   margin-top: 50px;
 }
 
 .settings-sidebar-tab-content[data-align-second-heading] .settings-third-depth-range {
-  margin-top: 49px;
+  margin-top: 68px;
 }
 
 .settings-sidebar-tab-content[data-align-second-heading] .settings-fourth-top-pick {
-  margin-top: 54px;
+  margin-top: 55px;
 }
 
 .settings-sidebar-tab-content[data-align-second-heading] .settings-third-text-threshold {
-  margin-top: 44px;
+  margin-top: 66px;
+}
+
+.settings-sidebar-tab-content[data-align-second-heading] .settings-fifth-stock-popup {
+  margin-top: 50px;
+}
+
+.settings-sidebar-tab-content[data-align-second-heading] .settings-third-stock-change {
+  margin-top: 16px;
+}
+
+.settings-sidebar-tab-content[data-align-second-heading] .settings-fourth-exclude {
+  margin-top: 25px;
+}
+
+.settings-sidebar-tab-content[data-align-second-heading] .settings-second-color {
+  margin-top: 19px;
+}
+
+.settings-sidebar-tab-content[data-align-second-heading] .settings-first-stock-size {
+  margin-bottom: 22px;
 }
 
 .settings-sidebar-tab-content[data-align-second-heading] .settings-fourth-decimal-places {
@@ -377,7 +398,7 @@ a { color: var(--accent-light); text-decoration: none; }
 }
 
 .settings-sidebar-tab-content[data-align-second-heading] .settings-second-sector-change {
-  margin-top: 30px;
+  margin-top: 31px;
   border-color: transparent;
 }
 

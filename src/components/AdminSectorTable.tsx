@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, DragOverlay, type DragEndEvent, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import type { SectorItem } from '@/types/api'
 import { useCreateSector, useRenameSector } from '@/hooks/useMarketMapCustom'
 import { useSectorDeleteFlow } from '@/hooks/useSectorDeleteFlow'
 import { useSectorDragEnd } from '@/hooks/useSectorDragEnd'
 import { halfOverlapCollisionDetection } from '@/utils/dndCollision'
 import { charTier } from '@/utils/koreanSort'
+import { CheckIcon, CloseIcon, CollapseAllIcon, EditIcon, ExpandAllIcon, PlusIcon, TrashIcon } from '@/components/icons/MarketMapIcons'
 
 interface Props {
   sectors: SectorItem[]
@@ -16,6 +17,19 @@ interface Props {
 // 루트 섹터를 몇 개 컬럼으로 나눠서 나란히 보여줄지 — 전체펼치기 시 한 컬럼이 과도하게
 // 길어지는 걸 줄이기 위해 나눈다.
 const ROOT_COLUMN_COUNT = 1
+
+// 섹터 깊이 상한(최상위=0) — 4단계(0~3)까지만 허용하고 5단계 섹터는 만들지 못하게 한다. 나중에 한 단계 더
+// 늘릴 때는 이 값만 바꾸면 추가 버튼과 드래그 이동 제한이 같이 따라간다.
+const MAX_SECTOR_DEPTH = 3
+const MAX_SECTOR_LEVELS = MAX_SECTOR_DEPTH + 1
+
+// 섹터 이름 글자 수 상한(공백 포함) — 대/중/소분류 구분 없이 통일한다. 이미 이 길이를 넘는 이름은 그대로
+// 표시되고, 이름을 고칠 때만 제한이 걸린다.
+const MAX_SECTOR_NAME_LENGTH = 12
+
+// 상단바 우측 아이콘(NavBarPageActions)과 같은 모양 — 회색 아이콘, hover 때 강조색.
+const ICON_BUTTON_CLASS =
+  'flex h-7 w-7 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-gray-400 outline-none hover:text-[var(--accent)]'
 
 type Row =
   | { type: 'sector'; item: SectorItem; siblingIndex: number }
@@ -145,6 +159,29 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
 
   const hasChildren = (id: number) => sectors.some(c => c.parentId === id)
 
+  // 드래그로 옮긴 결과가 5단계 이상이 되는지 — 옮기는 섹터 아래 가장 깊은 자손의 상대 깊이까지 더해서 본다.
+  const exceedsMaxDepth = (event: DragEndEvent) => {
+    const dragged = event.active.data.current as { sectorId: number } | undefined
+    const target = event.over?.data.current as { sectorId: number } | undefined
+    if (!dragged || !target) return false
+    const moved = sectors.find(c => c.id === dragged.sectorId)
+    const newParent = sectors.find(c => c.id === target.sectorId)
+    if (!moved || !newParent) return false
+    const subtreeHeight = sectors
+      .filter(c => c.depth > moved.depth && isDescendant(c, moved.id))
+      .reduce((max, c) => Math.max(max, c.depth - moved.depth), 0)
+    return newParent.depth + 1 + subtreeHeight > MAX_SECTOR_DEPTH
+  }
+  const isDescendant = (sector: SectorItem, ancestorId: number): boolean => {
+    let current: SectorItem | undefined = sector
+    while (current && current.parentId !== null) {
+      if (current.parentId === ancestorId) return true
+      const parentId: number = current.parentId
+      current = sectors.find(c => c.id === parentId)
+    }
+    return false
+  }
+
   const toggleExpand = (id: number) => {
     setExpandedIds(prev => {
       const next = new Set(prev)
@@ -158,6 +195,11 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
   const handleCollapseAll = () => setExpandedIds(new Set())
 
   const toggleAddChild = (id: number) => {
+    const parent = sectors.find(c => c.id === id)
+    if (parent && parent.depth >= MAX_SECTOR_DEPTH) {
+      window.alert(`섹터는 ${MAX_SECTOR_LEVELS}단계까지만 만들 수 있습니다.`)
+      return
+    }
     setAddingChildFor(prev => (prev === id ? null : id))
   }
 
@@ -174,6 +216,8 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
   }
 
   const handleCreateChild = (parentId: number) => {
+    const parent = sectors.find(c => c.id === parentId)
+    if (parent && parent.depth >= MAX_SECTOR_DEPTH) return
     const trimmed = (childNameByParent[parentId] ?? '').trim()
     if (!trimmed) return
     createSector.mutate({ name: trimmed, parentId }, { onSuccess: created => triggerHighlight(created.id) })
@@ -215,6 +259,7 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
               <span className="shrink-0 text-gray-400">-</span>
               <input
                 type="text"
+                maxLength={MAX_SECTOR_NAME_LENGTH}
                 autoFocus
                 value={childNameByParent[parentId] ?? ''}
                 onChange={e => setChildNameByParent(prev => ({ ...prev, [parentId]: e.target.value }))}
@@ -222,15 +267,19 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
                   if (e.key === 'Enter') handleCreateChild(parentId)
                   if (e.key === 'Escape') setAddingChildFor(null)
                 }}
-                placeholder={`${quotedChain} 섹터 내 세부항목 추가`}
-                className="nes-input is-dark min-w-0 flex-1 text-sm"
+                placeholder="추가"
+                title={`${quotedChain} 섹터 내 세부항목 추가`}
+                aria-label={`${quotedChain} 섹터 내 세부항목 이름`}
+                className="h-7 w-40 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-medium text-white outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-[var(--accent)]"
               />
               <button
                 type="button"
+                aria-label="추가"
+                title="추가"
                 onClick={() => handleCreateChild(parentId)}
-                className="nes-btn shrink-0 border-[var(--accent)] bg-[var(--accent)] px-3 py-1 text-sm text-black opacity-0 transition-opacity hover:brightness-125 group-focus-within/create:opacity-100"
+                className={ICON_BUTTON_CLASS}
               >
-                추가
+                <PlusIcon className="h-4 w-4" />
               </button>
             </div>
           </td>
@@ -245,7 +294,9 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
       ? `${rootIndexById.get(sector.id)}. ${sector.name}`
       : sector.depth === 2
         ? `${toCircledNumber(row.siblingIndex)} ${sector.name}`
-        : `${row.siblingIndex}) ${sector.name}`
+        : sector.depth >= 3
+          ? `(${row.siblingIndex}) ${sector.name}`
+          : `${row.siblingIndex}) ${sector.name}`
     const isRenaming = renamingId === sector.id
     return (
       <DroppableSectorRow
@@ -270,6 +321,7 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
               {isRenaming ? (
                 <input
                   type="text"
+                  maxLength={MAX_SECTOR_NAME_LENGTH}
                   autoFocus
                   value={renameValue}
                   onChange={e => setRenameValue(e.target.value)}
@@ -289,47 +341,37 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
               )}
             </div>
             <div
-              className={`flex shrink-0 items-center gap-3 ${isRenaming ? '' : 'opacity-0 transition-opacity group-hover:opacity-100'}`}
+              className={`flex shrink-0 items-center gap-1 ${isRenaming ? '' : 'opacity-0 transition-opacity group-hover:opacity-100'}`}
             >
               {isRenaming ? (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => submitRename(sector)}
-                    className="nes-btn border-[var(--accent)] bg-[var(--accent)] px-3 py-1 text-sm text-black hover:brightness-125"
-                  >
-                    확인
+                  <button type="button" aria-label="변경 확인" title="확인" onClick={() => submitRename(sector)} className={ICON_BUTTON_CLASS}>
+                    <CheckIcon className="h-4 w-4" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={cancelRename}
-                    className="nes-btn border-gray-600 bg-black px-3 py-1 text-sm text-white hover:bg-gray-800"
-                  >
-                    취소
+                  <button type="button" aria-label="변경 취소" title="취소" onClick={cancelRename} className={ICON_BUTTON_CLASS}>
+                    <CloseIcon className="h-4 w-4" />
                   </button>
                 </>
               ) : (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => toggleAddChild(sector.id)}
-                    className="nes-btn border-[var(--accent)] bg-[var(--accent)] px-3 py-1 text-sm text-black hover:bg-[var(--accent-hover)]"
-                  >
-                    추가
+                  {sector.depth < MAX_SECTOR_DEPTH ? (
+                    <button type="button" aria-label="세부 섹터 추가" title="추가" onClick={() => toggleAddChild(sector.id)} className={ICON_BUTTON_CLASS}>
+                      <PlusIcon className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <span className="inline-block h-7 w-7 shrink-0" aria-hidden="true" />
+                  )}
+                  <button type="button" aria-label="이름 변경" title="변경" onClick={() => startRename(sector)} className={ICON_BUTTON_CLASS}>
+                    <EditIcon className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
-                    onClick={() => startRename(sector)}
-                    className="nes-btn border-[var(--accent)] bg-[var(--accent)] px-3 py-1 text-sm text-black hover:brightness-125"
-                  >
-                    변경
-                  </button>
-                  <button
-                    type="button"
+                    aria-label="삭제"
+                    title="삭제"
                     onClick={() => remove(sector.id, sector.name)}
-                    className="nes-btn border-red-600 bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
+                    className={`${ICON_BUTTON_CLASS} hover:!text-red-500`}
                   >
-                    삭제
+                    <TrashIcon className="h-4 w-4" />
                   </button>
                 </>
               )}
@@ -352,6 +394,10 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
       onDragEnd={event => {
         setIsDraggingSector(false)
         setDraggedSector(null)
+        if (exceedsMaxDepth(event)) {
+          window.alert(`섹터는 ${MAX_SECTOR_LEVELS}단계까지만 만들 수 있습니다.`)
+          return
+        }
         handleSectorDragEnd(event)
       }}
       onDragCancel={() => {
@@ -362,19 +408,25 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
       <div className="flex min-h-0 flex-1 flex-col">
         {toolbarContainer ? createPortal(
           <div className="ml-2 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleExpandAll}
-              className="nes-btn border-[var(--accent)] bg-[var(--accent)] px-2 py-1 text-xs text-black hover:brightness-125"
-            >
-              펼치기
+            <button type="button" aria-label="전체 펼치기" title="전체 펼치기" onClick={handleExpandAll} className={ICON_BUTTON_CLASS}>
+              <ExpandAllIcon className="h-4 w-4" />
             </button>
-            <button
-              type="button"
-              onClick={handleCollapseAll}
-              className="nes-btn border-red-600 bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
-            >
-              접기
+            <button type="button" aria-label="전체 접기" title="전체 접기" onClick={handleCollapseAll} className={ICON_BUTTON_CLASS}>
+              <CollapseAllIcon className="h-4 w-4" />
+            </button>
+            {/* 최상위 섹터 추가 — 드롭다운과 같은 높이(h-7)에 10글자 정도 폭만 차지한다. */}
+            <input
+              type="text"
+              maxLength={MAX_SECTOR_NAME_LENGTH}
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleCreate()}
+              placeholder="섹터 추가"
+              aria-label="최상위 섹터 이름"
+              className="ml-2 h-7 w-40 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-medium text-white outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-[var(--accent)]"
+            />
+            <button type="button" aria-label="섹터 추가" title="추가" onClick={handleCreate} className={ICON_BUTTON_CLASS}>
+              <PlusIcon className="h-4 w-4" />
             </button>
           </div>,
           toolbarContainer,
@@ -387,29 +439,6 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
             <div key={columnIndex} className="h-full overflow-auto scrollbar-hide">
               <table className="nes-table is-dark custom-page-table custom-sector-table h-full w-full text-sm [&_td]:border-white/10">
                 <tbody>
-                  {columnIndex === 0 && (
-                    <tr>
-                      <td className="py-0.5 text-left">
-                        <div className="group/create flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={newName}
-                            onChange={e => setNewName(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && handleCreate()}
-                            placeholder="섹터 추가"
-                            className="nes-input is-dark min-w-0 flex-1 text-sm"
-                          />
-                          <button
-                            type="button"
-                            onClick={handleCreate}
-                            className="nes-btn shrink-0 border-[var(--accent)] bg-[var(--accent)] px-3 py-1 text-sm text-black opacity-0 transition-opacity hover:brightness-125 group-focus-within/create:opacity-100"
-                          >
-                            추가
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
                   {rows.map(renderRow)}
                 </tbody>
               </table>

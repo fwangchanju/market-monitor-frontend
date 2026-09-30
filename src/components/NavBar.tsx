@@ -50,7 +50,7 @@ export default function NavBar() {
         aria-label="홈으로 이동: 지도 전체 종목"
         className="flex h-[60px] shrink-0 items-center"
       >
-        <img src={marketryLogo} alt="" className="h-[48.3px] w-auto max-w-[18rem] object-contain" />
+        <img src={marketryLogo} alt="" className="h-[40.9px] w-auto max-w-[18rem] object-contain" />
       </Link>
       <div ref={profileMenuRef} className="relative flex h-16 items-center">
         <button

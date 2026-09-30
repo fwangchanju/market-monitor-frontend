@@ -138,6 +138,7 @@ export default function MarketMapCustomPage() {
     onChangeSectorFilterEnabled,
     boxLabelMinAreaPercent,
     stockLabelMode,
+    stockPopupOnHover,
     decimalPlaces,
     colorScale,
     handleExcludeSector,
@@ -271,10 +272,10 @@ export default function MarketMapCustomPage() {
   }
 
   const copyLabel = copyStatus === 'copied' ? 'Copied' : copyStatus === 'error' ? 'Failed' : 'Copy'
-  const downloadLabel = downloadStatus === 'error' ? 'Failed' : 'Download'
+  const downloadLabel = downloadStatus === 'error' ? '다운로드 실패' : '다운로드'
 
   return (
-    <div className="flex h-screen select-none flex-col overflow-hidden">
+    <div className="flex h-screen select-none flex-col overflow-hidden bg-black">
       <NavBar />
       <SubNavBar
         actions={
@@ -291,23 +292,21 @@ export default function MarketMapCustomPage() {
         }
       />
       <div className="flex min-h-0 flex-1">
-        {/* 설정 사이드바가 열려있으면 공유 캡처에도 같이 포함되도록, captureRef를 [세 번째 바+본문]
-            열 + 사이드바를 감싸는 바깥 wrapper로 둔다 — 사이드바가 열리면 세 번째 바(마켓명/커스텀
-            모드/시간)까지 같이 밀려서 좁아진다(본문만 밀리지 않는다). */}
+        {/* 공유 캡처(captureRef)는 [세 번째 바+본문] 열만 찍는다 — 설정 사이드바는 캡처에 넣지 않는다.
+            data-captureid는 백엔드 렌더러가 잡는 셀렉터라 바깥 wrapper에 그대로 둔다. */}
         <div
-          ref={captureRef}
           data-captureid={CAPTURE_ID.MAP}
           data-capture-ready={!isLoading}
-          className="flex min-h-0 flex-1 bg-black"
+          className="relative z-10 -mt-[10.5px] flex min-h-0 flex-1 bg-black"
         >
           {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서(overflow: visible이면 내부 콘텐츠의
               min-content 폭을 그대로 강제해서 사이드바 쪽을 밀어냄) 창을 좁혀도 사이드바(w-80)가
               항상 같은 폭을 유지하게 한다 — 내부 콘텐츠(트리맵)가 넘치면 이 컬럼 안에서만 처리된다. */}
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-black">
+          <div ref={captureRef} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black">
             {/* relative + absolute 중앙 배치: 커스텀 모드 표시를 grid 가운데 열로 두면 좌/우 칸의
                 콘텐츠 폭(마켓명·지수, 시간)이 달라질 때마다 가운데 열 자체의 중심이 바뀌어서 바
                 전체 기준으로는 중앙이 아니게 된다 — 바 전체 폭 기준 절대 중앙에 고정한다. */}
-            <div className="relative flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-1 pr-3 text-sm font-bold text-white">
+            <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-2 pr-3 text-sm font-bold text-white">
               <div className="flex items-center gap-2 whitespace-nowrap">
                 <MarketMapMarketCombobox
                   market={market}
@@ -317,20 +316,18 @@ export default function MarketMapCustomPage() {
                   }}
                 />
                 <MarketMapPeriodCombobox />
+                {data?.snapshotTime && (
+                  <span className={`${FONT_BAR_TIME} ml-1 flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
+                    <span>{toMarketMapSnapshotDateLabel(data.snapshotTime)}</span>
+                    <span>{toMarketMapSnapshotTimeOnlyLabel(data.snapshotTime)}</span>
+                  </span>
+                )}
               </div>
               <span
                 className={`${FONT_BAR_MODE_STATUS} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-gray-400`}
               >
                 {modeStatusText}
               </span>
-              <div className="flex items-center gap-3">
-                {data?.snapshotTime && (
-                  <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
-                    <span>{toMarketMapSnapshotDateLabel(data.snapshotTime)}</span>
-                    <span>{toMarketMapSnapshotTimeOnlyLabel(data.snapshotTime)}</span>
-                  </span>
-                )}
-              </div>
             </div>
             <div className="flex min-h-0 flex-1">
               <div className="flex min-h-0 flex-1 flex-col bg-black">
@@ -397,6 +394,7 @@ export default function MarketMapCustomPage() {
                   colorScale={colorScale}
                   labelMinAreaPercent={boxLabelMinAreaPercent}
                   stockLabelMode={stockLabelMode}
+                  stockPopupOnHover={stockPopupOnHover}
                   decimalPlaces={decimalPlaces}
                   topPickSectorKeys={topPickSectorKeys}
                   strongIndustryColor={strongIndustryColor}

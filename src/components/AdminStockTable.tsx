@@ -9,6 +9,7 @@ import { useAssignStockSector, useBulkAssignStockSector, useUpdateStockAlias } f
 import { useMarketValueTiers } from '@/hooks/useMarketValueTiers'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import Spinner from './Spinner'
+import { FONT_BAR_TIME } from './FontStyle'
 import { CheckIcon, ChevronDownIcon, RedoIcon, RefreshIcon, SearchIcon, UndoIcon } from './icons/MarketMapIcons'
 
 interface Props {
@@ -1779,9 +1780,9 @@ export default function AdminStockTable({
   const toolbar = (
     <div className="flex h-full min-h-0 w-full items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <p className="text-sm font-bold text-white">
-            종목수 ({toCount(sorted.length)}
-            {sorted.length !== items.length ? ` / ${toCount(items.length)}` : ''})
+          {/* 지도 설정창 제목 옆과 같은 "표시/전체종목" 표기 — 필터가 없으면 전체 수만 보여준다. */}
+          <p className={`${FONT_BAR_TIME} ml-2 whitespace-nowrap text-gray-400`}>
+            {sorted.length !== items.length ? `${toCount(sorted.length)}/${toCount(items.length)}` : toCount(items.length)}종목
           </p>
           <div className="flex items-center gap-2">
             <div

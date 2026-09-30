@@ -132,10 +132,84 @@ export function ClockIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+// 공유 — 상자에서 위로 나오는 화살표. (겹친 사각형은 "복사"라서 CopyIcon으로 따로 둔다.)
 export function ShareIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" />
+      <path d="m16 6-4-4-4 4" />
+      <path d="M12 2v13" />
+    </svg>
+  )
+}
+
+export function PlusIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  )
+}
+
+export function EditIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  )
+}
+
+export function TrashIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m5 4v7m4-7v7" />
+    </svg>
+  )
+}
+
+export function CloseIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  )
+}
+
+// 전체 펼치기 — 위/아래로 벌어지는 쉐브론 두 개.
+export function ExpandAllIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="m7 15 5 5 5-5" />
+      <path d="m7 9 5-5 5 5" />
+    </svg>
+  )
+}
+
+// 전체 접기 — 가운데로 모이는 쉐브론 두 개.
+export function CollapseAllIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="m7 20 5-5 5 5" />
+      <path d="m7 4 5 5 5-5" />
+    </svg>
+  )
+}
+
+// 텔레그램 종이비행기 — 공유 팝업의 텔레그램 공유 버튼용.
+export function TelegramIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M21.5 3.5 2.5 10.8l6 2.2 2.2 6.4 3.3-4.3 4.7 3.4z" />
+      <path d="m8.5 13 9-6.5-6.8 8.4" />
+    </svg>
+  )
+}
+
+export function CopyIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
     </svg>
   )
