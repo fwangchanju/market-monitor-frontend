@@ -1,5 +1,4 @@
 import { Children, Fragment, isValidElement, useLayoutEffect, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react'
-import { useIsLoggedIn } from '@/hooks/useSession'
 import type { DepthMetric } from '@/hooks/useGlobalSettings'
 import type { StockChangeFilter, SectorChangeFilter } from '@/hooks/useFilteredMarketMapTree'
 import type { ColorScaleConfig, ColorScaleThreshold, LegendSwatch } from '@/utils/marketMapColorScale'
@@ -1470,10 +1469,9 @@ export function SettingsColorSection({
   legendSwatches: LegendSwatch[]
   colorEditorProps?: ColorThresholdEditorProps | null
 }) {
-  // 색상 범위는 /api/custom/scale(로그인 사용자 본인 값)을 쓰는 커스텀 데이터라, admin 여부가 아니라
-  // 로그인 여부로 노출을 가른다(가입/로그인 전환 지시서: useIsAdmin 기반 커스텀 게이팅을 로그인 게이팅으로 전환).
-  const isLoggedIn = useIsLoggedIn()
-  if (!isLoggedIn || colorScaleDraft === null) return null
+  // 색상 설정은 비로그인에게도 보인다 — 기본 색상(공개 /map/scale)으로 시작해서 바꿀 수 있고, 비로그인의
+  // 변경은 서버에 저장되지 않고 이 탭의 세션에만 남는다(다른 화면 설정과 같다).
+  if (colorScaleDraft === null) return null
 
   const thresholdIndices = new Map(colorScaleDraft.thresholds.map((threshold, index) => [threshold.thresholdPercent, index]))
 

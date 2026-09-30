@@ -39,5 +39,5 @@ export function useMarketMapDrilldown<T extends MarketMapSectorNode>(rootNodes: 
   const goToDepth = (depth: number) => setPath(prev => prev.slice(0, depth))
   const reset = () => setPath([])
 
-  return { path, currentNode, currentSiblings, enterSector, goBack, goToDepth, reset }
+  return { path, setPath, currentNode, currentSiblings, enterSector, goBack, goToDepth, reset }
 }

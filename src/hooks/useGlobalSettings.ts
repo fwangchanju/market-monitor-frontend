@@ -299,9 +299,16 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 전에도 실제로 보여주는 지도 색이 곧바로 바뀐다 — 별도의 미리보기 트리맵이 필요 없다.
   const { data: colorScaleServerData } = useMarketMapColorScale()
   const [colorScaleDraft, setColorScaleDraft] = useState<ColorScaleConfig | null>(null)
+  // 비로그인은 서버에 저장할 수 없으므로, 이 탭에서 바꾼 색상 설정은 세션(sessionStorage)에만 남긴다 — 다른
+  // 화면 설정(usePageSetting의 비로그인 동작)과 같다. 로그인 사용자는 서버 저장이라 이 값을 쓰지 않는다.
+  const [localColorScale, setLocalColorScale] = usePersistedState<ColorScaleConfig | null>('marketMap.localColorScale', null)
   if (colorScaleServerData && colorScaleDraft === null) {
     // 방어적 복사 — react-query 캐시가 들고 있는 참조를 그대로 draft로 물고 있지 않도록.
-    setColorScaleDraft({ thresholds: colorScaleServerData.thresholds.map(threshold => ({ ...threshold })) })
+    setColorScaleDraft(
+      !isLoggedIn && localColorScale
+        ? { thresholds: localColorScale.thresholds.map(threshold => ({ ...threshold })) }
+        : { thresholds: colorScaleServerData.thresholds.map(threshold => ({ ...threshold })) },
+    )
   }
   // "색상 커스텀 사용" 토글 — 순수 로컬(세션스토리지) 상태. draft(=저장 대상)와는 완전히 분리돼 있어서
   // 꺼도 draft에 저장해둔 값은 건드리지 않고, 그냥 실제 지도에 넘기는 값만 빈 스케일(=기본 프리셋)로 바꿔치기한다.
@@ -426,6 +433,14 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
       })
       const idsToDelete = Array.from(new Set(resolvedGroups.flatMap(group => group.losingIds)))
       const entriesToSave = resolvedGroups.filter(group => group.edited).map(group => group.entry)
+
+      // 비로그인은 서버에 저장하지 않는다 — 정리된 결과를 화면 설정과 이 탭의 세션에만 반영한다.
+      if (!isLoggedIn) {
+        const nextDraft = { thresholds: resolvedGroups.map(group => group.entry) }
+        setColorScaleDraft(nextDraft)
+        setLocalColorScale(nextDraft)
+        return
+      }
 
       // 같은 thresholdPercent는 백엔드에서 중복 불가이므로, 충돌 행 삭제를 완료한 다음에 저장한다.
       await Promise.all(idsToDelete.map(id => deleteThresholdMutation.mutateAsync(id)))

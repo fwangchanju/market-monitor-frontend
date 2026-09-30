@@ -17,7 +17,7 @@ import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
 import { MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/MarketMapControls'
 import Spinner from '@/components/Spinner'
-import NavBarPageActions from '@/components/NavBarPageActions'
+import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/components/NavBarPageActions'
 import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
@@ -154,7 +154,7 @@ export default function MarketMapCustomPage() {
   const [zoomOutRequestDepth, setZoomOutRequestDepth] = useState<number | null>(null)
   const captureRef = useRef<HTMLDivElement>(null)
 
-  const { path, currentNode, currentSiblings, enterSector, goToDepth, reset } = useMarketMapDrilldown(filteredRootNodes)
+  const { path, setPath, currentNode, currentSiblings, enterSector, goToDepth, reset } = useMarketMapDrilldown(filteredRootNodes)
 
   // "업종 분류 레벨" 뎁스 제한을 "지금 보고 있는 위치"(currentNode, 없으면 최상위) 기준으로 매번 새로
   // 적용한다 — 진짜 루트 기준 절대값이 아니라, 어디로 드릴다운하든 거기서부터 다시 N단계가 보이는
@@ -246,6 +246,91 @@ export default function MarketMapCustomPage() {
     setZoomOutRequestDepth(null)
   }
 
+  // 들어간 단계 = 브라우저 기록 한 칸. 분류에 한 단계 들어갈 때마다 기록에 한 칸씩 쌓아서(직접 깊은 단계로
+  // 들어가면 그 단계 수만큼), 브라우저 뒤로가기(⌘[, 트랙패드 스와이프, 마우스 뒤로가기 버튼)를 연달아
+  // 눌러도 칸이 있는 만큼 계속 한 단계씩 올라간다. 전체 화면에서 더 누르면 원래대로 사이트 이전 페이지로
+  // 나간다. 앞으로가기(⌘])는 들어갔던 단계로 다시 내려간다. 각 칸은 그 시점의 경로(marketMapPath)를 가진다.
+  const historyDepthRef = useRef(0) // 지금 브라우저 기록 위치가 가리키는 깊이
+  const historyConsumingRef = useRef(false) // 코드가 일으킨 history.go()의 popstate는 무시한다
+  const historyPathnameRef = useRef('') // 기록 칸을 쌓은 주소 — 다른 주소로 이동했으면 go()로 정리하지 않는다
+  const prevPathLengthRef = useRef(0)
+  const pendingUpDepthRef = useRef<number | null>(null)
+
+  // 위로 가는 요청 — 줌아웃 애니메이션 중이면 가장 위쪽 목표 깊이만 기억해 뒀다가 끝나면 이어서 처리한다.
+  const requestDepth = (target: number) => {
+    if (zoomOutRequestDepth !== null) {
+      pendingUpDepthRef.current = pendingUpDepthRef.current === null ? target : Math.min(pendingUpDepthRef.current, target)
+      return
+    }
+    handleGoToDepth(target)
+  }
+  useEffect(() => {
+    if (zoomOutRequestDepth !== null || pendingUpDepthRef.current === null) return
+    const target = pendingUpDepthRef.current
+    pendingUpDepthRef.current = null
+    if (target < path.length) handleGoToDepth(target)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleGoToDepth는 매 렌더 새 함수
+  }, [zoomOutRequestDepth, path.length])
+
+  // 경로 길이가 바뀔 때 기록을 맞춘다 — 들어갈 때는 칸을 쌓고, 버튼/백스페이스/시장 전환 등으로 올라올 때는
+  // 남은 칸을 history.go()로 정리한다(뒤로가기로 올라온 경우는 이미 칸이 소모돼 있어 할 일이 없다).
+  useEffect(() => {
+    const depth = path.length
+    const previous = prevPathLengthRef.current
+    prevPathLengthRef.current = depth
+    if (depth > previous) {
+      if (depth > historyDepthRef.current) {
+        for (let k = historyDepthRef.current + 1; k <= depth; k++) {
+          window.history.pushState({ ...(window.history.state ?? {}), marketMapPath: path.slice(0, k) }, '')
+        }
+        historyDepthRef.current = depth
+        historyPathnameRef.current = window.location.pathname
+      }
+    } else if (depth < previous && depth < historyDepthRef.current) {
+      const stale = historyDepthRef.current - depth
+      historyDepthRef.current = depth
+      if (window.location.pathname === historyPathnameRef.current) {
+        historyConsumingRef.current = true
+        window.history.go(-stale)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 길이가 바뀔 때만 반응하면 된다(path 내용은 그때의 값을 쓴다)
+  }, [path.length])
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (historyConsumingRef.current) {
+        historyConsumingRef.current = false
+        return
+      }
+      // 이 지도 화면 안에서의 이동만 다룬다 — 다른 페이지로 나가는 뒤로가기는 그대로 둔다.
+      if (!window.location.pathname.startsWith('/map')) return
+      const target: string[] = Array.isArray(e.state?.marketMapPath) ? e.state.marketMapPath : []
+      historyDepthRef.current = target.length
+      if (target.length < path.length) requestDepth(target.length)
+      else if (target.length > path.length) setPath(target)
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- requestDepth/handleGoToDepth는 매 렌더 새 함수이고 path/zoomOutRequestDepth로 충분히 갱신된다
+  }, [path, zoomOutRequestDepth])
+
+  // 백스페이스 = 브라우저 뒤로가기와 같다(한 단계 위로). 돌아가는 버튼이 눈에 잘 안 띄어서 백스페이스를 누르는
+  // 경우가 많다. 글자를 입력하는 중(입력창/편집 영역)이거나 수정키가 같이 눌렸거나 공유 팝업이 떠 있거나
+  // 이미 전체 화면이면 동작하지 않고, 키를 계속 누르고 있어도(자동 반복) 한 번만 동작한다.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Backspace' || e.repeat) return
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+      const target = e.target
+      if (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return
+      if (isShareOpen || historyDepthRef.current <= 0) return
+      e.preventDefault()
+      window.history.back()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isShareOpen])
+
   const handleCopy = async () => {
     if (!captureRef.current) return
     setCopyStatus('copying')
@@ -288,6 +373,7 @@ export default function MarketMapCustomPage() {
             isNativeFullscreen={isNativeFullscreen}
             onToggleFullscreen={handleToggleNativeFullscreen}
             showSnapshotControls={Boolean(data?.snapshotTime)}
+            showRefresh={false}
           />
         }
       />
@@ -322,6 +408,7 @@ export default function MarketMapCustomPage() {
                     <span>{toMarketMapSnapshotTimeOnlyLabel(data.snapshotTime)}</span>
                   </span>
                 )}
+                <PageRefreshButton onRefresh={refetchMarketMap} isRefreshing={isRefetchingMarketMap} className="-ml-[10px]" helpText={SNAPSHOT_REFRESH_HELP} />
               </div>
               <span
                 className={`${FONT_BAR_MODE_STATUS} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-gray-400`}
