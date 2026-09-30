@@ -5,14 +5,15 @@ import MarketMapCustomPage from './pages/MarketMapCustomPage'
 import SectorChangeRatePage from './pages/SectorChangeRatePage'
 import CustomManagePage from './pages/CustomManagePage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
+import ProfilePage from './pages/ProfilePage'
 import LoginGateProvider from './components/LoginGateProvider'
 
 // 페이지 전체와 document.body로 포털 렌더링한 메뉴/팝업에 같은 숫자 폭 규칙을 적용한다.
 // 공통 스냅샷 시간은 FONT_BAR_TIME의 normal-nums로 이 상속에서 제외한다.
 function PageNumberStyle() {
   const { pathname } = useLocation()
-  const useTabularNumbers = pathname === '/sector' || pathname.startsWith('/sector/')
-    || pathname === '/admin' || pathname.startsWith('/admin/')
+  const useTabularNumbers = pathname === '/group' || pathname.startsWith('/group/')
+    || pathname === '/custom' || pathname.startsWith('/custom/')
 
   useLayoutEffect(() => {
     document.body.classList.toggle('tabular-nums', useTabularNumbers)
@@ -22,6 +23,12 @@ function PageNumberStyle() {
   return null
 }
 
+function LegacyGroupRedirect() {
+  const { pathname, search, hash } = useLocation()
+  const groupPath = pathname.replace(/^\/(?:sector|industry)(?=\/|$)/, '/group')
+  return <Navigate to={`${groupPath}${search}${hash}`} replace />
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -29,23 +36,31 @@ export default function App() {
         <PageNumberStyle />
         <Routes>
           <Route path="/" element={<Navigate to="/map/allstock" replace />} />
-          <Route path="/summary" element={<MarketSummaryPage />} />
+          <Route path="/home" element={<MarketSummaryPage />} />
+          <Route path="/summary" element={<Navigate to="/home" replace />} />
           <Route path="/map" element={<Navigate to="/map/allstock" replace />} />
           <Route path="/map/kospi" element={<MarketMapCustomPage />} />
           <Route path="/map/kosdaq" element={<MarketMapCustomPage />} />
           <Route path="/map/allstock" element={<MarketMapCustomPage />} />
-          <Route path="/sector" element={<Navigate to="/sector/allstock" replace />} />
-          <Route path="/sector/kospi" element={<SectorChangeRatePage />} />
-          <Route path="/sector/kosdaq" element={<SectorChangeRatePage />} />
-          <Route path="/sector/allstock" element={<SectorChangeRatePage />} />
-          {/* IP 관리 AdminPage(/admin)와 옛 /admin/market-map 캡처 호환 경로는 가입/로그인 전환과 함께
-              제거했다 — 커스텀 섹터·종목 관리 화면(CustomManagePage)은 /admin/sector, /admin/stock을
-              그대로 쓴다(로그인 사용자 전용, 비로그인은 로그인 팝업). */}
-          <Route path="/admin/sector" element={<CustomManagePage />} />
-          <Route path="/admin/stock" element={<CustomManagePage />} />
+          <Route path="/group" element={<Navigate to="/group/allstock" replace />} />
+          <Route path="/group/kospi" element={<SectorChangeRatePage />} />
+          <Route path="/group/kosdaq" element={<SectorChangeRatePage />} />
+          <Route path="/group/allstock" element={<SectorChangeRatePage />} />
+          <Route path="/sector" element={<LegacyGroupRedirect />} />
+          <Route path="/sector/*" element={<LegacyGroupRedirect />} />
+          <Route path="/industry" element={<LegacyGroupRedirect />} />
+          <Route path="/industry/*" element={<LegacyGroupRedirect />} />
+          {/* 커스텀 관리의 주소는 /custom 아래에서 카테고리·종목 화면으로 나뉜다. */}
+          <Route path="/custom" element={<Navigate to="/custom/category" replace />} />
+          <Route path="/custom/category" element={<CustomManagePage />} />
+          <Route path="/custom/stock" element={<CustomManagePage />} />
+          {/* 기존 링크와 로그인 returnTo 호환을 위해 이전 주소는 새 주소로 보낸다. */}
+          <Route path="/admin/sector" element={<Navigate to="/custom/category" replace />} />
+          <Route path="/admin/stock" element={<Navigate to="/custom/stock" replace />} />
           {/* Google OAuth 동의 화면에 등록하는 공개 페이지 — 로그인 여부와 무관하게 누구나 볼 수
               있어야 하고, 세션/시세 등 데이터 API를 호출하지 않는 순수 정적 페이지다. */}
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/map/allstock" replace />} />
         </Routes>
       </LoginGateProvider>

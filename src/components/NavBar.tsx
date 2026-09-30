@@ -1,23 +1,44 @@
-import { Link, useLocation } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useSession, useLogout, useSessionKeepAlive, useLocalDevLogin } from '@/hooks/useSession'
-import { useLoginGate } from '@/hooks/useLoginGate'
+import accountAvatar from '@/assets/account_avatar.png'
 import homeIcon from '@/assets/home_icon.jpg'
 
-// 모든 페이지에서 항상 똑같이 고정되는 최상단 바 — 홈 이동과 로그인 상태/로그아웃을 담당한다.
+// 모든 페이지에서 항상 똑같이 고정되는 최상단 바 — 홈 이동과 로그인 상태/프로필 메뉴를 담당한다.
 // 로그인 버튼은 SubNavBar 우측 "일괄변경"류 accent 버튼(nes-btn + var(--accent))과 같은 톤을 쓰고,
-// 로그인한 사용자의 이메일·로그아웃 목록은 SubNavBar의 마켓/커스텀 탭 hover 목록과 동일한 패턴
-// (그룹 hover로 펼치는 bg-zinc-900 목록)을 그대로 재사용한다 — 새 팝업 스타일을 만들지 않는다.
+// 로그인한 사용자는 우측 아바타에서 계정 메뉴를 연다.
 // 등락률 전용 색(--stock-up/--stock-down/--negative, 즉 red/blue 계열)은 쓰지 않는다.
 export default function NavBar() {
-  const localAutoLogin = import.meta.env.DEV && import.meta.env.VITE_LOCAL_AUTO_LOGIN === '1'
-  const { pathname } = useLocation()
   const { data: session, isLoading } = useSession()
-  const { requireLogin } = useLoginGate()
   const logout = useLogout()
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
+  const profileButtonRef = useRef<HTMLButtonElement>(null)
   useLocalDevLogin()
   // dev-login도 구글 로그인과 같은 15분짜리 접근 토큰을 발급하므로, localAutoLogin 여부와 무관하게
   // 로그인 상태면 동일하게 선제 갱신한다.
   useSessionKeepAlive(session?.authenticated ?? false)
+
+  useEffect(() => {
+    if (!isProfileMenuOpen) return
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!profileMenuRef.current?.contains(event.target as Node)) setIsProfileMenuOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsProfileMenuOpen(false)
+        profileButtonRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsideClick)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [isProfileMenuOpen])
 
   return (
     <header className="sticky top-0 z-20 flex h-12 items-center justify-between bg-zinc-900 px-4 shadow-lg">
@@ -28,36 +49,54 @@ export default function NavBar() {
       >
         <img src={homeIcon} alt="" className="h-9 w-auto max-w-[8rem] object-contain" />
       </Link>
-      {localAutoLogin ? (
-        session?.authenticated ? (
-          <span className="max-w-[12rem] truncate text-sm text-gray-300">
-            {session.email || `사용자 ${session.userId}`}
-          </span>
-        ) : null
-      ) : !isLoading &&
+      {!isLoading &&
         (session?.authenticated ? (
-          <div className="group relative flex h-12 items-center">
-            <span className="max-w-[12rem] truncate text-sm text-gray-300 group-hover:text-white">
-              {session.email}
-            </span>
-            <div className="absolute right-0 top-full z-30 hidden w-max flex-col bg-zinc-900 py-1 shadow-lg group-hover:flex">
-              <button
-                type="button"
-                onClick={() => logout.mutate()}
-                className="px-3 py-1 text-left text-sm whitespace-nowrap text-white hover:bg-gray-800"
-              >
-                로그아웃
-              </button>
-            </div>
+          <div ref={profileMenuRef} className="relative flex h-12 items-center">
+            <button
+              ref={profileButtonRef}
+              type="button"
+              aria-label={isProfileMenuOpen ? '계정 메뉴 닫기' : '계정 메뉴 열기'}
+              aria-expanded={isProfileMenuOpen}
+              onClick={() => setIsProfileMenuOpen(open => !open)}
+              className="size-9 overflow-hidden rounded-full ring-2 ring-transparent hover:ring-zinc-400 focus-visible:outline-none focus-visible:ring-[var(--accent)]"
+            >
+              <img src={accountAvatar} alt="" className="size-full object-cover" />
+            </button>
+            {isProfileMenuOpen && (
+              <div className="absolute right-0 top-full z-30 w-64 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-800 py-2 text-white shadow-xl">
+                <div className="flex items-center gap-3 border-b border-zinc-700 px-4 py-3 text-sm">
+                  <img src={accountAvatar} alt="" className="size-10 shrink-0 rounded-full object-cover" />
+                  <div className="min-w-0">
+                    <p className="font-semibold">내 계정</p>
+                    <p className="mt-1 truncate text-zinc-400">{session.email || `사용자 ${session.userId}`}</p>
+                  </div>
+                </div>
+                <Link to="/profile" onClick={() => setIsProfileMenuOpen(false)} className="block px-4 py-3 text-sm hover:bg-zinc-700 focus:bg-zinc-700">
+                  프로필
+                </Link>
+                <div className="mt-1 border-t border-zinc-700 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false)
+                      logout.mutate()
+                    }}
+                    disabled={logout.isPending}
+                    className="block w-full px-4 py-3 text-left text-sm hover:bg-zinc-700 focus:bg-zinc-700 disabled:opacity-50"
+                  >
+                    로그아웃
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={() => requireLogin(pathname)}
+          <Link
+            to="/profile"
             className="nes-btn border-[var(--accent)] bg-transparent px-3 py-1 text-xs font-bold text-[var(--accent)] hover:bg-[var(--accent)] hover:text-black"
           >
             로그인
-          </button>
+          </Link>
         ))}
     </header>
   )

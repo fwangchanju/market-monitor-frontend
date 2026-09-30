@@ -16,6 +16,19 @@
 
 @layer app {
 
+@font-face {
+  font-family: 'Roboto';
+  src: url('/fonts/roboto-latin.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+.font-roboto-latin {
+  font-family: 'Roboto', 'Pretendard', 'Noto Sans KR', sans-serif;
+}
+
 /* Pretendard 9단계 굵기(100~900) 파일을 public/fonts에 전부 받아뒀다 — 굵기를 자잘하게 바꿀 일이
    계속 생길 것 같아서, 파일을 다시 받을 필요 없이 아래 주석만 풀면 바로 쓸 수 있게 미리 준비해둔다.
    지금 실제로 쓰는 건 400/500/700.
@@ -54,12 +67,12 @@
   font-weight: 500;
   font-display: swap;
 }
-/* @font-face {
+@font-face {
   font-family: 'Pretendard';
   src: url('/fonts/pretendard-semibold.woff2') format('woff2');
   font-weight: 600;
   font-display: swap;
-} */
+}
 @font-face {
   font-family: 'Pretendard';
   src: url('/fonts/pretendard-bold.woff2') format('woff2');
@@ -237,6 +250,14 @@ a { color: var(--accent-light); text-decoration: none; }
 .nes-table.is-dark {
   background-color: var(--surface);
 }
+.custom-sector-table {
+  border: 0;
+  border-image: none;
+  padding: 0;
+}
+.nes-table.is-dark.custom-page-table {
+  background-color: #000;
+}
 /* nes.css의 .nes-table.is-dark::before가 position:absolute+inset 0인데 table 자체엔
    position이 없어서, 가장 가까운 positioned 조상(대개 뷰포트)을 기준으로 화면 전체를 덮는
    빈 레이어가 되어 클릭을 전부 가로채는 버그가 있었음. 장식용 pseudo-element라 그냥 제거. */
@@ -286,6 +307,9 @@ a { color: var(--accent-light); text-decoration: none; }
 .settings-section-list {
   counter-reset: settings-section;
 }
+.settings-section-num {
+  font-weight: 500;
+}
 .settings-section-num::before {
   counter-increment: settings-section;
   content: counter(settings-section) ". ";
@@ -307,12 +331,14 @@ a { color: var(--accent-light); text-decoration: none; }
 .settings-subsection-num::before {
   counter-increment: settings-subsection;
   content: counter(settings-subsection) ") ";
+  font-variant-numeric: tabular-nums;
 }
 
 /* 탭 제목 아래의 중제목은 화면에 보이는 순서대로 1), 2)로 매긴다. */
 .settings-sidebar-tab-content .settings-section-num::before {
   counter-increment: settings-section;
   content: counter(settings-section) ") ";
+  font-variant-numeric: tabular-nums;
 }
 
 .settings-sidebar-tab-content .settings-section-bullet::before,
@@ -338,7 +364,7 @@ a { color: var(--accent-light); text-decoration: none; }
 }
 
 .settings-sidebar-tab-content[data-align-second-heading] .settings-third-text-threshold {
-  margin-top: 50px;
+  margin-top: 44px;
 }
 
 .settings-sidebar-tab-content[data-align-second-heading] .settings-fourth-decimal-places {
@@ -346,6 +372,11 @@ a { color: var(--accent-light); text-decoration: none; }
 }
 
 .settings-sidebar-tab-content[data-align-second-heading] .settings-second-exclude {
+  margin-top: 30px;
+  border-color: transparent;
+}
+
+.settings-sidebar-tab-content[data-align-second-heading] .settings-second-sector-change {
   margin-top: 30px;
   border-color: transparent;
 }
