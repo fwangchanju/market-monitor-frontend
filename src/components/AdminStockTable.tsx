@@ -29,6 +29,7 @@ interface Props {
 type SortKey =
   | 'stockCode'
   | 'market'
+  | 'nxt'
   | 'stockName'
   | 'alias'
   | 'totalMarketValue'
@@ -47,6 +48,7 @@ const COLUMNS: { key: SortKey; header: string; width: string; align: 'center' | 
   { key: 'alias', header: '표시명 (약칭)', width: '8%', align: 'left' },
   { key: 'totalMarketValue', header: '시가총액', width: '10%', align: 'right' },
   { key: 'market', header: '마켓', width: '7%', align: 'center' },
+  { key: 'nxt', header: 'NXT', width: '5%', align: 'center' },
   { key: 'originCategoryName', header: '거래소 분류', width: '11%', align: 'left' },
   { key: 'parentSectorName', header: '대분류', width: '11%', align: 'right' },
   { key: 'midSectorName', header: '중분류', width: '11%', align: 'right' },
@@ -55,6 +57,10 @@ const COLUMNS: { key: SortKey; header: string; width: string; align: 'center' | 
 
 const alignClass = (align: 'center' | 'left' | 'right') =>
   align === 'right' ? 'text-right pr-4' : align === 'left' ? 'text-left pl-4' : 'text-center'
+
+// NXT 열에 보이는 값 — 필터 목록도 이 값 그대로 쓴다.
+const NXT_ENABLED_LABEL = 'O'
+const NXT_DISABLED_LABEL = '-'
 
 const MARKET_LABEL: Record<'KOSPI' | 'KOSDAQ', string> = { KOSPI: '코스피', KOSDAQ: '코스닥' }
 const MARKET_FILTER_ORDER = [MARKET_LABEL.KOSPI, MARKET_LABEL.KOSDAQ]
@@ -72,14 +78,19 @@ function compareStockName(a: string, b: string): number {
 }
 
 // 화면에 실제로 표시되는 값 기준 — 필터 옵션 목록/필터링/정렬 판정 전부 이 값으로 통일해서 화면과 어긋나지 않게 한다.
-type FilterKey = 'market' | 'originCategoryName' | 'parentSectorName' | 'midSectorName' | 'subSectorName'
+type FilterKey = 'market' | 'nxt' | 'originCategoryName' | 'parentSectorName' | 'midSectorName' | 'subSectorName'
 const FILTER_KEYS: readonly FilterKey[] = [
   'market',
+  'nxt',
   'originCategoryName',
   'parentSectorName',
   'midSectorName',
   'subSectorName',
 ]
+
+function createEmptyFilters(): Record<FilterKey, Set<string>> {
+  return Object.fromEntries(FILTER_KEYS.map(key => [key, new Set<string>()])) as Record<FilterKey, Set<string>>
+}
 
 function isFilterKey(key: SortKey): key is FilterKey {
   return (FILTER_KEYS as readonly string[]).includes(key)
@@ -192,6 +203,7 @@ function resolveSectorChain(sectorOptionsById: Map<number, SectorOption>, sector
 
 interface ItemDisplayValues {
   market: string
+  nxt: string
   originCategoryName: string
   parentSectorName: string
   midSectorName: string
@@ -202,6 +214,7 @@ function computeDisplayValues(item: StockSectorListItem, sectorOptionsById: Map<
   const chain = resolveSectorChain(sectorOptionsById, item.sectorId)
   return {
     market: MARKET_LABEL[item.market],
+    nxt: item.nxtEnabled ? NXT_ENABLED_LABEL : NXT_DISABLED_LABEL,
     originCategoryName: item.industryName ?? '-',
     parentSectorName: chain.rootName,
     midSectorName: chain.midName ?? '-',
@@ -1243,6 +1256,9 @@ const AdminStockRow = memo(function AdminStockRow({
         {item.totalMarketValue != null ? toJoEokDecimal(item.totalMarketValue / 100_000_000) : '-'}
       </td>
       <td className={`text-center ${marketColorClass(item.market)} ${rowHoverClass}`}>{MARKET_LABEL[item.market]}</td>
+      <td className={`text-center ${item.nxtEnabled ? 'text-[var(--accent)]' : 'text-gray-500'} ${rowHoverClass}`}>
+        {item.nxtEnabled ? NXT_ENABLED_LABEL : NXT_DISABLED_LABEL}
+      </td>
       <td className={`${alignClass('left')} text-gray-400 ${rowHoverClass}`}>{item.industryName ?? '-'}</td>
       <AdminStockSectorCell
         value={chain.rootName}
@@ -1537,20 +1553,15 @@ export default function AdminStockTable({
 
   const [excludedFilters, setExcludedFilters] = usePersistedState<Record<FilterKey, Set<string>>>(
     'adminStockTable.excludedSectorFilters',
-    {
-      market: new Set(),
-      originCategoryName: new Set(),
-      parentSectorName: new Set(),
-      midSectorName: new Set(),
-      subSectorName: new Set(),
-    },
+    createEmptyFilters(),
     {
       serialize: filters =>
         Object.fromEntries(Object.entries(filters).map(([key, value]) => [key, [...value]])),
-      deserialize: raw =>
-        Object.fromEntries(
-          Object.entries(raw as Record<FilterKey, string[]>).map(([key, value]) => [key, new Set(value)]),
-        ) as Record<FilterKey, Set<string>>,
+      // 예전에 저장된 값에는 나중에 생긴 필터 키가 없을 수 있어, 모든 키를 빈 집합으로 채운 뒤 덮어쓴다.
+      deserialize: raw => {
+        const saved = raw as Partial<Record<FilterKey, string[]>>
+        return Object.fromEntries(FILTER_KEYS.map(key => [key, new Set(saved[key] ?? [])])) as Record<FilterKey, Set<string>>
+      },
     },
   )
   // 종목명 필터는 다른 필터와 반대로 "선택한 종목코드만 남기기"(포함 방식)로 동작한다. 비어있으면 필터 없음.
@@ -1589,13 +1600,7 @@ export default function AdminStockTable({
     nameFilterStockCodes.size > 0 ||
     excludedMarketValueTiers.size > 0
   const handleClearAllFilters = () => {
-    setExcludedFilters({
-      market: new Set(),
-      originCategoryName: new Set(),
-      parentSectorName: new Set(),
-      midSectorName: new Set(),
-      subSectorName: new Set(),
-    })
+    setExcludedFilters(createEmptyFilters())
     setNameFilterStockCodes(new Set())
     setExcludedMarketValueTiers(new Set())
   }
@@ -1736,6 +1741,7 @@ export default function AdminStockTable({
         '표시명 (약칭)': item.alias ?? '',
         시가총액: item.totalMarketValue ?? '',
         마켓: display.market,
+        NXT: display.nxt,
         '거래소 분류': display.originCategoryName,
         '대분류': display.parentSectorName,
         '중분류': display.midSectorName,

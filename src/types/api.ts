@@ -271,6 +271,8 @@ export const StockSectorListItemSchema = z.object({
   stockCode: z.string(),
   market: MarketSchema,
   stockName: z.string(),
+  // NXT 거래 가능 종목(키움 nxtEnable=Y)인지.
+  nxtEnabled: z.boolean(),
   alias: z.string().nullable(),
   totalMarketValue: z.number().nullable(),
   marketValueTier: z.string().nullable(),
