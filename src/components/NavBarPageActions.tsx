@@ -100,7 +100,7 @@ export function PageRefreshButton({
           ref={tooltipRef}
           role="tooltip"
           style={{ position: 'fixed', left: tooltipPosition.left, top: tooltipPosition.top }}
-          className="z-50 w-max max-w-64 whitespace-pre-line rounded border border-[#7a6d55] bg-[#fff8e7] p-2 text-left text-xs font-normal leading-relaxed text-black shadow-lg"
+          className="z-50 w-max max-w-64 whitespace-pre-line rounded border border-slate-500 bg-[#2b3a4f] p-2 text-left text-xs font-normal leading-relaxed text-slate-100 shadow-lg"
         >
           {helpText}
         </span>
