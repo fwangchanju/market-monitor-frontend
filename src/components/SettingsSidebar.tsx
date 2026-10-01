@@ -6,7 +6,9 @@ import MarketMapColorThresholdEditorPanel, { type ColorThresholdEditorProps } fr
 import SettingsSectionIcon, { type SettingsSectionIconName } from '@/components/SettingsSectionIcon'
 import { RestoreToMapIcon } from '@/components/icons/MarketMapIcons'
 import type { MarketValueTierItem } from '@/types/api'
+import { FONT_BAR_TIME } from '@/components/FontStyle'
 import { HEATMAP_NAMES } from '@/utils/heatmapNames'
+import { toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { BOOKMARK_ORDER, type SettingsBookmarkId } from '@/utils/settingsBookmarks'
 
 export type { SettingsBookmarkId }
@@ -741,10 +743,12 @@ function SettingsClassificationSelector({
   isCustom,
   onToggleCustom,
   atBottom = false,
+  snapshotTime,
 }: {
   isCustom: boolean
   onToggleCustom: () => void
   atBottom?: boolean
+  snapshotTime?: string | null
 }) {
   const options = [
     { value: null, label: HEATMAP_NAMES.mine.tab },
@@ -780,6 +784,16 @@ function SettingsClassificationSelector({
           </button>
         ))}
       </div>
+      {atBottom && snapshotTime && (
+        <p className={`${FONT_BAR_TIME} mt-2 flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400`}>
+          <span className="flex items-center">
+            마지막 업데이트
+            <SettingHelpIcon label="마지막 업데이트" description="운영자가 종목 분류를 마지막으로 변경한 시각입니다." />
+          </span>
+          <span>{toMarketMapSnapshotDateLabel(snapshotTime)}</span>
+          <span>{toMarketMapSnapshotTimeOnlyLabel(snapshotTime)}</span>
+        </p>
+      )}
     </div>
   )
 }
@@ -1479,7 +1493,7 @@ export function SettingsExcludeSection({
         <SettingDescription>업종을 우클릭해 제외 가능</SettingDescription>
         <div className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
             {excludedSectors.length === 0 ? (
-              <p className="text-xs text-gray-400">제외된 범위 없음</p>
+              <p className="text-xs text-gray-400">제외된 업종이 없습니다.</p>
             ) : (
               excludedSectors.map(sector => (
                 <div key={sector.sectorId} className="flex items-center gap-1.5 py-0.5">
@@ -1659,6 +1673,8 @@ interface Props {
   plainContent?: ReactNode
   sectionOrder?: readonly SettingsSidebarSectionId[]
   classificationAtBottom?: boolean
+  // 하단 히트맵 선택 아래에 표시할 운영자 종목 분류 최종 변경 시각(지도 상단 표기와 같은 형식).
+  snapshotTime?: string | null
   // 사이드바 열림 상태는 페이지가 관리한다.
   isOpen: boolean
   onOpenChange: (open: boolean) => void
@@ -1697,6 +1713,7 @@ export default function SettingsSidebar({
   pageLabel,
   sectionOrder,
   classificationAtBottom = false,
+  snapshotTime,
   classificationSection = 'industry',
   isOpen,
   onOpenChange,
@@ -1885,7 +1902,7 @@ export default function SettingsSidebar({
           ) : null}
           {selectedSection.id === 'favorites' && bookmarkContext.enabled && bookmarkContext.ids.length === 0 && (
             <p className="text-xs leading-relaxed text-gray-400">
-              북마크한 항목이 없습니다.<br />항목 이름 옆의 북마크 아이콘을 눌러 추가하세요.
+              북마크한 항목이 없습니다.
             </p>
           )}
           {sectionContent.get(selectedSection.id)?.map((content, index) => <Fragment key={index}>{content}</Fragment>)}
@@ -1893,7 +1910,7 @@ export default function SettingsSidebar({
       )}
       </SettingsBookmarkContext.Provider>
       {classificationAtBottom && hasClassificationSelector && availableSections.length > 0 && (
-        <SettingsClassificationSelector isCustom={isCustom!} onToggleCustom={onToggleCustom!} atBottom />
+        <SettingsClassificationSelector isCustom={isCustom!} onToggleCustom={onToggleCustom!} atBottom snapshotTime={snapshotTime} />
       )}
     </div>
   )

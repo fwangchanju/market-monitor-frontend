@@ -284,6 +284,7 @@ export const customStockSectors: {
   stockCode: string
   market: 'KOSPI' | 'KOSDAQ'
   stockName: string
+  nxtEnabled: boolean
   alias: string | null
   totalMarketValue: number | null
   marketValueTier: string | null
@@ -296,6 +297,7 @@ export const customStockSectors: {
     stockCode: '005930',
     market: 'KOSPI',
     stockName: '삼성전자',
+    nxtEnabled: true,
     alias: null,
     totalMarketValue: 420_000_000_000_000,
     marketValueTier: 'Top 2',
@@ -308,6 +310,7 @@ export const customStockSectors: {
     stockCode: '000660',
     market: 'KOSPI',
     stockName: 'SK하이닉스',
+    nxtEnabled: true,
     alias: null,
     totalMarketValue: 130_000_000_000_000,
     marketValueTier: 'Top 2',
@@ -320,6 +323,7 @@ export const customStockSectors: {
     stockCode: '051910',
     market: 'KOSPI',
     stockName: 'LG화학',
+    nxtEnabled: true,
     alias: null,
     totalMarketValue: 29_000_000_000_000,
     marketValueTier: '대형주',
@@ -332,6 +336,7 @@ export const customStockSectors: {
     stockCode: '373220',
     market: 'KOSPI',
     stockName: 'LG에너지솔루션',
+    nxtEnabled: false,
     alias: 'LG엔솔',
     totalMarketValue: 93_000_000_000_000,
     marketValueTier: '대형주',
@@ -344,6 +349,7 @@ export const customStockSectors: {
     stockCode: '035420',
     market: 'KOSPI',
     stockName: 'NAVER',
+    nxtEnabled: false,
     alias: null,
     totalMarketValue: 32_000_000_000_000,
     marketValueTier: '대형주',
@@ -356,6 +362,7 @@ export const customStockSectors: {
     stockCode: '035720',
     market: 'KOSDAQ',
     stockName: '카카오',
+    nxtEnabled: false,
     alias: null,
     totalMarketValue: 18_000_000_000_000,
     marketValueTier: '중형주',
