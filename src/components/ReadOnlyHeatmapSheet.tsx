@@ -45,7 +45,7 @@ const COLOR = {
   headerBg: 'bg-[#2b3a4f]',
   headerText: 'text-slate-100',
   rowDivider: 'border-slate-800',
-  sortActive: 'text-sky-300',
+  sortActive: 'text-[var(--brand)]',
   sortInactive: 'text-slate-500',
   sortHover: 'hover:text-slate-300',
 } as const
@@ -129,7 +129,7 @@ export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, nxtOnly, n
     )
   }
   // 종목이 하나도 없어도 표 틀(검색창·머리글)은 그대로 보여준다 — 시트마다 화면 모양이 달라 보이지 않게 한다.
-  const emptyMessage = nxtOnly ? 'NXT 거래 종목이 아직 없습니다. 종목 정보 동기화(평일 오전 7시) 뒤에 표시됩니다.' : '표시할 KRX 분류가 없습니다.'
+  const emptyMessage = nxtOnly ? 'NXT 거래 종목이 아직 없습니다.\n평일 오전 7시 종목 정보 동기화 뒤에 표시됩니다.' : '표시할 KRX 분류가 없습니다.'
   return mode === 'stock' ? (
     <StockTable sectors={sectors} emptyMessage={emptyMessage} />
   ) : (
@@ -168,7 +168,7 @@ function SearchBar({ query, onChange, placeholder, ariaLabel, countLabel }: {
 function EmptyRow({ colSpan, message }: { colSpan: number; message: string }) {
   return (
     <tr>
-      <td colSpan={colSpan} className="px-3 py-8 text-center text-sm text-gray-400">
+      <td colSpan={colSpan} className="whitespace-pre-line px-3 py-8 text-center text-sm text-gray-400">
         {message}
       </td>
     </tr>
