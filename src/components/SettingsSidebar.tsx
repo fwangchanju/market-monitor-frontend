@@ -319,7 +319,7 @@ function DepthSelect({
       </select>
       {hintVisible && isCapped && !disabled && (
         <div role="status" className="pointer-events-none absolute bottom-full right-0 z-50 mb-1 w-56 rounded border border-slate-500 bg-[#2b3a4f] px-2 py-1 text-xs text-slate-100 shadow-lg">
-          <span className="inline-block whitespace-nowrap text-sky-300">1-1) 업종 표시 단계</span>를 높여야 선택이 가능합니다.
+          <span className="inline-block whitespace-nowrap text-[var(--brand)]">1-1) 업종 표시 단계</span>를 높여야 선택이 가능합니다.
         </div>
       )}
     </span>
@@ -742,11 +742,15 @@ export function SettingsEqualWeightSection({
 function SettingsClassificationSelector({
   heatmap,
   onSelectHeatmap,
+  nxtOnly,
+  onToggleNxtOnly,
   atBottom = false,
   snapshotTime,
 }: {
   heatmap: HeatmapKey
   onSelectHeatmap: (heatmap: HeatmapKey) => void
+  nxtOnly?: boolean
+  onToggleNxtOnly?: () => void
   atBottom?: boolean
   snapshotTime?: string | null
 }) {
@@ -785,6 +789,12 @@ function SettingsClassificationSelector({
           </button>
         ))}
       </div>
+      {/* MARKETRY(내 분류)에서는 분류는 그대로 두고 NXT 거래 종목만 남기는 스위치를 보여준다. */}
+      {heatmap === 'marketry' && onToggleNxtOnly && (
+        <div className="mt-3 text-sm">
+          <ToggleSwitch checked={Boolean(nxtOnly)} onChange={onToggleNxtOnly} label="NXT 종목만 보기" />
+        </div>
+      )}
       {atBottom && snapshotTime && (
         <p className={`${FONT_BAR_TIME} mt-2 flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400`}>
           <span className="flex items-center">
@@ -996,9 +1006,9 @@ export function SettingsSectorLevelSection({
   ]
   if (inBookmarkTab && bookmarkableIds.every(hideItem)) return null
   const depthMetricRangeDisabledReason = !sectorLevelEnabled
-    ? <><span className="inline-block whitespace-nowrap text-sky-300">1-1) 업종 표시 단계</span>를 켜야 선택이 가능합니다.</>
+    ? <><span className="inline-block whitespace-nowrap text-[var(--brand)]">1-1) 업종 표시 단계</span>를 켜야 선택이 가능합니다.</>
     : !depthMetricEnabled
-      ? <><span className="inline-block whitespace-nowrap text-sky-300">1-2) 표시 지표</span>를 켜야 선택이 가능합니다.</>
+      ? <><span className="inline-block whitespace-nowrap text-[var(--brand)]">1-2) 표시 지표</span>를 켜야 선택이 가능합니다.</>
       : null
 
   return (
@@ -1078,7 +1088,7 @@ export function SettingsSectorLevelSection({
             )}
             {isDepthMetricDisabled && depthMetricSectionHintVisible && (
               <div role="status" className={BLOCKED_HINT_CLASS}>
-                <span className="inline-block whitespace-nowrap text-sky-300">1-1) 업종 표시 단계</span>를 켜야 선택이 가능합니다.
+                <span className="inline-block whitespace-nowrap text-[var(--brand)]">1-1) 업종 표시 단계</span>를 켜야 선택이 가능합니다.
               </div>
             )}
           </div>
@@ -1101,7 +1111,7 @@ export function SettingsSectorLevelSection({
                 minAriaLabel="최소 표시 뎁스"
                 maxAriaLabel="최대 표시 뎁스"
                 maxSelectableIndex={depthMetricMaxSelectableIndex}
-                limitReason={<><span className="inline-block whitespace-nowrap text-sky-300">1-1) 업종 표시 단계</span>를 높여야 선택이 가능합니다.</>}
+                limitReason={<><span className="inline-block whitespace-nowrap text-[var(--brand)]">1-1) 업종 표시 단계</span>를 높여야 선택이 가능합니다.</>}
                 disabledReason={depthMetricRangeDisabledReason}
                 onChange={onChangeDepthMetricRange}
                 disabled={isDepthMetricRangeDisabled}
@@ -1117,7 +1127,7 @@ export function SettingsSectorLevelSection({
                     <SettingHelpIcon
                       bookmarkId="topPick"
                       label="강세 표시"
-                      description={<>시총 가중 등락률을 기준으로 합니다.<br />ETF 등락률을 추종하고자 하였습니다.<br /><br /><span className="inline-block whitespace-nowrap text-sky-300">1-2) 표시 지표</span>에서 동일 가중을 선택한 경우는 예외로 합니다.</>}
+                      description={<>시총 가중 등락률을 기준으로 합니다.<br />ETF 등락률을 추종하고자 하였습니다.<br /><br /><span className="inline-block whitespace-nowrap text-[var(--brand)]">1-2) 표시 지표</span>에서 동일 가중을 선택한 경우는 예외로 합니다.</>}
                     />
                   </span>
                   <ToggleSwitch
@@ -1162,7 +1172,7 @@ export function SettingsSectorLevelSection({
               )}
               {isTopPickDisabled && topPickSectionHintVisible && (
                 <div role="status" className={BLOCKED_HINT_CLASS}>
-                <span className="inline-block whitespace-nowrap text-sky-300">1-1) 업종 표시 단계</span>를 켜야 선택이 가능합니다.
+                <span className="inline-block whitespace-nowrap text-[var(--brand)]">1-1) 업종 표시 단계</span>를 켜야 선택이 가능합니다.
                 </div>
               )}
             </div>
@@ -1258,7 +1268,7 @@ export function SettingsSectorLevelSection({
             </div>
             {!stockLabelEnabled && textThresholdHintVisible && (
               <div role="status" className={BLOCKED_HINT_CLASS}>
-                <span className="inline-block whitespace-nowrap text-sky-300">3-2) 박스 내 표기</span>를 켜야 선택이 가능합니다.
+                <span className="inline-block whitespace-nowrap text-[var(--brand)]">3-2) 박스 내 표기</span>를 켜야 선택이 가능합니다.
               </div>
             )}
           </div>
@@ -1404,7 +1414,7 @@ export function SettingsSectorChangeSection({
         <SettingHelpIcon
           bookmarkId="sectorChange"
           label="업종 등락 방향"
-          description={<><span className="inline-block whitespace-nowrap text-sky-300">1-2) 표시 지표</span>에서 ‘동일 가중’을 선택하면 동일 가중, 그 외에는 시총 가중 평균을 사용합니다.</>}
+          description={<><span className="inline-block whitespace-nowrap text-[var(--brand)]">1-2) 표시 지표</span>에서 ‘동일 가중’을 선택하면 동일 가중, 그 외에는 시총 가중 평균을 사용합니다.</>}
         />
       </p>
       <SettingDescription>상승·하락 업종만 표시</SettingDescription>
@@ -1637,7 +1647,7 @@ export function SettingsStrongIndustryColorSection({
         <SettingHelpIcon
           bookmarkId="strongColor"
           label="강조 색상"
-          description={<>지도 내 업종명(1단계)과 <span className="inline-block whitespace-nowrap text-sky-300">1-4) 강세 표시</span>의 색상을 설정합니다.</>}
+          description={<>지도 내 업종명(대분류)과 <span className="inline-block whitespace-nowrap text-[var(--brand)]">1-4) 강세 표시</span>의 색상을 설정합니다.</>}
         />
       </p>
       <SettingDescription>업종명과 강세 업종의 색상</SettingDescription>
@@ -1686,6 +1696,9 @@ interface Props {
   // 지도의 히트맵 선택(KRX / NXT / MARKETRY) — 주면 선택 탭이 이 값을 쓰고, 안 주면 isCustom으로 KRX/MARKETRY만 고른다.
   heatmap?: HeatmapKey
   onSelectHeatmap?: (heatmap: HeatmapKey) => void
+  // MARKETRY에서 NXT 거래 종목만 보기(켜져 있는지, 켜고 끄기).
+  nxtOnly?: boolean
+  onToggleNxtOnly?: () => void
   avgChangeRateUseSimple?: boolean
   onToggleAvgChangeRateUseSimple?: () => void
   // 지도 페이지의 박스 면적 시가총액 반영 비율(0=동일 크기, 100=시가총액 비례).
@@ -1725,6 +1738,8 @@ export default function SettingsSidebar({
   onToggleCustom,
   heatmap,
   onSelectHeatmap,
+  nxtOnly,
+  onToggleNxtOnly,
   avgChangeRateUseSimple,
   onToggleAvgChangeRateUseSimple,
   boxSizeMarketCapRatio,
@@ -1895,7 +1910,7 @@ export default function SettingsSidebar({
           }`}
         >
           {!classificationAtBottom && selectedSection.id === classificationSection && hasClassificationSelector && (
-            <SettingsClassificationSelector heatmap={selectedHeatmap} onSelectHeatmap={handleSelectHeatmap} />
+            <SettingsClassificationSelector heatmap={selectedHeatmap} onSelectHeatmap={handleSelectHeatmap} nxtOnly={nxtOnly} onToggleNxtOnly={onToggleNxtOnly} />
           )}
           {selectedSection.id === 'stockDisplay' && hasBoxSizeRatioSlider ? (
             <SettingsStockSizeSelector
@@ -1918,7 +1933,7 @@ export default function SettingsSidebar({
       )}
       </SettingsBookmarkContext.Provider>
       {classificationAtBottom && hasClassificationSelector && availableSections.length > 0 && (
-        <SettingsClassificationSelector heatmap={selectedHeatmap} onSelectHeatmap={handleSelectHeatmap} atBottom snapshotTime={snapshotTime} />
+        <SettingsClassificationSelector heatmap={selectedHeatmap} onSelectHeatmap={handleSelectHeatmap} nxtOnly={nxtOnly} onToggleNxtOnly={onToggleNxtOnly} atBottom snapshotTime={snapshotTime} />
       )}
     </div>
   )

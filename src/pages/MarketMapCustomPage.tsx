@@ -153,6 +153,7 @@ export default function MarketMapCustomPage() {
     market,
     isCustom,
     heatmap,
+    nxtOnly,
     data,
     refetchMarketMap,
     isRefetchingMarketMap,
@@ -194,8 +195,8 @@ export default function MarketMapCustomPage() {
   // NXT 안내 알림을 닫았는지 — 다른 히트맵으로 바꾸면 초기화돼서, NXT를 다시 고를 때 또 보인다.
   const [isNxtNoticeDismissed, setIsNxtNoticeDismissed] = useState(false)
   useEffect(() => {
-    if (heatmap !== 'nxt') setIsNxtNoticeDismissed(false)
-  }, [heatmap])
+    if (!nxtOnly) setIsNxtNoticeDismissed(false)
+  }, [nxtOnly])
   // null이 아니면 MarketMapTreemap이 해당 뎁스로 줄어드는 줌아웃 애니메이션을 재생하고, 끝나면
   // handleZoomOutComplete를 불러서 실제 이동을 한다 — 애니메이션 도중엔 path/groups를 먼저 바꾸지 않는다.
   const [zoomOutRequestDepth, setZoomOutRequestDepth] = useState<number | null>(null)
@@ -230,7 +231,7 @@ export default function MarketMapCustomPage() {
   const rawCurrentNode = findRawNodeByPath(rootNodes, path)
   const totalItemCount = collectRawItems(rawCurrentNode ? [rawCurrentNode] : rootNodes).length
   // NXT 안내에 보여주는 종목 수 — 업종으로 들어가 있어도 NXT 전체 종목 수를 보여준다(위 totalItemCount는 지금 단계의 종목 수다).
-  const nxtStockCount = heatmap === 'nxt' ? collectRawItems(rootNodes).length : 0
+  const nxtStockCount = nxtOnly ? collectRawItems(rootNodes).length : 0
 
   // 상단 바는 현재 히트맵을 점등 표시로 보여준다. 종목 수는 설정 사이드바에 표시한다.
   const modeStatusText = (
@@ -240,7 +241,7 @@ export default function MarketMapCustomPage() {
           isCustom ? 'bg-[#c6ff00] shadow-[0_0_5px_1px_rgba(198,255,0,0.8)]' : 'bg-gray-400'
         }`}
       />
-      <span className="text-gray-400">{HEATMAP_NAMES[heatmap].title}</span>
+      <span className="text-gray-400">{HEATMAP_NAMES[heatmap].title}{isCustom && nxtOnly ? ' · NXT' : ''}</span>
     </>
   )
 
@@ -468,16 +469,16 @@ export default function MarketMapCustomPage() {
             <div className="flex min-h-0 flex-1">
               <div className="relative flex min-h-0 flex-1 flex-col bg-black">
               {/* NXT 히트맵 안내 — 지도에서 NXT를 고르면 보여주는 알림이다. 닫을 수 있고, 다시 고르면 또 나온다. */}
-              {heatmap === 'nxt' && !isNxtNoticeDismissed && (
+              {nxtOnly && !isNxtNoticeDismissed && (
                 <div
                   role="status"
                   className="absolute left-1/2 top-9 z-30 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-start gap-3 rounded-md border border-slate-500 bg-[#2b3a4f] px-4 py-2 text-sm text-slate-100 shadow-lg"
                 >
                   <span>
-                    NXT 거래 종목만 보여줍니다.
-                    {nxtStockCount > 0 && <b className="ml-1.5 text-sky-300">{toCount(nxtStockCount)} 종목</b>}
+                    <b className="text-[var(--brand)]">NXT 거래 종목</b>만 보여줍니다.
+                    {nxtStockCount > 0 && <b className="ml-1.5 text-[var(--brand)]">({toCount(nxtStockCount)} 종목)</b>}
                     <br />
-                    가격과 등락률은 <b className="text-sky-300">통합시세</b> 기준입니다.
+                    정규장 가격과 등락률은 통합시세 기준입니다.
                   </span>
                   <button
                     type="button"

@@ -236,7 +236,7 @@ export default function SectorChangeRatePage() {
           settingsModalProps.isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-400'
         }`}
       />
-      <span className="text-gray-400">{settingsModalProps.isCustom ? 'MARKETRY' : nxtOnly ? 'NXT' : '거래소'}</span>
+      <span className="text-gray-400">{settingsModalProps.isCustom ? (nxtOnly ? 'MARKETRY · NXT' : 'MARKETRY') : nxtOnly ? 'NXT' : '거래소'}</span>
     </>
   )
 
