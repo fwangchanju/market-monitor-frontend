@@ -41,13 +41,19 @@ export const watchStockKeys = {
 export const marketMapKeys = {
   all: ['map'] as const,
   // exclude 필터링이 프론트로 옮겨오면서 백엔드는 항상 전체 트리를 내려주므로, isExclude는 쿼리에서 뺐다.
-  map: (market: MarketQuery, isCustom: boolean) => [...marketMapKeys.all, 'map', market, isCustom] as const,
+  map: (market: MarketQuery, isCustom: boolean, nxtOnly: boolean) =>
+    [...marketMapKeys.all, 'map', market, isCustom, nxtOnly] as const,
   scale: () => [...marketMapKeys.all, 'scale'] as const,
   valueTiers: () => [...marketMapKeys.all, 'value-tiers'] as const,
   // 섹터 페이지의 now·before 쌍 쿼리 키 — now.snapshotTime이 바뀌면(새 tick) 새 쌍을 받는다.
   // market·isCustom·beforeMinutes가 바뀌면(사용자 조작) 직전 쌍을 placeholder로 쓰지 않는다.
-  sectorPair: (market: MarketQuery, isCustom: boolean, beforeMinutes: number, nowSnapshotTime: string | null) =>
-    [...marketMapKeys.all, 'sectorPair', market, isCustom, beforeMinutes, nowSnapshotTime] as const,
+  sectorPair: (
+    market: MarketQuery,
+    isCustom: boolean,
+    nxtOnly: boolean,
+    beforeMinutes: number,
+    nowSnapshotTime: string | null,
+  ) => [...marketMapKeys.all, 'sectorPair', market, isCustom, nxtOnly, beforeMinutes, nowSnapshotTime] as const,
 }
 
 export const authKeys = {

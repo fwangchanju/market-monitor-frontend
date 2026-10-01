@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { usePersistedState } from './usePersistedState'
 import { useLocalPersistedState } from './useLocalPersistedState'
 import { GUEST_DEFAULTS, MEMBER_DEFAULTS, settingDefaultsFor } from '@/utils/settingDefaults'
+import type { HeatmapKey } from '@/utils/heatmapNames'
 import { usePageSetting } from './usePageSetting'
 import { useRouteAwareMarket } from './useRouteAwareMarket'
 import { useIsLoggedIn, useSession } from './useSession'
@@ -113,6 +114,10 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 비로그인은 저장값이 true여도 거래소 분류(false)로 고정한다 — MARKETRY 분류는 로그인이 필요하다.
   const [storedIsCustom, setStoredIsCustom] = usePageSetting('marketMap.isCustom', defaults.isCustom)
   const isCustom = isLoggedIn ? storedIsCustom : false
+  // NXT 히트맵 — 거래소 분류에서 NXT 거래 종목만 보여준다. MARKETRY(사용자 분류)를 고른 동안은 적용하지 않고, 로그인 없이도 쓸 수 있다.
+  const [storedNxtOnly, setStoredNxtOnly] = usePageSetting('marketMap.nxtOnly', false)
+  const nxtOnly = !isCustom && storedNxtOnly
+  const heatmap: HeatmapKey = isCustom ? 'marketry' : nxtOnly ? 'nxt' : 'krx'
   // 섹터 랭킹/강세 업종 계산에 쓰는 평균 방식은 박스 크기 비율과 별도로 저장한다.
   const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', defaults.avgChangeRateUseSimple)
   // 0은 동일 크기, 100은 시가총액 비례이며 중간값은 시가총액 차이를 거듭제곱으로 압축한다.
@@ -250,7 +255,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     isSuccess: isMarketMapSuccess,
     isRefetching: isRefetchingMarketMap,
     refetch: refetchMarketMap,
-  } = useMarketMap(market, isCustom, {
+  } = useMarketMap(market, isCustom, nxtOnly, {
     enabled: needsTree,
   })
   const rawRootNodes = data?.items
@@ -264,11 +269,11 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     if (!data) return
     // 비로그인의 제외 목록은 서버 값이 아니라 이 탭에서 직접 고른 것이라 서버 값으로 다시 채우지 않는다.
     if (!isLoggedIn) return
-    const key = `${market}:${isCustom}`
+    const key = `${market}:${isCustom}:${nxtOnly}`
     if (seededKeyRef.current === key) return
     seededKeyRef.current = key
     setExcludedSectorNames(seedExcludedSectorNames(data.items, []))
-  }, [data, market, isCustom, isLoggedIn, setExcludedSectorNames])
+  }, [data, market, isCustom, nxtOnly, isLoggedIn, setExcludedSectorNames])
 
   // 로그인 사용자의 거래소 분류 트리는 사용자 정의 섹터를 쓰지 않으므로 isExcluded와 제외 목록을 적용하지 않는다.
   // 비로그인은 거래소 분류만 쓰지만 직접 고른 제외 목록을 이 탭에서 적용한다(새로고침하면 초기화).
@@ -588,6 +593,16 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     setStoredIsCustom(prev => !prev)
   }
 
+  // 히트맵 선택(KRX / NXT / MARKETRY). MARKETRY는 로그인이 필요하고, KRX와 NXT는 거래소 분류를 같이 쓰며 NXT만 종목을 거른다.
+  const handleSelectHeatmap = (next: HeatmapKey) => {
+    if (next === 'marketry' && !isLoggedIn) {
+      requireLogin(pathname)
+      return
+    }
+    setStoredIsCustom(next === 'marketry')
+    setStoredNxtOnly(next === 'nxt')
+  }
+
   const handleChangeActiveDepthMetric = (metric: DepthMetric) => setStoredDepthMetric(metric)
 
   const handleToggleDepthMetric = () => setDepthMetricEnabled(prev => !prev)
@@ -622,6 +637,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const settingsModalProps = {
     isCustom,
     onToggleCustom: handleToggleCustom,
+    heatmap,
+    onSelectHeatmap: handleSelectHeatmap,
     maxDepth: selectedMaxDepth,
     sectorLevelEnabled,
     onToggleSectorLevel: () => setSectorLevelEnabled(prev => !prev),
@@ -701,6 +718,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     // 지도 페이지가 트리맵을 실제로 그리는 데 직접 필요한 값들.
     market,
     isCustom,
+    nxtOnly,
+    heatmap,
     data,
     refetchMarketMap,
     isRefetchingMarketMap,

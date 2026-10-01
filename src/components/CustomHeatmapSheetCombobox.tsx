@@ -1,22 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
 import { HEATMAP_NAMES } from '@/utils/heatmapNames'
 
-export type CustomHeatmapSheet = 'marketry' | 'krx'
+export type CustomHeatmapSheet = 'marketry' | 'krx' | 'nxt'
 
-const OPTIONS: readonly { sheet: CustomHeatmapSheet; label: string }[] = [
-  { sheet: 'marketry', label: HEATMAP_NAMES.marketry.tab },
+// 지도 설정의 히트맵 선택과 같은 순서다. sheet가 null인 항목(내 히트맵)은 아직 시트가 없어 고를 수 없다.
+const OPTIONS: readonly { sheet: CustomHeatmapSheet | null; label: string }[] = [
+  { sheet: null, label: HEATMAP_NAMES.mine.tab },
   { sheet: 'krx', label: HEATMAP_NAMES.krx.tab },
+  { sheet: 'nxt', label: HEATMAP_NAMES.nxt.tab },
+  { sheet: 'marketry', label: HEATMAP_NAMES.marketry.tab },
 ]
 
-// 커스텀 페이지의 히트맵 시트 선택 — 지도 화면의 시장 선택 드롭박스와 같은 모양이다. 내 히트맵과 NXT는 아직 시트가
-// 없어서 목록에 두지 않는다.
+// 커스텀 페이지의 히트맵 시트 선택 — 지도 화면의 시장 선택 드롭박스와 같은 모양이다.
 export default function CustomHeatmapSheetCombobox({ sheet, onSelect }: {
   sheet: CustomHeatmapSheet
   onSelect: (sheet: CustomHeatmapSheet) => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
-  const selected = OPTIONS.find(option => option.sheet === sheet) ?? OPTIONS[0]
+  const selected = OPTIONS.find(option => option.sheet === sheet) ?? OPTIONS[OPTIONS.length - 1]
 
   useEffect(() => {
     if (!isOpen) return
@@ -55,15 +57,18 @@ export default function CustomHeatmapSheetCombobox({ sheet, onSelect }: {
           <div role="listbox" aria-label="히트맵 시트 목록">
             {OPTIONS.map(option => (
               <button
-                key={option.sheet}
+                key={option.label}
                 type="button"
                 role="option"
-                aria-selected={sheet === option.sheet}
+                aria-selected={option.sheet !== null && sheet === option.sheet}
+                disabled={option.sheet === null}
+                title={option.sheet === null ? '준비 중' : undefined}
                 onClick={() => {
+                  if (option.sheet === null) return
                   onSelect(option.sheet)
                   setIsOpen(false)
                 }}
-                className={`block w-full border-0 bg-transparent px-2.5 py-2 text-left ${sheet === option.sheet ? 'font-semibold text-[var(--accent)]' : 'text-gray-300 hover:text-white'}`}
+                className={`block w-full border-0 bg-transparent px-2.5 py-2 text-left disabled:cursor-not-allowed disabled:text-gray-500 ${sheet === option.sheet ? 'font-semibold text-[var(--accent)]' : 'text-gray-300 hover:text-white'}`}
               >
                 {option.label}
               </button>

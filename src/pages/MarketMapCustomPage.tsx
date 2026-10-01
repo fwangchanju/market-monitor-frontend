@@ -152,6 +152,7 @@ export default function MarketMapCustomPage() {
     colorEditorPanelProps,
     market,
     isCustom,
+    heatmap,
     data,
     refetchMarketMap,
     isRefetchingMarketMap,
@@ -190,6 +191,11 @@ export default function MarketMapCustomPage() {
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
+  // NXT 안내 알림을 닫았는지 — 다른 히트맵으로 바꾸면 초기화돼서, NXT를 다시 고를 때 또 보인다.
+  const [isNxtNoticeDismissed, setIsNxtNoticeDismissed] = useState(false)
+  useEffect(() => {
+    if (heatmap !== 'nxt') setIsNxtNoticeDismissed(false)
+  }, [heatmap])
   // null이 아니면 MarketMapTreemap이 해당 뎁스로 줄어드는 줌아웃 애니메이션을 재생하고, 끝나면
   // handleZoomOutComplete를 불러서 실제 이동을 한다 — 애니메이션 도중엔 path/groups를 먼저 바꾸지 않는다.
   const [zoomOutRequestDepth, setZoomOutRequestDepth] = useState<number | null>(null)
@@ -232,7 +238,7 @@ export default function MarketMapCustomPage() {
           isCustom ? 'bg-[#c6ff00] shadow-[0_0_5px_1px_rgba(198,255,0,0.8)]' : 'bg-gray-400'
         }`}
       />
-      <span className="text-gray-400">{HEATMAP_NAMES[isCustom ? 'marketry' : 'krx'].title}</span>
+      <span className="text-gray-400">{HEATMAP_NAMES[heatmap].title}</span>
     </>
   )
 
@@ -458,7 +464,27 @@ export default function MarketMapCustomPage() {
               </span>
             </div>
             <div className="flex min-h-0 flex-1">
-              <div className="flex min-h-0 flex-1 flex-col bg-black">
+              <div className="relative flex min-h-0 flex-1 flex-col bg-black">
+              {/* NXT 히트맵 안내 — 지도에서 NXT를 고르면 보여주는 알림이다. 닫을 수 있고, 다시 고르면 또 나온다. */}
+              {heatmap === 'nxt' && !isNxtNoticeDismissed && (
+                <div
+                  role="status"
+                  className="absolute left-1/2 top-9 z-30 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-start gap-3 rounded-md border border-slate-500 bg-[#2b3a4f] px-4 py-2 text-sm text-slate-100 shadow-lg"
+                >
+                  <span>
+                    NXT 거래 종목만 보여줍니다. 가격과 등락률은 <b className="text-sky-300">KRX·NXT 통합 가격</b> 기준이며, NXT 단독 가격은 아직 반영되지
+                    않았습니다.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsNxtNoticeDismissed(true)}
+                    aria-label="안내 닫기"
+                    className="shrink-0 border-0 bg-transparent p-0 text-slate-400 hover:text-slate-100"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
               {path.length > 0 && (
                 // 이름마다 "그 단계로만" 이동하는 링크다 — 줄 전체를 눌러 전체로 가던 동작은 없앴다. 지금 보고 있는
                 // 마지막 이름은 링크가 아니라 현재 위치 표시(흰색)다.
@@ -547,8 +573,8 @@ export default function MarketMapCustomPage() {
             onToggleBookmark={toggleSettingsBookmark}
             bookmarkLoginRequired={!isLoggedIn}
             onRequestLogin={() => requireLogin(`${pathname}${search}${hash}`)}
-            onToggleCustom={() => {
-              settingsModalProps.onToggleCustom()
+            onSelectHeatmap={next => {
+              settingsModalProps.onSelectHeatmap(next)
               reset()
             }}
           >

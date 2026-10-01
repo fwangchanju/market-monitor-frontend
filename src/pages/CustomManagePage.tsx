@@ -10,7 +10,7 @@ import Spinner from '@/components/Spinner'
 import NavBarPageActions from '@/components/NavBarPageActions'
 import CustomManageModeCombobox from '@/components/CustomManageModeCombobox'
 import CustomHeatmapSheetCombobox, { type CustomHeatmapSheet } from '@/components/CustomHeatmapSheetCombobox'
-import KrxReadOnlySheet from '@/components/KrxReadOnlySheet'
+import ReadOnlyHeatmapSheet from '@/components/ReadOnlyHeatmapSheet'
 import { useCustomSectors, useStockSectors } from '@/hooks/useMarketMapCustom'
 import { useMarketMap } from '@/hooks/useMarketMap'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
@@ -33,9 +33,10 @@ export default function CustomManagePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   // /custom/category는 카테고리 화면이고, /custom/stock은 종목 화면이다.
   const mode = pathname === '/custom/stock' || searchParams.get('mode') === 'stock' ? 'stock' : 'sector'
-  // 화면 아래 시트 탭 — 기본은 편집 가능한 MARKETRY 시트이고, ?sheet=krx면 읽기 전용 KRX 시트다.
-  const sheet: CustomHeatmapSheet = searchParams.get('sheet') === 'krx' ? 'krx' : 'marketry'
-  const isKrxSheet = sheet === 'krx'
+  // 히트맵 시트 — 기본은 편집 가능한 MARKETRY 시트이고, ?sheet=krx / ?sheet=nxt면 읽기 전용 시트다.
+  const sheetParam = searchParams.get('sheet')
+  const sheet: CustomHeatmapSheet = sheetParam === 'krx' || sheetParam === 'nxt' ? sheetParam : 'marketry'
+  const isReadOnlySheet = sheet !== 'marketry'
   // AdminStockTable의 툴바(종목수/실행취소·다시실행/필터/엑셀 등)를 이 DOM 노드로 포털링해서 세
   // 번째 바 안에 그린다 — useRef 대신 useState인 이유는, ref 콜백이 커밋 단계에서 실행되므로
   // useState로 받아야 그 노드가 준비된 뒤 리렌더가 한 번 더 일어나 AdminStockTable에 null이 아닌
@@ -55,6 +56,7 @@ export default function CustomManagePage() {
   } = useCustomSectors({ enabled: isLoggedIn })
   const {
     data: stockSectors,
+    isLoading: isStockSectorsLoading,
     refetch: refetchStockSectors,
     isRefetching: isRefetchingStockSectors,
   } = useStockSectors({ enabled: isLoggedIn })
@@ -64,7 +66,7 @@ export default function CustomManagePage() {
     isLoading: isKrxLoading,
     refetch: refetchKrx,
     isRefetching: isRefetchingKrx,
-  } = useMarketMap('ALL_STOCK', false, { enabled: isKrxSheet })
+  } = useMarketMap('ALL_STOCK', false, false, { enabled: isReadOnlySheet })
 
   const nxtStockCodes = useMemo(
     () => new Set((stockSectors?.items ?? []).filter(item => item.nxtEnabled).map(item => item.stockCode)),
@@ -116,8 +118,24 @@ export default function CustomManagePage() {
 
   const actions = (
     <NavBarPageActions
-      onRefresh={isKrxSheet ? refetchKrx : mode === 'stock' ? refetchStockSectors : refetchSectors}
-      isRefreshing={isKrxSheet ? isRefetchingKrx : mode === 'stock' ? isRefetchingStockSectors : isRefetchingSectors}
+      onRefresh={
+        isReadOnlySheet
+          ? refetchKrx
+          : mode === 'stock'
+            ? // 종목 화면은 종목 배정 목록과 섹터 목록을 둘 다 새로 받는다(필터는 유지된다).
+              () => {
+                refetchStockSectors()
+                refetchSectors()
+              }
+            : refetchSectors
+      }
+      isRefreshing={
+        isReadOnlySheet
+          ? isRefetchingKrx
+          : mode === 'stock'
+            ? isRefetchingStockSectors || isRefetchingSectors
+            : isRefetchingSectors
+      }
       onToggleSettings={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
       isSettingsOpen={settingsModalProps.isOpen}
       onOpenShare={() => setIsShareOpen(true)}
@@ -176,42 +194,49 @@ export default function CustomManagePage() {
               <div className="flex h-full items-center gap-2">
                 <CustomManageModeCombobox
                   mode={mode === 'stock' ? 'stock' : 'category'}
-                  onSelect={path => navigate({ pathname: path, search: isKrxSheet ? '?sheet=krx' : '' })}
+                  onSelect={path => navigate({ pathname: path, search: isReadOnlySheet ? `?sheet=${sheet}` : '' })}
                 />
                 <CustomHeatmapSheetCombobox
                   sheet={sheet}
-                  onSelect={next => setSearchParams(next === 'krx' ? { sheet: 'krx' } : {})}
+                  onSelect={next => setSearchParams(next === 'marketry' ? {} : { sheet: next })}
                 />
-                {isKrxSheet && (
+                {isReadOnlySheet && (
                   <span className="ml-3 flex items-center gap-2 text-sm font-normal text-gray-400">
                     <span>읽기 전용</span>
                     <span aria-hidden="true">·</span>
                     <span>키움 REST API</span>
+                    {/* NXT 거래 종목은 키움 값을 우선 쓰고, 키움에 없으면 NEXTRADE 홈페이지의 편입 종목 목록으로 채운다(백엔드). */}
+                    {sheet === 'nxt' && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span>NEXTRADE</span>
+                      </>
+                    )}
                   </span>
                 )}
-                {!isKrxSheet && mode !== 'stock' && <div ref={setCategoryToolbarContainer} className="flex h-full items-center" />}
+                {!isReadOnlySheet && mode !== 'stock' && <div ref={setCategoryToolbarContainer} className="flex h-full items-center" />}
               </div>
               {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다. */}
-              {!isKrxSheet && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 flex-1 items-center" />}
+              {!isReadOnlySheet && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 flex-1 items-center" />}
             </div>
             <div className="flex min-h-0 flex-1">
               <div
                 className={`flex min-h-0 flex-1 flex-col ${mode === 'sector' ? 'overflow-y-auto' : ''}`}
               >
-                {isKrxSheet ? (
-                  <KrxReadOnlySheet
+                {isReadOnlySheet ? (
+                  <ReadOnlyHeatmapSheet
                     mode={mode === 'stock' ? 'stock' : 'category'}
                     data={krxMap}
                     isLoading={isKrxLoading}
+                    nxtOnly={sheet === 'nxt'}
                     nxtStockCodes={nxtStockCodes}
+                    isNxtLoading={isStockSectorsLoading}
                   />
                 ) : mode === 'stock' ? (
                   <AdminStockTable
                     items={stockSectors?.items ?? []}
                     sectors={sectors ?? []}
                     snapshotTime={stockSectors?.snapshotTime ?? null}
-                    onRefetchSectors={() => refetchSectors()}
-                    isRefetchingSectors={isRefetchingSectors}
                     toolbarContainer={toolbarContainer}
                   />
                 ) : (

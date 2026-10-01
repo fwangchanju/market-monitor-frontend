@@ -7,7 +7,7 @@ import SettingsSectionIcon, { type SettingsSectionIconName } from '@/components/
 import { RestoreToMapIcon } from '@/components/icons/MarketMapIcons'
 import type { MarketValueTierItem } from '@/types/api'
 import { FONT_BAR_TIME } from '@/components/FontStyle'
-import { HEATMAP_NAMES } from '@/utils/heatmapNames'
+import { HEATMAP_NAMES, type HeatmapKey } from '@/utils/heatmapNames'
 import { toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { BOOKMARK_ORDER, type SettingsBookmarkId } from '@/utils/settingsBookmarks'
 
@@ -740,21 +740,22 @@ export function SettingsEqualWeightSection({
 }
 
 function SettingsClassificationSelector({
-  isCustom,
-  onToggleCustom,
+  heatmap,
+  onSelectHeatmap,
   atBottom = false,
   snapshotTime,
 }: {
-  isCustom: boolean
-  onToggleCustom: () => void
+  heatmap: HeatmapKey
+  onSelectHeatmap: (heatmap: HeatmapKey) => void
   atBottom?: boolean
   snapshotTime?: string | null
 }) {
-  const options = [
-    { value: null, label: HEATMAP_NAMES.mine.tab },
-    { value: false, label: HEATMAP_NAMES.krx.tab },
-    { value: null, label: HEATMAP_NAMES.nxt.tab },
-    { value: true, label: HEATMAP_NAMES.marketry.tab },
+  // key가 null인 항목(내 히트맵)은 아직 고를 수 없다.
+  const options: { key: HeatmapKey | null; label: string }[] = [
+    { key: null, label: HEATMAP_NAMES.mine.tab },
+    { key: 'krx', label: HEATMAP_NAMES.krx.tab },
+    { key: 'nxt', label: HEATMAP_NAMES.nxt.tab },
+    { key: 'marketry', label: HEATMAP_NAMES.marketry.tab },
   ]
 
   return (
@@ -768,14 +769,14 @@ function SettingsClassificationSelector({
             key={option.label}
             type="button"
             role="radio"
-            aria-checked={option.value !== null && isCustom === option.value}
-            onClick={() => option.value !== null && isCustom !== option.value && onToggleCustom()}
-            disabled={option.value === null}
-            title={option.value === null ? '준비 중' : undefined}
+            aria-checked={option.key !== null && heatmap === option.key}
+            onClick={() => option.key !== null && heatmap !== option.key && onSelectHeatmap(option.key)}
+            disabled={option.key === null}
+            title={option.key === null ? '준비 중' : undefined}
             className={`min-h-8 rounded px-0.5 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
-              option.value === null
+              option.key === null
                 ? 'cursor-not-allowed border-0 bg-transparent text-gray-500'
-                : isCustom === option.value
+                : heatmap === option.key
                   ? 'bg-[var(--accent)] text-black'
                   : 'border-0 bg-transparent text-gray-300 hover:text-white'
             }`}
@@ -1682,6 +1683,9 @@ interface Props {
   classificationSection?: 'favorites' | 'industry'
   isCustom?: boolean
   onToggleCustom?: () => void
+  // 지도의 히트맵 선택(KRX / NXT / MARKETRY) — 주면 선택 탭이 이 값을 쓰고, 안 주면 isCustom으로 KRX/MARKETRY만 고른다.
+  heatmap?: HeatmapKey
+  onSelectHeatmap?: (heatmap: HeatmapKey) => void
   avgChangeRateUseSimple?: boolean
   onToggleAvgChangeRateUseSimple?: () => void
   // 지도 페이지의 박스 면적 시가총액 반영 비율(0=동일 크기, 100=시가총액 비례).
@@ -1719,6 +1723,8 @@ export default function SettingsSidebar({
   onOpenChange,
   isCustom,
   onToggleCustom,
+  heatmap,
+  onSelectHeatmap,
   avgChangeRateUseSimple,
   onToggleAvgChangeRateUseSimple,
   boxSizeMarketCapRatio,
@@ -1756,6 +1762,8 @@ export default function SettingsSidebar({
   }
 
   const hasClassificationSelector = typeof isCustom === 'boolean' && Boolean(onToggleCustom)
+  const selectedHeatmap: HeatmapKey = heatmap ?? (isCustom ? 'marketry' : 'krx')
+  const handleSelectHeatmap = onSelectHeatmap ?? (() => onToggleCustom?.())
   const hasStockSizeSelector = typeof avgChangeRateUseSimple === 'boolean' && Boolean(onToggleAvgChangeRateUseSimple)
   const hasBoxSizeRatioSlider = typeof boxSizeMarketCapRatio === 'number' && Boolean(onChangeBoxSizeMarketCapRatio)
 
@@ -1887,7 +1895,7 @@ export default function SettingsSidebar({
           }`}
         >
           {!classificationAtBottom && selectedSection.id === classificationSection && hasClassificationSelector && (
-            <SettingsClassificationSelector isCustom={isCustom!} onToggleCustom={onToggleCustom!} />
+            <SettingsClassificationSelector heatmap={selectedHeatmap} onSelectHeatmap={handleSelectHeatmap} />
           )}
           {selectedSection.id === 'stockDisplay' && hasBoxSizeRatioSlider ? (
             <SettingsStockSizeSelector
@@ -1910,7 +1918,7 @@ export default function SettingsSidebar({
       )}
       </SettingsBookmarkContext.Provider>
       {classificationAtBottom && hasClassificationSelector && availableSections.length > 0 && (
-        <SettingsClassificationSelector isCustom={isCustom!} onToggleCustom={onToggleCustom!} atBottom snapshotTime={snapshotTime} />
+        <SettingsClassificationSelector heatmap={selectedHeatmap} onSelectHeatmap={handleSelectHeatmap} atBottom snapshotTime={snapshotTime} />
       )}
     </div>
   )

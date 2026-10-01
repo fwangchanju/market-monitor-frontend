@@ -10,16 +10,12 @@ import { useMarketValueTiers } from '@/hooks/useMarketValueTiers'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import Spinner from './Spinner'
 import { FONT_BAR_TIME } from './FontStyle'
-import { CheckIcon, ChevronDownIcon, RedoIcon, RefreshIcon, SearchIcon, UndoIcon } from './icons/MarketMapIcons'
+import { CheckIcon, ChevronDownIcon, DownloadIcon, RedoIcon, SearchIcon, UndoIcon } from './icons/MarketMapIcons'
 
 interface Props {
   items: StockSectorListItem[]
   sectors: SectorItem[]
   snapshotTime: string | null
-  // 다른 탭에서 섹터를 추가/변경한 뒤 이 화면의 필터 상태를 유지한 채로 섹터 목록만
-  // 다시 불러오고 싶을 때 쓰는 버튼용 — 전체 새로고침(필터 초기화)을 피하기 위함.
-  onRefetchSectors: () => void
-  isRefetchingSectors: boolean
   // 종목수/실행취소·다시실행/필터/엑셀 등 툴바를 이 컨테이너로 포털링한다 — 페이지 공통 세 번째 바
   // 안에 그려야 해서, 이 컴포넌트 안에서 직접 렌더링하지 않고 부모(MarketMapAdminPage)가 그 바 안에
   // 마련해준 DOM 노드로 옮겨 그린다. 상태/핸들러는 전부 이 컴포넌트에 그대로 남아있다.
@@ -64,7 +60,7 @@ const NXT_DISABLED_LABEL = '-'
 
 const MARKET_LABEL: Record<'KOSPI' | 'KOSDAQ', string> = { KOSPI: '코스피', KOSDAQ: '코스닥' }
 const MARKET_FILTER_ORDER = [MARKET_LABEL.KOSPI, MARKET_LABEL.KOSDAQ]
-const marketColorClass = (market: 'KOSPI' | 'KOSDAQ') => (market === 'KOSPI' ? 'text-gray-400' : 'text-[var(--accent)]')
+const marketColorClass = (market: 'KOSPI' | 'KOSDAQ') => (market === 'KOSPI' ? 'text-gray-400' : 'text-sky-300')
 
 const KOREAN_COLLATOR = new Intl.Collator('ko')
 
@@ -362,7 +358,7 @@ function UndoRedoHistoryPopup({
           {ordered.map(action => (
             <div
               key={action.id}
-              className="group flex items-center justify-between gap-3 whitespace-nowrap rounded px-1 py-0.5 hover:bg-[var(--accent)]/10"
+              className="group flex items-center justify-between gap-3 whitespace-nowrap rounded px-1 py-0.5 hover:bg-sky-400/10"
             >
               <span className="text-white">{describeUndoableAction(action, items, sectorOptionsById)}</span>
               <button
@@ -371,7 +367,7 @@ function UndoRedoHistoryPopup({
                   onPick(action.id)
                   setIsOpen(false)
                 }}
-                  className="hidden shrink-0 border-0 bg-transparent text-xs text-white hover:text-[var(--accent)] group-hover:inline-block"
+                  className="hidden shrink-0 border-0 bg-transparent text-xs text-white hover:text-sky-300 group-hover:inline-block"
               >
                 {actionLabel}
               </button>
@@ -477,7 +473,7 @@ function SectorSearchPopup({
         className="nes-input is-dark w-full py-2 text-sm"
       />
       {contextLabel && (
-        <span className="mt-2 inline-block rounded bg-[var(--accent)]/30 px-2 py-0.5 text-xs text-white">
+        <span className="mt-2 inline-block rounded bg-sky-400/25 px-2 py-0.5 text-xs text-white">
           {contextLabel}
         </span>
       )}
@@ -497,7 +493,7 @@ function SectorSearchPopup({
                 onClick={() => onSelect(opt.id)}
                 onMouseEnter={() => search.setHighlightedIndex(index)}
                 className={`block w-full truncate rounded px-2 py-0.5 text-left text-sm text-white ${
-                  index === search.highlightedIndex ? 'bg-[var(--accent)]/30' : 'bg-transparent'
+                  index === search.highlightedIndex ? 'bg-sky-400/25' : 'bg-transparent'
                 }`}
               >
                 {opt.label}
@@ -584,8 +580,9 @@ function AdminStockSectorCell({
   return (
     <td
       ref={cellRef}
+      data-no-row-select
       className={`pl-4 text-left ${disabled ? 'cursor-default text-gray-500' : 'cursor-pointer'} ${
-        isHighlighted ? 'bg-[var(--accent)]/50' : rowHoverClass
+        isHighlighted ? 'bg-sky-400/35' : rowHoverClass
       }`}
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
@@ -693,7 +690,7 @@ function BulkAssignButton({
         type="button"
         onClick={handleClick}
         style={widthPx != null ? { width: widthPx } : undefined}
-        className="nes-btn border-[var(--accent)] bg-[var(--accent)] px-2 py-0.5 text-xs text-black hover:bg-[var(--accent-hover)]"
+        className="nes-btn border-sky-300 bg-sky-300 px-2 py-0.5 text-xs text-black hover:bg-sky-200"
       >
         일괄변경 ({count})
       </button>
@@ -763,7 +760,7 @@ function AdminAliasCell({
 
   if (isEditing) {
     return (
-      <td className={`${alignClass('left')} ${rowHoverClass}`} onClick={e => e.stopPropagation()}>
+      <td className={`${alignClass('left')} ${rowHoverClass}`} data-no-row-select onClick={e => e.stopPropagation()}>
         <input
           type="text"
           autoFocus
@@ -782,7 +779,8 @@ function AdminAliasCell({
 
   return (
     <td
-      className={`cursor-pointer text-white ${alignClass('left')} ${isHighlighted ? 'bg-[var(--accent)]/50' : rowHoverClass}`}
+      className={`cursor-pointer text-white ${alignClass('left')} ${isHighlighted ? 'bg-sky-400/35' : rowHoverClass}`}
+      data-no-row-select
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
       onClick={e => {
@@ -851,7 +849,7 @@ function AdminColumnFilterButton({
           setQuery('')
           setIsOpen(prev => !prev)
         }}
-        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-[#ffee00]' : 'text-white/70 hover:text-white'}`}
+        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-sky-300' : 'text-white/70 hover:text-white'}`}
         title="필터"
       >
         <CheckIcon className="h-3.5 w-3.5" strokeWidth={6} />
@@ -877,7 +875,7 @@ function AdminColumnFilterButton({
             placeholder="검색"
             className="nes-input is-dark mb-2 w-full py-2 text-sm"
           />
-          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 font-bold text-white hover:bg-[var(--accent)]/50">
+          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 font-bold text-white hover:bg-sky-400/35">
             <input type="checkbox" checked={!isPreviewingSearch && isAllSelected} onChange={handleToggleAll} />
             <span>전체</span>
           </label>
@@ -885,7 +883,7 @@ function AdminColumnFilterButton({
             {visibleOptions.map(opt => (
               <label
                 key={opt}
-                className="flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-white hover:bg-[var(--accent)]/50"
+                className="flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-white hover:bg-sky-400/35"
               >
                 <input
                   type="checkbox"
@@ -936,7 +934,7 @@ function AdminMarketValueFilterButton({
           e.stopPropagation()
           setIsOpen(prev => !prev)
         }}
-        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-[#ffee00]' : 'text-white/70 hover:text-white'}`}
+        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-sky-300' : 'text-white/70 hover:text-white'}`}
         title="필터"
       >
         <CheckIcon className="h-3.5 w-3.5" strokeWidth={6} />
@@ -953,7 +951,7 @@ function AdminMarketValueFilterButton({
           className="nes-container is-dark z-50 !bg-violet-950 p-2 text-left text-sm normal-case"
           onClick={e => e.stopPropagation()}
         >
-          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 font-bold text-white hover:bg-[var(--accent)]/50">
+          <label className="flex cursor-pointer items-center gap-1.5 rounded border-b border-gray-600 px-1 py-1 font-bold text-white hover:bg-sky-400/35">
             <input type="checkbox" checked={isAllSelected} onChange={() => (isAllSelected ? onSelectNone() : onSelectAll())} />
             <span>전체</span>
           </label>
@@ -961,7 +959,7 @@ function AdminMarketValueFilterButton({
             {tiers.map(tier => (
               <label
                 key={tier.id}
-                className="flex w-full cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-white hover:bg-[var(--accent)]/50"
+                className="flex w-full cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-white hover:bg-sky-400/35"
               >
                 <input type="checkbox" checked={!excluded.has(tier.label)} onChange={() => onToggle(tier.label)} />
                 <span className="flex flex-1 items-center justify-between gap-2">
@@ -1069,7 +1067,7 @@ function AdminStockNameFilterButton({
           setHighlightedIndex(-1)
           setIsOpen(prev => !prev)
         }}
-        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-[#ffee00]' : 'text-white/70 hover:text-white'}`}
+        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-sky-300' : 'text-white/70 hover:text-white'}`}
         title="필터"
       >
         <SearchIcon className="h-3.5 w-3.5" strokeWidth={6} />
@@ -1120,7 +1118,7 @@ function AdminStockNameFilterButton({
                   onClick={() => onToggle(item.stockCode)}
                   onMouseEnter={() => setHighlightedIndex(index)}
                   className={`flex w-full items-center justify-between rounded px-1 py-0.5 text-left text-white ${
-                    index === highlightedIndex ? 'bg-[var(--accent)]/50' : 'bg-transparent'
+                    index === highlightedIndex ? 'bg-sky-400/35' : 'bg-transparent'
                   }`}
                 >
                   <span className="whitespace-nowrap">{item.stockName}</span>
@@ -1149,7 +1147,7 @@ function AdminStockNameFilterButton({
                   key={item.stockCode}
                   type="button"
                   onClick={() => onToggle(item.stockCode)}
-                  className="flex w-full items-center justify-between rounded bg-transparent px-1 py-0.5 text-left text-[var(--accent)] hover:bg-[var(--accent)]/20"
+                  className="flex w-full items-center justify-between rounded bg-transparent px-1 py-0.5 text-left text-sky-300 hover:bg-sky-400/15"
                 >
                   <span className="whitespace-nowrap">{item.stockName}</span>
                   <span className="ml-1.5 shrink-0 text-gray-500">{item.stockCode}</span>
@@ -1170,6 +1168,7 @@ const AdminStockRow = memo(function AdminStockRow({
   index,
   isSelected,
   onToggleSelected,
+  onRowMouseDown,
   hoveredKind,
   onParentSectorHoverStart,
   onMidSectorHoverStart,
@@ -1184,7 +1183,8 @@ const AdminStockRow = memo(function AdminStockRow({
   item: StockSectorListItem
   index: number
   isSelected: boolean
-  onToggleSelected: (stockCode: string) => void
+  onToggleSelected: (stockCode: string, shiftKey: boolean) => void
+  onRowMouseDown: (stockCode: string, index: number, x: number, y: number) => void
   hoveredKind: 'parentSector' | 'midSector' | 'subSector' | 'alias' | null
   onParentSectorHoverStart: (stockCode: string) => void
   onMidSectorHoverStart: (stockCode: string) => void
@@ -1211,7 +1211,7 @@ const AdminStockRow = memo(function AdminStockRow({
       return next
     })
   }
-  const rowHoverClass = isRowHovered || isSelected || editingCells.size > 0 ? 'bg-[var(--accent)]/20' : ''
+  const rowHoverClass = isRowHovered || isSelected || editingCells.size > 0 ? 'bg-sky-400/15' : ''
 
   // 대분류 팝업엔 최상위 섹터만, 중분류 팝업엔 "지금 이 종목의 대분류"의 자식만, 소분류 팝업엔
   // "지금 이 종목의 중분류"의 자식만 보여준다. sectorId(실제 배정된 섹터)를 parentId로 거슬러
@@ -1228,21 +1228,38 @@ const AdminStockRow = memo(function AdminStockRow({
       : []
 
   // 체크박스를 정확히 조준하지 않아도, hover 강조가 뜨는 영역(약칭/대분류/소분류 제외 전체) 아무 곳이나
-  // 클릭하면 체크가 토글되게 한다. 약칭/대분류/소분류 셀은 자기 클릭(stopPropagation)으로 배제되고,
-  // 체크박스 자신을 클릭한 경우는 onChange가 이미 처리하므로 여기서 중복 토글하지 않는다.
+  // 클릭하면 체크가 토글되게 한다. 약칭/대분류/소분류 셀은 자기 클릭(stopPropagation)으로 배제된다.
+  // 체크박스 자신의 클릭도 이 줄 클릭으로 올라와 한 번만 처리된다(Shift 키 여부를 여기서 알 수 있어서).
+  // Shift를 누르고 누르면 직전에 누른 줄부터 이 줄까지 범위를 한 번에 선택한다(부모의 toggleSelected 참고).
   const handleRowClick = (e: React.MouseEvent<HTMLTableRowElement>) => {
-    if ((e.target as HTMLElement).tagName === 'INPUT') return
-    onToggleSelected(item.stockCode)
+    onToggleSelected(item.stockCode, e.shiftKey)
+  }
+  // Shift+클릭이 브라우저의 글자 범위 선택(파란 드래그 표시)을 일으키지 않게 한다. 그냥 누른 경우에는 드래그 선택을
+  // 시작할 수 있게 부모에 알린다(편집하는 칸은 data-no-row-select로 제외).
+  const handleRowMouseDown = (e: React.MouseEvent<HTMLTableRowElement>) => {
+    if (e.shiftKey) {
+      e.preventDefault()
+      return
+    }
+    if (e.button !== 0 || (e.target as HTMLElement).closest('[data-no-row-select]')) return
+    onRowMouseDown(item.stockCode, index, e.clientX, e.clientY)
   }
 
   return (
-    <tr onClick={handleRowClick} onMouseEnter={() => setIsRowHovered(true)} onMouseLeave={() => setIsRowHovered(false)}>
+    <tr
+      data-row-index={index}
+      onClick={handleRowClick}
+      onMouseDown={handleRowMouseDown}
+      onMouseEnter={() => setIsRowHovered(true)}
+      onMouseLeave={() => setIsRowHovered(false)}
+    >
       <td className={`text-center ${rowHoverClass}`}>
-        <input type="checkbox" checked={isSelected} onChange={() => onToggleSelected(item.stockCode)} />
+        {/* 상태 변경은 줄 클릭(handleRowClick)에서 하므로 onChange는 비워 둔다 — 제어되는 체크박스에 필요한 자리표시다. */}
+        <input type="checkbox" className="mx-auto my-0 block" checked={isSelected} onChange={() => {}} />
       </td>
       <td className={`text-center text-gray-400 ${rowHoverClass}`}>{index + 1}</td>
       <td className={`${alignClass('left')} text-gray-400 ${rowHoverClass}`}>{item.stockCode}</td>
-      <td className={`${alignClass('left')} text-gray-400 ${rowHoverClass}`}>{item.stockName}</td>
+      <td className={`${alignClass('left')} text-white ${rowHoverClass}`}>{item.stockName}</td>
       <AdminAliasCell
         alias={item.alias}
         onUpdate={alias => onUpdateAlias(item.stockCode, alias)}
@@ -1252,14 +1269,14 @@ const AdminStockRow = memo(function AdminStockRow({
         onHoverEnd={onHoverEnd}
         onEditingChange={editing => setCellEditing('alias', editing)}
       />
-      <td className={`${alignClass('right')} text-gray-400 ${rowHoverClass}`}>
+      <td className={`${alignClass('right')} text-white ${rowHoverClass}`}>
         {item.totalMarketValue != null ? toJoEokDecimal(item.totalMarketValue / 100_000_000) : '-'}
       </td>
       <td className={`text-center ${marketColorClass(item.market)} ${rowHoverClass}`}>{MARKET_LABEL[item.market]}</td>
-      <td className={`text-center ${item.nxtEnabled ? 'text-[var(--accent)]' : 'text-gray-500'} ${rowHoverClass}`}>
+      <td className={`text-center ${item.nxtEnabled ? 'text-sky-300' : 'text-gray-500'} ${rowHoverClass}`}>
         {item.nxtEnabled ? NXT_ENABLED_LABEL : NXT_DISABLED_LABEL}
       </td>
-      <td className={`${alignClass('left')} text-gray-400 ${rowHoverClass}`}>{item.industryName ?? '-'}</td>
+      <td className={`${alignClass('left')} text-white ${rowHoverClass}`}>{item.industryName ?? '-'}</td>
       <AdminStockSectorCell
         value={chain.rootName}
         options={parentSectorOptions}
@@ -1302,8 +1319,6 @@ export default function AdminStockTable({
   items,
   sectors,
   snapshotTime,
-  onRefetchSectors,
-  isRefetchingSectors,
   toolbarContainer,
 }: Props) {
   const [sortKey, setSortKey] = usePersistedState<SortKey>('adminStockTable.sortKey', 'totalMarketValue')
@@ -1478,14 +1493,189 @@ export default function AdminStockTable({
     [updateAlias],
   )
 
-  const toggleSelected = useCallback((stockCode: string) => {
+  // Shift+클릭 범위 선택용 — 마지막으로 누른 줄(기준 줄)과, 지금 화면에 보이는 순서의 목록(콜백을 고정하려고 ref로 둔다).
+  const lastClickedStockCodeRef = useRef<string | null>(null)
+  const visibleItemsRef = useRef<StockSectorListItem[]>([])
+
+  // 여러 줄 선택 안내 — 드래그나 Shift+클릭을 모른 채 줄을 하나씩 계속 누르는 사용자에게 한 번 알려준다. 페이지를 새로 열 때마다
+  // 처음부터 다시 센다(저장하지 않는다): 또 하나씩 누르고 있다면 그새 잊은 것이라는 판단이다. 한 번 보여주거나 드래그·Shift를
+  // 쓰면 그 페이지에서는 다시 띄우지 않는다.
+  const SELECTION_HINT_CLICK_COUNT = 3
+  const SELECTION_HINT_DURATION_MS = 6000
+  const [isSelectionHintOpen, setIsSelectionHintOpen] = useState(false)
+  const plainSelectClickCountRef = useRef(0)
+  const selectionHintShownRef = useRef(false)
+  const noteMultiSelectUsed = useCallback(() => {
+    selectionHintShownRef.current = true
+    setIsSelectionHintOpen(false)
+  }, [])
+  useEffect(() => {
+    if (!isSelectionHintOpen) return
+    const timer = setTimeout(() => setIsSelectionHintOpen(false), SELECTION_HINT_DURATION_MS)
+    return () => clearTimeout(timer)
+  }, [isSelectionHintOpen])
+
+  // 드래그 선택 상태 — 누른 줄(기준)과 그 시점의 선택 상태(baseline), 끌어서 적용할 상태(selectTo)를 들고 있다가
+  // 마우스가 움직일 때마다 baseline에 [기준 줄 ~ 지금 줄] 범위를 적용한다. baseline에서 매번 다시 계산하므로
+  // 마우스를 되돌리면 선택 범위도 줄어든다.
+  const dragRef = useRef<{
+    anchorIndex: number
+    baseline: Set<string>
+    selectTo: boolean
+    moved: boolean
+    lastIndex: number
+    pointer: { x: number; y: number }
+  } | null>(null)
+  // 끌기를 마친 직후 따라오는 click이 한 줄을 다시 토글하지 않게 막는 표시.
+  const suppressClickRef = useRef(false)
+  const dragFrameRef = useRef<number | null>(null)
+  const selectedRef = useRef(selectedStockCodes)
+  useEffect(() => {
+    selectedRef.current = selectedStockCodes
+  }, [selectedStockCodes])
+
+  const handleRowMouseDown = useCallback((stockCode: string, index: number, x: number, y: number) => {
+    // Shift+클릭 범위 선택이 이 줄에서 이어지도록 기준 줄도 같이 기억한다.
+    lastClickedStockCodeRef.current = stockCode
+    dragRef.current = {
+      anchorIndex: index,
+      baseline: new Set(selectedRef.current),
+      selectTo: !selectedRef.current.has(stockCode),
+      moved: false,
+      lastIndex: index,
+      pointer: { x, y },
+    }
+  }, [])
+
+  // 마우스 아래의 줄을 좌표로 찾아 선택 범위를 갱신한다 — 표가 화면에 보이는 줄만 그려서, 자동 스크롤 중에는
+  // mouseenter에 기대지 않고 좌표로 찾는 편이 확실하다. 마우스가 표 밖(위·아래)에 있어도 가장자리 줄로 본다.
+  const applyDragAtPointer = useCallback(() => {
+    const drag = dragRef.current
+    const container = scrollContainerRef.current
+    if (!drag || !container) return
+    const rect = container.getBoundingClientRect()
+    const y = Math.min(Math.max(drag.pointer.y, rect.top + 1), rect.bottom - 1)
+    const row = document.elementFromPoint(drag.pointer.x, y)?.closest<HTMLElement>('tr[data-row-index]')
+    if (!row) return
+    const index = Number(row.dataset.rowIndex)
+    if (!drag.moved && index === drag.anchorIndex) return
+    if (!drag.moved) {
+      drag.moved = true
+      document.body.style.userSelect = 'none'
+      noteMultiSelectUsed()
+    }
+    if (index === drag.lastIndex) return
+    drag.lastIndex = index
+    const visibleItems = visibleItemsRef.current
+    const next = new Set(drag.baseline)
+    const from = Math.min(drag.anchorIndex, index)
+    const to = Math.max(drag.anchorIndex, index)
+    for (let i = from; i <= to; i++) {
+      const code = visibleItems[i]?.stockCode
+      if (code === undefined) continue
+      if (drag.selectTo) next.add(code)
+      else next.delete(code)
+    }
+    setSelectedStockCodes(next)
+  }, [noteMultiSelectUsed])
+
+  useEffect(() => {
+    const EDGE_PX = 40
+    const MAX_SCROLL_PX = 24
+    // 끌다가 표 위·아래 가장자리에 닿으면 그쪽으로 스크롤한다(가장자리에 가까울수록 빠르게).
+    const tick = () => {
+      const drag = dragRef.current
+      const container = scrollContainerRef.current
+      if (!drag || !container) {
+        dragFrameRef.current = null
+        return
+      }
+      if (drag.moved) {
+        const rect = container.getBoundingClientRect()
+        let delta = 0
+        if (drag.pointer.y < rect.top + EDGE_PX) {
+          delta = -Math.min(MAX_SCROLL_PX, Math.ceil((MAX_SCROLL_PX * (rect.top + EDGE_PX - drag.pointer.y)) / EDGE_PX))
+        } else if (drag.pointer.y > rect.bottom - EDGE_PX) {
+          delta = Math.min(MAX_SCROLL_PX, Math.ceil((MAX_SCROLL_PX * (drag.pointer.y - (rect.bottom - EDGE_PX))) / EDGE_PX))
+        }
+        if (delta !== 0) {
+          container.scrollTop += delta
+          applyDragAtPointer()
+        }
+      }
+      dragFrameRef.current = requestAnimationFrame(tick)
+    }
+    const handleMouseMove = (e: MouseEvent) => {
+      const drag = dragRef.current
+      if (!drag) return
+      drag.pointer = { x: e.clientX, y: e.clientY }
+      applyDragAtPointer()
+      if (dragFrameRef.current === null) dragFrameRef.current = requestAnimationFrame(tick)
+    }
+    const stopDrag = () => {
+      const drag = dragRef.current
+      if (!drag) return
+      dragRef.current = null
+      document.body.style.userSelect = ''
+      if (dragFrameRef.current !== null) {
+        cancelAnimationFrame(dragFrameRef.current)
+        dragFrameRef.current = null
+      }
+      if (drag.moved) {
+        // 끌기가 끝난 직후의 click(같은 줄에서 뗀 경우)은 선택을 다시 뒤집지 않도록 한 번만 무시한다.
+        suppressClickRef.current = true
+        setTimeout(() => {
+          suppressClickRef.current = false
+        }, 0)
+      }
+    }
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', stopDrag)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', stopDrag)
+      stopDrag()
+    }
+  }, [applyDragAtPointer])
+
+  const toggleSelected = useCallback((stockCode: string, shiftKey: boolean) => {
+    if (suppressClickRef.current) return
+    if (shiftKey) {
+      noteMultiSelectUsed()
+    } else if (!selectedRef.current.has(stockCode)) {
+      // 하나씩 눌러서 선택을 늘리는 횟수만 센다(해제는 세지 않는다).
+      plainSelectClickCountRef.current += 1
+      if (plainSelectClickCountRef.current >= SELECTION_HINT_CLICK_COUNT && !selectionHintShownRef.current) {
+        selectionHintShownRef.current = true
+        setIsSelectionHintOpen(true)
+      }
+    }
+    const anchorStockCode = lastClickedStockCodeRef.current
+    lastClickedStockCodeRef.current = stockCode
     setSelectedStockCodes(prev => {
       const next = new Set(prev)
+      if (shiftKey && anchorStockCode && anchorStockCode !== stockCode) {
+        const visibleItems = visibleItemsRef.current
+        const anchorIndex = visibleItems.findIndex(item => item.stockCode === anchorStockCode)
+        const clickedIndex = visibleItems.findIndex(item => item.stockCode === stockCode)
+        // 기준 줄이 필터/정렬로 화면에서 사라졌으면 범위를 알 수 없으니 평소처럼 한 줄만 토글한다.
+        if (anchorIndex >= 0 && clickedIndex >= 0) {
+          // 범위 전체에 기준 줄의 지금 상태(선택됨/해제됨)를 적용한다 — 탐색기·메일 목록과 같은 방식.
+          const select = prev.has(anchorStockCode)
+          const from = Math.min(anchorIndex, clickedIndex)
+          const to = Math.max(anchorIndex, clickedIndex)
+          for (let i = from; i <= to; i++) {
+            if (select) next.add(visibleItems[i].stockCode)
+            else next.delete(visibleItems[i].stockCode)
+          }
+          return next
+        }
+      }
       if (next.has(stockCode)) next.delete(stockCode)
       else next.add(stockCode)
       return next
     })
-  }, [])
+  }, [noteMultiSelectUsed])
 
   const handleParentSectorHoverStart = useCallback(
     (stockCode: string) => setHoveredRow({ stockCode, kind: 'parentSector' }),
@@ -1726,6 +1916,9 @@ export default function AdminStockTable({
     () => (sortDirection === 'asc' ? sortedAscending : [...sortedAscending].reverse()),
     [sortedAscending, sortDirection],
   )
+  useEffect(() => {
+    visibleItemsRef.current = sorted
+  }, [sorted])
 
   // 지금 화면에 필터/정렬 적용된 상태 그대로 내려받는다 — 전체를 받고 싶으면 필터를 먼저 풀면 된다.
   const handleExportExcel = () => {
@@ -1793,7 +1986,7 @@ export default function AdminStockTable({
           <div className="flex items-center gap-2">
             <div
               ref={undoGroupRef}
-              className={`nes-btn flex items-stretch gap-0 border-[var(--accent)] bg-[var(--accent)] p-0 text-black ${undoStack.length === 0 ? 'opacity-50' : ''}`}
+              className={`nes-btn flex items-stretch gap-0 border-sky-300 bg-sky-300 p-0 text-black ${undoStack.length === 0 ? 'opacity-50' : ''}`}
             >
               <button
                 type="button"
@@ -1801,9 +1994,9 @@ export default function AdminStockTable({
                 disabled={undoStack.length === 0}
                 className="flex items-center gap-1.5 border-0 bg-transparent px-2 py-0.5 text-xs text-black hover:text-black disabled:cursor-not-allowed disabled:hover:text-black"
                 title="실행취소 (Ctrl+Z)"
+                aria-label="실행취소"
               >
                 <UndoIcon className="h-4 w-4" />
-                UNDO
               </button>
               <button
                 type="button"
@@ -1827,7 +2020,7 @@ export default function AdminStockTable({
             />
             <div
               ref={redoGroupRef}
-              className={`nes-btn flex items-stretch gap-0 border-[var(--accent)] bg-[var(--accent)] p-0 text-black ${redoStack.length === 0 ? 'opacity-50' : ''}`}
+              className={`nes-btn flex items-stretch gap-0 border-sky-300 bg-sky-300 p-0 text-black ${redoStack.length === 0 ? 'opacity-50' : ''}`}
             >
               <button
                 type="button"
@@ -1835,9 +2028,9 @@ export default function AdminStockTable({
                 disabled={redoStack.length === 0}
                 className="flex items-center gap-1.5 border-0 bg-transparent px-2 py-0.5 text-xs text-black hover:text-black disabled:cursor-not-allowed disabled:hover:text-black"
                 title="다시실행 (Ctrl+Y)"
+                aria-label="다시실행"
               >
                 <RedoIcon className="h-4 w-4" />
-                REDO
               </button>
               <button
                 type="button"
@@ -1868,7 +2061,7 @@ export default function AdminStockTable({
               <button
                 type="button"
                 onClick={handleClearAllFilters}
-                className="nes-btn border-[var(--accent)] bg-[var(--accent)] px-2 py-0.5 text-xs text-black hover:bg-[var(--accent-hover)]"
+                className="nes-btn border-sky-300 bg-sky-300 px-2 py-0.5 text-xs text-black hover:bg-sky-200"
               >
                 전체 필터 해제
               </button>
@@ -1876,21 +2069,12 @@ export default function AdminStockTable({
           )}
           <button
             type="button"
-            onClick={onRefetchSectors}
-            disabled={isRefetchingSectors}
-            className="nes-btn flex items-center gap-1 border-[var(--accent)] bg-[var(--accent)] px-2 py-0.5 text-xs text-black hover:bg-[var(--accent-hover)] disabled:opacity-50"
-            title="다른 탭에서 추가/변경한 섹터를 반영합니다 (필터는 유지됨)"
-          >
-            <RefreshIcon className={`h-3.5 w-3.5 ${isRefetchingSectors ? 'animate-spin' : ''}`} />
-            {isRefetchingSectors ? '새로고침 중...' : '새로고침'}
-          </button>
-          <button
-            type="button"
             onClick={handleExportExcel}
-            className="nes-btn border-green-600 bg-green-600 px-2 py-0.5 text-xs text-white hover:bg-green-700"
+            className="nes-btn flex items-center border-green-600 bg-green-600 px-2 py-0.5 text-xs text-white hover:bg-green-700"
             title="지금 화면에 보이는(필터/정렬 적용된) 목록을 엑셀로 내려받습니다"
+            aria-label="엑셀 다운로드"
           >
-            엑셀 다운로드
+            <DownloadIcon className="h-3.5 w-3.5" />
           </button>
           {selectedStockCodes.size > 0 && (
             <>
@@ -1931,13 +2115,32 @@ export default function AdminStockTable({
       {/* 스크롤해도 테두리가 사라지지 않도록, 테두리는 스크롤되지 않는 이 바깥 wrapper에 둔다
           (예전엔 <table> 자체에 테두리가 있어서, sticky 헤더가 위로 지나가는 동안 테이블 진짜 위쪽
           테두리가 같이 스크롤돼 사라지고, 맨 아래 테두리도 끝까지 스크롤해야만 보이는 문제가 있었다). */}
-      <div className="min-h-0 flex-1 border border-white">
+      <div className="relative min-h-0 flex-1 border border-white">
+        {isSelectionHintOpen && (
+          <div
+            role="status"
+            className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3 rounded-md border border-slate-500 bg-[#2b3a4f] px-4 py-2 text-sm text-slate-100 shadow-lg"
+          >
+            <span>
+              여러 줄은 <b className="text-sky-300">드래그</b>하거나 <b className="text-sky-300">Shift + 클릭</b>으로 한 번에 선택할 수 있어요.
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsSelectionHintOpen(false)}
+              aria-label="안내 닫기"
+              className="border-0 bg-transparent p-0 text-slate-400 hover:text-slate-100"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <div ref={scrollContainerRef} className="h-full overflow-auto scrollbar-thin">
-          <table className="nes-table is-dark custom-page-table w-full text-sm [&_td]:border-white/10 [&_td]:py-0.5 [&_th]:border-white/10 [&_th]:py-1">
+          {/* 표 글자는 드래그해도 파랗게 선택되지 않게 한다(줄 드래그 선택과 겹치기 때문). 입력창 안의 글자는 그대로 선택할 수 있다. */}
+          <table className="nes-table is-dark custom-page-table w-full select-none text-sm [&_input]:select-text [&_td]:border-white/10 [&_td]:py-0.5 [&_th]:border-white/10 [&_th]:py-1">
           <thead className="sticky top-0 z-10">
             <tr>
               <th
-                className="cursor-pointer bg-[var(--accent)] text-center text-black"
+                className="cursor-pointer bg-[#2b3a4f] text-center font-bold text-slate-100"
                 style={{ width: CHECKBOX_COLUMN_WIDTH }}
                 onClick={e => {
                   // 체크박스 자신을 클릭한 경우는 onChange가 이미 처리하므로 여기서 중복 토글하지 않는다.
@@ -1945,16 +2148,16 @@ export default function AdminStockTable({
                   toggleSelectAllVisible()
                 }}
               >
-                <input type="checkbox" checked={isAllVisibleSelected} onChange={toggleSelectAllVisible} />
+                <input type="checkbox" className="mx-auto my-0 block" checked={isAllVisibleSelected} onChange={toggleSelectAllVisible} />
               </th>
-              <th className="bg-[var(--accent)] text-center text-black" style={{ width: NUMBER_COLUMN_WIDTH }}>
+              <th className="bg-[#2b3a4f] text-center font-bold text-slate-100" style={{ width: NUMBER_COLUMN_WIDTH }}>
                 #
               </th>
               {COLUMNS.map(col => {
                 const label = (
-                  <span className="cursor-pointer select-none text-black hover:text-[var(--accent)]" onClick={() => handleSort(col.key)}>
+                  <span className="cursor-pointer select-none text-slate-100 hover:text-slate-300" onClick={() => handleSort(col.key)}>
                     {col.header}
-                    <span className={`ml-1 ${sortKey === col.key ? 'text-[#ffee00]' : 'text-gray-400'}`}>
+                    <span className={`ml-1 ${sortKey === col.key ? 'text-sky-300' : 'text-slate-500'}`}>
                       {sortKey === col.key ? (sortDirection === 'asc' ? '▲' : '▼') : '▼'}
                     </span>
                   </span>
@@ -1974,7 +2177,7 @@ export default function AdminStockTable({
                             : undefined
                     }
                     style={{ width: col.width }}
-                    className="whitespace-nowrap bg-[var(--accent)] text-center text-black"
+                    className="whitespace-nowrap bg-[#2b3a4f] text-center font-bold text-slate-100"
                   >
                     {filterKey ? (
                       <div className="flex items-center justify-between pl-2 pr-1">
@@ -2061,6 +2264,7 @@ export default function AdminStockTable({
                       index={virtualRow.index}
                       isSelected={selectedStockCodes.has(item.stockCode)}
                       onToggleSelected={toggleSelected}
+                      onRowMouseDown={handleRowMouseDown}
                       hoveredKind={hoveredRow?.stockCode === item.stockCode ? hoveredRow.kind : null}
                       onParentSectorHoverStart={handleParentSectorHoverStart}
                       onMidSectorHoverStart={handleMidSectorHoverStart}

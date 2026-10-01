@@ -36,20 +36,21 @@ function isValidBefore(response: MarketMapResponse, requestedSnapshotTime: strin
 export function useSectorMarketMapPair(
   market: MarketQuery,
   isCustom: boolean,
+  nxtOnly: boolean,
   beforeMinutes: number,
   now: MarketMapResponse | undefined,
 ) {
   const nowSnapshotTime = now?.snapshotTime ?? null
 
   return useQuery({
-    queryKey: marketMapKeys.sectorPair(market, isCustom, beforeMinutes, nowSnapshotTime),
+    queryKey: marketMapKeys.sectorPair(market, isCustom, nxtOnly, beforeMinutes, nowSnapshotTime),
     queryFn: async (): Promise<SectorMarketMapPair> => {
       if (!now || now.snapshotTime === null) {
         // enabled가 이 경로를 막지만, TypeScript는 그걸 모른다 — 방어적으로 명시한다.
         throw new Error('now.snapshotTime 없이 쌍 쿼리가 실행됐다')
       }
       const beforeSnapshotTime = subtractMinutesFromSnapshotTime(now.snapshotTime, beforeMinutes)
-      const beforeResponse = await getMarketMap(market, isCustom, beforeSnapshotTime)
+      const beforeResponse = await getMarketMap(market, isCustom, beforeSnapshotTime, nxtOnly)
       return {
         now,
         before: isValidBefore(beforeResponse, beforeSnapshotTime) ? beforeResponse : null,
@@ -62,9 +63,12 @@ export function useSectorMarketMapPair(
     placeholderData: (previousData, previousQuery) => {
       const previousKey = previousQuery?.queryKey
       if (!previousKey) return undefined
-      const [, , previousMarket, previousIsCustom, previousBeforeMinutes] = previousKey
+      const [, , previousMarket, previousIsCustom, previousNxtOnly, previousBeforeMinutes] = previousKey
       const sameParams =
-        previousMarket === market && previousIsCustom === isCustom && previousBeforeMinutes === beforeMinutes
+        previousMarket === market &&
+        previousIsCustom === isCustom &&
+        previousNxtOnly === nxtOnly &&
+        previousBeforeMinutes === beforeMinutes
       return sameParams ? previousData : undefined
     },
   })

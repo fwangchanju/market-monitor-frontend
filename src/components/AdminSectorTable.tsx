@@ -29,7 +29,7 @@ const MAX_SECTOR_NAME_LENGTH = 12
 
 // 상단바 우측 아이콘(NavBarPageActions)과 같은 모양 — 회색 아이콘, hover 때 강조색.
 const ICON_BUTTON_CLASS =
-  'flex h-7 w-7 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-gray-400 outline-none hover:text-[var(--accent)]'
+  'flex h-7 w-7 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-gray-400 outline-none hover:text-sky-300'
 
 type Row =
   | { type: 'sector'; item: SectorItem; siblingIndex: number }
@@ -133,7 +133,7 @@ function DroppableSectorRow({
     data: { sectorId },
   })
   return (
-    <tr ref={setNodeRef} className={`${className} ${isOver ? 'bg-[var(--accent)]/20' : ''}`}>
+    <tr ref={setNodeRef} className={`${className} ${isOver ? 'bg-sky-400/15' : ''}`}>
       {children}
     </tr>
   )
@@ -270,7 +270,7 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
                 placeholder="추가"
                 title={`${quotedChain} 섹터 내 세부항목 추가`}
                 aria-label={`${quotedChain} 섹터 내 세부항목 이름`}
-                className="h-7 w-40 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-medium text-white outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-[var(--accent)]"
+                className="h-7 w-40 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-medium text-white outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-sky-300"
               />
               <button
                 type="button"
@@ -311,7 +311,7 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
                 <button
                   type="button"
                   onClick={() => toggleExpand(sector.id)}
-                  className="mr-1 flex h-6 w-6 shrink-0 items-center justify-center border-0 bg-transparent text-gray-400 hover:text-[var(--accent)]"
+                  className="mr-1 flex h-6 w-6 shrink-0 items-center justify-center border-0 bg-transparent text-gray-400 hover:text-sky-300"
                 >
                   {expandedIds.has(sector.id) ? '▾' : '▸'}
                 </button>
@@ -336,7 +336,7 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
                   sectorId={sector.id}
                   parentId={sector.parentId}
                   label={label}
-                  className="cursor-grab touch-none truncate text-left text-white hover:text-[var(--accent)] active:cursor-grabbing"
+                  className="cursor-grab touch-none truncate text-left text-white hover:text-sky-300 active:cursor-grabbing"
                 />
               )}
             </div>
@@ -423,7 +423,7 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
               onKeyDown={e => e.key === 'Enter' && handleCreate()}
               placeholder="섹터 추가"
               aria-label="최상위 섹터 이름"
-              className="ml-2 h-7 w-40 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-medium text-white outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-[var(--accent)]"
+              className="ml-2 h-7 w-40 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-medium text-white outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-sky-300"
             />
             <button type="button" aria-label="섹터 추가" title="추가" onClick={handleCreate} className={ICON_BUTTON_CLASS}>
               <PlusIcon className="h-4 w-4" />
@@ -432,7 +432,7 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
           toolbarContainer,
         ) : null}
         {isDraggingSector && (
-          <p className="px-2 py-2 text-sm text-[var(--accent)]">다른 섹터 위에 놓으면 그 밑으로, 빈 곳에 놓으면 최상위로 이동합니다</p>
+          <p className="px-2 py-2 text-sm text-sky-300">다른 섹터 위에 놓으면 그 밑으로, 빈 곳에 놓으면 최상위로 이동합니다</p>
         )}
         <div className="grid min-h-0 flex-1 grid-cols-1">
           {columnRows.map((rows, columnIndex) => (

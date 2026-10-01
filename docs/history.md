@@ -291,3 +291,5 @@ List<CategoryChangeRateItem>
 **순서 제안**: 읽기 전용(KRX 시트)과 NXT 데이터 모드를 먼저, 편집 가능한 내 히트맵(서버 데이터 구조 변경과 마이그레이션이 필요한 큰 작업)은 나중에 한다.
 
 **1단계 진행 (2026-10-02)**: 커스텀 페이지 맨 아래에 시트 탭(MARKETRY | KRX)을 두었다. KRX 시트는 지도의 KRX 히트맵 데이터(`/map?isCustom=false`)를 읽기 전용 표로 보여주고(카테고리·종목 화면), 주소는 `?sheet=krx`다. 내 히트맵 탭은 시트가 없어 두지 않았다. NXT 거래 가능 여부는 키움 `ka10099` 응답의 `nxtEnable`("Y"만 가능)로 받는다 — 백엔드가 `stock_info.nxt_enabled`에 저장하고 `/custom/stock-sectors`가 `nxtEnabled`로 내려주며, 커스텀 종목 표와 KRX 종목 표에 NXT 열과 필터("NXT만 보기")를 더했다. 서버에서 종목 동기화가 한 번 돌기 전에는 값이 전부 false다(정상이면 약 600종목이 Y). NXT 지도(데이터 모드)는 아직 하지 않았다.
+
+**NXT 시트와 지도 NXT 히트맵 (2026-10-02)**: 커스텀 페이지 시트 드롭박스는 내 히트맵(준비 중) · KRX · NXT · MARKETRY 순서로, 지도 설정의 히트맵 선택과 같다. NXT 시트는 KRX 시트에서 NXT 거래 종목만 남긴 읽기 전용 표다. 지도에서 NXT를 고르면 `/map?isCustom=false&nxtOnly=true`로 거래소 분류의 NXT 거래 종목만 받아 그린다(저장 설정은 `marketMap.nxtOnly` 하나를 더했고, 기존 `marketMap.isCustom`은 그대로다). **가격과 등락률은 NXT 단독 가격이 아니라 지금 저장되는 KRX·NXT 통합 가격(SOR)이다** — NXT 단독 가격은 키움을 `stex_tp=2`로 따로 받아 별도 저장소에 두어야 하는 큰 작업이라 하지 않았고, 지도에서 NXT를 고르면 이 점을 알리는 닫을 수 있는 알림이 뜬다. NXT 거래 종목 목록은 키움 `nxtEnable`을 우선 쓰고, 키움에 없으면 백엔드가 NEXTRADE 홈페이지의 편입 종목(약 604개)으로 채운다.

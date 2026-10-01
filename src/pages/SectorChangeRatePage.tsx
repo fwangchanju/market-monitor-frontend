@@ -154,6 +154,7 @@ export default function SectorChangeRatePage() {
     onChangeAvgChangeRateUseSimple,
     market,
     isCustom,
+    nxtOnly,
     data,
     isLoading,
     isError,
@@ -171,7 +172,7 @@ export default function SectorChangeRatePage() {
   // 결과(data)를 그대로 쓴다. before는 그 now.snapshotTime에서 계산한 시각을 쌍으로 묶어 조회한다
   // (market-monitor-backend 지시서 결정 4) — 이렇게 해야 재조회로 now가 새 tick으로 바뀌는 순간에도
   // 화면이 새 now·옛 before를 잠깐이라도 섞어 그리지 않는다.
-  const pairQuery = useSectorMarketMapPair(market, isCustom, beforeMinutes, data)
+  const pairQuery = useSectorMarketMapPair(market, isCustom, nxtOnly, beforeMinutes, data)
   // 쌍 쿼리가 에러(재시도 1회 뒤)면 "before 없음"으로 보고 now 쿼리의 현재 data로 그린다. 그 외에는
   // 화면에 그리는 now가 항상 "쌍 안의 now"다 — placeholder 기간에도 그 쌍이 만들어질 때의 now·before가
   // 함께 유지되어, 상단 바 시각과 그래프가 서로 어긋나지 않는다.
@@ -235,7 +236,7 @@ export default function SectorChangeRatePage() {
           settingsModalProps.isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-400'
         }`}
       />
-      <span className="text-gray-400">{settingsModalProps.isCustom ? 'MARKETRY' : '거래소'}</span>
+      <span className="text-gray-400">{settingsModalProps.isCustom ? 'MARKETRY' : nxtOnly ? 'NXT' : '거래소'}</span>
     </>
   )
 

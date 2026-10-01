@@ -10,9 +10,12 @@ import { z } from 'zod'
 
 const excludedStockListResponseSchema = z.array(ExcludedStockItemSchema)
 
-export const getMarketMap = (market: MarketQuery, isCustom: boolean, snapshotTime?: string) =>
+// nxtOnly는 거래소 분류(isCustom=false)에서 NXT 거래 종목만 받는다. false일 때는 요청에 싣지 않아 기존 요청과 같다.
+export const getMarketMap = (market: MarketQuery, isCustom: boolean, snapshotTime?: string, nxtOnly = false) =>
   client
-    .get('/map', { params: { market, isCustom, ...(snapshotTime ? { snapshotTime } : {}) } })
+    .get('/map', {
+      params: { market, isCustom, ...(snapshotTime ? { snapshotTime } : {}), ...(nxtOnly ? { nxtOnly } : {}) },
+    })
     .then(r => MarketMapResponseSchema.parse(r.data))
 
 export const getMarketValueTiers = () =>
