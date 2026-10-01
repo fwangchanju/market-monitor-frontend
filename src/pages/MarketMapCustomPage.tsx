@@ -519,7 +519,7 @@ export default function MarketMapCustomPage() {
                   simpleAvgDepthRange={simpleAvgDepthRange}
                   upDownCountDepthRange={upDownCountDepthRange}
                   boxSizeMarketCapRatio={boxSizeMarketCapRatio}
-                  canExclude={isCustom}
+                  canExclude={isCustom || !isLoggedIn}
                   colorScale={colorScale}
                   labelMinAreaPercent={boxLabelMinAreaPercent}
                   stockLabelMode={stockLabelMode}

@@ -29,6 +29,7 @@ import {
   type ColorScaleConfig,
   type ColorScaleThreshold,
 } from '@/utils/marketMapColorScale'
+import { withStableSectorIds } from '@/utils/guestSectorIds'
 import type { MarketMapSectorNode } from '@/types/api'
 
 // 조회 실패/로딩 중이거나 "색상 커스텀 사용"이 꺼져있을 때 쓰는 폴백 — thresholds가 비어있으면 어차피
@@ -252,20 +253,28 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   } = useMarketMap(market, isCustom, {
     enabled: needsTree,
   })
-  const rootNodes = data?.items ?? []
+  const rawRootNodes = data?.items
+  // 비로그인의 거래소 분류는 업종 id가 모두 0이라, 제외 기능이 동작하도록 이름 기반 고유 id를 붙인다.
+  const rootNodes = useMemo(
+    () => (isLoggedIn ? (rawRootNodes ?? []) : withStableSectorIds(rawRootNodes ?? [])),
+    [isLoggedIn, rawRootNodes],
+  )
 
   useEffect(() => {
     if (!data) return
+    // 비로그인의 제외 목록은 서버 값이 아니라 이 탭에서 직접 고른 것이라 서버 값으로 다시 채우지 않는다.
+    if (!isLoggedIn) return
     const key = `${market}:${isCustom}`
     if (seededKeyRef.current === key) return
     seededKeyRef.current = key
     setExcludedSectorNames(seedExcludedSectorNames(data.items, []))
-  }, [data, market, isCustom, setExcludedSectorNames])
+  }, [data, market, isCustom, isLoggedIn, setExcludedSectorNames])
 
-  // 거래소 분류 트리는 사용자 정의 섹터를 쓰지 않으므로 isExcluded와 제외 목록을 적용하지 않는다.
+  // 로그인 사용자의 거래소 분류 트리는 사용자 정의 섹터를 쓰지 않으므로 isExcluded와 제외 목록을 적용하지 않는다.
+  // 비로그인은 거래소 분류만 쓰지만 직접 고른 제외 목록을 이 탭에서 적용한다(새로고침하면 초기화).
   const excludedSectorIds = useMemo(
-    () => isCustom && sectorFilterEnabled ? new Set(excludedSectorNames.keys()) : new Set<number>(),
-    [isCustom, sectorFilterEnabled, excludedSectorNames],
+    () => (isCustom || !isLoggedIn) && sectorFilterEnabled ? new Set(excludedSectorNames.keys()) : new Set<number>(),
+    [isCustom, isLoggedIn, sectorFilterEnabled, excludedSectorNames],
   )
 
   const directionFilters = useMemo(() => ({
@@ -593,7 +602,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const handleExcludeSector = (sectorId: number, sectorName: string) => {
     const path = findSectorPath(rootNodes, sectorId)
     setExcludedSectorNames(prev => new Map(prev).set(sectorId, path ? path.join(' > ') : sectorName))
-    registerExcludedSector(sectorId).catch(e => console.error('섹터 제외 실패', e))
+    // 서버에는 로그인 사용자만 저장한다. 비로그인은 이 탭에만 남는다.
+    if (isLoggedIn) registerExcludedSector(sectorId).catch(e => console.error('섹터 제외 실패', e))
   }
 
   const handleRemoveExcludedSector = (sectorId: number) => {
@@ -602,7 +612,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
       next.delete(sectorId)
       return next
     })
-    unregisterExcludedSector(sectorId).catch(e => console.error('섹터 제외 해제 실패', e))
+    if (isLoggedIn) unregisterExcludedSector(sectorId).catch(e => console.error('섹터 제외 해제 실패', e))
   }
 
   const settingsModalProps = {

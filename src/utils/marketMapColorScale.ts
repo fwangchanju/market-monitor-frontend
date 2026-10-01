@@ -23,10 +23,10 @@ export interface ColorScaleConfig {
 // 맞춘다.
 export const MARKET_INDEX_REFERENCE_COLOR = '#4dd0e1'
 
-// 0%일 때 색 — 저장된 threshold가 없으면 이 값(오늘의 bg-gray-600)으로 폴백.
-// Tailwind v4 theme.css의 실제 정의(oklch(44.6% 0.03 256.802))를 표준 OKLab→sRGB 변환식으로
-// 직접 계산한 hex다(추측치 아님 — node_modules/tailwindcss/theme.css 확인).
-export const DEFAULT_ZERO_COLOR = '#4a5565'
+// 기본 색상 규칙 — 파랑(음수)과 빨강(양수)은 같은 채도(75)와 같은 명도를 쓰고, 명도는 변동률 숫자에 비례한다(2%=14, 5%=35,
+// 8%=56 = 7×숫자). 0%는 이 세 명도의 중앙값(35)인 무채색이다. 색상은 색상 편집기의 파랑(217)·빨강(0) 프리셋과 같다.
+// 0%일 때 색 — 저장된 threshold가 없으면 이 값으로 폴백.
+export const DEFAULT_ZERO_COLOR = '#595959'
 
 // 저장된 threshold가 하나도 없는 side에 쓰는 폴백 프리셋(절댓값 기준). 오늘의 계단식 로직
 // (MarketMapBox.boxColorClass, 2/5/8%p 기준)과 최대한 같은 "느낌"을 재현하도록 딱 그 3개
@@ -35,16 +35,15 @@ export const DEFAULT_ZERO_COLOR = '#4a5565'
 // flat한 red-500/blue-500 그대로 유지된다(중간에 4번째 threshold를 더 두면 8~30% 구간이 다시 서서히
 // 옅어지는 그라데이션이 돼버려서 "커스텀이 없으면 오늘과 최대한 비슷하게 보여야 한다"는
 // 요구사항에서 벗어난다).
-// 색상값 출처: node_modules/tailwindcss/theme.css의 oklch 정의를 동일한 방식으로 변환한 hex.
 export const DEFAULT_PLUS_THRESHOLDS: ColorScaleThreshold[] = [
-  { thresholdPercent: 2, color: '#460809', colorLabel: 'red' }, // red-950
-  { thresholdPercent: 5, color: '#82181a', colorLabel: 'red' }, // red-900
-  { thresholdPercent: 8, color: '#fb2c36', colorLabel: 'red' }, // red-500
+  { thresholdPercent: 2, color: '#3e0909', colorLabel: 'red' }, // 명도 14
+  { thresholdPercent: 5, color: '#9c1616', colorLabel: 'red' }, // 명도 35
+  { thresholdPercent: 8, color: '#e33b3b', colorLabel: 'red' }, // 명도 56
 ]
 export const DEFAULT_MINUS_THRESHOLDS: ColorScaleThreshold[] = [
-  { thresholdPercent: 2, color: '#162456', colorLabel: 'blue' }, // blue-950
-  { thresholdPercent: 5, color: '#1c398e', colorLabel: 'blue' }, // blue-900
-  { thresholdPercent: 8, color: '#2b7fff', colorLabel: 'blue' }, // blue-500
+  { thresholdPercent: 2, color: '#091d3e', colorLabel: 'blue' }, // 명도 14
+  { thresholdPercent: 5, color: '#164a9c', colorLabel: 'blue' }, // 명도 35
+  { thresholdPercent: 8, color: '#3b7be3', colorLabel: 'blue' }, // 명도 56
 ]
 
 // 저장된 구간이 하나도 없을 때 draft를 채우는 초기값 — 위 기본 프리셋을 부호 있는 실제 구간(-8/-5/-2, +2/+5/+8)으로

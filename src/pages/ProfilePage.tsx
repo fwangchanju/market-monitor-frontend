@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import { useLoginGate } from '@/hooks/useLoginGate'
@@ -8,6 +9,12 @@ export default function ProfilePage() {
   const { data: session, isLoading, isError } = useSession()
   const { requireLogin } = useLoginGate()
   const logout = useLogout()
+
+  // 비로그인이 이 페이지에 들어오면 안내 문구를 보기 전에 바로 로그인 팝업을 띄운다. 팝업을 닫으면 아래 안내와 로그인 버튼이 남는다.
+  const needsLogin = !isLoading && !isError && session?.authenticated === false
+  useEffect(() => {
+    if (needsLogin) requireLogin('/profile')
+  }, [needsLogin, requireLogin])
 
   const handleLogout = async () => {
     try {
@@ -49,7 +56,7 @@ export default function ProfilePage() {
             </>
           ) : (
             <>
-              <p className="text-sm text-gray-300">계정 정보를 보려면 로그인해 주세요.</p>
+              <p className="text-sm text-gray-300">로그인 후 이용 가능합니다.</p>
               <button
                 type="button"
                 onClick={() => requireLogin('/profile')}

@@ -128,7 +128,7 @@ export default function CustomManagePage() {
         <NavBar />
         <SubNavBar />
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
-          <p className="text-sm text-white">로그인이 필요합니다.</p>
+          <p className="text-sm text-white">로그인 후 이용 가능합니다.</p>
           <button
             type="button"
             onClick={() => requireLogin(pathname)}
