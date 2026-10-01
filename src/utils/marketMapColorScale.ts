@@ -183,10 +183,6 @@ export function resolveLegendSwatches(
 
 // ── 어드민 톤 피커 전용 색 변환 유틸 (hue/lightness 슬라이더 ↔ 최종 저장용 hex) ──────────────
 
-// 어드민이 색상 추가 세션에서 새 행을 만들었지만 아직 톤을 고르지 않은 상태의 내부 색값 —
-// 무채색(회색) 프리셋과 동일한 값을 써서, 실제로 "회색"을 고른 것과는 표시(점선 vs 실선)로만 구분한다.
-export const UNSET_COLOR_SCALE_THRESHOLD_COLOR = hslToHex(0, 0, 50)
-
 export function hslToHex(h: number, s: number, l: number): string {
   const sNorm = s / 100
   const lNorm = l / 100

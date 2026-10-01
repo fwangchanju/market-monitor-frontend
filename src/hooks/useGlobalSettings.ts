@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { usePersistedState } from './usePersistedState'
+import { useLocalPersistedState } from './useLocalPersistedState'
 import { usePageSetting } from './usePageSetting'
 import { useRouteAwareMarket } from './useRouteAwareMarket'
-import { useIsLoggedIn } from './useSession'
+import { useIsLoggedIn, useSession } from './useSession'
 import { useLoginGate } from './useLoginGate'
 import { useMarketMap } from './useMarketMap'
 import { useMarketMapColorScale } from './useMarketMapColorScale'
@@ -23,7 +24,6 @@ import { useMarketValueTierRange } from './useMarketValueTierRange'
 import { registerExcludedSector, unregisterExcludedSector } from '@/api/marketMap'
 import {
   resolveLegendSwatches,
-  UNSET_COLOR_SCALE_THRESHOLD_COLOR,
   type ColorScaleConfig,
   type ColorScaleThreshold,
 } from '@/utils/marketMapColorScale'
@@ -191,15 +191,48 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const [topPickCount, setTopPickCount] = usePageSetting('marketMap.topPickCount', 2)
   const [topPickEnabled, setTopPickEnabled] = usePageSetting('marketMap.topPickEnabled', topPickCount !== 0)
   const selectedTopPickCount = topPickCount || 2
-  // 설정 사이드바 열림 상태. 페이지 진입 시 기본으로 연다.
-  const [isSettingsOpen, setIsSettingsOpen] = useState(true)
+  // 핀 — 켜 두면(기본) 설정창을 지도 옆에 고정해서(지도를 밀어냄) 계속 열어 두고, 끄면 지도 위에 띄워서 밖을 누를 때 닫는다.
+  // 로그인 사용자는 핀 선택을 이 브라우저에 기억하고, 페이지에 들어올 때 설정창을 열지 닫을지도 이 값을 따른다(고정=열림, 해제=닫힘).
+  // 비로그인 사용자는 기억하지 않는다 — 항상 "열림 + 핀 켜짐"으로 시작하고, 핀을 꺼도 이번 화면에서만 적용된다.
+  const { isLoading: isSessionLoading } = useSession()
+  const [storedSettingsPinned, setStoredSettingsPinned] = useLocalPersistedState('settings.sidebarPinned', true)
+  const [guestSettingsPinned, setGuestSettingsPinned] = useState(true)
+  const isSettingsPinned = isLoggedIn ? storedSettingsPinned : guestSettingsPinned
+  const [isSettingsOpen, setIsSettingsOpen] = useState(isSettingsPinned)
   const previousPathnameRef = useRef(pathname)
+  const isSettingsPinnedRef = useRef(isSettingsPinned)
+  useEffect(() => {
+    isSettingsPinnedRef.current = isSettingsPinned
+  })
+
+  // 세션 조회가 끝나기 전에는 비로그인으로 보여서 일단 열린 채로 시작한다. 조회가 끝나 로그인 사용자로 확인되면
+  // 그때 한 번 저장된 핀 선택(해제였다면 닫힘)을 반영한다.
+  const sessionSettledRef = useRef(!isSessionLoading)
+  useEffect(() => {
+    if (sessionSettledRef.current || isSessionLoading) return
+    sessionSettledRef.current = true
+    setIsSettingsOpen(isSettingsPinnedRef.current)
+  }, [isSessionLoading])
 
   useEffect(() => {
     if (previousPathnameRef.current === pathname) return
     previousPathnameRef.current = pathname
-    setIsSettingsOpen(true)
+    setIsSettingsOpen(isSettingsPinnedRef.current)
   }, [pathname])
+
+  // 핀이 꺼져(떠 있는 상태) 있을 때 설정창 밖을 누르면 닫는다. 위쪽 설정 버튼은 제외한다 — 그 버튼 자체가 열고 닫는 토글이라서
+  // 포함하면 닫혔다가 바로 다시 열린다. pointerdown을 캡처 단계에서 받아 지도 박스 등이 이벤트를 막아도 닫힌다.
+  useEffect(() => {
+    if (!isSettingsOpen || isSettingsPinned) return
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      if (target.closest('[data-settings-sidebar], [data-settings-toggle]')) return
+      setIsSettingsOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOnOutsidePress, true)
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePress, true)
+  }, [isSettingsOpen, isSettingsPinned])
   // 새로 받아온 (market, isCustom) 조합의 데이터가 처음 도착했을 때만 서버 isExcluded로 시드하고,
   // 그 뒤 60초 백그라운드 재조회가 로컬에서 방금 토글한 상태를 덮어쓰지 않게 한다(fire-and-forget 저장이라
   // 서버 반영 전에 재조회가 먼저 도착할 수 있음).
@@ -266,7 +299,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const upDownCountDepthRange = selectedDepthMetric === 'upDownCount' ? activeDepthRange : null
   const marketValueDepthRange = selectedDepthMetric === 'marketValue' ? activeDepthRange : null
 
-  // 선호 업종 라디오의 활성 상한은 업종 분류 레벨 설정을 따른다. 대/중/소분류 설정은 데이터가 얕아도
+  // 선호 업종 라디오의 활성 상한은 업종 단계 설정을 따른다. 대/중/소분류 설정은 데이터가 얕아도
   // 미리 선택할 수 있게 두고, 현재 데이터에 해당 섹터가 없으면 강조 대상만 빈 Set으로 둔다.
   const topPickMaxSelectableDepth = maxDepth === null ? Math.max(3, availableMaxDepth) : maxDepth
   const topPickSectorKeys = useMemo(() => {
@@ -297,12 +330,29 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 등락률 컬러 스케일 draft — 서버 값(useMarketMapColorScale)이 도착하면 딱 한 번만 시드하고,
   // 이후로는 어드민이 설정 팝업에서 편집하는 draft를 그대로 트리맵/범례에 흘려보낸다. 그래서 "저장"
   // 전에도 실제로 보여주는 지도 색이 곧바로 바뀐다 — 별도의 미리보기 트리맵이 필요 없다.
-  const { data: colorScaleServerData } = useMarketMapColorScale()
+  const [colorEditIndices, setColorEditIndices] = useState<number[]>([])
+  // 세션 시작 시점의 draft 스냅샷 — 취소 복구와 편집 전 비어 있던 부호의 fallback 표시를 위해 보관한다.
+  const colorEditSnapshotRef = useRef<ColorScaleConfig | null>(null)
+  const { data: colorScaleServerData, refetch: refetchColorScale } = useMarketMapColorScale()
   const [colorScaleDraft, setColorScaleDraft] = useState<ColorScaleConfig | null>(null)
   // 비로그인은 서버에 저장할 수 없으므로, 이 탭에서 바꾼 색상 설정은 세션(sessionStorage)에만 남긴다 — 다른
   // 화면 설정(usePageSetting의 비로그인 동작)과 같다. 로그인 사용자는 서버 저장이라 이 값을 쓰지 않는다.
   const [localColorScale, setLocalColorScale] = usePersistedState<ColorScaleConfig | null>('marketMap.localColorScale', null)
-  if (colorScaleServerData && colorScaleDraft === null) {
+  // draft가 어느 로그인 상태의 값으로 시드됐는지 — 로그인/로그아웃으로 바뀌면 새 서버 값으로 다시 시드한다.
+  const [colorScaleDraftOwner, setColorScaleDraftOwner] = useState<boolean | null>(null)
+  const [colorEditError, setColorEditError] = useState<string | null>(null)
+  // 편집 대상이 바뀔 때마다 올려서 편집 영역의 입력칸/슬라이더 로컬 상태를 새로 시작하게 한다.
+  const [colorEditSessionKey, setColorEditSessionKey] = useState(0)
+  // 편집 영역이 항상 열려 있으므로, 적용/취소 뒤에 같은 칸을 다시 편집 대상으로 잡기 위해 기억해 둔다.
+  const selectedColorPercentRef = useRef<number | null>(null)
+  // 편집을 시작할 때의 값 — 지금 값과 다르면 "적용하지 않은 수정"이 있는 것이라 적용/취소 버튼을 보여준다.
+  const [colorEditOriginal, setColorEditOriginal] = useState<{ thresholdPercent: number; color: string } | null>(null)
+  if (colorScaleServerData && (colorScaleDraft === null || colorScaleDraftOwner !== isLoggedIn)) {
+    setColorScaleDraftOwner(isLoggedIn)
+    // 이전 계정에서 열려 있던 편집 세션은 인덱스가 의미를 잃으므로 함께 닫는다.
+    setColorEditIndices([])
+    setColorEditError(null)
+    colorEditSnapshotRef.current = null
     // 방어적 복사 — react-query 캐시가 들고 있는 참조를 그대로 draft로 물고 있지 않도록.
     setColorScaleDraft(
       !isLoggedIn && localColorScale
@@ -313,10 +363,6 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // "색상 커스텀 사용" 토글 — 순수 로컬(세션스토리지) 상태. draft(=저장 대상)와는 완전히 분리돼 있어서
   // 꺼도 draft에 저장해둔 값은 건드리지 않고, 그냥 실제 지도에 넘기는 값만 빈 스케일(=기본 프리셋)로 바꿔치기한다.
   const [colorCustomOn, setColorCustomOn] = usePageSetting('marketMap.colorCustomOn', true)
-  const [colorEditIndices, setColorEditIndices] = useState<number[]>([])
-  const [colorEditMode, setColorEditMode] = useState<'add' | 'edit'>('add')
-  // 세션 시작 시점의 draft 스냅샷 — 취소 복구와 편집 전 비어 있던 부호의 fallback 표시를 위해 보관한다.
-  const colorEditSnapshotRef = useRef<ColorScaleConfig | null>(null)
   // 같은 부호/퍼센트에 편집 중인 행이 이미 있는 임계값과 겹치면 편집 중인 값을 우선한다.
   // resolver는 같은 thresholdPercent 중 마지막 값을 유효점으로 삼으므로, 저장 draft의 배열 순서를
   // 바꾸지 않고 렌더링 입력에서만 편집 행을 뒤로 보낸다.
@@ -350,39 +396,34 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 개별 뮤테이션 훅의 isPending 하나만으로는 전체 진행 상태를 못 나타내서 별도로 든다.
   const [isApplyingColorEdit, setIsApplyingColorEdit] = useState(false)
 
-  // 새로 추가되는 행은 값을 미리 채워주지 않는다 — 입력칸도, 색도 "아직 안 정한" 상태로 시작해서
-  // 사용자가 직접 임계값을 입력하고 톤을 골라야 한다.
-  const createBlankColorThreshold = (): ColorScaleThreshold => ({
-    thresholdPercent: 0,
-    color: UNSET_COLOR_SCALE_THRESHOLD_COLOR,
-    colorLabel: null,
-  })
-
-  const handleAddColorThreshold = (preset?: ColorScaleThreshold) => {
-    if (!colorScaleDraft) return
-    colorEditSnapshotRef.current = colorScaleDraft
-    const nextThresholds = [...colorScaleDraft.thresholds, preset ?? createBlankColorThreshold()]
-    setColorScaleDraft({ ...colorScaleDraft, thresholds: nextThresholds })
-    // 기본 범례 칸을 눌렀을 때도 단일 색상 수정 패널로 연다.
-    setColorEditMode(preset ? 'edit' : 'add')
+  // 범례 칸을 눌러 그 구간을 편집한다 — 편집 영역은 항상 열려 있고, 칸을 누르면 편집 대상만 바뀐다.
+  // 적용하지 않은 이전 칸의 수정은 되돌린다. 저장된 색이 없는 기본 칸은 그 칸의 기본 값으로
+  // 구간을 만들어 편집한다(범례 칸 수는 고정이라 새 칸을 만드는 기능은 없다).
+  const handleSelectColorSwatch = (percent: number, color: string) => {
+    if (!colorScaleDraft || isApplyingColorEdit) return
+    const base = colorEditSnapshotRef.current ?? colorScaleDraft
+    colorEditSnapshotRef.current = base
+    selectedColorPercentRef.current = percent
+    setColorEditError(null)
+    setColorEditSessionKey(key => key + 1)
+    const existingIndex = base.thresholds.findIndex(threshold => threshold.thresholdPercent === percent)
+    if (existingIndex >= 0) {
+      const existing = base.thresholds[existingIndex]
+      setColorEditOriginal({ thresholdPercent: existing.thresholdPercent, color: existing.color })
+      setColorScaleDraft(base)
+      setColorEditIndices([existingIndex])
+      return
+    }
+    setColorEditOriginal({ thresholdPercent: percent, color })
+    const nextThresholds = [...base.thresholds, { thresholdPercent: percent, color, colorLabel: null }]
+    setColorScaleDraft({ ...base, thresholds: nextThresholds })
     setColorEditIndices([nextThresholds.length - 1])
-  }
-  const handleEditColorThreshold = (index: number) => {
-    if (!colorScaleDraft) return
-    colorEditSnapshotRef.current = colorScaleDraft
-    setColorEditMode('edit')
-    setColorEditIndices([index])
-  }
-  // add 모드 전용 — 값이 비어있는 새 행을 draft 끝에 추가하고, 그 인덱스를 세션에 편입시킨다.
-  const handleAddColorThresholdRow = () => {
-    if (!colorScaleDraft || colorEditIndices.length === 0) return
-    const nextThresholds = [...colorScaleDraft.thresholds, createBlankColorThreshold()]
-    setColorScaleDraft({ ...colorScaleDraft, thresholds: nextThresholds })
-    setColorEditIndices(prev => [...prev, nextThresholds.length - 1])
   }
   const handleChangeColorEditThreshold = (rowIndex: number, percent: number) => {
     const targetIndex = colorEditIndices[rowIndex]
     if (targetIndex === undefined) return
+    setColorEditError(null)
+    selectedColorPercentRef.current = percent
     // 같은 임계값을 다시 지정하는 건 그 threshold를 갱신(update)하는 것으로 취급 — "적용" 시점에 정리한다.
     setColorScaleDraft(prev =>
       prev
@@ -393,6 +434,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const handleChangeColorEditColor = (rowIndex: number, color: string, colorLabel: string | null) => {
     const targetIndex = colorEditIndices[rowIndex]
     if (targetIndex === undefined) return
+    setColorEditError(null)
     setColorScaleDraft(prev =>
       prev ? { ...prev, thresholds: prev.thresholds.map((t, i) => (i === targetIndex ? { ...t, color, colorLabel } : t)) } : prev,
     )
@@ -403,6 +445,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
       setColorEditIndices([])
       return
     }
+    setColorEditError(null)
     setIsApplyingColorEdit(true)
     try {
       // 같은 signed percentage가 편집 행과 나머지 draft에 모두 있으면, 사용자가 방금 편집한 값을
@@ -439,6 +482,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
         const nextDraft = { thresholds: resolvedGroups.map(group => group.entry) }
         setColorScaleDraft(nextDraft)
         setLocalColorScale(nextDraft)
+        colorEditSnapshotRef.current = null
+        setColorEditIndices([])
         return
       }
 
@@ -457,20 +502,66 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
       setColorScaleDraft({
         thresholds: resolvedGroups.map(group => group.edited ? savedByThreshold.get(group.thresholdPercent)! : group.entry),
       })
-    } finally {
-      setIsApplyingColorEdit(false)
       colorEditSnapshotRef.current = null
       setColorEditIndices([])
+    } catch {
+      // 저장이 실패하면 편집 세션을 닫지 않는다 — 입력한 값을 그대로 둔 채 다시 시도하거나 취소할 수 있다.
+      setColorEditError('색상을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+    } finally {
+      setIsApplyingColorEdit(false)
     }
   }
   const handleCancelColorEdit = () => {
+    const hadSaveError = colorEditError !== null
     if (colorEditSnapshotRef.current) setColorScaleDraft(colorEditSnapshotRef.current)
     colorEditSnapshotRef.current = null
+    setColorEditError(null)
     setColorEditIndices([])
+    // 저장 실패 뒤에는 서버에 일부만 반영됐을 수 있어서, 취소할 때 서버 값으로 다시 맞춘다.
+    if (hadSaveError && isLoggedIn) {
+      void refetchColorScale().then(result => {
+        if (!result.data) return
+        colorEditSnapshotRef.current = null
+        setColorEditIndices([])
+        setColorScaleDraft({ thresholds: result.data.thresholds.map(threshold => ({ ...threshold })) })
+      })
+    }
   }
   const colorEditThresholds = colorScaleDraft
     ? colorEditIndices.map(i => colorScaleDraft.thresholds[i]).filter((t): t is ColorScaleThreshold => t !== undefined)
     : []
+  // 편집 영역을 항상 열어두기 위해, 편집 중인 칸이 없으면(처음, 적용/취소 직후) 마지막으로 보던 칸을 다시 연다.
+  useEffect(() => {
+    if (!colorCustomOn || !colorScaleDraft || colorEditIndices.length > 0 || isApplyingColorEdit) return
+    const swatch = legendSwatches.find(item => Number.parseFloat(item.label) === selectedColorPercentRef.current) ?? legendSwatches[0]
+    if (swatch) handleSelectColorSwatch(Number.parseFloat(swatch.label), swatch.color)
+  })
+  // 저장해 둔 색상 구간을 모두 지워 기본 색상으로 되돌린다. 로그인 사용자는 서버에 저장된 구간도 삭제한다.
+  const handleResetColorScale = async () => {
+    if (!colorScaleDraft || isApplyingColorEdit) return
+    setIsApplyingColorEdit(true)
+    setColorEditError(null)
+    try {
+      const idsToDelete = (colorEditSnapshotRef.current ?? colorScaleDraft).thresholds
+        .map(threshold => threshold.id)
+        .filter((id): id is number => id !== undefined)
+      if (isLoggedIn) await Promise.all(idsToDelete.map(id => deleteThresholdMutation.mutateAsync(id)))
+      const emptyDraft: ColorScaleConfig = { thresholds: [] }
+      setColorScaleDraft(emptyDraft)
+      if (!isLoggedIn) setLocalColorScale(emptyDraft)
+      colorEditSnapshotRef.current = null
+      setColorEditIndices([])
+    } catch {
+      setColorEditError('색상을 초기화하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+    } finally {
+      setIsApplyingColorEdit(false)
+    }
+  }
+  // 커스텀을 끄면 편집 영역도 닫는다 — 적용하지 않은 수정은 되돌린다.
+  // 끄더라도 편집 중인 작업은 취소하지 않는다 — 편집 영역이 흐려진 채로 남았다가 다시 켜면 이어서 할 수 있다.
+  const handleChangeColorCustomOn = (on: boolean) => {
+    setColorCustomOn(on)
+  }
 
   // 비로그인이 MARKETRY 분류를 선택하려 하면 로그인 팝업을 띄운다 — 로그인 성공 후 지금 페이지로
   // 돌아온다(가입/로그인 전환 지시서 4). 이미 로그인 상태면 저장한 분류 선택을 토글한다.
@@ -489,7 +580,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const handleChangeMaxDepth = (nextMaxDepth: number) => {
     setMaxDepth(nextMaxDepth)
     // 지표 범위는 그대로 보존한다. 표시 가능한 상한을 넘는 부분은 설정 UI에서만 잠시 비활성화하고,
-    // 업종 분류 레벨을 다시 높이면 원래 선택 범위가 그대로 돌아온다.
+    // 업종 단계을 다시 높이면 원래 선택 범위가 그대로 돌아온다.
   }
 
   const handleChangeDepthMetricRange = (min: number, max: number) => {
@@ -559,25 +650,32 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     onRemoveExcludedSector: handleRemoveExcludedSector,
     colorScaleDraft,
     colorCustomOn,
-    onChangeColorCustomOn: setColorCustomOn,
-    onAddColorThreshold: handleAddColorThreshold,
-    onEditColorThreshold: handleEditColorThreshold,
+    onChangeColorCustomOn: handleChangeColorCustomOn,
+    onSelectColorSwatch: handleSelectColorSwatch,
+    onResetColorScale: handleResetColorScale,
+    isResettingColorScale: isApplyingColorEdit,
     legendSwatches,
     isOpen: isSettingsOpen,
     onOpenChange: setIsSettingsOpen,
+    isPinned: isSettingsPinned,
+    onTogglePinned: () => (isLoggedIn ? setStoredSettingsPinned : setGuestSettingsPinned)(prev => !prev),
   }
 
   const colorEditorPanelProps =
     colorEditThresholds.length > 0
       ? {
-          mode: colorEditMode,
+          sessionKey: colorEditSessionKey,
+          hasChanges: colorEditOriginal !== null
+            && colorEditThresholds[0] !== undefined
+            && (colorEditThresholds[0].thresholdPercent !== colorEditOriginal.thresholdPercent
+              || colorEditThresholds[0].color.toLowerCase() !== colorEditOriginal.color.toLowerCase()),
           thresholds: colorEditThresholds,
           onChangeThreshold: handleChangeColorEditThreshold,
           onChangeColor: handleChangeColorEditColor,
-          onAddRow: handleAddColorThresholdRow,
           onApply: handleApplyColorEdit,
           onCancel: handleCancelColorEdit,
           isSaving: isApplyingColorEdit,
+          errorMessage: colorEditError,
         }
       : null
 
@@ -603,7 +701,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     sectorChangeDepth,
     onChangeSectorChangeDepth: setSectorChangeDepth,
     availableMaxDepth,
-    // 선택한 분류 단계는 KRX와 MARKETRY 히트맵에 동일하게 적용한다.
+    // 선택한 업종 단계는 KRX와 MARKETRY 히트맵에 동일하게 적용한다.
     maxDepth,
     marketValueDepthRange,
     weightedAvgDepthRange,

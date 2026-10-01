@@ -138,6 +138,7 @@ export default function NavBarPageActions({
       <button
         type="button"
         aria-label="설정"
+        data-settings-toggle
         className={`${BUTTON_CLASS} ${isSettingsOpen ? 'text-[var(--accent)]' : 'text-gray-400'}`}
         onClick={onToggleSettings}
       >

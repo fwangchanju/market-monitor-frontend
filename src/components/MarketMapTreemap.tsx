@@ -30,7 +30,7 @@ interface Props {
   labelMinAreaPercent: number
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명만/등락률만/둘 다 보여줄지.
   stockLabelMode: StockLabelMode
-  // 종목 설명 팝업을 우클릭(false)/커서 이동(true) 중 뭘로 띄울지 — 섹터 팝업은 항상 우클릭.
+  // 종목 정보 팝업을 우클릭(false)/커서 이동(true) 중 뭘로 띄울지 — 섹터 팝업은 항상 우클릭.
   stockPopupOnHover: boolean
   // 하위 MarketMapSectorSection/MarketMapBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
   decimalPlaces: number

@@ -102,6 +102,8 @@
   --accent: #4dd0e1;
   --accent-hover: #26c6da;
   --accent-light: var(--accent);
+  /* 홈페이지 메인 청록색 — 옵션 사이드바는 --accent를 회색으로 덮어써서 별도 변수로 둔다. */
+  --brand: #4dd0e1;
   /* 위 @font-face 주석 참고 — Pretendard에 없는 문자(글리프 자체가 없는 경우)만 Noto Sans KR로
      폴백된다. */
   font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
@@ -309,6 +311,8 @@ a { color: var(--accent-light); text-decoration: none; }
 }
 .settings-section-num {
   font-weight: 500;
+  /* 제목 줄 높이를 정수로 고정한다 — 15px 글자의 기본 줄 높이(21.43px)가 소수라 탭마다 항목 위치가 0.5px 안팎으로 어긋났다. */
+  line-height: 22px;
 }
 .settings-section-num::before {
   counter-increment: settings-section;
@@ -329,11 +333,35 @@ a { color: var(--accent-light); text-decoration: none; }
   font-variant-numeric: tabular-nums;
 }
 
+/* 색상 편집기의 단계 라벨(등락률/색상/명도)은 ①②③으로 매긴다. */
+@counter-style circled-step {
+  system: fixed;
+  symbols: "\2460" "\2461" "\2462" "\2463" "\2464";
+}
+.color-editor-steps {
+  counter-reset: color-editor-step;
+}
+.color-editor-step::before {
+  counter-increment: color-editor-step;
+  content: counter(color-editor-step, circled-step) " ";
+}
+
 /* 탭 제목 아래의 중제목은 화면에 보이는 순서대로 1), 2)로 매긴다. */
 .settings-sidebar-tab-content .settings-section-num::before {
   counter-increment: settings-section;
   content: counter(settings-section) ") ";
   font-variant-numeric: tabular-nums;
+  /* 번호 칸의 폭을 고정해서, 제목 아래 설명(.settings-description)을 제목 글자 시작선에 맞춰 들여쓴다. */
+  display: inline-block;
+  width: 19px;
+}
+
+.settings-sidebar-tab-content .settings-description {
+  padding-left: 19px;
+}
+
+.settings-description::before {
+  content: "- ";
 }
 
 .settings-sidebar-tab-content .settings-section-bullet::before,
@@ -344,61 +372,88 @@ a { color: var(--accent-light); text-decoration: none; }
 
 }
 
-/* 지도 설정 탭마다 1) 2) 3) 4) 5) 제목을 같은 높이에서 시작한다(탭 내용 상단 기준 20/140/280/400/520px).
-   각 항목과 조작부의 크기는 유지하고 제목 앞 간격만 조절한다. 값은 실제 렌더 위치를 측정해서 맞춘 것이라,
-   항목 내용 높이가 바뀌면 다시 측정해서 고쳐야 한다. */
-.settings-sidebar-tab-content[data-align-second-heading] .settings-second-depth-metric {
-  margin-top: 50px;
+/* 북마크 탭의 번호는 자동 카운터가 아니라 원래 위치 번호(예: 1-2))를 그대로 보여준다.
+   "1-1)"은 "1)"보다 넓어서 번호 칸과 설명 들여쓰기를 같이 넓힌다. */
+.settings-sidebar-tab-content .settings-section-num.settings-bookmark-num::before {
+  counter-increment: none;
+  content: attr(data-num) ") ";
+  width: 38px;
 }
 
-.settings-sidebar-tab-content[data-align-second-heading] .settings-third-depth-range {
-  margin-top: 68px;
+.settings-bookmark-tab .settings-description {
+  padding-left: 38px;
 }
 
-.settings-sidebar-tab-content[data-align-second-heading] .settings-fourth-top-pick {
-  margin-top: 55px;
+/* 지도 설정 탭마다 1) 2) 3) 4) 5) 제목을 같은 높이에서 시작한다. 내용 높이를 재서 맞추면 글꼴이나 항목 내용이 바뀔 때마다
+   소수점 단위로 어긋나서, 항목마다 높이를 고정(127px = 가장 높은 항목 103px + 여백 24px)해 위치가 내용과 무관하게
+   정해지게 한다. 제목은 탭 내용 상단 기준 20/147/274/401/528px에서 시작한다. 첫 항목은 위 여백(20px)을 포함해 147px.
+   마지막 항목(강세 표시, 제외 업종, 등락률 색상, 종목 정보 팝업)은 길어도 시작 위치만 맞으면 돼서 높이를 고정하지 않는다.
+   북마크 탭은 아래 .settings-bookmark-item 규칙으로 같은 높이를 쓴다. 항목 내용이 103px를 넘게 바뀌면 이 값을 다시 정해야 한다. */
+.settings-sidebar-tab-content[data-align-second-heading] :is(.settings-first-depth-level, .settings-second-depth-metric, .settings-third-depth-range, .settings-second-sector-change, .settings-third-stock-change, .settings-second-stock-label, .settings-third-text-threshold, .settings-fourth-decimal-places) {
+  height: 127px;
 }
 
-.settings-sidebar-tab-content[data-align-second-heading] .settings-third-text-threshold {
-  margin-top: 66px;
+.settings-sidebar-tab-content[data-align-second-heading] :is(.settings-market-value, .settings-first-stock-size, .settings-first-strong-color) {
+  height: 147px;
 }
 
-.settings-sidebar-tab-content[data-align-second-heading] .settings-fifth-stock-popup {
-  margin-top: 50px;
-}
-
-.settings-sidebar-tab-content[data-align-second-heading] .settings-third-stock-change {
-  margin-top: 16px;
-}
-
-.settings-sidebar-tab-content[data-align-second-heading] .settings-fourth-exclude {
-  margin-top: 25px;
-}
-
-.settings-sidebar-tab-content[data-align-second-heading] .settings-second-color {
-  margin-top: 19px;
-}
-
-.settings-sidebar-tab-content[data-align-second-heading] .settings-first-stock-size {
-  margin-bottom: 22px;
-}
-
-.settings-sidebar-tab-content[data-align-second-heading] .settings-fourth-decimal-places {
-  margin-top: 69px;
-}
-
-.settings-sidebar-tab-content[data-align-second-heading] .settings-second-exclude {
-  margin-top: 30px;
+.settings-sidebar-tab-content[data-align-second-heading] :is(.settings-first-depth-level, .settings-second-depth-metric, .settings-third-depth-range, .settings-fourth-top-pick, .settings-second-sector-change, .settings-third-stock-change, .settings-fourth-exclude, .settings-second-exclude, .settings-second-stock-label, .settings-third-text-threshold, .settings-fourth-decimal-places, .settings-fifth-stock-popup, .settings-second-color) {
+  margin-top: 0;
+  padding-top: 0;
   border-color: transparent;
 }
 
-.settings-sidebar-tab-content[data-align-second-heading] .settings-second-sector-change {
-  margin-top: 31px;
+.settings-sidebar-tab-content[data-align-second-heading] :is(.settings-first-stock-size, .settings-market-value, .settings-first-strong-color) {
+  margin-bottom: 0;
+  padding-bottom: 0;
   border-color: transparent;
 }
 
-.settings-sidebar-tab-content[data-align-second-heading] .settings-first-stock-size {
+/* 항목 구분선 — 각 탭의 두 번째 이후 항목 제목 위에 긋는다. */
+.settings-sidebar-tab-content :is(.settings-second-depth-metric, .settings-third-depth-range, .settings-fourth-top-pick, .settings-second-sector-change, .settings-third-stock-change, .settings-fourth-exclude, .settings-second-exclude, .settings-second-stock-label, .settings-third-text-threshold, .settings-fourth-decimal-places, .settings-fifth-stock-popup, .settings-second-color) {
+  position: relative;
+}
+
+.settings-sidebar-tab-content :is(.settings-second-depth-metric, .settings-third-depth-range, .settings-fourth-top-pick, .settings-second-sector-change, .settings-third-stock-change, .settings-fourth-exclude, .settings-second-exclude, .settings-second-stock-label, .settings-third-text-threshold, .settings-fourth-decimal-places, .settings-fifth-stock-popup, .settings-second-color)::before {
+  content: "";
+  display: none;
+  position: absolute;
+  top: -12px;
+  left: 0;
+  right: 0;
+  border-top: 1px solid rgb(255 255 255 / 12%);
+}
+
+.settings-sidebar-tab-content[data-align-second-heading] :is(.settings-second-depth-metric, .settings-third-depth-range, .settings-fourth-top-pick, .settings-second-sector-change, .settings-third-stock-change, .settings-fourth-exclude, .settings-second-exclude, .settings-second-stock-label, .settings-third-text-threshold, .settings-fourth-decimal-places, .settings-fifth-stock-popup, .settings-second-color)::before {
+  display: block;
+}
+
+/* 북마크 탭 — 보이는 항목마다 같은 높이(127px)와 위쪽 구분선을 쓰고, 맨 위 항목에는 선을 긋지 않는다.
+   첫 제목은 탭 내용 위 여백(20px)에서 시작해서 다른 탭의 제목 위치(20/147/274/…)와 같다. */
+.settings-bookmark-tab {
+  padding-top: 20px;
+}
+
+.settings-bookmark-tab .settings-bookmark-item {
+  position: relative;
+  height: 127px;
+  margin: 0;
+  padding: 0;
   border-color: transparent;
+}
+
+.settings-bookmark-tab .settings-bookmark-item::before {
+  content: "";
+  display: block;
+  position: absolute;
+  top: -12px;
+  left: 0;
+  right: 0;
+  border-top: 1px solid rgb(255 255 255 / 12%);
+}
+
+.settings-bookmark-tab .settings-bookmark-first::before {
+  display: none;
 }
 
 @layer utilities {
