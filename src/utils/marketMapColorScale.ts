@@ -23,10 +23,10 @@ export interface ColorScaleConfig {
 // 맞춘다.
 export const MARKET_INDEX_REFERENCE_COLOR = '#4dd0e1'
 
-// 기본 색상 규칙 — 파랑(음수)과 빨강(양수)은 같은 채도(75)와 같은 명도를 쓰고, 명도는 변동률 숫자에 비례한다(2%=14, 5%=35,
-// 8%=56 = 7×숫자). 0%는 이 세 명도의 중앙값(35)인 무채색이다. 색상은 색상 편집기의 파랑(217)·빨강(0) 프리셋과 같다.
+// 기본 색상 규칙 — 파랑(음수)과 빨강(양수)은 같은 채도(75)와 같은 명도를 쓰고, 명도는 변동률에 따라 일정하게 오른다(2%=16, 5%=37,
+// 8%=58 — 색상 편집기 명도 슬라이더의 10%/35%/60% 위치). 0%는 색상 편집기의 첫 색인 회색(채도 0)이고 명도는 슬라이더 정가운데(50)다. 색상은 색상 편집기의 파랑(217)·빨강(0) 프리셋과 같다.
 // 0%일 때 색 — 저장된 threshold가 없으면 이 값으로 폴백.
-export const DEFAULT_ZERO_COLOR = '#595959'
+export const DEFAULT_ZERO_COLOR = '#808080'
 
 // 저장된 threshold가 하나도 없는 side에 쓰는 폴백 프리셋(절댓값 기준). 오늘의 계단식 로직
 // (MarketMapBox.boxColorClass, 2/5/8%p 기준)과 최대한 같은 "느낌"을 재현하도록 딱 그 3개
@@ -36,14 +36,14 @@ export const DEFAULT_ZERO_COLOR = '#595959'
 // 옅어지는 그라데이션이 돼버려서 "커스텀이 없으면 오늘과 최대한 비슷하게 보여야 한다"는
 // 요구사항에서 벗어난다).
 export const DEFAULT_PLUS_THRESHOLDS: ColorScaleThreshold[] = [
-  { thresholdPercent: 2, color: '#3e0909', colorLabel: 'red' }, // 명도 14
-  { thresholdPercent: 5, color: '#9c1616', colorLabel: 'red' }, // 명도 35
-  { thresholdPercent: 8, color: '#e33b3b', colorLabel: 'red' }, // 명도 56
+  { thresholdPercent: 2, color: '#470a0a', colorLabel: 'red' }, // 명도 16 (슬라이더 10%)
+  { thresholdPercent: 5, color: '#a51818', colorLabel: 'red' }, // 명도 37 (슬라이더 35%)
+  { thresholdPercent: 8, color: '#e44444', colorLabel: 'red' }, // 명도 58 (슬라이더 60%)
 ]
 export const DEFAULT_MINUS_THRESHOLDS: ColorScaleThreshold[] = [
-  { thresholdPercent: 2, color: '#091d3e', colorLabel: 'blue' }, // 명도 14
-  { thresholdPercent: 5, color: '#164a9c', colorLabel: 'blue' }, // 명도 35
-  { thresholdPercent: 8, color: '#3b7be3', colorLabel: 'blue' }, // 명도 56
+  { thresholdPercent: 2, color: '#0a2247', colorLabel: 'blue' }, // 명도 16 (슬라이더 10%)
+  { thresholdPercent: 5, color: '#184ea5', colorLabel: 'blue' }, // 명도 37 (슬라이더 35%)
+  { thresholdPercent: 8, color: '#4481e4', colorLabel: 'blue' }, // 명도 58 (슬라이더 60%)
 ]
 
 // 저장된 구간이 하나도 없을 때 draft를 채우는 초기값 — 위 기본 프리셋을 부호 있는 실제 구간(-8/-5/-2, +2/+5/+8)으로

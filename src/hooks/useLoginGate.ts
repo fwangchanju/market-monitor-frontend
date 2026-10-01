@@ -3,7 +3,9 @@ import { createContext, useContext } from 'react'
 export interface LoginGateContextValue {
   // 로그인 팝업을 연다. path는 로그인 성공 후 돌아올 프론트 경로 — 메뉴 클릭이면 그 메뉴의 목적지,
   // 커스텀 페이지 직접 진입/새로고침이면 지금 있는 경로를 그대로 넘긴다.
-  requireLogin: (path: string) => void
+  // options.hideMessage가 true면 팝업의 안내 문구("로그인 후 이용 가능합니다.")를 숨긴다 — 오른쪽 위 로그인 버튼처럼
+  // 그냥 로그인하려는 경우용이다.
+  requireLogin: (path: string, options?: { hideMessage?: boolean }) => void
 }
 
 // Provider 구현(LoginGateProvider)은 JSX가 필요해 components/LoginGateProvider.tsx에 둔다 — 이

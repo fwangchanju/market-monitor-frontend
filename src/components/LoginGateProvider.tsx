@@ -8,9 +8,12 @@ export default function LoginGateProvider({ children }: { children: ReactNode })
   // 로컬 자동 로그인이 켜져 있으면 팝업 대신 자동으로 로그인되므로 팝업을 열지 않는다(?guest=1이면 정상으로 연다).
   const localAutoLogin = isLocalAutoLoginEnabled()
   const [returnTo, setReturnTo] = useState<string | null>(null)
+  const [hideMessage, setHideMessage] = useState(false)
 
-  const requireLogin = useCallback((path: string) => {
-    if (!localAutoLogin) setReturnTo(path)
+  const requireLogin = useCallback((path: string, options?: { hideMessage?: boolean }) => {
+    if (localAutoLogin) return
+    setHideMessage(options?.hideMessage ?? false)
+    setReturnTo(path)
   }, [localAutoLogin])
   const close = useCallback(() => setReturnTo(null), [])
   const value = useMemo(() => ({ requireLogin }), [requireLogin])
@@ -18,7 +21,7 @@ export default function LoginGateProvider({ children }: { children: ReactNode })
   return (
     <LoginGateContext.Provider value={value}>
       {children}
-      {!localAutoLogin && returnTo !== null && <LoginModal returnTo={returnTo} onClose={close} />}
+      {!localAutoLogin && returnTo !== null && <LoginModal returnTo={returnTo} hideMessage={hideMessage} onClose={close} />}
     </LoginGateContext.Provider>
   )
 }

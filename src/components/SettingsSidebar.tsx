@@ -160,7 +160,7 @@ function SettingTitle({ bookmarkId, className = '', help = false, children }: { 
 const SETTINGS_SECTIONS: { id: SettingsSidebarSectionId; label: string; icon: SettingsSectionIconName }[] = [
   { id: 'composition', label: '종목 구성', icon: 'composition' },
   { id: 'industry', label: '업종 표시', icon: 'industry' },
-  { id: 'stockDisplay', label: '종목 표시', icon: 'stock-display' },
+  { id: 'stockDisplay', label: '종목 박스', icon: 'stock-display' },
   { id: 'colors', label: '색상', icon: 'colors' },
   { id: 'favorites', label: '북마크', icon: 'favorites' },
 ]
@@ -1155,7 +1155,7 @@ export function SettingsSectorLevelSection({
           )}
         </div>
       </div>}
-      {/* 종목 표시 탭의 박스 크기 다음에 종목 표기, 텍스트 표시 기준, 등락률 소수점을
+      {/* 종목 박스 탭의 박스 크기 다음에 종목 표기, 텍스트 표시 기준, 등락률 소수점을
           같은 번호 위계로 이어서 표시한다. */}
       {showStockDisplay && <div className={showClassification ? 'mt-6 pt-8' : 'pt-0'}>
         <div>
@@ -1667,7 +1667,7 @@ interface Props {
   // 사이드바 열림 상태는 페이지가 관리한다.
   isOpen: boolean
   onOpenChange: (open: boolean) => void
-  // 분류 체계 선택의 탭은 페이지가 정하고, 박스 크기 선택은 종목 표시 탭에 배치한다.
+  // 분류 체계 선택의 탭은 페이지가 정하고, 박스 크기 선택은 종목 박스 탭에 배치한다.
   classificationSection?: 'favorites' | 'industry'
   isCustom?: boolean
   onToggleCustom?: () => void
