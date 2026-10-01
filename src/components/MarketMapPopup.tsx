@@ -115,7 +115,8 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
         style={{ maxWidth, backgroundColor: POPUP_BACKGROUND }}
       >
         <div className="flex items-center justify-between gap-3 font-bold">
-          <span>{popup.title}</span>
+          {/* 종목명·업종명 — NXT 안내 알림창의 강조 글자와 같은 하늘색이다. */}
+          <span className="text-[var(--brand)]">{popup.title}</span>
           {excludeSector && (
             <button
               type="button"

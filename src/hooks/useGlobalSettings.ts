@@ -114,9 +114,10 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 비로그인은 저장값이 true여도 거래소 분류(false)로 고정한다 — MARKETRY 분류는 로그인이 필요하다.
   const [storedIsCustom, setStoredIsCustom] = usePageSetting('marketMap.isCustom', defaults.isCustom)
   const isCustom = isLoggedIn ? storedIsCustom : false
-  // NXT 히트맵 — 거래소 분류에서 NXT 거래 종목만 보여준다. MARKETRY(사용자 분류)를 고른 동안은 적용하지 않고, 로그인 없이도 쓸 수 있다.
+  // NXT 종목만 보기 — 거래소 분류에서는 NXT 히트맵 선택이 이 값을 켜고, MARKETRY(내 분류)에서는 설정의 "NXT 종목만 보기"
+  // 스위치로 켠다. 두 경우 모두 분류는 그대로 두고 NXT 거래 종목만 남긴다.
   const [storedNxtOnly, setStoredNxtOnly] = usePageSetting('marketMap.nxtOnly', false)
-  const nxtOnly = !isCustom && storedNxtOnly
+  const nxtOnly = storedNxtOnly
   const heatmap: HeatmapKey = isCustom ? 'marketry' : nxtOnly ? 'nxt' : 'krx'
   // 섹터 랭킹/강세 업종 계산에 쓰는 평균 방식은 박스 크기 비율과 별도로 저장한다.
   const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', defaults.avgChangeRateUseSimple)
@@ -593,6 +594,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     setStoredIsCustom(prev => !prev)
   }
 
+  const handleToggleNxtOnly = () => setStoredNxtOnly(prev => !prev)
+
   // 히트맵 선택(KRX / NXT / MARKETRY). MARKETRY는 로그인이 필요하고, KRX와 NXT는 거래소 분류를 같이 쓰며 NXT만 종목을 거른다.
   const handleSelectHeatmap = (next: HeatmapKey) => {
     if (next === 'marketry' && !isLoggedIn) {
@@ -639,6 +642,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     onToggleCustom: handleToggleCustom,
     heatmap,
     onSelectHeatmap: handleSelectHeatmap,
+    nxtOnly,
+    onToggleNxtOnly: handleToggleNxtOnly,
     maxDepth: selectedMaxDepth,
     sectorLevelEnabled,
     onToggleSectorLevel: () => setSectorLevelEnabled(prev => !prev),
