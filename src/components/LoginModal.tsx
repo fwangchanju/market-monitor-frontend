@@ -28,7 +28,7 @@ export default function LoginModal({ returnTo, onClose }: Props) {
       >
         <p className="text-lg font-bold text-white">로그인</p>
         <p className="mt-2 text-sm text-[var(--accent)]">
-          개인 설정은 로그인 후 이용할 수 있습니다.
+          로그인 후 이용 가능합니다.
         </p>
         <div className="mt-6 flex flex-col gap-2">
           {/* 실제 페이지 이동(전체 새로고침)이어야 하므로 버튼 클릭 핸들러가 아니라 일반 링크로 연다 —

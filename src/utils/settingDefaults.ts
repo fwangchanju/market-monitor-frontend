@@ -3,7 +3,9 @@
 // (로그인 사용자는 서버 설정, 비로그인은 이 탭의 sessionStorage — usePageSetting 참고).
 //
 // 회원 기본값(MEMBER_DEFAULTS)이 기준이고, 비로그인 기본값(GUEST_DEFAULTS)은 그중 다른 항목만 GUEST_OVERRIDES에 적는다.
-// 처음 가입한 사용자에게 줄 별도의 기본값(MARKETRY 버전)이 정해지면 MEMBER_DEFAULTS를 그에 맞게 바꾼다.
+// 가입 직후 사용자의 기본값은 비로그인과 같다 — 그래서 지금 GUEST_OVERRIDES는 비어 있다. 분류 체계(isCustom)만 다르다:
+// 비로그인은 항상 거래소 분류(KRX)이고, 회원은 MARKETRY 분류로 시작한다. 둘을 다르게 하고 싶은 항목이 생기면
+// GUEST_OVERRIDES에 그 항목만 적는다.
 // 항목 이름 뒤의 번호는 지도 설정창의 항목 번호다.
 
 export type DepthMetricDefault = 'weightedAvgChangeRate' | 'simpleAvgChangeRate'
@@ -54,21 +56,21 @@ export interface SettingDefaults {
 export const MEMBER_DEFAULTS: SettingDefaults = {
   isCustom: true,
   sectorLevelEnabled: true,
-  maxDepth: 2,
-  depthMetric: 'simpleAvgChangeRate',
+  maxDepth: 1, // 1-1 대분류
+  depthMetric: 'weightedAvgChangeRate', // 1-2 시총 가중
   depthMetricMinIndex: 0,
-  depthMetricMaxIndex: 1,
-  topPickDepth: 1,
-  topPickCount: 2,
-  tierRange: 'excludeDefaultTiers',
+  depthMetricMaxIndex: 0, // 1-3 대분류만
+  topPickDepth: 0, // 1-4 대분류
+  topPickCount: 1, // 1-4 강세 표시 1개
+  tierRange: 'topTwoTiers', // 2-1 초대형주+대형주
   sectorChangeFilter: 'all',
   sectorChangeDepth: 0,
   stockChangeFilter: 'all',
   sectorFilterEnabled: true,
-  boxSizeMarketCapRatio: 50,
+  boxSizeMarketCapRatio: 100, // 3-1 100%
   stockLabelModeIndex: 3,
-  boxLabelMinAreaPercent: 0.1,
-  decimalPlacesIndex: 1,
+  boxLabelMinAreaPercent: 0.01, // 3-3 0.01%
+  decimalPlacesIndex: 2, // 3-4 2자리
   stockPopupOnHover: false,
   strongIndustryColor: '#4dd0e1',
   colorCustomOn: true,
@@ -76,17 +78,8 @@ export const MEMBER_DEFAULTS: SettingDefaults = {
   sidebarPinned: true,
 }
 
-// 비로그인 기본값 — 회원 기본값과 다른 항목만 적는다. 설정을 바꿀 때 드라마틱하게 보이도록 큰 값으로 시작한다.
-const GUEST_OVERRIDES: Partial<SettingDefaults> = {
-  maxDepth: 1, // 1-1 대분류
-  depthMetric: 'weightedAvgChangeRate', // 1-2 시총 가중
-  depthMetricMaxIndex: 0, // 1-3 대분류만
-  topPickDepth: 0, // 1-4 대분류
-  tierRange: 'topTwoTiers', // 2-1 초대형주+대형주
-  boxSizeMarketCapRatio: 100, // 3-1 100%
-  boxLabelMinAreaPercent: 0.01, // 3-3 0.01%
-  decimalPlacesIndex: 2, // 3-4 2자리
-}
+// 비로그인 기본값 — 회원 기본값과 다른 항목만 적는다. 지금은 없다(가입 직후 사용자와 같다).
+const GUEST_OVERRIDES: Partial<SettingDefaults> = {}
 
 export const GUEST_DEFAULTS: SettingDefaults = { ...MEMBER_DEFAULTS, ...GUEST_OVERRIDES }
 
