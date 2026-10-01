@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import queryClient from '@/api/queryClient'
 import { getCustomPreferences, replaceCustomPreferences } from '@/api/custom'
+import { migratePreferences } from '@/utils/settingsSchema'
 import { customPreferenceKeys } from './queryKeys'
 import { useIsLoggedIn } from './useSession'
 import { STATIC_REFERENCE_CACHE } from './cacheConfig'
@@ -44,7 +45,13 @@ export function useCustomPreferences() {
   const isLoggedIn = useIsLoggedIn()
   const query = useQuery({
     queryKey: customPreferenceKeys.preferences(),
-    queryFn: getCustomPreferences,
+    // 저장된 설정의 버전이 낮으면(없으면 포함) 새 모양으로 옮기고 서버에도 한 번 반영한다 — utils/settingsSchema.ts 참고.
+    // 로드가 끝나기 전에는 아무것도 저장하지 않으므로(isLoaded) 사용자의 변경 저장과 겹치지 않는다.
+    queryFn: async () => {
+      const { preferences, changed } = migratePreferences(await getCustomPreferences())
+      if (changed) replaceCustomPreferences(preferences).catch(() => {})
+      return preferences
+    },
     enabled: isLoggedIn,
     ...STATIC_REFERENCE_CACHE,
   })

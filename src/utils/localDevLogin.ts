@@ -1,0 +1,26 @@
+// 로컬 개발 서버의 자동 로그인(VITE_LOCAL_AUTO_LOGIN=1) 사용 여부. 개발 중 비로그인 화면을 확인할 수 있도록
+// 주소에 ?guest=1을 붙여 열면 자동 로그인을 건너뛰고(이미 로그인된 상태면 한 번 로그아웃하고) 비로그인으로 시작한다.
+// 그 상태는 탭을 닫을 때까지 유지되고, ?guest=0으로 열면 다시 자동 로그인으로 돌아간다. 운영 빌드에는 영향이 없다.
+const GUEST_MODE_STORAGE_KEY = 'dev.guestMode'
+
+function isLocalAutoLoginConfigured(): boolean {
+  return import.meta.env.DEV && import.meta.env.VITE_LOCAL_AUTO_LOGIN === '1'
+}
+
+// 로컬에서 비로그인 확인용(?guest=1)으로 열린 탭인지.
+export function isLocalGuestMode(): boolean {
+  if (!isLocalAutoLoginConfigured()) return false
+  try {
+    const param = new URLSearchParams(window.location.search).get('guest')
+    if (param === '1') sessionStorage.setItem(GUEST_MODE_STORAGE_KEY, '1')
+    else if (param === '0') sessionStorage.removeItem(GUEST_MODE_STORAGE_KEY)
+    return sessionStorage.getItem(GUEST_MODE_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+// 자동 로그인을 실제로 쓰는지 — 설정이 켜져 있고 비로그인 확인 모드가 아닐 때만 true.
+export function isLocalAutoLoginEnabled(): boolean {
+  return isLocalAutoLoginConfigured() && !isLocalGuestMode()
+}

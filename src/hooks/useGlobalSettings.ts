@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { usePersistedState } from './usePersistedState'
 import { useLocalPersistedState } from './useLocalPersistedState'
+import { GUEST_DEFAULTS, MEMBER_DEFAULTS, settingDefaultsFor } from '@/utils/settingDefaults'
 import { usePageSetting } from './usePageSetting'
 import { useRouteAwareMarket } from './useRouteAwareMarket'
 import { useIsLoggedIn, useSession } from './useSession'
@@ -23,6 +24,7 @@ import {
 import { useMarketValueTierRange } from './useMarketValueTierRange'
 import { registerExcludedSector, unregisterExcludedSector } from '@/api/marketMap'
 import {
+  createDefaultColorScale,
   resolveLegendSwatches,
   type ColorScaleConfig,
   type ColorScaleThreshold,
@@ -32,7 +34,7 @@ import type { MarketMapSectorNode } from '@/types/api'
 // 조회 실패/로딩 중이거나 "색상 커스텀 사용"이 꺼져있을 때 쓰는 폴백 — thresholds가 비어있으면 어차피
 // 기본 프리셋으로 귀결된다(resolveMarketMapColor/resolveLegendSwatches 참고).
 const EMPTY_COLOR_SCALE: ColorScaleConfig = { thresholds: [] }
-const DEFAULT_STRONG_INDUSTRY_COLOR = '#4dd0e1'
+const DEFAULT_STRONG_INDUSTRY_COLOR = MEMBER_DEFAULTS.strongIndustryColor
 const LEGACY_STRONG_INDUSTRY_COLOR = '#eab308'
 
 export type DepthMetric = 'weightedAvgChangeRate' | 'simpleAvgChangeRate' | 'upDownCount' | 'marketValue'
@@ -99,6 +101,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const needsTree = options?.needsTree ?? true
   const { pathname } = useLocation()
   const isLoggedIn = useIsLoggedIn()
+  // 설정 기본값은 utils/settingDefaults.ts에 모아 두었다(비로그인과 회원이 다르다). 사용자가 값을 바꾸면 저장값이 우선한다.
+  const defaults = settingDefaultsFor(isLoggedIn)
   const { requireLogin } = useLoginGate()
   // 트리 조회 마켓은 경로를 따른다 — /map, /sector 둘 다 경로 세그먼트가 곧 마켓이라 여기서 바로
   // 우선순위(쿼리 > 경로 > 저장값 > 기본값)를 적용하면, 이 훅을 그대로 쓰는 지도 페이지는 물론
@@ -106,15 +110,15 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const [market] = useRouteAwareMarket('marketMap.market', 'ALL_STOCK')
   // 저장값은 로그인 사용자에 한해 서버(user_preference)에 남는다. 이 값은 분류 체계를 고르며,
   // 비로그인은 저장값이 true여도 거래소 분류(false)로 고정한다 — MARKETRY 분류는 로그인이 필요하다.
-  const [storedIsCustom, setStoredIsCustom] = usePageSetting('marketMap.isCustom', true)
+  const [storedIsCustom, setStoredIsCustom] = usePageSetting('marketMap.isCustom', defaults.isCustom)
   const isCustom = isLoggedIn ? storedIsCustom : false
   // 섹터 랭킹/강세 업종 계산에 쓰는 평균 방식은 박스 크기 비율과 별도로 저장한다.
-  const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', true)
+  const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', defaults.avgChangeRateUseSimple)
   // 0은 동일 크기, 100은 시가총액 비례이며 중간값은 시가총액 차이를 거듭제곱으로 압축한다.
-  const [storedBoxSizeMarketCapRatio, setBoxSizeMarketCapRatio] = usePageSetting('marketMap.boxSizeMarketCapRatio', 50)
+  const [storedBoxSizeMarketCapRatio, setBoxSizeMarketCapRatio] = usePageSetting('marketMap.boxSizeMarketCapRatio', defaults.boxSizeMarketCapRatio)
   const [storedStrongIndustryColor, setStrongIndustryColor] = usePageSetting(
     'marketMap.strongIndustryColor',
-    DEFAULT_STRONG_INDUSTRY_COLOR,
+    defaults.strongIndustryColor,
   )
   const isLegacyStrongIndustryColor = storedStrongIndustryColor.toLowerCase() === LEGACY_STRONG_INDUSTRY_COLOR
   const strongIndustryColor = isLegacyStrongIndustryColor
@@ -129,7 +133,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const boxSizeMarketCapRatio = Math.max(0, Math.min(100, Math.round(storedBoxSizeMarketCapRatio)))
   const [storedDepthMetric, setStoredDepthMetric] = usePageSetting<StoredDepthMetric>(
     'marketMap.activeDepthMetric',
-    'simpleAvgChangeRate',
+    defaults.depthMetric,
   )
   const selectedDepthMetric = resolveDepthMetric(storedDepthMetric)
   const [depthMetricEnabled, setDepthMetricEnabled] = usePageSetting(
@@ -138,24 +142,24 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   )
   // 분류별 데이터 깊이에 맞춰 화면에 적용하되, 사용자가 고른 범위는 전환해도 보존한다.
   // 기본값: 대분류~중분류(index 0~1) — 렌더러가 캡처하는 기본 화면에 등락률이 보이도록.
-  const [depthMetricMinIndex, setDepthMetricMinIndex] = usePageSetting('marketMap.depthMetricMinIndex', 0)
-  const [depthMetricMaxIndex, setDepthMetricMaxIndex] = usePageSetting('marketMap.depthMetricMaxIndex', 1)
+  const [depthMetricMinIndex, setDepthMetricMinIndex] = usePageSetting('marketMap.depthMetricMinIndex', defaults.depthMetricMinIndex)
+  const [depthMetricMaxIndex, setDepthMetricMaxIndex] = usePageSetting('marketMap.depthMetricMaxIndex', defaults.depthMetricMaxIndex)
   // avgChangeRateUseSimple은 섹터 랭킹에 사용한다. 강세 업종은 업종 탭 표시 지표를 따른다.
   // 종목 박스가 전체 트리맵 넓이에서 이 비중(%) 미만이면 종목명/등락률을 표시하지 않는다(섹터 헤더와는 무관).
-  const [boxLabelMinAreaPercent, setBoxLabelMinAreaPercent] = usePageSetting('marketMap.boxLabelMinAreaPercent', 0.1)
+  const [boxLabelMinAreaPercent, setBoxLabelMinAreaPercent] = usePageSetting('marketMap.boxLabelMinAreaPercent', defaults.boxLabelMinAreaPercent)
   // 종목 박스에 이름만/등락률만/둘 다/끄기 중 뭘 보여줄지 — 기본은 둘 다(기존 동작 유지, 배열 앞에
   // "끄기"가 추가되면서 both의 인덱스가 2에서 3으로 밀림).
-  const [stockLabelModeIndex, setStockLabelModeIndex] = usePageSetting('marketMap.stockLabelModeIndex', 3)
+  const [stockLabelModeIndex, setStockLabelModeIndex] = usePageSetting('marketMap.stockLabelModeIndex', defaults.stockLabelModeIndex)
   // 기존 저장값 0(끄기)도 유지하며, 켜고 끄는 동안 선택한 표기 방식은 보존한다.
   const [stockLabelEnabled, setStockLabelEnabled] = usePageSetting('marketMap.stockLabelEnabled', stockLabelModeIndex !== 0)
   const selectedStockLabelModeIndex = stockLabelModeIndex || 3
   const stockLabelMode = stockLabelEnabled ? STOCK_LABEL_MODES[selectedStockLabelModeIndex] : 'off'
   // 지도 페이지에 표시되는 모든 등락률(%)의 소수점 자릿수 — 인덱스가 그대로 자릿수(0=정수, 1=소수
   // 1자리, 2=소수 2자리). 기본값 1(소수 1자리).
-  const [decimalPlacesIndex, setDecimalPlacesIndex] = usePageSetting('marketMap.decimalPlacesIndex', 1)
+  const [decimalPlacesIndex, setDecimalPlacesIndex] = usePageSetting('marketMap.decimalPlacesIndex', defaults.decimalPlacesIndex)
   // 종목 박스 설명 팝업을 여는 방식 — false=우클릭(기존 동작), true=커서를 박스 위로 옮길 때. 섹터(대/중/소분류)
   // 팝업은 이 설정과 무관하게 항상 우클릭이다.
-  const [stockPopupOnHover, setStockPopupOnHover] = usePageSetting('marketMap.stockPopupOnHover', false)
+  const [stockPopupOnHover, setStockPopupOnHover] = usePageSetting('marketMap.stockPopupOnHover', defaults.stockPopupOnHover)
   const decimalPlaces = decimalPlacesIndex
   // 시가총액 구간 범위 필터 — 마켓맵/섹터 랭킹 화면이 세션스토리지 키를 공유한다(useMarketValueTierRange 참고).
   // 시가총액 구간 필터는 분류 체계와 무관한 표시 설정이라 두 분류 모두에서 적용한다.
@@ -177,26 +181,26 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     },
   )
   // 섹터 제외를 목록별로 켜고 끄는 게 아니라, 제외 적용 자체를 통째로 켜고 끄는 마스터 스위치.
-  const [sectorFilterEnabled, setSectorFilterEnabled] = usePageSetting('marketMap.sectorFilterEnabled', true)
-  const [stockChangeFilter, setStockChangeFilter] = usePageSetting<StockChangeFilter>('marketMap.stockChangeFilter', 'all')
-  const [sectorChangeFilter, setSectorChangeFilter] = usePageSetting<SectorChangeFilter>('marketMap.sectorChangeFilter', 'all')
-  const [sectorChangeDepth, setSectorChangeDepth] = usePageSetting('marketMap.sectorChangeDepth', 0)
+  const [sectorFilterEnabled, setSectorFilterEnabled] = usePageSetting('marketMap.sectorFilterEnabled', defaults.sectorFilterEnabled)
+  const [stockChangeFilter, setStockChangeFilter] = usePageSetting<StockChangeFilter>('marketMap.stockChangeFilter', defaults.stockChangeFilter)
+  const [sectorChangeFilter, setSectorChangeFilter] = usePageSetting<SectorChangeFilter>('marketMap.sectorChangeFilter', defaults.sectorChangeFilter)
+  const [sectorChangeDepth, setSectorChangeDepth] = usePageSetting('marketMap.sectorChangeDepth', defaults.sectorChangeDepth)
   // null = 제한 없음(전체 뎁스 표시). 슬라이더의 실제 상한(availableMaxDepth)은 트리 계산 후에 나온다.
   // 기본값 2(렌더러 캡처 기준 화면에 맞춤).
-  const [selectedMaxDepth, setMaxDepth] = usePageSetting<number | null>('marketMap.selectedMaxDepth', 2)
-  const [sectorLevelEnabled, setSectorLevelEnabled] = usePageSetting('marketMap.sectorLevelEnabled', true)
+  const [selectedMaxDepth, setMaxDepth] = usePageSetting<number | null>('marketMap.selectedMaxDepth', defaults.maxDepth)
+  const [sectorLevelEnabled, setSectorLevelEnabled] = usePageSetting('marketMap.sectorLevelEnabled', defaults.sectorLevelEnabled)
   const maxDepth = sectorLevelEnabled ? selectedMaxDepth : 0
   // 선호 업종 — 선택한 절대 depth에서 등락률 상위 N개 섹터를 지도 전체에 강조한다.
-  const [topPickDepth, setTopPickDepth] = usePageSetting('marketMap.topPickDepth', 1)
-  const [topPickCount, setTopPickCount] = usePageSetting('marketMap.topPickCount', 2)
+  const [topPickDepth, setTopPickDepth] = usePageSetting('marketMap.topPickDepth', defaults.topPickDepth)
+  const [topPickCount, setTopPickCount] = usePageSetting('marketMap.topPickCount', defaults.topPickCount)
   const [topPickEnabled, setTopPickEnabled] = usePageSetting('marketMap.topPickEnabled', topPickCount !== 0)
   const selectedTopPickCount = topPickCount || 2
   // 핀 — 켜 두면(기본) 설정창을 지도 옆에 고정해서(지도를 밀어냄) 계속 열어 두고, 끄면 지도 위에 띄워서 밖을 누를 때 닫는다.
   // 로그인 사용자는 핀 선택을 이 브라우저에 기억하고, 페이지에 들어올 때 설정창을 열지 닫을지도 이 값을 따른다(고정=열림, 해제=닫힘).
   // 비로그인 사용자는 기억하지 않는다 — 항상 "열림 + 핀 켜짐"으로 시작하고, 핀을 꺼도 이번 화면에서만 적용된다.
   const { isLoading: isSessionLoading } = useSession()
-  const [storedSettingsPinned, setStoredSettingsPinned] = useLocalPersistedState('settings.sidebarPinned', true)
-  const [guestSettingsPinned, setGuestSettingsPinned] = useState(true)
+  const [storedSettingsPinned, setStoredSettingsPinned] = useLocalPersistedState('settings.sidebarPinned', MEMBER_DEFAULTS.sidebarPinned)
+  const [guestSettingsPinned, setGuestSettingsPinned] = useState(GUEST_DEFAULTS.sidebarPinned)
   const isSettingsPinned = isLoggedIn ? storedSettingsPinned : guestSettingsPinned
   const [isSettingsOpen, setIsSettingsOpen] = useState(isSettingsPinned)
   const previousPathnameRef = useRef(pathname)
@@ -354,15 +358,13 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     setColorEditError(null)
     colorEditSnapshotRef.current = null
     // 방어적 복사 — react-query 캐시가 들고 있는 참조를 그대로 draft로 물고 있지 않도록.
-    setColorScaleDraft(
-      !isLoggedIn && localColorScale
-        ? { thresholds: localColorScale.thresholds.map(threshold => ({ ...threshold })) }
-        : { thresholds: colorScaleServerData.thresholds.map(threshold => ({ ...threshold })) },
-    )
+    const seededThresholds = (!isLoggedIn && localColorScale ? localColorScale : colorScaleServerData).thresholds.map(threshold => ({ ...threshold }))
+    // 저장된 구간이 하나도 없으면(비로그인 첫 접속, 초기화 직후) 기본 7칸을 실제 구간으로 채워서 시작한다.
+    setColorScaleDraft(seededThresholds.length > 0 ? { thresholds: seededThresholds } : createDefaultColorScale())
   }
   // "색상 커스텀 사용" 토글 — 순수 로컬(세션스토리지) 상태. draft(=저장 대상)와는 완전히 분리돼 있어서
   // 꺼도 draft에 저장해둔 값은 건드리지 않고, 그냥 실제 지도에 넘기는 값만 빈 스케일(=기본 프리셋)로 바꿔치기한다.
-  const [colorCustomOn, setColorCustomOn] = usePageSetting('marketMap.colorCustomOn', true)
+  const [colorCustomOn, setColorCustomOn] = usePageSetting('marketMap.colorCustomOn', defaults.colorCustomOn)
   // 같은 부호/퍼센트에 편집 중인 행이 이미 있는 임계값과 겹치면 편집 중인 값을 우선한다.
   // resolver는 같은 thresholdPercent 중 마지막 값을 유효점으로 삼으므로, 저장 draft의 배열 순서를
   // 바꾸지 않고 렌더링 입력에서만 편집 행을 뒤로 보낸다.
@@ -546,9 +548,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
         .map(threshold => threshold.id)
         .filter((id): id is number => id !== undefined)
       if (isLoggedIn) await Promise.all(idsToDelete.map(id => deleteThresholdMutation.mutateAsync(id)))
-      const emptyDraft: ColorScaleConfig = { thresholds: [] }
-      setColorScaleDraft(emptyDraft)
-      if (!isLoggedIn) setLocalColorScale(emptyDraft)
+      setColorScaleDraft(createDefaultColorScale())
+      // 비로그인의 저장값은 비워 둔다 — 다음 접속 때 같은 기본 7칸으로 다시 채워진다.
+      if (!isLoggedIn) setLocalColorScale({ thresholds: [] })
       colorEditSnapshotRef.current = null
       setColorEditIndices([])
     } catch {

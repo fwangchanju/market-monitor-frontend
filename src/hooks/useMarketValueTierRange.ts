@@ -1,5 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { usePageSetting } from './usePageSetting'
+import { useIsLoggedIn } from './useSession'
+import { settingDefaultsFor } from '@/utils/settingDefaults'
 import { useMarketValueTiers } from './useMarketValueTiers'
 import { defaultExcludedTierLabels, tierRangeToExcludedLabels } from '@/utils/marketValueTier'
 
@@ -11,6 +13,7 @@ const MAX_INDEX_KEY = 'marketMap.tierRangeMaxIndex'
 // 배포 전 운영 수치와 일치해야 한다는 요구사항 때문에 상태를 분리해두면 안 됨).
 // enabled=false면(예: 기본 분류 트리 모드) 필터 자체를 적용하지 않는다.
 export function useMarketValueTierRange(enabled: boolean) {
+  const isLoggedIn = useIsLoggedIn()
   const { data: valueTiersData, isSuccess: isValueTiersSuccess } = useMarketValueTiers()
   const tiers = useMemo(() => valueTiersData ?? [], [valueTiersData])
 
@@ -22,12 +25,25 @@ export function useMarketValueTierRange(enabled: boolean) {
 
   useEffect(() => {
     if (minIndex !== -1 || tiers.length === 0) return
+    // 기본 범위는 utils/settingDefaults.ts의 tierRange를 따른다 — 'all'은 모든 구간, 'topTwoTiers'는 가장 큰 두 구간,
+    // 그 밖에는 기본 제외 구간(소형주)만 뺀다.
+    const tierRange = settingDefaultsFor(isLoggedIn).tierRange
+    if (tierRange === 'all') {
+      setMinIndex(0)
+      setMaxIndex(tiers.length - 1)
+      return
+    }
+    if (tierRange === 'topTwoTiers') {
+      setMinIndex(Math.max(0, tiers.length - 2))
+      setMaxIndex(tiers.length - 1)
+      return
+    }
     const excludedLabels = defaultExcludedTierLabels(tiers)
     const firstIncludedIndex = tiers.findIndex(tier => !excludedLabels.has(tier.label))
     const lastIncludedIndex = tiers.findLastIndex(tier => !excludedLabels.has(tier.label))
     setMinIndex(firstIncludedIndex === -1 ? 0 : firstIncludedIndex)
     setMaxIndex(lastIncludedIndex === -1 ? tiers.length - 1 : lastIncludedIndex)
-  }, [tiers, minIndex, setMinIndex, setMaxIndex])
+  }, [tiers, minIndex, isLoggedIn, setMinIndex, setMaxIndex])
 
   const excludedMarketValueTiers = useMemo(
     () =>

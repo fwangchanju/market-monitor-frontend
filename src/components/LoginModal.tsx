@@ -26,18 +26,18 @@ export default function LoginModal({ returnTo, onClose }: Props) {
         className="w-[calc(100%-2rem)] max-w-sm border border-gray-700 bg-[var(--surface)] p-6"
         onClick={e => e.stopPropagation()}
       >
-        <p className="text-lg font-bold text-white">로그인이 필요합니다</p>
-        <p className="mt-2 text-sm text-gray-400">
-          커스텀 지도·섹터와 개인 설정은 로그인한 사용자만 이용할 수 있습니다. 로그인하면 보던 화면으로 돌아옵니다.
+        <p className="text-lg font-bold text-white">로그인</p>
+        <p className="mt-2 text-sm text-[var(--accent)]">
+          개인 설정은 로그인 후 이용할 수 있습니다.
         </p>
         <div className="mt-6 flex flex-col gap-2">
           {/* 실제 페이지 이동(전체 새로고침)이어야 하므로 버튼 클릭 핸들러가 아니라 일반 링크로 연다 —
               XHR로 처리하면 쿠키를 세팅하는 리다이렉트 체인이 브라우저 주소창에서 진행되지 않는다. */}
           <a
             href={googleLoginUrl(returnTo)}
-            className="nes-btn flex items-center justify-center gap-2 border-[var(--accent)] bg-[var(--accent)] px-4 py-2 text-sm font-bold text-black hover:bg-[var(--accent-hover)]"
+            className="nes-btn flex items-center justify-center gap-2 border-gray-500 bg-zinc-700 px-4 py-2 text-sm font-bold text-white hover:bg-zinc-600"
           >
-            Google로 로그인
+            Google 로그인
           </a>
           <button
             type="button"
