@@ -88,7 +88,7 @@ function SettingHelpIcon({ label, description, bookmarkId }: { label: string; de
           ref={tooltipRef}
           role="tooltip"
           style={{ position: 'fixed', left: tooltipPosition.left, top: tooltipPosition.top }}
-          className="z-50 w-64 max-w-[calc(100vw-16px)] whitespace-pre-line rounded border border-[#7a6d55] bg-[#fff8e7] p-2 text-left text-xs leading-relaxed text-black shadow-lg"
+          className="z-50 w-64 max-w-[calc(100vw-16px)] whitespace-pre-line rounded border border-slate-500 bg-[#2b3a4f] p-2 text-left text-xs leading-relaxed text-slate-100 shadow-lg"
         >
           {description}
         </span>
@@ -279,7 +279,7 @@ function ChevronGlyph({ direction }: { direction: 'left' | 'right' }) {
 const RANGE_HANDLE_CLASS =
   'pointer-events-none absolute top-1/2 flex h-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--accent)] text-black touch-none'
 const BLOCKED_HINT_CLASS =
-  'pointer-events-none absolute top-full left-0 z-50 mt-1 max-w-full rounded border border-[#7a6d55] bg-[#fff8e7] px-2 py-1 text-xs text-black shadow-lg'
+  'pointer-events-none absolute top-full left-0 z-50 mt-1 max-w-full rounded border border-slate-500 bg-[#2b3a4f] px-2 py-1 text-xs text-slate-100 shadow-lg'
 
 // 업종 단계(대/중/소분류) 선택 드롭박스 — 업종 표시 단계(1-1)보다 깊은 단계는 비활성이고, 눌렀을 때 이유를 알려준다.
 // 안내 말풍선은 열린 목록과 아래 컨트롤을 가리지 않도록 드롭박스 위쪽에 띄운다.
@@ -318,8 +318,8 @@ function DepthSelect({
         ))}
       </select>
       {hintVisible && isCapped && !disabled && (
-        <div role="status" className="pointer-events-none absolute bottom-full right-0 z-50 mb-1 w-56 rounded border border-[#7a6d55] bg-[#fff8e7] px-2 py-1 text-xs text-black shadow-lg">
-          <span className="inline-block whitespace-nowrap border-b border-current">1-1) 업종 표시 단계</span>를 높여야 선택이 가능합니다.
+        <div role="status" className="pointer-events-none absolute bottom-full right-0 z-50 mb-1 w-56 rounded border border-slate-500 bg-[#2b3a4f] px-2 py-1 text-xs text-slate-100 shadow-lg">
+          <span className="inline-block whitespace-nowrap text-sky-300">1-1) 업종 표시 단계</span>를 높여야 선택이 가능합니다.
         </div>
       )}
     </span>
@@ -996,9 +996,9 @@ export function SettingsSectorLevelSection({
   ]
   if (inBookmarkTab && bookmarkableIds.every(hideItem)) return null
   const depthMetricRangeDisabledReason = !sectorLevelEnabled
-    ? <><span className="inline-block whitespace-nowrap border-b border-current">1-1) 업종 표시 단계</span>를 켜야 선택이 가능합니다.</>
+    ? <><span className="inline-block whitespace-nowrap text-sky-300">1-1) 업종 표시 단계</span>를 켜야 선택이 가능합니다.</>
     : !depthMetricEnabled
-      ? <><span className="inline-block whitespace-nowrap border-b border-current">1-2) 표시 지표</span>를 켜야 선택이 가능합니다.</>
+      ? <><span className="inline-block whitespace-nowrap text-sky-300">1-2) 표시 지표</span>를 켜야 선택이 가능합니다.</>
       : null
 
   return (
@@ -1078,7 +1078,7 @@ export function SettingsSectorLevelSection({
             )}
             {isDepthMetricDisabled && depthMetricSectionHintVisible && (
               <div role="status" className={BLOCKED_HINT_CLASS}>
-                <span className="inline-block whitespace-nowrap border-b border-current">1-1) 업종 표시 단계</span>를 켜야 선택이 가능합니다.
+                <span className="inline-block whitespace-nowrap text-sky-300">1-1) 업종 표시 단계</span>를 켜야 선택이 가능합니다.
               </div>
             )}
           </div>
@@ -1101,7 +1101,7 @@ export function SettingsSectorLevelSection({
                 minAriaLabel="최소 표시 뎁스"
                 maxAriaLabel="최대 표시 뎁스"
                 maxSelectableIndex={depthMetricMaxSelectableIndex}
-                limitReason={<><span className="inline-block whitespace-nowrap border-b border-current">1-1) 업종 표시 단계</span>를 높여야 선택이 가능합니다.</>}
+                limitReason={<><span className="inline-block whitespace-nowrap text-sky-300">1-1) 업종 표시 단계</span>를 높여야 선택이 가능합니다.</>}
                 disabledReason={depthMetricRangeDisabledReason}
                 onChange={onChangeDepthMetricRange}
                 disabled={isDepthMetricRangeDisabled}
@@ -1117,7 +1117,7 @@ export function SettingsSectorLevelSection({
                     <SettingHelpIcon
                       bookmarkId="topPick"
                       label="강세 표시"
-                      description={<>시총 가중 등락률을 기준으로 합니다.<br />ETF 등락률을 추종하고자 하였습니다.<br /><br /><span className="inline-block whitespace-nowrap border-b border-current">1-2) 표시 지표</span>에서 동일 가중을 선택한 경우는 예외로 합니다.</>}
+                      description={<>시총 가중 등락률을 기준으로 합니다.<br />ETF 등락률을 추종하고자 하였습니다.<br /><br /><span className="inline-block whitespace-nowrap text-sky-300">1-2) 표시 지표</span>에서 동일 가중을 선택한 경우는 예외로 합니다.</>}
                     />
                   </span>
                   <ToggleSwitch
@@ -1162,7 +1162,7 @@ export function SettingsSectorLevelSection({
               )}
               {isTopPickDisabled && topPickSectionHintVisible && (
                 <div role="status" className={BLOCKED_HINT_CLASS}>
-                <span className="inline-block whitespace-nowrap border-b border-current">1-1) 업종 표시 단계</span>를 켜야 선택이 가능합니다.
+                <span className="inline-block whitespace-nowrap text-sky-300">1-1) 업종 표시 단계</span>를 켜야 선택이 가능합니다.
                 </div>
               )}
             </div>
@@ -1258,7 +1258,7 @@ export function SettingsSectorLevelSection({
             </div>
             {!stockLabelEnabled && textThresholdHintVisible && (
               <div role="status" className={BLOCKED_HINT_CLASS}>
-                <span className="inline-block whitespace-nowrap border-b border-current">3-2) 박스 내 표기</span>를 켜야 선택이 가능합니다.
+                <span className="inline-block whitespace-nowrap text-sky-300">3-2) 박스 내 표기</span>를 켜야 선택이 가능합니다.
               </div>
             )}
           </div>
@@ -1404,7 +1404,7 @@ export function SettingsSectorChangeSection({
         <SettingHelpIcon
           bookmarkId="sectorChange"
           label="업종 등락 방향"
-          description={<><span className="inline-block whitespace-nowrap border-b border-current">1-2) 표시 지표</span>에서 ‘동일 가중’을 선택하면 동일 가중, 그 외에는 시총 가중 평균을 사용합니다.</>}
+          description={<><span className="inline-block whitespace-nowrap text-sky-300">1-2) 표시 지표</span>에서 ‘동일 가중’을 선택하면 동일 가중, 그 외에는 시총 가중 평균을 사용합니다.</>}
         />
       </p>
       <SettingDescription>상승·하락 업종만 표시</SettingDescription>
@@ -1637,7 +1637,7 @@ export function SettingsStrongIndustryColorSection({
         <SettingHelpIcon
           bookmarkId="strongColor"
           label="강조 색상"
-          description={<>지도 내 업종명(1단계)과 <span className="inline-block whitespace-nowrap border-b border-current">1-4) 강세 표시</span>의 색상을 설정합니다.</>}
+          description={<>지도 내 업종명(1단계)과 <span className="inline-block whitespace-nowrap text-sky-300">1-4) 강세 표시</span>의 색상을 설정합니다.</>}
         />
       </p>
       <SettingDescription>업종명과 강세 업종의 색상</SettingDescription>
@@ -1654,7 +1654,7 @@ export function SettingsStrongIndustryColorSection({
             />
             <span
               role="tooltip"
-              className="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 whitespace-nowrap rounded border border-[#7a6d55] bg-[#fff8e7] px-2 py-1 text-xs text-black opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100"
+              className="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 whitespace-nowrap rounded border border-slate-500 bg-[#2b3a4f] px-2 py-1 text-xs text-slate-100 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100"
             >
               {option.label}
             </span>

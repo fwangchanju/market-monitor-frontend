@@ -229,6 +229,8 @@ export default function MarketMapCustomPage() {
   // 지금 뎁스(path) 기준으로, 섹터 제외/시가총액 구간 필터를 적용하기 전 원본 트리에 있는 전체 종목 수.
   const rawCurrentNode = findRawNodeByPath(rootNodes, path)
   const totalItemCount = collectRawItems(rawCurrentNode ? [rawCurrentNode] : rootNodes).length
+  // NXT 안내에 보여주는 종목 수 — 업종으로 들어가 있어도 NXT 전체 종목 수를 보여준다(위 totalItemCount는 지금 단계의 종목 수다).
+  const nxtStockCount = heatmap === 'nxt' ? collectRawItems(rootNodes).length : 0
 
   // 상단 바는 현재 히트맵을 점등 표시로 보여준다. 종목 수는 설정 사이드바에 표시한다.
   const modeStatusText = (
@@ -472,8 +474,10 @@ export default function MarketMapCustomPage() {
                   className="absolute left-1/2 top-9 z-30 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-start gap-3 rounded-md border border-slate-500 bg-[#2b3a4f] px-4 py-2 text-sm text-slate-100 shadow-lg"
                 >
                   <span>
-                    NXT 거래 종목만 보여줍니다. 가격과 등락률은 <b className="text-sky-300">KRX·NXT 통합 가격</b> 기준이며, NXT 단독 가격은 아직 반영되지
-                    않았습니다.
+                    NXT 거래 종목만 보여줍니다.
+                    {nxtStockCount > 0 && <b className="ml-1.5 text-sky-300">{toCount(nxtStockCount)} 종목</b>}
+                    <br />
+                    가격과 등락률은 <b className="text-sky-300">통합시세</b> 기준입니다.
                   </span>
                   <button
                     type="button"

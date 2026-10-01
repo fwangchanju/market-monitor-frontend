@@ -156,7 +156,7 @@ export default function MarketMapColorThresholdEditorPanel({
               {/* 색 이름 — 강조 색상(4-1)과 같은 말풍선으로, 마우스를 올렸을 때만 뜬다. */}
               <span
                 role="tooltip"
-                className="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 whitespace-nowrap rounded border border-[#7a6d55] bg-[#fff8e7] px-2 py-1 text-xs text-black opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100"
+                className="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 whitespace-nowrap rounded border border-slate-500 bg-[#2b3a4f] px-2 py-1 text-xs text-slate-100 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100"
               >
                 {swatch.label}
               </span>
