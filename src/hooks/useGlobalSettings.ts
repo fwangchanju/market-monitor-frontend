@@ -390,7 +390,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   const legendSwatches = resolveLegendSwatches(colorScale, {
     // 편집을 시작하기 전부터 비어 있던 부호는 기본 2/5/8 슬롯을 유지한다. 이번 편집으로 처음
     // 비어진 부호만 숨겨 fallback 슬롯이 새로 늘어나는 것을 막는다.
-    includeFallbacksForEmptySides: colorEditIndices.length === 0 || !colorEditSnapshotRef.current
+    // 색상 범위 커스텀을 끈 동안에는 지도가 기본 색을 쓰므로 범례도 기본 7칸을 모두 보여준다(흐리게 표시) — 이때는 숨기지 않는다.
+    includeFallbacksForEmptySides: !colorCustomOn || colorEditIndices.length === 0 || !colorEditSnapshotRef.current
       ? true
       : {
           negative: !colorEditSnapshotRef.current.thresholds.some(threshold => threshold.thresholdPercent < 0),
@@ -544,7 +545,10 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 편집 영역을 항상 열어두기 위해, 편집 중인 칸이 없으면(처음, 적용/취소 직후) 마지막으로 보던 칸을 다시 연다.
   useEffect(() => {
     if (!colorCustomOn || !colorScaleDraft || colorEditIndices.length > 0 || isApplyingColorEdit) return
-    const swatch = legendSwatches.find(item => Number.parseFloat(item.label) === selectedColorPercentRef.current) ?? legendSwatches[0]
+    // 처음에는 +8%(가장 큰 상승 칸)를 편집 대상으로 연다.
+    const swatch = legendSwatches.find(item => Number.parseFloat(item.label) === selectedColorPercentRef.current)
+      ?? legendSwatches.find(item => item.label === '+8%')
+      ?? legendSwatches[0]
     if (swatch) handleSelectColorSwatch(Number.parseFloat(swatch.label), swatch.color)
   })
   // 저장해 둔 색상 구간을 모두 지워 기본 색상으로 되돌린다. 로그인 사용자는 서버에 저장된 구간도 삭제한다.
