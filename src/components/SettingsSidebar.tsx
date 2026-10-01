@@ -757,7 +757,6 @@ function SettingsClassificationSelector({
     <div className={`${atBottom ? 'shrink-0 px-4 py-3' : 'mb-6 pt-5 pb-6'} text-white`}>
       <p className="flex items-center text-base">
         히트맵 선택
-        <SettingHelpIcon label="히트맵 선택" description="지도에서 볼 히트맵을 선택합니다." />
       </p>
       <div role="radiogroup" aria-label="히트맵 선택" className="mt-2 grid grid-cols-4 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
         {options.map(option => (
@@ -1267,16 +1266,12 @@ export function SettingsSectorLevelSection({
           {showDecimalPlaces && !inBookmarkTab && (
             <div className="settings-fifth-stock-popup mt-6 text-sm">
               <span className="flex max-w-[16rem] items-center text-left text-[15px] text-white">
-                <span className="settings-section-num">종목 정보 팝업</span>
-                <SettingHelpIcon
-                  label="종목 정보 팝업"
-                  description="종목 박스의 정보 팝업을 여는 방식을 선택합니다. 대분류·중분류·소분류 박스는 항상 우클릭으로 엽니다."
-                />
+                <span className="settings-section-num">종목 정보</span>
               </span>
               <SettingDescription>종목 정보를 여는 방식</SettingDescription>
               <div
                 role="radiogroup"
-                aria-label="종목 정보 팝업 여는 방식"
+                aria-label="종목 정보 여는 방식"
                 className="mt-[18px] grid max-w-[16rem] grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5"
               >
                 {[
@@ -1394,7 +1389,7 @@ export function SettingsSectorChangeSection({
         <SettingHelpIcon
           bookmarkId="sectorChange"
           label="업종 등락 방향"
-          description={<><span className="inline-block whitespace-nowrap border-b border-current">2-2) 업종 등락 방향</span>에서 고른 업종 단계의 상승·하락 업종만 표시합니다.<br /><br /><span className="inline-block whitespace-nowrap border-b border-current">1-2) 표시 지표</span>에서 ‘동일 가중’을 선택하면 동일 가중, 그 외에는 시총 가중 평균을 사용합니다.</>}
+          description={<><span className="inline-block whitespace-nowrap border-b border-current">1-2) 표시 지표</span>에서 ‘동일 가중’을 선택하면 동일 가중, 그 외에는 시총 가중 평균을 사용합니다.</>}
         />
       </p>
       <SettingDescription>상승·하락 업종만 표시</SettingDescription>
@@ -1478,7 +1473,7 @@ export function SettingsExcludeSection({
         <ToggleSwitch
           checked={sectorFilterEnabled}
           onChange={onToggleSectorFilter}
-          label="제외 업종 변경"
+          label="제외 업종"
           labelClassName="text-[15px] settings-section-num"
         />
         <SettingDescription>업종을 우클릭해 제외 가능</SettingDescription>
