@@ -49,7 +49,8 @@ export default function MarketMapPopup({ popup, onExcludeSector, onClose }: Prop
 // 팝업 본체와 우클릭한 박스 사이의 간격.
 const POPUP_GAP = 2
 const POPUP_MARGIN = 8
-const POPUP_BACKGROUND = '#fff8e7'
+// 지도 설정 말풍선·NXT 안내 알림창과 같은 슬레이트 블루 색 조합이다.
+const POPUP_BACKGROUND = '#2b3a4f'
 
 interface PopupBodyProps {
   popup: MarketMapPopupState
@@ -110,7 +111,7 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
       <div
         ref={elRef}
         data-market-map-popup
-        className={`invisible fixed z-[9999] w-max break-words border border-[#7a6d55] px-2 py-1 text-left text-base text-black shadow-lg ${popup.transient ? 'pointer-events-none' : ''}`}
+        className={`invisible fixed z-[9999] w-max break-words border border-slate-500 px-2 py-1 text-left text-base text-slate-100 shadow-lg ${popup.transient ? 'pointer-events-none' : ''}`}
         style={{ maxWidth, backgroundColor: POPUP_BACKGROUND }}
       >
         <div className="flex items-center justify-between gap-3 font-bold">
@@ -120,7 +121,7 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
               type="button"
               aria-label={`${excludeSector.name} 제외`}
               title="섹터 제외"
-              className="flex h-5 w-5 items-center justify-center border-0 bg-transparent p-0 outline-none text-gray-700 hover:text-black"
+              className="flex h-5 w-5 items-center justify-center border-0 bg-transparent p-0 outline-none text-slate-400 hover:text-slate-100"
               onClick={() => {
                 if (!window.confirm(`${excludeSector.name}\n히트맵에서 제외하시겠습니까?`)) return
                 onExcludeSector(excludeSector.id, excludeSector.name)
