@@ -5,13 +5,15 @@ interface Props {
   // 로그인 성공 후 백엔드가 돌려보낼 프론트 경로("/"로 시작). 로그인 팝업을 연 지점(메뉴 클릭,
   // 커스텀 모드 토글, 커스텀 페이지 직접 진입)의 목적지를 그대로 넘긴다.
   returnTo: string
+  // true면 안내 문구를 보여주지 않는다(오른쪽 위 로그인 버튼으로 연 경우).
+  hideMessage?: boolean
   onClose: () => void
 }
 
 // MarketMapShareModal과 동일한 팝업 톤(어두운 배경 오버레이 + var(--surface) 패널, nes-btn 버튼)을
 // 그대로 재사용한다 — 새 시각 스타일을 만들지 않는다. 강조 버튼도 기존 accent 토큰(노랑)만 쓰고
 // 등락률 전용인 red/blue 계열(--stock-up/--stock-down/--negative)은 쓰지 않는다.
-export default function LoginModal({ returnTo, onClose }: Props) {
+export default function LoginModal({ returnTo, hideMessage = false, onClose }: Props) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -27,9 +29,11 @@ export default function LoginModal({ returnTo, onClose }: Props) {
         onClick={e => e.stopPropagation()}
       >
         <p className="text-lg font-bold text-white">로그인</p>
-        <p className="mt-2 text-sm text-[var(--accent)]">
-          로그인 후 이용 가능합니다.
-        </p>
+        {!hideMessage && (
+          <p className="mt-2 text-sm text-[var(--accent)]">
+            로그인 후 이용 가능합니다.
+          </p>
+        )}
         <div className="mt-6 flex flex-col gap-2">
           {/* 실제 페이지 이동(전체 새로고침)이어야 하므로 버튼 클릭 핸들러가 아니라 일반 링크로 연다 —
               XHR로 처리하면 쿠키를 세팅하는 리다이렉트 체인이 브라우저 주소창에서 진행되지 않는다. */}

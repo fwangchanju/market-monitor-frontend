@@ -9,7 +9,8 @@ import marketryLogo from '@/assets/marketry-logo.png'
 // 로그인 버튼은 SubNavBar 우측 "일괄변경"류 accent 버튼(nes-btn + var(--accent))과 같은 톤을 쓰고,
 // 로그인한 사용자는 우측 아바타에서 계정 메뉴를 연다.
 // 등락률 전용 색(--stock-up/--stock-down/--negative, 즉 red/blue 계열)은 쓰지 않는다.
-export default function NavBar() {
+// hideAccount가 true면 오른쪽의 로그인 버튼/프로필 아이콘을 숨기고 로고만 보여준다(비로그인이 프로필 페이지에 들어왔을 때).
+export default function NavBar({ hideAccount = false }: { hideAccount?: boolean }) {
   const { data: session, isLoading } = useSession()
   const { pathname, search, hash } = useLocation()
   const { requireLogin } = useLoginGate()
@@ -54,11 +55,11 @@ export default function NavBar() {
       >
         <img src={marketryLogo} alt="" className="h-[40.9px] w-auto max-w-[18rem] object-contain" />
       </Link>
-      {isLoggedOut ? (
+      {hideAccount ? null : isLoggedOut ? (
         // 비로그인은 프로필 아이콘 대신 "로그인" 버튼을 바로 보여줘서 로그인/비로그인 상태가 한눈에 구분된다.
         <button
           type="button"
-          onClick={() => requireLogin(`${pathname}${search}${hash}`)}
+          onClick={() => requireLogin(`${pathname}${search}${hash}`, { hideMessage: true })}
           className="nes-btn border-[var(--accent)] bg-transparent px-3 py-1 text-xs font-bold text-[var(--accent)] hover:bg-[var(--accent)] hover:text-black"
         >
           로그인

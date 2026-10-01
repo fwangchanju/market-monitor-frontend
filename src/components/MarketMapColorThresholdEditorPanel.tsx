@@ -144,15 +144,23 @@ export default function MarketMapColorThresholdEditorPanel({
         <p className="color-editor-step mb-2 text-xs text-gray-300">색상</p>
         <div className="flex justify-between" role="group" aria-label="색상 선택">
           {swatches.map(swatch => (
-            <button
-              key={swatch.key}
-              type="button"
-              aria-label={swatch.label}
-              aria-pressed={selection.key === swatch.key}
-              onClick={() => applySelection(swatch.key, selection.lightness)}
-              className={`h-6 w-6 shrink-0 rounded-full border-2 p-0 ${selection.key === swatch.key ? 'border-white ring-1 ring-white/40' : 'border-transparent hover:border-white/60'}`}
-              style={{ backgroundColor: swatch.color }}
-            />
+            <span key={swatch.key} className="group relative inline-flex">
+              <button
+                type="button"
+                aria-label={swatch.label}
+                aria-pressed={selection.key === swatch.key}
+                onClick={() => applySelection(swatch.key, selection.lightness)}
+                className={`h-6 w-6 shrink-0 rounded-full border-2 p-0 ${selection.key === swatch.key ? 'border-white ring-1 ring-white/40' : 'border-transparent hover:border-white/60'}`}
+                style={{ backgroundColor: swatch.color }}
+              />
+              {/* 색 이름 — 강조 색상(4-1)과 같은 말풍선으로, 마우스를 올렸을 때만 뜬다. */}
+              <span
+                role="tooltip"
+                className="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 whitespace-nowrap rounded border border-[#7a6d55] bg-[#fff8e7] px-2 py-1 text-xs text-black opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100"
+              >
+                {swatch.label}
+              </span>
+            </span>
           ))}
         </div>
       </div>

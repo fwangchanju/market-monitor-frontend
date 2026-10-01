@@ -25,6 +25,16 @@ export default function ProfilePage() {
     }
   }
 
+  // 로그인하지 않은 상태(세션 확인 중 포함)에서는 로고 말고 아무것도 보이지 않게 한다 — 로그인 팝업만 뜬다.
+  // 로그인 안내를 다시 보려면 페이지를 새로고침한다.
+  if (!session?.authenticated && !isError) {
+    return (
+      <div className="min-h-screen text-white">
+        <NavBar hideAccount />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen text-white">
       <NavBar />
