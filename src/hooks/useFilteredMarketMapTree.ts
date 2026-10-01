@@ -36,7 +36,7 @@ function filterNodes(
   for (const node of nodes) {
     if (excludedSectorIds.has(node.sectorId)) continue
 
-    // 업종은 선택한 분류 단계에서만 판정한다. 종목 방향과 독립적으로 유지하기 위해
+    // 업종은 선택한 업종 단계에서만 판정한다. 종목 방향과 독립적으로 유지하기 위해
     // 해당 업종의 원래 평균(시총 구간 제외는 반영)을 먼저 사용한다.
     const originalAverage = computeSectorAverage(node, excludedMarketValueTiers)
     if (filters.sectorChangeFilter !== 'all' && depth === filters.sectorChangeDepth) {
@@ -103,7 +103,7 @@ export function collectSectorsAtDepth(
   return nodes.flatMap(node => collectSectorsAtDepth(node.children, targetDepth, depth + 1))
 }
 
-// "업종 분류 레벨" 슬라이더가 "끄기"일 때(뎁스 제한 0) 쓰는 완전 평탄화 — 섹터 구분 없이 지금
+// "업종 단계" 슬라이더가 "끄기"일 때(뎁스 제한 0) 쓰는 완전 평탄화 — 섹터 구분 없이 지금
 // 보이는 위치(형제 노드들 또는 드릴다운으로 들어온 노드 하나) 아래 종목을 전부 하나로 모은다.
 export function flattenAllItems(nodes: FilteredMarketMapSectorNode[]): MarketMapItem[] {
   const result: MarketMapItem[] = []
@@ -111,7 +111,7 @@ export function flattenAllItems(nodes: FilteredMarketMapSectorNode[]): MarketMap
   return result
 }
 
-// depth는 nodes를 1로 보는 기준(= "분류 단계" 슬라이더 값과 동일 단위) — 진짜 루트가 아니라 "지금
+// depth는 nodes를 1로 보는 기준(= "업종 단계" 슬라이더 값과 동일 단위) — 진짜 루트가 아니라 "지금
 // 보고 있는 위치"를 1로 삼아 호출부(MarketMapCustomPage)가 드릴다운할 때마다 새로 호출한다. 그래야
 // 뎁스 제한이 절대(진짜 루트 기준)가 아니라 항상 지금 위치 기준 상대값으로 적용된다 — 안 그러면 뎁스
 // 제한이 드릴다운 경로 탐색에 쓰는 트리(useMarketMapDrilldown)까지 미리 잘라버려서, maxDepth를 줄일

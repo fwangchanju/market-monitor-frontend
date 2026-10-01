@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
 import SettingsSidebar, {
@@ -11,6 +11,8 @@ import SettingsSidebar, {
   SettingsExcludeSection,
   SettingsColorSection,
   SettingsStrongIndustryColorSection,
+  SettingsStockSizeSelector,
+  type SettingsBookmarkId,
   type SettingsSidebarSectionId,
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
@@ -21,6 +23,9 @@ import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/c
 import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
+import { usePageSetting } from '@/hooks/usePageSetting'
+import { useIsLoggedIn } from '@/hooks/useSession'
+import { useLoginGate } from '@/hooks/useLoginGate'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
 import { toCount, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
@@ -33,11 +38,26 @@ import { limitDepth, flattenAllItems, type FilteredMarketMapSectorNode } from '@
 import type { MarketQuery, MarketMapSectorNode, MarketMapItem } from '@/types/api'
 
 const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
+// 종목·업종 헤더와 같은 방식 — 올리면 흰색 35% 덮개가 씌워진다(index.css의 hover와 같은 불투명도).
+const BREADCRUMB_LINK_CLASS = 'flex h-full cursor-pointer items-center gap-1.5 border-0 bg-transparent pl-2 pr-1.5 text-lg leading-none font-bold text-white transition-colors hover:bg-white/35'
+
+// 이름 오른쪽의 되돌아가기 표시 — 이름과 한 버튼이라서 올리면 함께 하이라이트된다.
+function BreadcrumbBackIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+    </svg>
+  )
+}
+
+// 북마크 탭이 한 화면에 들어가도록 항목 수를 제한한다.
+const MAX_SETTINGS_BOOKMARKS = 5
 const MAP_SETTINGS_SECTION_ORDER: SettingsSidebarSectionId[] = [
   'industry', 'composition', 'stockDisplay', 'colors', 'favorites',
 ]
 
-// "업종 분류 레벨" 슬라이더가 "끄기"(뎁스 0)일 때만 쓰는 합성 섹터 — 실제 섹터가 아니므로
+// "업종 단계" 슬라이더가 "끄기"(뎁스 0)일 때만 쓰는 합성 섹터 — 실제 섹터가 아니므로
 // sectorId는 실제 값과 겹치지 않는 sentinel을 쓰고, isSelf로 매칭해 헤더 자체를 안 그리게 한다
 // (드릴다운으로 들어온 섹터의 헤더를 breadcrumb과 중복되지 않게 숨기는 것과 동일한 메커니즘).
 const FLAT_GROUP_SECTOR_ID = -1
@@ -106,6 +126,24 @@ type DownloadStatus = 'idle' | 'downloading' | 'error'
 
 export default function MarketMapCustomPage() {
   const navigate = useNavigate()
+  const { pathname, search, hash } = useLocation()
+  const isLoggedIn = useIsLoggedIn()
+  const { requireLogin } = useLoginGate()
+  // 북마크는 로그인 사용자의 서버 설정에만 저장한다. 비로그인이 누르면 저장하지 않고 로그인을 안내한다.
+  const [settingsBookmarks, setSettingsBookmarks] = usePageSetting<string[]>('marketMap.settingsBookmarks', [])
+  const toggleSettingsBookmark = (id: SettingsBookmarkId) => {
+    if (!isLoggedIn) {
+      requireLogin(`${pathname}${search}${hash}`)
+      return
+    }
+    if (settingsBookmarks.includes(id)) {
+      setSettingsBookmarks(settingsBookmarks.filter(item => item !== id))
+    } else if (settingsBookmarks.length >= MAX_SETTINGS_BOOKMARKS) {
+      window.alert(`북마크는 최대 ${MAX_SETTINGS_BOOKMARKS}개까지 설정할 수 있습니다.`)
+    } else {
+      setSettingsBookmarks([...settingsBookmarks, id])
+    }
+  }
   const {
     settingsModalProps,
     colorEditorPanelProps,
@@ -156,7 +194,7 @@ export default function MarketMapCustomPage() {
 
   const { path, setPath, currentNode, currentSiblings, enterSector, goToDepth, reset } = useMarketMapDrilldown(filteredRootNodes)
 
-  // "업종 분류 레벨" 뎁스 제한을 "지금 보고 있는 위치"(currentNode, 없으면 최상위) 기준으로 매번 새로
+  // "업종 단계" 뎁스 제한을 "지금 보고 있는 위치"(currentNode, 없으면 최상위) 기준으로 매번 새로
   // 적용한다 — 진짜 루트 기준 절대값이 아니라, 어디로 드릴다운하든 거기서부터 다시 N단계가 보이는
   // 상대값이어야 한다(그래야 뎁스 제한 때문에 드릴다운 경로가 끊기거나 더 깊이 진입해도 항상 똑같이
   // 얕게만 보이는 문제가 없다). 드릴다운 상태에서는 헤더를 그리지 않는 자기 자신은 단계로 세지
@@ -419,40 +457,41 @@ export default function MarketMapCustomPage() {
             <div className="flex min-h-0 flex-1">
               <div className="flex min-h-0 flex-1 flex-col bg-black">
               {path.length > 0 && (
-                <div
-                  onClick={() => handleGoToDepth(0)}
-                  className="flex h-7 w-full shrink-0 cursor-pointer items-center gap-1 truncate bg-black/70 px-1 text-sm font-bold text-[var(--accent)]"
+                // 이름마다 "그 단계로만" 이동하는 링크다 — 줄 전체를 눌러 전체로 가던 동작은 없앴다. 지금 보고 있는
+                // 마지막 이름은 링크가 아니라 현재 위치 표시(흰색)다.
+                <nav
+                  aria-label="업종 이동 경로"
+                  className="flex h-7 w-full shrink-0 items-center truncate bg-black/70 text-lg leading-none font-bold"
                 >
-                  <span>{MARKET_LABEL[market]}</span>
+                  <button
+                    type="button"
+                    title="전체로 되돌아가기"
+                    onClick={() => handleGoToDepth(0)}
+                    style={{ fontFamily: 'inherit' }}
+                    className={BREADCRUMB_LINK_CLASS}
+                  >
+                    {MARKET_LABEL[market]}
+                    <BreadcrumbBackIcon />
+                  </button>
                   {path.map((name, index) => {
-                    const segmentIndex = index + 1
                     const isLastPath = index === path.length - 1
-                    return (
-                      <span key={index} className="flex items-center gap-1">
-                        <span>&gt;</span>
-                        {isLastPath ? (
-                          // 지금 보고 있는 섹터라 클릭해도 아무 동작이 없어야 하므로, 버블링을 막아
-                          // 바 전체의 onClick(goToDepth(0))으로 전체 화면으로 빠지지 않게 한다.
-                          <span onClick={e => e.stopPropagation()}>
-                            {name}
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={e => {
-                              e.stopPropagation()
-                              handleGoToDepth(segmentIndex)
-                            }}
-                            style={{ fontFamily: 'inherit' }}
-                            className="border-0 bg-transparent p-0 text-sm font-bold text-[var(--accent)]"
-                          >
-                            {name}
-                          </button>
-                        )}
-                      </span>
+                    return isLastPath ? (
+                      <span key={index} aria-current="page" className="px-2 text-[var(--accent)]">{name}</span>
+                    ) : (
+                      <button
+                        key={index}
+                        type="button"
+                        title={`${name} 단계로 되돌아가기`}
+                        onClick={() => handleGoToDepth(index + 1)}
+                        style={{ fontFamily: 'inherit' }}
+                        className={BREADCRUMB_LINK_CLASS}
+                      >
+                        {name}
+                        <BreadcrumbBackIcon />
+                      </button>
                     )
                   })}
-                </div>
+                </nav>
               )}
               {isLoading ? (
                 <div className="flex flex-1 items-center justify-center">
@@ -500,6 +539,8 @@ export default function MarketMapCustomPage() {
             sectionOrder={MAP_SETTINGS_SECTION_ORDER}
             classificationAtBottom
             stockCountLabel={`${toCount(visibleItems.length)}/${toCount(totalItemCount)}종목`}
+            bookmarks={settingsBookmarks}
+            onToggleBookmark={toggleSettingsBookmark}
             onToggleCustom={() => {
               settingsModalProps.onToggleCustom()
               reset()
@@ -534,6 +575,36 @@ export default function MarketMapCustomPage() {
             </SettingsSidebarGroup>
             <SettingsSidebarGroup section="stockDisplay">
               <SettingsSectorLevelSection {...settingsModalProps} showClassification={false} showDecimalPlaces />
+            </SettingsSidebarGroup>
+            {/* 북마크 탭 — 원래 탭의 항목을 같은 순서로 다시 그리고, 북마크한 항목만 보인다. */}
+            <SettingsSidebarGroup section="favorites">
+              <SettingsSectorLevelSection {...settingsModalProps} showTopPick showStockDisplay={false} />
+              <SettingsMarketValueSection {...settingsModalProps} showDivider={false} />
+              <SettingsSectorChangeSection
+                value={sectorChangeFilter}
+                onChange={value => {
+                  onChangeSectorChangeFilter(value)
+                  reset()
+                }}
+                depth={sectorChangeDepth}
+                onChangeDepth={depth => {
+                  onChangeSectorChangeDepth(depth)
+                  reset()
+                }}
+                maxSelectableDepth={Math.max(1, settingsModalProps.topPickMaxSelectableDepth)}
+              />
+              <SettingsStockChangeSection
+                value={stockChangeFilter}
+                onChange={value => {
+                  onChangeStockChangeFilter(value)
+                  reset()
+                }}
+              />
+              <SettingsStockSizeSelector marketCapRatio={boxSizeMarketCapRatio} onChangeMarketCapRatio={onChangeBoxSizeMarketCapRatio} />
+              <SettingsSectorLevelSection {...settingsModalProps} showClassification={false} showDecimalPlaces />
+              {strongIndustryColor && onChangeStrongIndustryColor && (
+                <SettingsStrongIndustryColorSection color={strongIndustryColor} onChange={onChangeStrongIndustryColor} />
+              )}
             </SettingsSidebarGroup>
             <SettingsSidebarGroup section="colors">
               {strongIndustryColor && onChangeStrongIndustryColor && (
