@@ -66,7 +66,7 @@ export default function CustomManagePage() {
     isLoading: isKrxLoading,
     refetch: refetchKrx,
     isRefetching: isRefetchingKrx,
-  } = useMarketMap('ALL_STOCK', false, { enabled: isReadOnlySheet })
+  } = useMarketMap('ALL_STOCK', false, false, { enabled: isReadOnlySheet })
 
   const nxtStockCodes = useMemo(
     () => new Set((stockSectors?.items ?? []).filter(item => item.nxtEnabled).map(item => item.stockCode)),
