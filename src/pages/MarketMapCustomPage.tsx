@@ -541,6 +541,7 @@ export default function MarketMapCustomPage() {
             pageLabel="지도"
             sectionOrder={MAP_SETTINGS_SECTION_ORDER}
             classificationAtBottom
+            snapshotTime={data?.classificationUpdatedAt}
             stockCountLabel={`${toCount(visibleItems.length)}/${toCount(totalItemCount)}종목`}
             bookmarks={settingsBookmarks}
             onToggleBookmark={toggleSettingsBookmark}
