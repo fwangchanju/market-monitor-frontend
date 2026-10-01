@@ -6,6 +6,7 @@ import { getLastRefreshAt, markSessionAnonymous, refreshSessionOnce } from '@/ap
 import { authKeys } from './queryKeys'
 import { STATIC_REFERENCE_CACHE } from './cacheConfig'
 import { cancelPendingPreferenceSave } from './useCustomPreferences'
+import { isLocalAutoLoginEnabled, isLocalGuestMode } from '@/utils/localDevLogin'
 import type { AuthSessionResponse } from '@/types/api'
 
 const KEEP_ALIVE_REFRESH_MS = 10 * 60_000
@@ -65,15 +66,25 @@ export function useIsLoggedIn(): boolean {
 // 다시 실행돼도 재시도하지 않는다(prod 프로필로 떠 있거나 OWNER_USER_ID가 없는 경우 계속
 // 실패 요청을 반복하지 않기 위함).
 let devLoginAttempted = false
+let guestLogoutAttempted = false
 
 // 로컬 개발 전용 자동 로그인 — VITE_LOCAL_AUTO_LOGIN=1이고 세션 조회가 끝났는데 비로그인이면
 // POST /auth/dev-login을 한 번 호출해 구글 로그인과 동일한 쿠키를 심고, 반환된 세션을 쿼리
 // 캐시에 바로 반영한다(새로고침 없이 로그인 상태가 된다). 실패하면(백엔드가 prod 프로필로 떠
 // 있거나 OWNER_USER_ID가 로컬 DB에 없는 경우 등) 콘솔 경고만 남기고 익명 상태로 남는다.
 export function useLocalDevLogin() {
-  const localAutoLogin = import.meta.env.DEV && import.meta.env.VITE_LOCAL_AUTO_LOGIN === '1'
+  const localAutoLogin = isLocalAutoLoginEnabled()
+  const localGuestMode = isLocalGuestMode()
   const { data: session, isLoading } = useSession()
   const queryClient = useQueryClient()
+  const logoutMutation = useLogout()
+
+  // 비로그인 확인 모드(?guest=1)로 열었는데 이전에 심어진 로그인 쿠키로 로그인돼 있으면 한 번 로그아웃한다.
+  useEffect(() => {
+    if (!localGuestMode || isLoading || !session?.authenticated || guestLogoutAttempted) return
+    guestLogoutAttempted = true
+    logoutMutation.mutate()
+  }, [localGuestMode, isLoading, session?.authenticated, logoutMutation])
 
   useEffect(() => {
     if (!localAutoLogin || isLoading || session?.authenticated || devLoginAttempted) return
@@ -135,8 +146,10 @@ export function useLogout() {
       // 저장 대기 중인 preferences 디바운스 저장을 취소한 뒤(다음 로그인 사용자에게 새어나가지 않도록)
       // 사용자별 데이터가 남지 않도록 캐시 전체를 비운다 — 이전 계정 화면이 잠깐이라도 보이지 않게.
       cancelPendingPreferenceSave()
-      queryClient.clear()
+      // 세션 쿼리는 지우지 않고 그 자리에서 익명으로 바꾼다 — clear()로 지우면 세션을 구독하던 화면(지도 설정 등)이
+      // 새 쿼리를 따라가지 못해서 로그아웃 뒤에도 이전 사용자의 설정이 그대로 보였다. 바꾼 뒤에 나머지를 비운다.
       queryClient.setQueryData(authKeys.session(), ANONYMOUS_SESSION)
+      queryClient.removeQueries({ predicate: query => query.queryKey[0] !== authKeys.all[0] })
       clearCustomModeStorage()
       try {
         sessionStorage.removeItem(LAST_USER_ID_STORAGE_KEY)

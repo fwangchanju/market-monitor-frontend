@@ -127,7 +127,7 @@ export const marketValueTiers = [
   { id: 1, label: '소형주', thresholdValue: 0, isExcludedByDefault: true },
   { id: 2, label: '중형주', thresholdValue: 500_000_000_000, isExcludedByDefault: false },
   { id: 3, label: '대형주', thresholdValue: 5_000_000_000_000, isExcludedByDefault: false },
-  { id: 4, label: '초대형주', thresholdValue: 200_000_000_000_000, isExcludedByDefault: false },
+  { id: 4, label: 'Top 2', thresholdValue: 200_000_000_000_000, isExcludedByDefault: false },
 ]
 
 // 섹터 7~18처럼 종목 상세가 중요하지 않은 자리에 대표 종목 하나만 채울 때 쓴다.
@@ -168,7 +168,7 @@ export const marketMapTree: MarketMapSectorNode[] = [
         isExcluded: false,
         items: [
           // alias 예시 — 박스 라벨은 "삼전"으로, 팝업(툴팁)은 원래 이름 "삼성전자"로 보여야 한다.
-          { stockCode: '005930', stockName: '삼성전자', alias: '삼전', lastPrice: 71000, totalMarketValue: 420_000_000_000_000, marketValueTier: '초대형주', changeRate: 1.2, currentPrice: 71000, snapshotTime: now() },
+          { stockCode: '005930', stockName: '삼성전자', alias: '삼전', lastPrice: 71000, totalMarketValue: 420_000_000_000_000, marketValueTier: 'Top 2', changeRate: 1.2, currentPrice: 71000, snapshotTime: now() },
         ],
         children: [],
       },
@@ -178,7 +178,7 @@ export const marketMapTree: MarketMapSectorNode[] = [
         totalMarketValue: 130_000_000_000_000,
         isExcluded: false,
         items: [
-          { stockCode: '000660', stockName: 'SK하이닉스', alias: null, lastPrice: 178000, totalMarketValue: 130_000_000_000_000, marketValueTier: '초대형주', changeRate: -0.8, currentPrice: 178000, snapshotTime: now() },
+          { stockCode: '000660', stockName: 'SK하이닉스', alias: null, lastPrice: 178000, totalMarketValue: 130_000_000_000_000, marketValueTier: 'Top 2', changeRate: -0.8, currentPrice: 178000, snapshotTime: now() },
         ],
         children: [],
       },
@@ -298,7 +298,7 @@ export const customStockSectors: {
     stockName: '삼성전자',
     alias: null,
     totalMarketValue: 420_000_000_000_000,
-    marketValueTier: '초대형주',
+    marketValueTier: 'Top 2',
     industryName: '반도체와반도체장비',
     parentSectorName: '반도체',
     sectorName: '메모리',
@@ -310,7 +310,7 @@ export const customStockSectors: {
     stockName: 'SK하이닉스',
     alias: null,
     totalMarketValue: 130_000_000_000_000,
-    marketValueTier: '초대형주',
+    marketValueTier: 'Top 2',
     industryName: '반도체와반도체장비',
     parentSectorName: '반도체',
     sectorName: '파운드리',

@@ -24,6 +24,7 @@ import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePageSetting } from '@/hooks/usePageSetting'
+import { sanitizeBookmarkIds } from '@/utils/settingsBookmarks'
 import { useIsLoggedIn } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
@@ -130,7 +131,9 @@ export default function MarketMapCustomPage() {
   const isLoggedIn = useIsLoggedIn()
   const { requireLogin } = useLoginGate()
   // 북마크는 로그인 사용자의 서버 설정에만 저장한다. 비로그인이 누르면 저장하지 않고 로그인을 안내한다.
-  const [settingsBookmarks, setSettingsBookmarks] = usePageSetting<string[]>('marketMap.settingsBookmarks', [])
+  const [storedSettingsBookmarks, setSettingsBookmarks] = usePageSetting<string[]>('marketMap.settingsBookmarks', [])
+  // 없어진 항목의 id가 저장돼 있어도 개수 제한(5개)에 잡히지 않도록 알려진 id만 쓴다.
+  const settingsBookmarks = sanitizeBookmarkIds(storedSettingsBookmarks)
   const toggleSettingsBookmark = (id: SettingsBookmarkId) => {
     if (!isLoggedIn) {
       requireLogin(`${pathname}${search}${hash}`)
@@ -541,6 +544,8 @@ export default function MarketMapCustomPage() {
             stockCountLabel={`${toCount(visibleItems.length)}/${toCount(totalItemCount)}종목`}
             bookmarks={settingsBookmarks}
             onToggleBookmark={toggleSettingsBookmark}
+            bookmarkLoginRequired={!isLoggedIn}
+            onRequestLogin={() => requireLogin(`${pathname}${search}${hash}`)}
             onToggleCustom={() => {
               settingsModalProps.onToggleCustom()
               reset()

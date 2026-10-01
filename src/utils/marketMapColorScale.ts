@@ -47,6 +47,18 @@ export const DEFAULT_MINUS_THRESHOLDS: ColorScaleThreshold[] = [
   { thresholdPercent: 8, color: '#2b7fff', colorLabel: 'blue' }, // blue-500
 ]
 
+// 저장된 구간이 하나도 없을 때 draft를 채우는 초기값 — 위 기본 프리셋을 부호 있는 실제 구간(-8/-5/-2, +2/+5/+8)으로
+// 펼친 것이다. 대체값으로만 두면 편집 영역이 한 칸을 열 때 그 부호에 구간이 하나만 생겨서 나머지 기본 칸이 범례에서
+// 사라진다(7칸이 5칸이 됨). 색 계산은 대체값과 같은 구간이라 지도 모양은 그대로다.
+export function createDefaultColorScale(): ColorScaleConfig {
+  return {
+    thresholds: [
+      ...DEFAULT_MINUS_THRESHOLDS.map(threshold => ({ ...threshold, thresholdPercent: -threshold.thresholdPercent })),
+      ...DEFAULT_PLUS_THRESHOLDS.map(threshold => ({ ...threshold })),
+    ],
+  }
+}
+
 function hexToRgb(hex: string): [number, number, number] {
   const clean = hex.replace('#', '')
   return [parseInt(clean.slice(0, 2), 16), parseInt(clean.slice(2, 4), 16), parseInt(clean.slice(4, 6), 16)]

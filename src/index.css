@@ -457,8 +457,10 @@ a { color: var(--accent-light); text-decoration: none; }
 }
 
 @layer utilities {
+  /* 하이라이트는 마우스가 올라가는 순간 즉시 켜지고(아래 :hover의 transition: none), 벗어날 때만 짧게 사라진다.
+     올라갈 때도 서서히 켜지게 하면(0.15초) 마우스를 빠르게 움직일 때 색이 늦게 따라오는 것처럼 보인다. */
   .market-map-stock {
-    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    transition: box-shadow 0.1s ease-out, border-color 0.1s ease-out;
   }
 
   /* :hover/:focus-visible는 원래 마우스가 실제로 올라가 있을 때만 켜지는 상태라, 우클릭 팝업이 뜬
@@ -468,6 +470,7 @@ a { color: var(--accent-light); text-decoration: none; }
   .market-map-stock:hover,
   .market-map-stock:focus-visible,
   .market-map-stock.is-pinned {
+    transition: none;
     border-width: 2px;
     border-color: color-mix(in srgb, var(--market-map-base-color) 58%, white);
     box-shadow: inset 0 0 0 999px rgb(255 255 255 / 35%);
@@ -497,7 +500,7 @@ a { color: var(--accent-light); text-decoration: none; }
   .market-map-sector-hover-overlay {
     background-color: rgb(255 255 255 / 35%);
     opacity: 0;
-    transition: opacity 0.15s ease;
+    transition: opacity 0.1s ease-out;
   }
 
   /* 트리거 1: 이 섹터의 "직계" 헤더를 hover/포커스 — ':has(> ...)'의 '>'가 직계 자식만 보므로,
@@ -507,6 +510,7 @@ a { color: var(--accent-light); text-decoration: none; }
   .market-map-sector-box:has(> .market-map-sector-header:focus-visible) > .market-map-sector-hover-overlay,
   .market-map-sector-box.is-pinned > .market-map-sector-hover-overlay {
     opacity: 1;
+    transition: none;
   }
 
   /* 선택한 섹터 자신의 헤더는 전체 박스 오버레이(z-index:30) 위에 둔다. 하위 섹터 헤더는

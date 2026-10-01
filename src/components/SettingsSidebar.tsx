@@ -7,7 +7,9 @@ import SettingsSectionIcon, { type SettingsSectionIconName } from '@/components/
 import { RestoreToMapIcon } from '@/components/icons/MarketMapIcons'
 import type { MarketValueTierItem } from '@/types/api'
 import { HEATMAP_NAMES } from '@/utils/heatmapNames'
+import { BOOKMARK_ORDER, type SettingsBookmarkId } from '@/utils/settingsBookmarks'
 
+export type { SettingsBookmarkId }
 export type SettingsSidebarSectionId = 'favorites' | 'composition' | 'industry' | 'stockDisplay' | 'colors'
 
 interface SettingsSidebarGroupProps {
@@ -97,20 +99,6 @@ function SettingHelpIcon({ label, description, bookmarkId }: { label: string; de
 
 // 북마크한 설정 항목을 북마크 탭에 그대로 다시 그리기 위한 공유 상태. 항목 컴포넌트는 같은 코드를 두 곳(원래 탭,
 // 북마크 탭)에서 쓰고, mode로 어디서 그려지는지 구분한다. 북마크 기능을 켜지 않은 페이지는 enabled=false라 아무것도 안 보인다.
-export type SettingsBookmarkId =
-  | 'depthLevel' | 'depthMetric' | 'depthRange' | 'topPick'
-  | 'marketValueRange' | 'sectorChange' | 'stockChange'
-  | 'boxSize' | 'boxLabel' | 'textThreshold' | 'decimalPlaces'
-  | 'strongColor'
-
-// 북마크 탭에 보여주는 순서 — 원래 탭·항목 순서와 같다.
-const BOOKMARK_ORDER: readonly SettingsBookmarkId[] = [
-  'depthLevel', 'depthMetric', 'depthRange', 'topPick',
-  'marketValueRange', 'sectorChange', 'stockChange',
-  'boxSize', 'boxLabel', 'textThreshold', 'decimalPlaces',
-  'strongColor',
-]
-
 interface SettingsBookmarkContextValue {
   enabled: boolean
   mode: 'source' | 'bookmark'
@@ -1656,7 +1644,7 @@ export function SettingsStrongIndustryColorSection({
             />
             <span
               role="tooltip"
-              className="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 whitespace-nowrap rounded border border-[#7a6d55] bg-[#fff8e7] px-2 py-1 text-xs text-black opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+              className="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 whitespace-nowrap rounded border border-[#7a6d55] bg-[#fff8e7] px-2 py-1 text-xs text-black opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100"
             >
               {option.label}
             </span>
@@ -1696,6 +1684,9 @@ interface Props {
   // 북마크 기능 — 둘 다 넘긴 페이지에서만 항목 옆 북마크 버튼과 북마크 탭 내용이 동작한다.
   bookmarks?: readonly string[]
   onToggleBookmark?: (id: SettingsBookmarkId) => void
+  // 비로그인이면 북마크 탭을 누를 때 탭을 열지 않고 이 함수(로그인 팝업)를 부른다.
+  bookmarkLoginRequired?: boolean
+  onRequestLogin?: () => void
   // 실제로 보여줄 옵션 섹션들 — 페이지가 자기한테 유효한 Settings*Section만 골라 조립한다.
   // 아무것도 안 넘기면(요약/어드민처럼 이 설정이 전혀 적용 안 되는 페이지) 헤더만 있는 빈 사이드바가 된다.
   children?: ReactNode
@@ -1725,6 +1716,8 @@ export default function SettingsSidebar({
   onTogglePinned,
   bookmarks,
   onToggleBookmark,
+  bookmarkLoginRequired = false,
+  onRequestLogin,
   plainContent,
   children,
 }: Props) {
@@ -1850,7 +1843,11 @@ export default function SettingsSidebar({
                 aria-selected={selected}
                 aria-controls={`settings-panel-${section.id}`}
                 id={`settings-tab-${section.id}`}
-                onClick={() => setActiveSection(section.id)}
+                onClick={() => {
+                  // 비로그인이 북마크 탭을 누르면 탭을 열지 않고 바로 로그인 팝업을 띄운다.
+                  if (section.id === 'favorites' && bookmarkLoginRequired && onRequestLogin) onRequestLogin()
+                  else setActiveSection(section.id)
+                }}
                 className={`group relative box-border flex h-full min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-1 border-0 bg-transparent px-1 pt-2 pb-3 text-[12px] leading-tight transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--accent)] ${
                   selected ? 'text-[var(--accent)]' : 'text-gray-400 hover:text-white'
                 }`}

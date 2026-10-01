@@ -13,6 +13,14 @@ import { useIsLoggedIn } from './useSession'
 //   자동으로 서버에 올리지 않는다 — 조회만 하지 않을 뿐 sessionStorage 쓰기 자체는 계속되므로
 //   (setSessionValue를 별도로 부르지 않지만 usePersistedState 훅은 그대로 살아있다) 로그아웃 시
 //   다시 같은 sessionStorage 값으로 조용히 폴백한다.
+function hasSessionValue(key: string): boolean {
+  try {
+    return sessionStorage.getItem(key) !== null
+  } catch {
+    return false
+  }
+}
+
 export function usePageSetting<T>(key: string, initialValue: T): [T, Dispatch<SetStateAction<T>>] {
   const isLoggedIn = useIsLoggedIn()
   const { data: preferences, isLoaded, setPreference } = useCustomPreferences()
@@ -20,7 +28,11 @@ export function usePageSetting<T>(key: string, initialValue: T): [T, Dispatch<Se
 
   const useServer = isLoggedIn && isLoaded
   const hasServerValue = useServer && preferences !== undefined && Object.hasOwn(preferences, key)
-  const value = useServer ? (hasServerValue ? (preferences![key] as T) : initialValue) : sessionValue
+  // 비로그인은 사용자가 바꾼 값이 sessionStorage에 있을 때만 그 값을 쓴다. 없으면 지금 호출부가 넘긴 기본값을 쓴다 —
+  // sessionValue의 초기값은 처음 그려질 때 굳어서, 로그인 중에 만들어진 화면이 로그아웃한 뒤에도 회원 기본값을 들고 있게 된다.
+  const value = useServer
+    ? (hasServerValue ? (preferences![key] as T) : initialValue)
+    : (hasSessionValue(key) ? sessionValue : initialValue)
 
   const setValue = useCallback<Dispatch<SetStateAction<T>>>(
     next => {
