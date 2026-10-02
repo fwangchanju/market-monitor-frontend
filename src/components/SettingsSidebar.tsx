@@ -31,7 +31,8 @@ function SettingDescription({ children }: { children: ReactNode }) {
   return <p className="settings-description mt-1 max-w-[16rem] text-xs text-gray-400">{children}</p>
 }
 
-function SettingHelpIcon({ label, description, bookmarkId }: { label: string; description: ReactNode; bookmarkId?: SettingsBookmarkId }) {
+// wide: 첫 문장이 긴 설명창은 가로를 넓혀서(16rem → 18rem) 한 줄에 들어오게 한다.
+function SettingHelpIcon({ label, description, bookmarkId, wide = false }: { label: string; description: ReactNode; bookmarkId?: SettingsBookmarkId; wide?: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const tooltipRef = useRef<HTMLSpanElement>(null)
@@ -89,7 +90,7 @@ function SettingHelpIcon({ label, description, bookmarkId }: { label: string; de
           ref={tooltipRef}
           role="tooltip"
           style={{ position: 'fixed', left: tooltipPosition.left, top: tooltipPosition.top }}
-          className="z-50 w-64 max-w-[calc(100vw-16px)] whitespace-pre-line rounded border border-[#7a6d55] bg-[#fff8e7] p-2 text-left text-xs leading-relaxed text-black shadow-lg"
+          className={`z-50 ${wide ? 'w-[18rem]' : 'w-64'} max-w-[calc(100vw-16px)] whitespace-pre-line rounded border border-[#7a6d55] bg-[#fff8e7] p-2 text-left text-xs leading-relaxed text-black shadow-lg`}
         >
           {description}
         </span>
@@ -954,7 +955,7 @@ export function SettingsStockSizeSelector({
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <SettingTitle bookmarkId="boxSize" help className="text-[15px]">박스 크기</SettingTitle>
-          <SettingHelpIcon bookmarkId="boxSize" label="박스 크기" description={"박스 면적 = 시가총액^(비율 ÷ 100)으로 계산합니다.\n0%는 모든 종목을 같은 크기로 표시합니다.\n50%는 시가총액의 제곱근 비율로 표시합니다.\n100%는 시가총액에 비례해 표시합니다."} />
+          <SettingHelpIcon bookmarkId="boxSize" wide label="박스 크기" description={"박스 면적은 시가총액^(비율÷100)으로 계산합니다.\n0%는 모든 종목을 같은 크기로 표시합니다.\n50%는 시가총액의 제곱근 비율로 표시합니다.\n100%는 시가총액에 비례해 표시합니다."} />
         </div>
         <span className="text-sm text-gray-400">{marketCapRatio}%</span>
       </div>

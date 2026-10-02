@@ -189,7 +189,7 @@ export default function CustomManagePage() {
           {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서 창을 좁혀도 사이드바(w-80)가 항상 같은
               폭을 유지하게 한다(지도/섹터/요약 페이지와 동일). */}
           <div ref={captureRef} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black text-white">
-            <div className="mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-2 pr-3 text-sm font-bold text-white">
+            <div className="mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-3 text-sm font-bold text-white">
               <div className="flex h-full items-center gap-2">
                 <CustomManageModeCombobox
                   mode={mode === 'stock' ? 'stock' : 'category'}

@@ -20,6 +20,7 @@ import MarketMapTreemap from '@/components/MarketMapTreemap'
 import accountAvatar from '@/assets/account_avatar.png'
 import { ChangeRateBasisToggle, MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/MarketMapControls'
 import MarketMapLegendBar from '@/components/MarketMapLegendBar'
+import DisclaimerNotice from '@/components/DisclaimerNotice'
 import Spinner from '@/components/Spinner'
 import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/components/NavBarPageActions'
 import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
@@ -441,7 +442,7 @@ export default function MarketMapCustomPage() {
             {/* relative + absolute 중앙 배치: 커스텀 모드 표시를 grid 가운데 열로 두면 좌/우 칸의
                 콘텐츠 폭(마켓명·지수, 시간)이 달라질 때마다 가운데 열 자체의 중심이 바뀌어서 바
                 전체 기준으로는 중앙이 아니게 된다 — 바 전체 폭 기준 절대 중앙에 고정한다. */}
-            <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-2 pr-3 text-sm font-bold text-white">
+            <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-3 text-sm font-bold text-white">
               <div className="flex items-center gap-2 whitespace-nowrap">
                 <MarketMapMarketCombobox
                   market={market}
@@ -539,8 +540,8 @@ export default function MarketMapCustomPage() {
                   {stockChangeFilter === 'all' && sectorChangeFilter === 'all' ? '데이터가 없습니다' : '선택한 방향 조건에 해당하는 종목이 없습니다'}
                 </div>
               ) : (
-                <div className="flex min-h-0 flex-1 flex-col px-2">
-                  {/* 양옆 여백 8px — 위 바의 드롭박스가 왼쪽 끝에서 떨어진 만큼(pl-2)과 같다. */}
+                <div className="flex min-h-0 flex-1 flex-col px-[7px]">
+                  {/* 양옆 여백 7px. */}
                   <MarketMapTreemap
                     groups={groups}
                     selfSectorName={isFullyFlattened ? FLAT_GROUP_NAME : (currentNode?.sectorName ?? null)}
@@ -567,7 +568,10 @@ export default function MarketMapCustomPage() {
                 </div>
               )}
               {/* 등락률 색상 범례 — 지도 아래 오른쪽(설정창 왼쪽)에 오른쪽 끝에 붙여 둔다. 이 줄만큼 지도 아래쪽이 올라온다. */}
-              <div className="flex h-7 shrink-0 items-end justify-end pl-3 pr-2">
+              <div className="flex h-7 shrink-0 items-end justify-between gap-3 pl-[7px] pr-[7px]">
+                <div className="flex h-7 min-w-0 items-center">
+                  <DisclaimerNotice />
+                </div>
                 <MarketMapLegendBar swatches={settingsModalProps.legendSwatches} />
               </div>
               </div>
