@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MarketQuery } from '@/types/api'
+import { FONT_BAR_TIME } from '@/components/FontStyle'
 
 const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
 const MARKET_OPTIONS: { market: MarketQuery; label: string }[] = [
@@ -140,24 +141,32 @@ export function MarketMapPeriodCombobox() {
   )
 }
 
-// 등락률 기준 토글 — 누적(전일 종가 대비) / 시간외(그날 정규장 종가 대비). 시간외는 15:40 이후 오늘 스냅샷에서만 고를 수 있어서
-// 그 밖에는 잠겨 있고 누적으로 보인다. 위 드롭박스와 같은 높이·바탕색을 쓴다.
+// 등락률 기준 토글 — 누적(전일 종가 대비 누적) / 따로(그날 정규장 종가 대비, 장 마감 후 움직임만 따로). 항상 보이지만 따로 등락률은
+// 15:40 이후 오늘 스냅샷에서만 있어서 그 밖에는 따로가 잠겨 있고 누적으로 보인다. 글자는 옆의 시각과 같은 크기·굵기(FONT_BAR_TIME)이고 버튼 높이는
+// 그 글자에 맞췄다. 바탕은 위 드롭박스와 같은 회색(#3b3b3b)이고, 선택된 쪽은 브랜드색 글자에 옅은 브랜드색 배경으로 칠한다.
 export function ChangeRateBasisToggle({ basis, selectable, onChange }: {
   basis: 'daily' | 'afterHours'
   selectable: boolean
   onChange: (basis: 'daily' | 'afterHours') => void
 }) {
   const options = [
-    { value: 'daily' as const, label: '누적', title: '전일 종가 대비 등락률', disabled: false },
+    { value: 'daily' as const, label: '누적', title: '전일 종가 대비 누적 등락률', disabled: false },
     {
       value: 'afterHours' as const,
-      label: '시간외',
-      title: selectable ? '정규장 종가(15:30) 대비 등락률' : '시간외 등락률은 15:40 이후에 볼 수 있습니다',
+      label: '따로',
+      title: selectable ? '정규장 종가(15:30) 대비 등락률 — 장 마감 후 움직임만 따로' : '따로 등락률은 15:40 이후에 볼 수 있습니다',
       disabled: !selectable,
     },
   ]
   return (
-    <div role="radiogroup" aria-label="등락률 기준" className="ml-1 inline-flex h-7 shrink-0 items-center rounded-md bg-[#3b3b3b] p-0.5">
+    <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+      {/* 버튼이 무엇을 고르는 것인지 알려주는 말머리 — 시계와 같은 글자 크기·색이다. */}
+      <span className={`${FONT_BAR_TIME} flex items-center text-gray-400`}>
+        {/* 상단바의 "● KRX·NXT"와 같은 점 모양이고, 색은 강조색(--brand)이다. */}
+        <span aria-hidden="true" className="mr-1.5 inline-block h-2 w-2 rounded-full bg-[var(--brand)]" />
+        After-Market
+      </span>
+      <div role="radiogroup" aria-label="등락률 기준" className="inline-flex h-6 shrink-0 items-center rounded-md bg-[#3b3b3b] p-0.5">
       {options.map(option => (
         <button
           key={option.value}
@@ -167,7 +176,7 @@ export function ChangeRateBasisToggle({ basis, selectable, onChange }: {
           disabled={option.disabled}
           title={option.title}
           onClick={() => basis !== option.value && onChange(option.value)}
-          className={`h-6 rounded px-2.5 text-sm font-bold transition-colors ${
+          className={`h-5 rounded-sm px-1 ${FONT_BAR_TIME} transition-colors ${
             basis === option.value
               ? 'border-0 bg-[var(--brand)]/25 text-[var(--brand)]'
               : option.disabled
@@ -178,6 +187,7 @@ export function ChangeRateBasisToggle({ basis, selectable, onChange }: {
           {option.label}
         </button>
       ))}
+      </div>
     </div>
   )
 }
