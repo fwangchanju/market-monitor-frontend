@@ -139,3 +139,45 @@ export function MarketMapPeriodCombobox() {
     </div>
   )
 }
+
+// 등락률 기준 토글 — 누적(전일 종가 대비) / 시간외(그날 정규장 종가 대비). 시간외는 15:40 이후 오늘 스냅샷에서만 고를 수 있어서
+// 그 밖에는 잠겨 있고 누적으로 보인다. 위 드롭박스와 같은 높이·바탕색을 쓴다.
+export function ChangeRateBasisToggle({ basis, selectable, onChange }: {
+  basis: 'daily' | 'afterHours'
+  selectable: boolean
+  onChange: (basis: 'daily' | 'afterHours') => void
+}) {
+  const options = [
+    { value: 'daily' as const, label: '누적', title: '전일 종가 대비 등락률', disabled: false },
+    {
+      value: 'afterHours' as const,
+      label: '시간외',
+      title: selectable ? '정규장 종가(15:30) 대비 등락률' : '시간외 등락률은 15:40 이후에 볼 수 있습니다',
+      disabled: !selectable,
+    },
+  ]
+  return (
+    <div role="radiogroup" aria-label="등락률 기준" className="ml-1 inline-flex h-7 shrink-0 items-center rounded-md bg-[#3b3b3b] p-0.5">
+      {options.map(option => (
+        <button
+          key={option.value}
+          type="button"
+          role="radio"
+          aria-checked={basis === option.value}
+          disabled={option.disabled}
+          title={option.title}
+          onClick={() => basis !== option.value && onChange(option.value)}
+          className={`h-6 rounded px-2.5 text-sm font-bold transition-colors ${
+            basis === option.value
+              ? 'border-0 bg-[var(--brand)]/25 text-[var(--brand)]'
+              : option.disabled
+                ? 'cursor-not-allowed border-0 bg-transparent text-gray-500'
+                : 'border-0 bg-transparent text-gray-300 hover:text-white'
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  )
+}
