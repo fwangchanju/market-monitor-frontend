@@ -6,6 +6,7 @@ import { MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/M
 import SettingsSidebar, { SettingsAverageModeSection, SettingsBeforeMinutesSection } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Spinner from '@/components/Spinner'
+import accountAvatar from '@/assets/account_avatar.png'
 import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
@@ -228,16 +229,12 @@ export default function SectorChangeRatePage() {
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 파라미터가 있을 때만 반응하면 됨
   }, [searchParams])
-  // 지도 페이지 상단 바와 동일하게 현재 분류 체계를 점등 표시한다.
+  // 지도 페이지 상단 바와 동일하게 점 대신 프로필 사진을 둔다. 24px 모서리가 둥근 사각형이다.
   const modeStatusText = (
-    <>
-      <span
-        className={`mr-1.5 inline-block h-2 w-2 rounded-full ${
-          settingsModalProps.isCustom ? 'bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.7)]' : 'bg-gray-400'
-        }`}
-      />
+    <span className="flex items-center">
+      <img src={accountAvatar} alt="" className="mr-[7px] size-6 shrink-0 object-cover" />
       <span className="text-gray-400">{settingsModalProps.isCustom ? (nxtOnly ? 'MARKETRY · NXT' : 'MARKETRY') : nxtOnly ? 'NXT' : '거래소'}</span>
-    </>
+    </span>
   )
 
   const [isShareOpen, setIsShareOpen] = useState(false)
@@ -377,7 +374,7 @@ export default function SectorChangeRatePage() {
                 />
                 <MarketMapPeriodCombobox />
                 {displayNow?.snapshotTime && (
-                  <span className={`${FONT_BAR_TIME} ml-1 flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
+                  <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
                     <span>{toMarketMapSnapshotDateLabel(displayNow.snapshotTime)}</span>
                     <span>{toMarketMapSnapshotTimeOnlyLabel(displayNow.snapshotTime)}</span>
                   </span>
@@ -395,7 +392,7 @@ export default function SectorChangeRatePage() {
                 설정 사이드바가 열려도 본문이 밀리는 게 자연스럽게 느껴지도록 한다(밀림 자체는 다른
                 페이지와 동일한 flex 구조이고, 콘텐츠가 항상 남는 공간을 꽉 채우기만 하면 된다). */}
             <div className="flex min-h-0 flex-1">
-              <div className="flex min-h-0 w-full flex-1 flex-col p-4">
+              <div className="flex min-h-0 w-full flex-1 flex-col px-2 py-4">
               {isLoading ? (
                 <div className="flex flex-1 items-center justify-center">
                   <Spinner />
@@ -458,19 +455,22 @@ export default function SectorChangeRatePage() {
               </div>
             </div>
           </div>
-          <SettingsSidebar
-            {...settingsModalProps}
-            pageLabel="그룹"
-            plainContent={
-              <>
-                <SettingsAverageModeSection
-                  avgChangeRateUseSimple={avgChangeRateUseSimple}
-                  onChange={onChangeAvgChangeRateUseSimple}
-                />
-                <SettingsBeforeMinutesSection beforeMinutes={beforeMinutes} onChange={setBeforeMinutes} />
-              </>
-            }
-          />
+          {/* 설정창 윗선을 지도 페이지와 같은 높이로 맞춘다 — 지도 페이지에서 실제로 맞춘 모양(설정창 윗선이 위쪽 바 윗선보다 3px 아래)을 따른다. 이 칸은 바보다 5.25px 위에서 시작하므로 5.25 + 3 - 1(눈으로 맞춘 보정) = 7.25px을 띄운다. 아래는 붙인다. */}
+          <div className="flex shrink-0 pt-[7.25px]">
+            <SettingsSidebar
+              {...settingsModalProps}
+              pageLabel="그룹"
+              plainContent={
+                <>
+                  <SettingsAverageModeSection
+                    avgChangeRateUseSimple={avgChangeRateUseSimple}
+                    onChange={onChangeAvgChangeRateUseSimple}
+                  />
+                  <SettingsBeforeMinutesSection beforeMinutes={beforeMinutes} onChange={setBeforeMinutes} />
+                </>
+              }
+            />
+          </div>
         </div>
       </div>
 

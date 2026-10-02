@@ -48,7 +48,7 @@ export function MarketMapMarketCombobox({
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         onClick={() => setIsOpen(open => !open)}
-        className="inline-flex h-7 w-[7.5rem] shrink-0 items-center justify-between gap-1 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-bold text-white hover:bg-[#484848]"
+        className="inline-flex h-6 w-[7.5rem] shrink-0 items-center justify-between gap-1 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-bold text-white hover:bg-[#484848]"
       >
         <span className="min-w-0 flex-1 truncate text-left">{MARKET_LABEL[market]}</span>
         <svg aria-hidden="true" viewBox="0 0 16 16" className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -110,7 +110,7 @@ export function MarketMapPeriodCombobox() {
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         onClick={() => setIsOpen(open => !open)}
-        className="inline-flex h-7 w-28 shrink-0 items-center justify-between gap-1 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-bold text-white hover:bg-[#484848]"
+        className="inline-flex h-6 w-28 shrink-0 items-center justify-between gap-1 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-bold text-white hover:bg-[#484848]"
       >
         <span className="min-w-0 flex-1 truncate text-left">{selectedPeriod}</span>
         <svg aria-hidden="true" viewBox="0 0 16 16" className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -222,7 +222,7 @@ export function ChangeRateBasisToggle({ basis, selectable, onChange }: {
   }, [popup])
 
   return (
-    <div className="-mr-3 flex shrink-0 items-center gap-2 whitespace-nowrap" data-basis-toggle>
+    <div className="-mr-1 flex shrink-0 items-center gap-2 whitespace-nowrap" data-basis-toggle>
       {/* 지금 시장 시간대를 알려주는 말머리 — 시계와 같은 글자 크기·색이다. */}
       <span className={`${FONT_BAR_TIME} flex items-center text-gray-400`}>
         {/* 상단바의 "● KRX·NXT"와 같은 점 모양이고, 색은 시간대마다 설정창 4-1(강조 색상)의 색이다. */}
@@ -246,12 +246,12 @@ export function ChangeRateBasisToggle({ basis, selectable, onChange }: {
               if (!option.locked && basis !== option.value) onChange(option.value)
               setPopup({ text: option.help, anchor: event.currentTarget.getBoundingClientRect() })
             }}
-            className={`h-5 rounded-sm px-1 ${FONT_BAR_TIME} transition-colors ${
+            className={`h-5 rounded-sm px-1.5 text-sm font-bold transition-colors ${
               basis === option.value
-                ? 'border-0 bg-[var(--brand)]/25 text-[var(--brand)]'
+                ? 'border-0 bg-[#484848] text-[var(--accent)]'
                 : option.locked
                   ? 'cursor-not-allowed border-0 bg-transparent text-gray-500'
-                  : 'border-0 bg-transparent text-gray-300 hover:text-white'
+                  : 'border-0 bg-transparent text-white hover:bg-[#484848]'
             }`}
           >
             {option.label}

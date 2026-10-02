@@ -9,7 +9,7 @@ export default function MarketMapLegendBar({ swatches }: { swatches: LegendSwatc
         <span
           key={label}
           style={{ backgroundColor: color }}
-          className="flex h-5 w-full min-w-0 items-center justify-center text-xs leading-none font-bold whitespace-nowrap text-white"
+          className="flex h-6 w-full min-w-0 items-center justify-center text-xs leading-none font-bold whitespace-nowrap text-white"
         >
           {label}
         </span>
