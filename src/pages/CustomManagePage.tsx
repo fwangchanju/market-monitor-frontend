@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
-import SettingsSidebar from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import AdminSectorTable from '@/components/AdminSectorTable'
 import AdminStockTable from '@/components/AdminStockTable'
@@ -11,9 +10,9 @@ import NavBarPageActions from '@/components/NavBarPageActions'
 import CustomManageModeCombobox from '@/components/CustomManageModeCombobox'
 import CustomHeatmapSheetCombobox, { type CustomHeatmapSheet } from '@/components/CustomHeatmapSheetCombobox'
 import ReadOnlyHeatmapSheet from '@/components/ReadOnlyHeatmapSheet'
+import { usePersistedState } from '@/hooks/usePersistedState'
 import { useCustomSectors, useStockSectors } from '@/hooks/useMarketMapCustom'
 import { useMarketMap } from '@/hooks/useMarketMap'
-import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { useSession, useIsLoggedIn } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
@@ -33,16 +32,19 @@ export default function CustomManagePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   // /custom/category는 카테고리 화면이고, /custom/stock은 종목 화면이다.
   const mode = pathname === '/custom/stock' || searchParams.get('mode') === 'stock' ? 'stock' : 'sector'
-  // 히트맵 시트 — 기본은 편집 가능한 MARKETRY 시트이고, ?sheet=krx / ?sheet=nxt면 읽기 전용 시트다.
+  // 히트맵 시트 — 기본은 편집 가능한 MARKETRY 시트이고, ?sheet=krx면 읽기 전용 KRX 시트다.
+  // 예전 주소(?sheet=nxt)는 KRX 시트에서 "NXT 종목만 보기"를 켠 상태로 연다.
   const sheetParam = searchParams.get('sheet')
-  const sheet: CustomHeatmapSheet = sheetParam === 'krx' || sheetParam === 'nxt' ? sheetParam : 'marketry'
+  const sheet: CustomHeatmapSheet = sheetParam === 'krx' || sheetParam === 'nxt' ? 'krx' : 'marketry'
   const isReadOnlySheet = sheet !== 'marketry'
+  // KRX 시트에서 NXT 거래 종목만 남기는 보기 옵션 — 새로고침해도 유지된다.
+  const [isNxtOnlyView, setIsNxtOnlyView] = usePersistedState('customPage.krxNxtOnly', false)
+  const nxtOnly = isReadOnlySheet && (isNxtOnlyView || sheetParam === 'nxt')
   // AdminStockTable의 툴바(종목수/실행취소·다시실행/필터/엑셀 등)를 이 DOM 노드로 포털링해서 세
   // 번째 바 안에 그린다 — useRef 대신 useState인 이유는, ref 콜백이 커밋 단계에서 실행되므로
   // useState로 받아야 그 노드가 준비된 뒤 리렌더가 한 번 더 일어나 AdminStockTable에 null이 아닌
   // 실제 노드가 확실히 전달된다.
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
-  const [categoryToolbarContainer, setCategoryToolbarContainer] = useState<HTMLDivElement | null>(null)
 
   const { data: session, isLoading: isSessionLoading } = useSession()
   const isLoggedIn = useIsLoggedIn()
@@ -73,7 +75,6 @@ export default function CustomManagePage() {
     [stockSectors],
   )
 
-  const { settingsModalProps } = useGlobalSettings({ needsTree: false })
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
@@ -136,8 +137,6 @@ export default function CustomManagePage() {
             ? isRefetchingStockSectors || isRefetchingSectors
             : isRefetchingSectors
       }
-      onToggleSettings={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
-      isSettingsOpen={settingsModalProps.isOpen}
       onOpenShare={() => setIsShareOpen(true)}
       isNativeFullscreen={isNativeFullscreen}
       onToggleFullscreen={handleToggleNativeFullscreen}
@@ -205,16 +204,8 @@ export default function CustomManagePage() {
                     <span>읽기 전용</span>
                     <span aria-hidden="true">·</span>
                     <span>키움 REST API</span>
-                    {/* NXT 거래 종목은 키움 값을 우선 쓰고, 키움에 없으면 NEXTRADE 홈페이지의 편입 종목 목록으로 채운다(백엔드). */}
-                    {sheet === 'nxt' && (
-                      <>
-                        <span aria-hidden="true">·</span>
-                        <span>NEXTRADE</span>
-                      </>
-                    )}
                   </span>
                 )}
-                {!isReadOnlySheet && mode !== 'stock' && <div ref={setCategoryToolbarContainer} className="flex h-full items-center" />}
               </div>
               {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다. */}
               {!isReadOnlySheet && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 flex-1 items-center" />}
@@ -228,7 +219,12 @@ export default function CustomManagePage() {
                     mode={mode === 'stock' ? 'stock' : 'category'}
                     data={krxMap}
                     isLoading={isKrxLoading}
-                    nxtOnly={sheet === 'nxt'}
+                    nxtOnly={nxtOnly}
+                    onNxtOnlyChange={checked => {
+                      // 예전 ?sheet=nxt 주소로 들어온 경우엔 주소의 값이 우선이라, 끄려면 주소부터 KRX로 바꾼다.
+                      if (sheetParam === 'nxt') setSearchParams({ sheet: 'krx' })
+                      setIsNxtOnlyView(checked)
+                    }}
                     nxtStockCodes={nxtStockCodes}
                     isNxtLoading={isStockSectorsLoading}
                   />
@@ -240,12 +236,11 @@ export default function CustomManagePage() {
                     toolbarContainer={toolbarContainer}
                   />
                 ) : (
-                  <AdminSectorTable sectors={sectors ?? []} toolbarContainer={categoryToolbarContainer} />
+                  <AdminSectorTable sectors={sectors ?? []} />
                 )}
               </div>
             </div>
           </div>
-          <SettingsSidebar {...settingsModalProps} />
         </div>
       </div>
 

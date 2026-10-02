@@ -10,7 +10,8 @@ import { useMarketValueTiers } from '@/hooks/useMarketValueTiers'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import Spinner from './Spinner'
 import { FONT_BAR_TIME } from './FontStyle'
-import { CheckIcon, ChevronDownIcon, DownloadIcon, RedoIcon, SearchIcon, UndoIcon } from './icons/MarketMapIcons'
+import { SearchBar } from './ReadOnlyHeatmapSheet'
+import { ChevronDownIcon, CloseIcon, DownloadIcon, FilterIcon, RedoIcon, SearchIcon, SortIcon, UndoIcon } from './icons/MarketMapIcons'
 
 interface Props {
   items: StockSectorListItem[]
@@ -25,7 +26,6 @@ interface Props {
 type SortKey =
   | 'stockCode'
   | 'market'
-  | 'nxt'
   | 'stockName'
   | 'alias'
   | 'totalMarketValue'
@@ -35,16 +35,20 @@ type SortKey =
   | 'subSectorName'
 type SortDirection = 'asc' | 'desc'
 
-const NUMBER_COLUMN_WIDTH = '5%'
-const CHECKBOX_COLUMN_WIDTH = '3%'
+// 체크박스(20px)가 줄 높이(약 24px)에서 남기는 상하 여백(약 2px)과 같게 좌우 여백도 2px씩만 둔다.
+const CHECKBOX_COLUMN_WIDTH = '22px'
+// nes.css의 셀 좌우 패딩(1rem)이 남지 않도록 인라인으로 0에 가깝게 고정한다.
+const CHECKBOX_CELL_STYLE = { width: CHECKBOX_COLUMN_WIDTH, minWidth: CHECKBOX_COLUMN_WIDTH, maxWidth: CHECKBOX_COLUMN_WIDTH, paddingLeft: 0, paddingRight: 0 } as const
+
+// 정렬을 끈 상태(null)에서 쓰는 기본 순서 — 시가총액 내림차순.
+const DEFAULT_SORT_KEY: SortKey = 'totalMarketValue'
 
 const COLUMNS: { key: SortKey; header: string; width: string; align: 'center' | 'left' | 'right' }[] = [
   { key: 'stockCode', header: '종목코드', width: '7%', align: 'left' },
-  { key: 'stockName', header: '종목명', width: '10%', align: 'left' },
-  { key: 'alias', header: '표시명 (약칭)', width: '8%', align: 'left' },
+  { key: 'stockName', header: '종목명', width: '15%', align: 'left' },
+  { key: 'alias', header: '약칭', width: '13%', align: 'left' },
   { key: 'totalMarketValue', header: '시가총액', width: '10%', align: 'right' },
   { key: 'market', header: '마켓', width: '7%', align: 'center' },
-  { key: 'nxt', header: 'NXT', width: '5%', align: 'center' },
   { key: 'originCategoryName', header: '거래소 분류', width: '11%', align: 'left' },
   { key: 'parentSectorName', header: '대분류', width: '11%', align: 'right' },
   { key: 'midSectorName', header: '중분류', width: '11%', align: 'right' },
@@ -53,10 +57,6 @@ const COLUMNS: { key: SortKey; header: string; width: string; align: 'center' | 
 
 const alignClass = (align: 'center' | 'left' | 'right') =>
   align === 'right' ? 'text-right pr-4' : align === 'left' ? 'text-left pl-4' : 'text-center'
-
-// NXT 열에 보이는 값 — 필터 목록도 이 값 그대로 쓴다.
-const NXT_ENABLED_LABEL = 'O'
-const NXT_DISABLED_LABEL = '-'
 
 const MARKET_LABEL: Record<'KOSPI' | 'KOSDAQ', string> = { KOSPI: '코스피', KOSDAQ: '코스닥' }
 const MARKET_FILTER_ORDER = [MARKET_LABEL.KOSPI, MARKET_LABEL.KOSDAQ]
@@ -74,10 +74,9 @@ function compareStockName(a: string, b: string): number {
 }
 
 // 화면에 실제로 표시되는 값 기준 — 필터 옵션 목록/필터링/정렬 판정 전부 이 값으로 통일해서 화면과 어긋나지 않게 한다.
-type FilterKey = 'market' | 'nxt' | 'originCategoryName' | 'parentSectorName' | 'midSectorName' | 'subSectorName'
+type FilterKey = 'market' | 'originCategoryName' | 'parentSectorName' | 'midSectorName' | 'subSectorName'
 const FILTER_KEYS: readonly FilterKey[] = [
   'market',
-  'nxt',
   'originCategoryName',
   'parentSectorName',
   'midSectorName',
@@ -199,7 +198,6 @@ function resolveSectorChain(sectorOptionsById: Map<number, SectorOption>, sector
 
 interface ItemDisplayValues {
   market: string
-  nxt: string
   originCategoryName: string
   parentSectorName: string
   midSectorName: string
@@ -210,7 +208,6 @@ function computeDisplayValues(item: StockSectorListItem, sectorOptionsById: Map<
   const chain = resolveSectorChain(sectorOptionsById, item.sectorId)
   return {
     market: MARKET_LABEL[item.market],
-    nxt: item.nxtEnabled ? NXT_ENABLED_LABEL : NXT_DISABLED_LABEL,
     originCategoryName: item.industryName ?? '-',
     parentSectorName: chain.rootName,
     midSectorName: chain.midName ?? '-',
@@ -690,7 +687,7 @@ function BulkAssignButton({
         type="button"
         onClick={handleClick}
         style={widthPx != null ? { width: widthPx } : undefined}
-        className="nes-btn border-[var(--brand)] bg-[var(--brand)] px-2 py-0.5 text-xs text-black hover:bg-[var(--accent-hover)]"
+        className="flex h-6 items-center justify-center rounded border-0 bg-transparent px-1.5 text-xs text-[var(--brand)] transition-colors hover:bg-white/10"
       >
         일괄변경 ({count})
       </button>
@@ -794,6 +791,12 @@ function AdminAliasCell({
   )
 }
 
+// 표 머리글의 필터/검색 아이콘 버튼 공통 스타일 — 테두리·그림자 없이 호버 때만 은은한 배경이 깔리고, 필터가 걸려 있으면 브랜드 색으로 표시한다.
+function headerIconButtonClass(isFiltered: boolean) {
+  const tone = isFiltered ? 'bg-[var(--brand)]/15 text-[var(--brand)]' : 'bg-transparent text-white/55 hover:bg-white/10 hover:text-white'
+  return `inline-flex h-5 w-5 items-center justify-center rounded border-0 p-0 normal-case shadow-none outline-none transition-colors ${tone}`
+}
+
 // 컬럼 헤더의 필터 버튼 — 체크된 값만 화면에 남기는 엑셀 스타일 필터.
 function AdminColumnFilterButton({
   options,
@@ -849,10 +852,10 @@ function AdminColumnFilterButton({
           setQuery('')
           setIsOpen(prev => !prev)
         }}
-        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-[var(--brand)]' : 'text-white/70 hover:text-white'}`}
+        className={headerIconButtonClass(isFiltered)}
         title="필터"
       >
-        <CheckIcon className="h-3.5 w-3.5" strokeWidth={6} />
+        <FilterIcon className="h-3.5 w-3.5" />
       </button>
       {isOpen && position && (
         <div
@@ -934,10 +937,10 @@ function AdminMarketValueFilterButton({
           e.stopPropagation()
           setIsOpen(prev => !prev)
         }}
-        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-[var(--brand)]' : 'text-white/70 hover:text-white'}`}
+        className={headerIconButtonClass(isFiltered)}
         title="필터"
       >
-        <CheckIcon className="h-3.5 w-3.5" strokeWidth={6} />
+        <FilterIcon className="h-3.5 w-3.5" />
       </button>
       {isOpen && position && (
         <div
@@ -1067,10 +1070,10 @@ function AdminStockNameFilterButton({
           setHighlightedIndex(-1)
           setIsOpen(prev => !prev)
         }}
-        className={`rounded bg-transparent px-1 normal-case ${isFiltered ? 'text-[var(--brand)]' : 'text-white/70 hover:text-white'}`}
+        className={headerIconButtonClass(isFiltered)}
         title="필터"
       >
-        <SearchIcon className="h-3.5 w-3.5" strokeWidth={6} />
+        <SearchIcon className="h-3.5 w-3.5" strokeWidth={2} />
       </button>
       {isOpen && position && (
         <div
@@ -1211,7 +1214,14 @@ const AdminStockRow = memo(function AdminStockRow({
       return next
     })
   }
-  const rowHoverClass = isRowHovered || isSelected || editingCells.size > 0 ? 'bg-[var(--brand)]/15' : ''
+  // 선택된 줄은 호버(옅은 색)와 확실히 구분되게 진한 브랜드색으로, 선택 + 호버면 한 단계 더 진하게 칠한다.
+  const rowHoverClass = isSelected
+    ? isRowHovered
+      ? 'bg-[var(--brand)]/50'
+      : 'bg-[var(--brand)]/35'
+    : isRowHovered || editingCells.size > 0
+      ? 'bg-[var(--brand)]/10'
+      : ''
 
   // 대분류 팝업엔 최상위 섹터만, 중분류 팝업엔 "지금 이 종목의 대분류"의 자식만, 소분류 팝업엔
   // "지금 이 종목의 중분류"의 자식만 보여준다. sectorId(실제 배정된 섹터)를 parentId로 거슬러
@@ -1253,13 +1263,12 @@ const AdminStockRow = memo(function AdminStockRow({
       onMouseEnter={() => setIsRowHovered(true)}
       onMouseLeave={() => setIsRowHovered(false)}
     >
-      <td className={`text-center ${rowHoverClass}`}>
+      <td className={`text-center ${rowHoverClass}`} style={CHECKBOX_CELL_STYLE}>
         {/* 상태 변경은 줄 클릭(handleRowClick)에서 하므로 onChange는 비워 둔다 — 제어되는 체크박스에 필요한 자리표시다. */}
-        <input type="checkbox" className="mx-auto my-0 block" checked={isSelected} onChange={() => {}} />
+        <input type="checkbox" className="mx-auto my-0 block h-5 w-5 cursor-pointer accent-[var(--brand)]" checked={isSelected} onChange={() => {}} />
       </td>
-      <td className={`text-center text-gray-400 ${rowHoverClass}`}>{index + 1}</td>
       <td className={`${alignClass('left')} text-gray-400 ${rowHoverClass}`}>{item.stockCode}</td>
-      <td className={`${alignClass('left')} text-white ${rowHoverClass}`}>{item.stockName}</td>
+      <td className={`${alignClass('left')} ${marketColorClass(item.market)} ${rowHoverClass}`}>{item.stockName}</td>
       <AdminAliasCell
         alias={item.alias}
         onUpdate={alias => onUpdateAlias(item.stockCode, alias)}
@@ -1269,14 +1278,11 @@ const AdminStockRow = memo(function AdminStockRow({
         onHoverEnd={onHoverEnd}
         onEditingChange={editing => setCellEditing('alias', editing)}
       />
-      <td className={`${alignClass('right')} text-white ${rowHoverClass}`}>
+      <td className={`${alignClass('right')} text-gray-400 ${rowHoverClass}`}>
         {item.totalMarketValue != null ? toJoEokDecimal(item.totalMarketValue / 100_000_000) : '-'}
       </td>
       <td className={`text-center ${marketColorClass(item.market)} ${rowHoverClass}`}>{MARKET_LABEL[item.market]}</td>
-      <td className={`text-center ${item.nxtEnabled ? 'text-[var(--brand)]' : 'text-gray-500'} ${rowHoverClass}`}>
-        {item.nxtEnabled ? NXT_ENABLED_LABEL : NXT_DISABLED_LABEL}
-      </td>
-      <td className={`${alignClass('left')} text-white ${rowHoverClass}`}>{item.industryName ?? '-'}</td>
+      <td className={`${alignClass('left')} text-gray-400 ${rowHoverClass}`}>{item.industryName ?? '-'}</td>
       <AdminStockSectorCell
         value={chain.rootName}
         options={parentSectorOptions}
@@ -1321,7 +1327,7 @@ export default function AdminStockTable({
   snapshotTime,
   toolbarContainer,
 }: Props) {
-  const [sortKey, setSortKey] = usePersistedState<SortKey>('adminStockTable.sortKey', 'totalMarketValue')
+  const [sortKey, setSortKey] = usePersistedState<SortKey | null>('adminStockTable.sortKey', DEFAULT_SORT_KEY)
   const [sortDirection, setSortDirection] = usePersistedState<SortDirection>('adminStockTable.sortDirection', 'desc')
   const [isPending, startTransition] = useTransition()
   // 헤더가 sticky + 스크롤 컨테이너(overflow-auto) 안에 있어서, 그 위로 뜨는 툴팁은 일반 absolute로는
@@ -1465,8 +1471,10 @@ export default function AdminStockTable({
 
   const handleSort = (key: SortKey) => {
     startTransition(() => {
+      // 같은 열을 계속 누르면 오름차순 → 내림차순 → 정렬 해제(기본 순서(시가총액 내림차순)) 순으로 돈다.
       if (key === sortKey) {
-        setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'))
+        if (sortDirection === 'asc') setSortDirection('desc')
+        else setSortKey(null)
       } else {
         setSortKey(key)
         setSortDirection('asc')
@@ -1883,10 +1891,19 @@ export default function AdminStockTable({
     setVisibleStockCodes(new Set(items.filter(item => matchesFilters(item)).map(item => item.stockCode)))
   }, [items, matchesFilters])
 
-  const filtered = useMemo(
-    () => (visibleStockCodes ? items.filter(item => visibleStockCodes.has(item.stockCode)) : []),
-    [items, visibleStockCodes],
-  )
+  // 표 위 검색창 — 종목명·코드·업종(대·중·소분류, 원래 분류) 중 하나라도 걸리면 남긴다. 열 필터와 함께 적용된다.
+  const [searchQuery, setSearchQuery] = useState('')
+  const trimmedSearch = searchQuery.trim()
+  const filtered = useMemo(() => {
+    if (!visibleStockCodes) return []
+    return items.filter(item => {
+      if (!visibleStockCodes.has(item.stockCode)) return false
+      if (!trimmedSearch) return true
+      const display = displayByStockCode.get(item.stockCode)
+      return [item.stockName, item.stockCode, display?.originCategoryName, display?.parentSectorName, display?.midSectorName, display?.subSectorName]
+        .some(text => text?.includes(trimmedSearch))
+    })
+  }, [items, visibleStockCodes, trimmedSearch, displayByStockCode])
 
   // 필터에 걸려서 화면에서 사라진 종목은 선택도 같이 해제한다 — 안 보이는 종목이 일괄변경에
   // 딸려 들어가는 걸 막기 위함. filtered가 실제로 바뀔 때(=필터 조작 시)만 실행되므로 체크박스/hover
@@ -1908,13 +1925,13 @@ export default function AdminStockTable({
   }, [filtered])
 
   const sortedAscending = useMemo(
-    () => [...filtered].sort((a, b) => compareByKey(a, b, sortKey, displayByStockCode)),
+    () => [...filtered].sort((a, b) => compareByKey(a, b, sortKey ?? DEFAULT_SORT_KEY, displayByStockCode)),
     [filtered, sortKey, displayByStockCode],
   )
 
   const sorted = useMemo(
-    () => (sortDirection === 'asc' ? sortedAscending : [...sortedAscending].reverse()),
-    [sortedAscending, sortDirection],
+    () => (sortKey && sortDirection === 'asc' ? sortedAscending : [...sortedAscending].reverse()),
+    [sortedAscending, sortDirection, sortKey],
   )
   useEffect(() => {
     visibleItemsRef.current = sorted
@@ -1931,10 +1948,9 @@ export default function AdminStockTable({
       return {
         종목코드: item.stockCode,
         종목명: item.stockName,
-        '표시명 (약칭)': item.alias ?? '',
+        '약칭': item.alias ?? '',
         시가총액: item.totalMarketValue ?? '',
         마켓: display.market,
-        NXT: display.nxt,
         '거래소 분류': display.originCategoryName,
         '대분류': display.parentSectorName,
         '중분류': display.midSectorName,
@@ -1974,6 +1990,8 @@ export default function AdminStockTable({
   const paddingBottom =
     virtualRows.length > 0 ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end : 0
 
+  // 툴바 버튼은 테두리·채운 배경 없이 아이콘/글자만 둔다 — 올리면 옅은 배경이 깔리고, 비활성이면 흐려진다.
+  const GHOST_BUTTON = 'flex h-6 items-center justify-center gap-1.5 rounded border-0 bg-transparent px-1.5 text-xs text-gray-300 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-300'
   // 세 번째 바(페이지 공통 상태/옵션 바) 높이(h-7=28px)에 맞춰야 해서, nes.css 기본 버튼 패딩(6px 8px)보다
   // 좁게 오버라이드한다 — 그 외 로직/상태는 전부 그대로다.
   const toolbar = (
@@ -1986,13 +2004,13 @@ export default function AdminStockTable({
           <div className="flex items-center gap-2">
             <div
               ref={undoGroupRef}
-              className={`nes-btn flex items-stretch gap-0 border-[var(--brand)] bg-[var(--brand)] p-0 text-black ${undoStack.length === 0 ? 'opacity-50' : ''}`}
+              className="flex items-center gap-0.5"
             >
               <button
                 type="button"
                 onClick={handleUndo}
                 disabled={undoStack.length === 0}
-                className="flex items-center gap-1.5 border-0 bg-transparent px-2 py-0.5 text-xs text-black hover:text-black disabled:cursor-not-allowed disabled:hover:text-black"
+                className={GHOST_BUTTON}
                 title="실행취소 (Ctrl+Z)"
                 aria-label="실행취소"
               >
@@ -2002,7 +2020,7 @@ export default function AdminStockTable({
                 type="button"
                 onClick={() => setIsUndoListOpen(prev => !prev)}
                 disabled={undoStack.length === 0}
-                className={`flex items-center justify-center border-0 bg-transparent px-3 py-0.5 hover:text-black disabled:cursor-not-allowed disabled:hover:text-black ${isUndoListOpen ? 'text-black' : 'text-black'}`}
+                className={`${GHOST_BUTTON} !px-1 ${isUndoListOpen ? '!bg-white/10 !text-white' : ''}`}
                 title="실행취소 목록"
               >
                 <ChevronDownIcon className="h-3.5 w-3.5" />
@@ -2020,13 +2038,13 @@ export default function AdminStockTable({
             />
             <div
               ref={redoGroupRef}
-              className={`nes-btn flex items-stretch gap-0 border-[var(--brand)] bg-[var(--brand)] p-0 text-black ${redoStack.length === 0 ? 'opacity-50' : ''}`}
+              className="flex items-center gap-0.5"
             >
               <button
                 type="button"
                 onClick={handleRedo}
                 disabled={redoStack.length === 0}
-                className="flex items-center gap-1.5 border-0 bg-transparent px-2 py-0.5 text-xs text-black hover:text-black disabled:cursor-not-allowed disabled:hover:text-black"
+                className={GHOST_BUTTON}
                 title="다시실행 (Ctrl+Y)"
                 aria-label="다시실행"
               >
@@ -2036,7 +2054,7 @@ export default function AdminStockTable({
                 type="button"
                 onClick={() => setIsRedoListOpen(prev => !prev)}
                 disabled={redoStack.length === 0}
-                className={`flex items-center justify-center border-0 bg-transparent px-3 py-0.5 hover:text-black disabled:cursor-not-allowed disabled:hover:text-black ${isRedoListOpen ? 'text-black' : 'text-black'}`}
+                className={`${GHOST_BUTTON} !px-1 ${isRedoListOpen ? '!bg-white/10 !text-white' : ''}`}
                 title="다시실행 목록"
               >
                 <ChevronDownIcon className="h-3.5 w-3.5" />
@@ -2061,7 +2079,7 @@ export default function AdminStockTable({
               <button
                 type="button"
                 onClick={handleClearAllFilters}
-                className="nes-btn border-[var(--brand)] bg-[var(--brand)] px-2 py-0.5 text-xs text-black hover:bg-[var(--accent-hover)]"
+                className={`${GHOST_BUTTON} text-[var(--brand)] hover:text-[var(--brand)]`}
               >
                 전체 필터 해제
               </button>
@@ -2070,7 +2088,7 @@ export default function AdminStockTable({
           <button
             type="button"
             onClick={handleExportExcel}
-            className="nes-btn flex items-center border-green-600 bg-green-600 px-2 py-0.5 text-xs text-white hover:bg-green-700"
+            className={GHOST_BUTTON}
             title="지금 화면에 보이는(필터/정렬 적용된) 목록을 엑셀로 내려받습니다"
             aria-label="엑셀 다운로드"
           >
@@ -2112,10 +2130,15 @@ export default function AdminStockTable({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {toolbarContainer && createPortal(toolbar, toolbarContainer)}
-      {/* 스크롤해도 테두리가 사라지지 않도록, 테두리는 스크롤되지 않는 이 바깥 wrapper에 둔다
-          (예전엔 <table> 자체에 테두리가 있어서, sticky 헤더가 위로 지나가는 동안 테이블 진짜 위쪽
-          테두리가 같이 스크롤돼 사라지고, 맨 아래 테두리도 끝까지 스크롤해야만 보이는 문제가 있었다). */}
-      <div className="relative min-h-0 flex-1 border border-white">
+      <SearchBar
+        query={searchQuery}
+        onChange={setSearchQuery}
+        placeholder="종목명·코드·업종 검색"
+        ariaLabel="종목 검색"
+        countLabel={`${toCount(sorted.length)}/${toCount(items.length)}종목`}
+      />
+      {/* 바깥 테두리(외곽선)는 두지 않는다 — KRX·NXT 시트와 같은 모양이다. */}
+      <div className="relative min-h-0 flex-1">
         {isSelectionHintOpen && (
           <div
             role="status"
@@ -2130,7 +2153,7 @@ export default function AdminStockTable({
               aria-label="안내 닫기"
               className="border-0 bg-transparent p-0 text-slate-400 hover:text-slate-100"
             >
-              ✕
+              <CloseIcon className="h-3.5 w-3.5" />
             </button>
           </div>
         )}
@@ -2140,25 +2163,22 @@ export default function AdminStockTable({
           <thead className="sticky top-0 z-10">
             <tr>
               <th
-                className="cursor-pointer bg-[#2b3a4f] text-center font-bold text-slate-100"
-                style={{ width: CHECKBOX_COLUMN_WIDTH }}
+                className="cursor-pointer bg-[#2b3a4f] px-0 text-center font-bold text-slate-100"
+                style={CHECKBOX_CELL_STYLE}
                 onClick={e => {
                   // 체크박스 자신을 클릭한 경우는 onChange가 이미 처리하므로 여기서 중복 토글하지 않는다.
                   if ((e.target as HTMLElement).tagName === 'INPUT') return
                   toggleSelectAllVisible()
                 }}
               >
-                <input type="checkbox" className="mx-auto my-0 block" checked={isAllVisibleSelected} onChange={toggleSelectAllVisible} />
-              </th>
-              <th className="bg-[#2b3a4f] text-center font-bold text-slate-100" style={{ width: NUMBER_COLUMN_WIDTH }}>
-                #
+                <input type="checkbox" className="mx-auto my-0 block h-5 w-5 cursor-pointer accent-[var(--brand)]" checked={isAllVisibleSelected} onChange={toggleSelectAllVisible} />
               </th>
               {COLUMNS.map(col => {
                 const label = (
                   <span className="cursor-pointer select-none text-slate-100 hover:text-slate-300" onClick={() => handleSort(col.key)}>
                     {col.header}
-                    <span className={`ml-1 ${sortKey === col.key ? 'text-[var(--brand)]' : 'text-slate-500'}`}>
-                      {sortKey === col.key ? (sortDirection === 'asc' ? '▲' : '▼') : '▼'}
+                    <span className={`ml-1 inline-flex align-middle ${sortKey === col.key ? 'text-[var(--brand)]' : 'text-slate-500'}`}>
+                      <SortIcon active={sortKey === col.key} direction={sortDirection} className="h-3.5 w-3.5" />
                     </span>
                   </span>
                 )
@@ -2180,29 +2200,33 @@ export default function AdminStockTable({
                     className="whitespace-nowrap bg-[#2b3a4f] text-center font-bold text-slate-100"
                   >
                     {filterKey ? (
-                      <div className="flex items-center justify-between pl-2 pr-1">
+                      <div className="relative flex items-center justify-center px-6">
                         {label}
-                        <AdminColumnFilterButton
-                          options={filterOptionsByKey[filterKey]}
-                          excluded={excludedFilters[filterKey]}
-                          onToggle={value => toggleFilterValue(filterKey, value)}
-                          onSelectAll={() => selectAllFilterValues(filterKey)}
-                          onSelectNone={() => selectNoneFilterValues(filterKey)}
-                          onSelectOnly={value => selectOnlyFilterValue(filterKey, value)}
-                        />
+                        <span className="absolute right-1 top-1/2 flex -translate-y-1/2">
+                          <AdminColumnFilterButton
+                            options={filterOptionsByKey[filterKey]}
+                            excluded={excludedFilters[filterKey]}
+                            onToggle={value => toggleFilterValue(filterKey, value)}
+                            onSelectAll={() => selectAllFilterValues(filterKey)}
+                            onSelectNone={() => selectNoneFilterValues(filterKey)}
+                            onSelectOnly={value => selectOnlyFilterValue(filterKey, value)}
+                          />
+                        </span>
                       </div>
                     ) : col.key === 'stockName' ? (
-                      <div className="flex items-center justify-between pl-2 pr-1">
+                      <div className="relative flex items-center justify-center px-6">
                         {label}
-                        <AdminStockNameFilterButton
-                          items={items}
-                          selected={nameFilterStockCodes}
-                          onToggle={toggleNameFilterStockCode}
-                          onClear={() => setNameFilterStockCodes(new Set())}
-                        />
+                        <span className="absolute right-1 top-1/2 flex -translate-y-1/2">
+                          <AdminStockNameFilterButton
+                            items={items}
+                            selected={nameFilterStockCodes}
+                            onToggle={toggleNameFilterStockCode}
+                            onClear={() => setNameFilterStockCodes(new Set())}
+                          />
+                        </span>
                       </div>
                     ) : col.key === 'totalMarketValue' ? (
-                      <div className="flex items-center justify-between pl-2 pr-1">
+                      <div className="relative flex items-center justify-center px-6">
                         <span
                           onMouseEnter={e => {
                             const rect = e.currentTarget.getBoundingClientRect()
@@ -2223,13 +2247,15 @@ export default function AdminStockTable({
                             </div>,
                             document.body,
                           )}
-                        <AdminMarketValueFilterButton
-                          tiers={valueTiers}
-                          excluded={excludedMarketValueTiers}
-                          onToggle={toggleMarketValueTier}
-                          onSelectAll={() => setExcludedMarketValueTiers(new Set())}
-                          onSelectNone={() => setExcludedMarketValueTiers(new Set(valueTiers.map(t => t.label)))}
-                        />
+                        <span className="absolute right-1 top-1/2 flex -translate-y-1/2">
+                          <AdminMarketValueFilterButton
+                            tiers={valueTiers}
+                            excluded={excludedMarketValueTiers}
+                            onToggle={toggleMarketValueTier}
+                            onSelectAll={() => setExcludedMarketValueTiers(new Set())}
+                            onSelectNone={() => setExcludedMarketValueTiers(new Set(valueTiers.map(t => t.label)))}
+                          />
+                        </span>
                       </div>
                     ) : (
                       label
@@ -2242,7 +2268,7 @@ export default function AdminStockTable({
           <tbody>
             {isPending ? (
               <tr>
-                <td colSpan={COLUMNS.length + 2} className="p-8">
+                <td colSpan={COLUMNS.length + 1} className="p-8">
                   <div className="flex justify-center">
                     <Spinner />
                   </div>
@@ -2252,7 +2278,7 @@ export default function AdminStockTable({
               <>
                 {paddingTop > 0 && (
                   <tr>
-                    <td colSpan={COLUMNS.length + 2} style={{ height: paddingTop, padding: 0, border: 'none' }} />
+                    <td colSpan={COLUMNS.length + 1} style={{ height: paddingTop, padding: 0, border: 'none' }} />
                   </tr>
                 )}
                 {virtualRows.map(virtualRow => {
@@ -2280,7 +2306,7 @@ export default function AdminStockTable({
                 })}
                 {paddingBottom > 0 && (
                   <tr>
-                    <td colSpan={COLUMNS.length + 2} style={{ height: paddingBottom, padding: 0, border: 'none' }} />
+                    <td colSpan={COLUMNS.length + 1} style={{ height: paddingBottom, padding: 0, border: 'none' }} />
                   </tr>
                 )}
               </>

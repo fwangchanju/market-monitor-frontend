@@ -364,6 +364,18 @@ a { color: var(--accent-light); text-decoration: none; }
   content: "- ";
 }
 
+/* 슬라이더·선택 버튼 같은 조작 요소는 설명 앞의 "- " 위치(설명 들여쓰기와 같은 폭)에서 시작하고,
+   오른쪽도 같은 폭만큼 줄여 좌우 대칭으로 맞춘다. */
+.settings-sidebar-tab-content .settings-control-inset {
+  margin-left: 19px;
+  margin-right: 19px;
+}
+
+.settings-bookmark-tab .settings-control-inset {
+  margin-left: 38px;
+  margin-right: 38px;
+}
+
 .settings-sidebar-tab-content .settings-section-bullet::before,
 .settings-sidebar-tab-content .settings-subsection-num::before {
   counter-increment: none;

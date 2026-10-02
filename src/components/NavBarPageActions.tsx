@@ -4,8 +4,9 @@ import { CalendarIcon, ClockIcon, MaximizeIcon, MinimizeIcon, RefreshIcon, Setti
 interface Props {
   onRefresh: () => void | Promise<unknown>
   isRefreshing: boolean
-  onToggleSettings: () => void
-  isSettingsOpen: boolean
+  // 설정 창이 없는 화면(커스텀 종목·카테고리)은 둘 다 넘기지 않는다 — 그러면 설정 버튼도 그리지 않는다.
+  onToggleSettings?: () => void
+  isSettingsOpen?: boolean
   onOpenShare: () => void
   isNativeFullscreen: boolean
   onToggleFullscreen: () => void
@@ -19,7 +20,7 @@ const BUTTON_CLASS =
 const INACTIVE_BUTTON_CLASS = `${BUTTON_CLASS} text-gray-400`
 
 // 스냅샷 수집 주기 안내 — 시계 옆 새로고침 버튼을 누르면 설명창으로 보여준다.
-export const SNAPSHOT_REFRESH_HELP = '5분 간격 수집\n1분 가량 지연'
+export const SNAPSHOT_REFRESH_HELP = '5분 간격으로 수집합니다.\n1분 정도 지연될 수 있습니다.'
 
 // 스냅샷 새로고침 아이콘 버튼 — 상단바 우측 묶음(NavBarPageActions)과 콘솔 줄(시계 옆) 어디에 두든 같은 모양이다.
 // helpText를 주면 커서를 올리거나 포커스하면 설명창(지도 설정의 도움말 팝업과 같은 모양·글자 크기/굵기)을 버튼 아래에 띄운다.
@@ -100,7 +101,7 @@ export function PageRefreshButton({
           ref={tooltipRef}
           role="tooltip"
           style={{ position: 'fixed', left: tooltipPosition.left, top: tooltipPosition.top }}
-          className="z-50 w-max max-w-64 whitespace-pre-line rounded border border-slate-500 bg-[#2b3a4f] p-2 text-left text-xs font-normal leading-relaxed text-slate-100 shadow-lg"
+          className="z-50 w-max max-w-64 whitespace-pre-line rounded border border-[#7a6d55] bg-[#fff8e7] p-2 text-left text-xs font-normal leading-relaxed text-black shadow-lg"
         >
           {helpText}
         </span>
@@ -115,7 +116,7 @@ export default function NavBarPageActions({
   onRefresh,
   isRefreshing,
   onToggleSettings,
-  isSettingsOpen,
+  isSettingsOpen = false,
   onOpenShare,
   isNativeFullscreen,
   onToggleFullscreen,
@@ -135,15 +136,17 @@ export default function NavBarPageActions({
         </>
       )}
       {showRefresh && <PageRefreshButton onRefresh={onRefresh} isRefreshing={isRefreshing} />}
-      <button
-        type="button"
-        aria-label="설정"
-        data-settings-toggle
-        className={`${BUTTON_CLASS} ${isSettingsOpen ? 'text-[var(--accent)]' : 'text-gray-400'}`}
-        onClick={onToggleSettings}
-      >
-        <SettingsIcon className="h-4 w-4" />
-      </button>
+      {onToggleSettings && (
+        <button
+          type="button"
+          aria-label="설정"
+          data-settings-toggle
+          className={`${BUTTON_CLASS} ${isSettingsOpen ? 'text-[var(--accent)]' : 'text-gray-400'}`}
+          onClick={onToggleSettings}
+        >
+          <SettingsIcon className="h-4 w-4" />
+        </button>
+      )}
       <button type="button" aria-label="공유" className={INACTIVE_BUTTON_CLASS} onClick={onOpenShare}>
         <ShareIcon className="h-4 w-4" />
       </button>

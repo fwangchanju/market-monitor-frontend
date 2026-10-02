@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { HEATMAP_NAMES } from '@/utils/heatmapNames'
 
-export type CustomHeatmapSheet = 'marketry' | 'krx' | 'nxt'
+export type CustomHeatmapSheet = 'marketry' | 'krx'
 
 // 지도 설정의 히트맵 선택과 같은 순서다. sheet가 null인 항목(내 히트맵)은 아직 시트가 없어 고를 수 없다.
 const OPTIONS: readonly { sheet: CustomHeatmapSheet | null; label: string }[] = [
   { sheet: null, label: HEATMAP_NAMES.mine.tab },
   { sheet: 'krx', label: HEATMAP_NAMES.krx.tab },
-  { sheet: 'nxt', label: HEATMAP_NAMES.nxt.tab },
   { sheet: 'marketry', label: HEATMAP_NAMES.marketry.tab },
 ]
 

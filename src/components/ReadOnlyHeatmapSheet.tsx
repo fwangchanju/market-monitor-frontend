@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import Spinner from '@/components/Spinner'
 import type { MarketMapResponse } from '@/types/api'
 import { toCount } from '@/utils/format'
 import { charTier } from '@/utils/koreanSort'
+import { SortIcon } from '@/components/icons/MarketMapIcons'
 
 const KOREAN_COLLATOR = new Intl.Collator('ko')
 
@@ -82,7 +83,9 @@ function SortableHeader({ label, active, direction, onClick }: {
     <th className={HEADER_CELL}>
       <span className={`cursor-pointer select-none ${COLOR.sortHover}`} onClick={onClick}>
         {label}
-        <span className={`ml-1 ${active ? COLOR.sortActive : COLOR.sortInactive}`}>{active && direction === 'asc' ? '▲' : '▼'}</span>
+        <span className={`ml-1 inline-flex align-middle ${active ? COLOR.sortActive : COLOR.sortInactive}`}>
+          <SortIcon active={active} direction={direction} className="h-3.5 w-3.5" />
+        </span>
       </span>
     </th>
   )
@@ -97,6 +100,8 @@ interface Props {
   isLoading: boolean
   // NXT 시트면 NXT 거래 가능 종목만 남긴다. 업종 분류는 KRX 것을 그대로 쓴다.
   nxtOnly: boolean
+  // 검색창 옆 "NXT만 보기" 체크박스를 눌렀을 때.
+  onNxtOnlyChange: (nxtOnly: boolean) => void
   // NXT 거래 가능 종목코드 — 지도 응답에는 이 정보가 없어서 커스텀 종목 목록(/custom/stock-sectors)에서 받아온다.
   nxtStockCodes: ReadonlySet<string>
   // nxtStockCodes를 아직 받아오는 중인지 — 받기 전에는 "종목이 없다"고 잘못 보이지 않게 스피너를 보여준다.
@@ -110,7 +115,7 @@ interface SectorRow {
 
 // KRX/NXT 시트 — 업종 분류를 읽기만 하는 화면이다. 편집 기능(추가·이동·배정)은 없고, 지도의 KRX 히트맵이 보여주는
 // 분류(/map?isCustom=false)를 그대로 표로 보여준다. 시세가 있는 종목만 내려오므로 거래정지 종목 등은 빠질 수 있다.
-export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, nxtOnly, nxtStockCodes, isNxtLoading }: Props) {
+export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, nxtOnly, onNxtOnlyChange, nxtStockCodes, isNxtLoading }: Props) {
   const sectors = useMemo<SectorRow[]>(() => {
     if (!data) return []
     return data.items
@@ -121,7 +126,8 @@ export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, nxtOnly, n
       .filter(row => row.stocks.length > 0)
   }, [data, nxtOnly, nxtStockCodes])
 
-  if (isLoading || (nxtOnly && isNxtLoading)) {
+  // NXT 열(종목 화면)과 NXT만 보기는 NXT 종목 목록이 와야 맞게 보이므로 그동안 스피너를 보여준다.
+  if (isLoading || ((nxtOnly || mode === 'stock') && isNxtLoading)) {
     return (
       <div className="flex justify-center p-16">
         <Spinner />
@@ -130,20 +136,33 @@ export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, nxtOnly, n
   }
   // 종목이 하나도 없어도 표 틀(검색창·머리글)은 그대로 보여준다 — 시트마다 화면 모양이 달라 보이지 않게 한다.
   const emptyMessage = nxtOnly ? 'NXT 거래 종목이 아직 없습니다.\n평일 오전 7시 종목 정보 동기화 뒤에 표시됩니다.' : '표시할 KRX 분류가 없습니다.'
+  const nxtOnlyToggle = (
+    <label className="flex cursor-pointer items-center gap-1.5 text-sm text-white">
+      <input
+        type="checkbox"
+        className="m-0 h-4 w-4 cursor-pointer accent-[var(--brand)]"
+        checked={nxtOnly}
+        onChange={event => onNxtOnlyChange(event.target.checked)}
+      />
+      NXT만 보기
+    </label>
+  )
   return mode === 'stock' ? (
-    <StockTable sectors={sectors} emptyMessage={emptyMessage} />
+    <StockTable sectors={sectors} emptyMessage={emptyMessage} nxtStockCodes={nxtStockCodes} extra={nxtOnlyToggle} />
   ) : (
-    <CategoryTable sectors={sectors} emptyMessage={emptyMessage} />
+    <CategoryTable sectors={sectors} emptyMessage={emptyMessage} extra={nxtOnlyToggle} />
   )
 }
 
-// 표 위의 검색창과 개수 — 카테고리·종목 화면이 같은 틀(위치·크기)을 쓰도록 한 곳에 둔다.
-function SearchBar({ query, onChange, placeholder, ariaLabel, countLabel }: {
+// 표 위의 검색창과 개수 — 카테고리·종목 화면이 같은 틀(위치·크기)을 쓰도록 한 곳에 둔다. 커스텀 종목 표도 이걸 쓴다.
+export function SearchBar({ query, onChange, placeholder, ariaLabel, countLabel, extra }: {
   query: string
   onChange: (query: string) => void
   placeholder: string
   ariaLabel: string
   countLabel: string
+  // 개수 오른쪽 끝에 붙는 추가 조작(예: "NXT만 보기" 체크박스).
+  extra?: ReactNode
 }) {
   return (
     <div className="flex shrink-0 items-center pl-2 pr-3 pb-2">
@@ -161,6 +180,7 @@ function SearchBar({ query, onChange, placeholder, ariaLabel, countLabel }: {
       {/* 개수는 위 헤더의 "읽기 전용"과 같은 위치에서 시작한다: 드롭박스 둘(15.5rem) + 간격(0.5rem) + "읽기 전용"의 왼쪽 여백(0.75rem)
           = 16.75rem이고, 검색창이 15.5rem이므로 사이에 1.25rem을 둔다. */}
       <span className="ml-5 text-sm text-gray-400">{countLabel}</span>
+      {extra && <div className="ml-auto flex items-center">{extra}</div>}
     </div>
   )
 }
@@ -177,7 +197,7 @@ function EmptyRow({ colSpan, message }: { colSpan: number; message: string }) {
 
 type CategorySortKey = 'name' | 'stockCount' | 'marketValue'
 
-function CategoryTable({ sectors, emptyMessage }: { sectors: SectorRow[]; emptyMessage: string }) {
+function CategoryTable({ sectors, emptyMessage, extra }: { sectors: SectorRow[]; emptyMessage: string; extra: ReactNode }) {
   const [query, setQuery] = useState('')
   const { sortKey, direction, toggle } = useSort<CategorySortKey>('name', 'asc')
   const rows = useMemo(() => {
@@ -205,6 +225,7 @@ function CategoryTable({ sectors, emptyMessage }: { sectors: SectorRow[]; emptyM
         onChange={setQuery}
         placeholder="업종 검색"
         ariaLabel="업종 검색"
+        extra={extra}
         countLabel={`${toCount(visibleRows.length)}/${toCount(rows.length)}업종`}
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -240,7 +261,7 @@ function CategoryTable({ sectors, emptyMessage }: { sectors: SectorRow[]; emptyM
 
 type StockSortKey = 'stockCode' | 'stockName' | 'sectorName' | 'totalMarketValue'
 
-function StockTable({ sectors, emptyMessage }: { sectors: SectorRow[]; emptyMessage: string }) {
+function StockTable({ sectors, emptyMessage, nxtStockCodes, extra }: { sectors: SectorRow[]; emptyMessage: string; nxtStockCodes: ReadonlySet<string>; extra: ReactNode }) {
   const [query, setQuery] = useState('')
   const { sortKey, direction, toggle } = useSort<StockSortKey>('totalMarketValue', 'desc')
   const rows = useMemo(() => {
@@ -271,6 +292,7 @@ function StockTable({ sectors, emptyMessage }: { sectors: SectorRow[]; emptyMess
         onChange={setQuery}
         placeholder="종목명·코드·업종 검색"
         ariaLabel="종목 검색"
+        extra={extra}
         countLabel={`${toCount(visibleRows.length)}/${toCount(rows.length)}종목`}
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -281,10 +303,11 @@ function StockTable({ sectors, emptyMessage }: { sectors: SectorRow[]; emptyMess
               {header('stockName', '종목명')}
               {header('sectorName', '업종')}
               {header('totalMarketValue', '시가총액')}
+              <th className={HEADER_CELL}>NXT</th>
             </tr>
           </thead>
           <tbody>
-            {visibleRows.length === 0 && <EmptyRow colSpan={4} message={rows.length === 0 ? emptyMessage : '검색 결과가 없습니다.'} />}
+            {visibleRows.length === 0 && <EmptyRow colSpan={5} message={rows.length === 0 ? emptyMessage : '검색 결과가 없습니다.'} />}
             {visibleRows.map(row => (
               <tr key={row.stockCode}>
                 <td className={`${BODY_CELL} text-center text-gray-400`}>{row.stockCode}</td>
@@ -296,6 +319,9 @@ function StockTable({ sectors, emptyMessage }: { sectors: SectorRow[]; emptyMess
                 </td>
                 <td className={`${BODY_CELL} text-center`}>
                   <MarketValueCell won={row.totalMarketValue} />
+                </td>
+                <td className={`${BODY_CELL} text-center ${nxtStockCodes.has(row.stockCode) ? 'text-[var(--brand)]' : 'text-gray-500'}`}>
+                  {nxtStockCodes.has(row.stockCode) ? 'O' : '-'}
                 </td>
               </tr>
             ))}

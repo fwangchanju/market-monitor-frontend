@@ -32,6 +32,7 @@ import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
 import { toCount, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
+import { ReturnArrowIcon } from '@/components/icons/MarketMapIcons'
 import { HEATMAP_NAMES } from '@/utils/heatmapNames'
 import { marketRoute } from '@/utils/marketRoute'
 import { captureElementToDownload } from '@/utils/captureToDownload'
@@ -44,12 +45,7 @@ const BREADCRUMB_LINK_CLASS = 'flex h-full cursor-pointer items-center gap-1.5 b
 
 // 이름 오른쪽의 되돌아가기 표시 — 이름과 한 버튼이라서 올리면 함께 하이라이트된다.
 function BreadcrumbBackIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 14 4 9l5-5" />
-      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
-    </svg>
-  )
+  return <ReturnArrowIcon aria-hidden="true" className="h-4 w-4 shrink-0" />
 }
 
 // 북마크 탭이 한 화면에 들어가도록 항목 수를 제한한다.
@@ -154,6 +150,7 @@ export default function MarketMapCustomPage() {
     isCustom,
     heatmap,
     nxtOnly,
+    nxtOnlyWindow,
     data,
     refetchMarketMap,
     isRefetchingMarketMap,
@@ -468,17 +465,17 @@ export default function MarketMapCustomPage() {
             </div>
             <div className="flex min-h-0 flex-1">
               <div className="relative flex min-h-0 flex-1 flex-col bg-black">
-              {/* NXT 히트맵 안내 — 지도에서 NXT를 고르면 보여주는 알림이다. 닫을 수 있고, 다시 고르면 또 나온다. */}
-              {nxtOnly && !isNxtNoticeDismissed && (
+              {/* NXT 단독 시간대 공지 — 그 시간대에만 보여주는 알림이다. 닫을 수 있고, 시간대가 끝났다가 다시 오면 또 나온다. */}
+              {nxtOnlyWindow && !isNxtNoticeDismissed && (
                 <div
                   role="status"
                   className="absolute left-1/2 top-9 z-30 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-start gap-3 rounded-md border border-slate-500 bg-[#2b3a4f] px-4 py-2 text-sm text-slate-100 shadow-lg"
                 >
                   <span>
-                    <b className="text-[var(--brand)]">NXT 거래 종목</b>만 보여줍니다.
-                    {nxtStockCount > 0 && <b className="ml-1.5 text-[var(--brand)]">({toCount(nxtStockCount)} 종목)</b>}
+                    <b className="text-[var(--brand)]">{nxtOnlyWindow.label}</b>
+                    {nxtOnlyWindow.name && <b className="ml-1.5 text-[var(--brand)]">{nxtOnlyWindow.name}</b>}
                     <br />
-                    정규장 가격과 등락률은 통합시세 기준입니다.
+                    NXT {nxtStockCount > 0 && <>{toCount(nxtStockCount)} </>}종목만 거래 중.
                   </span>
                   <button
                     type="button"
@@ -597,6 +594,7 @@ export default function MarketMapCustomPage() {
                   reset()
                 }}
                 maxSelectableDepth={Math.max(1, settingsModalProps.topPickMaxSelectableDepth)}
+                noDataLimited={settingsModalProps.heatmap !== 'marketry'}
               />
               <SettingsStockChangeSection
                 value={stockChangeFilter}
@@ -629,6 +627,7 @@ export default function MarketMapCustomPage() {
                   reset()
                 }}
                 maxSelectableDepth={Math.max(1, settingsModalProps.topPickMaxSelectableDepth)}
+                noDataLimited={settingsModalProps.heatmap !== 'marketry'}
               />
               <SettingsStockChangeSection
                 value={stockChangeFilter}
