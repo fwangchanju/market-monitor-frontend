@@ -17,7 +17,7 @@ import SettingsSidebar, {
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
-import { MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/MarketMapControls'
+import { ChangeRateBasisToggle, MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/MarketMapControls'
 import Spinner from '@/components/Spinner'
 import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/components/NavBarPageActions'
 import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
@@ -151,6 +151,9 @@ export default function MarketMapCustomPage() {
     heatmap,
     nxtOnly,
     nxtOnlyWindow,
+    changeRateBasis,
+    isAfterHoursSelectable,
+    onChangeChangeRateBasis,
     data,
     refetchMarketMap,
     isRefetchingMarketMap,
@@ -182,7 +185,7 @@ export default function MarketMapCustomPage() {
     decimalPlaces,
     colorScale,
     handleExcludeSector,
-  } = useGlobalSettings()
+  } = useGlobalSettings({ allowChangeRateBasis: true })
 
   const [searchParams, setSearchParams] = useSearchParams()
   const { isNativeFullscreen, handleToggleNativeFullscreen } = useNativeFullscreen()
@@ -456,6 +459,7 @@ export default function MarketMapCustomPage() {
                   </span>
                 )}
                 <PageRefreshButton onRefresh={refetchMarketMap} isRefreshing={isRefetchingMarketMap} className="-ml-[10px]" helpText={SNAPSHOT_REFRESH_HELP} />
+                <ChangeRateBasisToggle basis={changeRateBasis} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateBasis} />
               </div>
               <span
                 className={`${FONT_BAR_MODE_STATUS} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-gray-400`}

@@ -10,11 +10,27 @@ import { z } from 'zod'
 
 const excludedStockListResponseSchema = z.array(ExcludedStockItemSchema)
 
+// 등락률 기준 — daily는 전일 종가 대비 누적(기본), afterHours는 그날 정규장 종가 대비(15:40 이후 오늘 스냅샷에서만 적용된다).
+export type ChangeRateBasis = 'daily' | 'afterHours'
+
 // nxtOnly는 거래소 분류(isCustom=false)에서 NXT 거래 종목만 받는다. false일 때는 요청에 싣지 않아 기존 요청과 같다.
-export const getMarketMap = (market: MarketQuery, isCustom: boolean, snapshotTime?: string, nxtOnly = false) =>
+// basis도 afterHours일 때만 요청에 싣는다.
+export const getMarketMap = (
+  market: MarketQuery,
+  isCustom: boolean,
+  snapshotTime?: string,
+  nxtOnly = false,
+  basis: ChangeRateBasis = 'daily',
+) =>
   client
     .get('/map', {
-      params: { market, isCustom, ...(snapshotTime ? { snapshotTime } : {}), ...(nxtOnly ? { nxtOnly } : {}) },
+      params: {
+        market,
+        isCustom,
+        ...(snapshotTime ? { snapshotTime } : {}),
+        ...(nxtOnly ? { nxtOnly } : {}),
+        ...(basis === 'afterHours' ? { basis } : {}),
+      },
     })
     .then(r => MarketMapResponseSchema.parse(r.data))
 

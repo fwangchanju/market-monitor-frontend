@@ -5,6 +5,8 @@ import { useLocalPersistedState } from './useLocalPersistedState'
 import { GUEST_DEFAULTS, MEMBER_DEFAULTS, settingDefaultsFor } from '@/utils/settingDefaults'
 import type { HeatmapKey } from '@/utils/heatmapNames'
 import { useNxtOnlyWindow } from '@/hooks/useNxtOnlyWindow'
+import { isAfterHoursSelectable as isAfterHoursSelectableAt } from '@/utils/tradingWindow'
+import type { ChangeRateBasis } from '@/api/marketMap'
 import { usePageSetting } from './usePageSetting'
 import { useRouteAwareMarket } from './useRouteAwareMarket'
 import { useIsLoggedIn, useSession } from './useSession'
@@ -100,8 +102,11 @@ function topPickAverage(node: FilteredMarketMapSectorNode, metric: DepthMetric):
 // 간접적으로 필요한 페이지는 false를 넘겨서 사이드바를 열기 전까지 조회 자체를 미룬다 — 그래도 설정을
 // 열면 그 순간부터는 조회하므로(그리고 지도/섹터를 먼저 봤다면 react-query 캐시로 즉시 뜨므로) 설정
 // 내용 자체는 어느 페이지에서 열든 동일하게 보인다.
-export function useGlobalSettings(options?: { needsTree?: boolean }) {
+export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRateBasis?: boolean }) {
   const needsTree = options?.needsTree ?? true
+  // 등락률 기준(누적/시간외) 선택은 지도 페이지만 쓴다. 그룹 페이지는 now·before 쌍을 따로 받아 누적 기준으로 그리므로
+  // 같은 값을 실으면 화면이 섞인다.
+  const allowChangeRateBasis = options?.allowChangeRateBasis ?? false
   const { pathname } = useLocation()
   const isLoggedIn = useIsLoggedIn()
   // 설정 기본값은 utils/settingDefaults.ts에 모아 두었다(비로그인과 회원이 다르다). 사용자가 값을 바꾸면 저장값이 우선한다.
@@ -119,6 +124,10 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 분류는 그대로 두고 NXT 거래 종목만 남기고, 그 밖의 시간에는 전체 종목을 보여준다. 사용자가 직접 켜고 끄지 않는다.
   const nxtOnlyWindow = useNxtOnlyWindow()
   const nxtOnly = nxtOnlyWindow !== null
+  // 등락률 기준 — 탭을 닫으면 사라지는 보기 옵션이다. 시간외는 15:40 이후 오늘 스냅샷에서만 고를 수 있어서, 그 밖에는 선택이
+  // 남아 있어도 누적으로 보인다(서버도 같은 조건으로 누적 값을 준다).
+  const [storedChangeRateBasis, setStoredChangeRateBasis] = usePersistedState<ChangeRateBasis>('marketMap.changeRateBasis', 'daily')
+  const requestedBasis: ChangeRateBasis = allowChangeRateBasis ? storedChangeRateBasis : 'daily'
   const heatmap: HeatmapKey = isCustom ? 'marketry' : nxtOnly ? 'nxt' : 'krx'
   // 섹터 랭킹/강세 업종 계산에 쓰는 평균 방식은 박스 크기 비율과 별도로 저장한다.
   const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', defaults.avgChangeRateUseSimple)
@@ -259,7 +268,10 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     refetch: refetchMarketMap,
   } = useMarketMap(market, isCustom, nxtOnly, {
     enabled: needsTree,
+    basis: requestedBasis,
   })
+  const isAfterHoursSelectable = isAfterHoursSelectableAt(data?.snapshotTime, new Date())
+  const changeRateBasis: ChangeRateBasis = isAfterHoursSelectable ? requestedBasis : 'daily'
   const rawRootNodes = data?.items
   // 비로그인의 거래소 분류는 업종 id가 모두 0이라, 제외 기능이 동작하도록 이름 기반 고유 id를 붙인다.
   const rootNodes = useMemo(
@@ -732,6 +744,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     isCustom,
     nxtOnly,
     nxtOnlyWindow,
+    changeRateBasis,
+    isAfterHoursSelectable,
+    onChangeChangeRateBasis: setStoredChangeRateBasis,
     heatmap,
     data,
     refetchMarketMap,

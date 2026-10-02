@@ -34,6 +34,17 @@ export function currentNxtOnlyWindow(now: Date): NxtOnlyWindow | null {
   return NXT_ONLY_WINDOWS.find(window => minutes >= window.fromMinutes && minutes < window.toMinutes) ?? null
 }
 
+// 시간외 등락률(그날 정규장 종가 대비)을 고를 수 있는지. 받아 온 지도 스냅샷이 오늘(한국 날짜)이고 15:40 이후일 때만이다 —
+// 장중에는 시간외 등락률이 없고, 지난 날짜 스냅샷은 오늘 종가로 계산할 수 없다. 서버도 같은 조건으로 판단해서 아니면 누적 값을 준다.
+const AFTER_HOURS_START = '15:40'
+const KST_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' })
+
+export function isAfterHoursSelectable(snapshotTime: string | null | undefined, now: Date): boolean {
+  if (!snapshotTime) return false
+  // snapshotTime은 한국 시각 그대로의 "YYYY-MM-DDTHH:mm:ss" 문자열이다.
+  return snapshotTime.slice(0, 10) === KST_DATE.format(now) && snapshotTime.slice(11, 16) >= AFTER_HOURS_START
+}
+
 export function isNxtOnlyTime(now: Date): boolean {
   return currentNxtOnlyWindow(now) !== null
 }
