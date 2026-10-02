@@ -151,10 +151,18 @@ export default function MarketMapSectorSection({
         // 상속해서 쓴다 — 오버레이는 헤더의 형제라 헤더에 걸면 안 내려온다(CSS 변수는 자손에게만
         // 상속), 그래서 둘의 공통 조상인 여기(box-content)에 한 번만 건다.
         '--market-map-base-color': isTopPick ? strongIndustryColor : headerStyle.baseColor,
-        ...(isTopPick ? { borderColor: strongIndustryColor } : {}),
       } as CSSProperties}
-      className={`market-map-sector-box box-content ${isTopPick ? 'border-2 border-[var(--accent)]' : ''} ${isPinned ? 'is-pinned' : ''}`}
+      className={`market-map-sector-box box-content ${isPinned ? 'is-pinned' : ''}`}
     >
+      {/* 강조 테두리 — border(박스를 4px 키워서 지도 맨 아래·오른쪽 끝에서 잘렸다)가 아니라 박스 안쪽 가장자리에 덮어 그리는 층이다.
+          박스 크기는 다른 업종과 같고, 테두리는 항상 박스 안에 들어가며 안쪽 종목 박스 위에 보인다. */}
+      {isTopPick && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-30"
+          style={{ boxShadow: `inset 0 0 0 2px ${strongIndustryColor}` }}
+        />
+      )}
       {/* isSelf(드릴다운으로 들어온 자기 자신)는 헤더 태그를 안 그린다 — breadcrumb에 이미
           "KOSPI > 반도체"처럼 같은 이름이 떠 있어서 중복이기 때문(useMarketMapLayout의 paddingTop도
           이 섹터 몫의 헤더 공간을 아예 안 비워둔다). 그 대신 실제 하위 섹터들이 이 자리를 이어받아

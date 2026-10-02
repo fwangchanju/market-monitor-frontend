@@ -7,6 +7,7 @@ import SettingsSectionIcon, { type SettingsSectionIconName } from '@/components/
 import { ReturnArrowIcon } from '@/components/icons/MarketMapIcons'
 import type { MarketValueTierItem } from '@/types/api'
 import { FONT_BAR_TIME } from '@/components/FontStyle'
+import { ACCENT_PALETTE } from '@/utils/accentPalette'
 import { HEATMAP_NAMES, type HeatmapKey } from '@/utils/heatmapNames'
 import { toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { BOOKMARK_ORDER, type SettingsBookmarkId } from '@/utils/settingsBookmarks'
@@ -873,7 +874,7 @@ function SettingsClassificationSelector({
               option.key === null
                 ? 'cursor-not-allowed border-0 bg-transparent text-gray-500'
                 : isSelected(option.key)
-                  ? 'bg-[var(--accent)] text-black'
+                  ? 'bg-[var(--brand)] text-black'
                   : 'border-0 bg-transparent text-gray-300 hover:text-white'
             }`}
           >
@@ -1707,17 +1708,8 @@ export function SettingsColorSection({
   )
 }
 
-// 맨 왼쪽의 흰색에 가까운 회색은 아래 등락률 색상(4-2)의 회색 자리와 짝이다 — 두 줄이 같은 8칸으로 같은 간격에 놓인다.
-const STRONG_INDUSTRY_COLOR_OPTIONS = [
-  { label: '연회색', value: '#e5e7eb' },
-  { label: '분홍', value: '#fccbcd' },
-  { label: '주황', value: '#ffb74d' },
-  { label: '연노랑', value: '#fff59d' },
-  { label: '형광', value: '#c6ff00' },
-  { label: '청록', value: '#4dd0e1' },
-  { label: '하늘', value: '#90bff9' },
-  { label: '보라', value: '#b39ddb' },
-]
+// 선택지는 상단바 시간대 점과 같은 값을 쓰도록 utils/accentPalette에 둔다.
+const STRONG_INDUSTRY_COLOR_OPTIONS = ACCENT_PALETTE
 
 export function SettingsStrongIndustryColorSection({
   color,
@@ -1926,7 +1918,6 @@ export default function SettingsSidebar({
             onClick={onTogglePinned}
             aria-label={isPinned ? '고정 해제' : '고정'}
             aria-pressed={Boolean(isPinned)}
-            title={isPinned ? '고정됨 — 지도 옆에 항상 열어 둡니다. 누르면 지도 위에 띄우는 방식으로 바꿉니다.' : '지도 위에 떠 있음 — 지도를 밀지 않고, 밖을 누르면 닫힙니다. 누르면 고정합니다.'}
             className={`ml-auto mr-[6px] flex h-5 w-5 shrink-0 items-center justify-center border-0 bg-transparent p-0 ${isPinned ? 'text-[var(--brand)]' : 'text-gray-400 hover:text-white'}`}
           >
             <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
