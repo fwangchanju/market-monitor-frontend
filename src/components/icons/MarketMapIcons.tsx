@@ -77,20 +77,22 @@ export function RefreshIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+// Lucide(undo-2 / redo-2) 모양 — 둥글게 되돌아가는 화살표.
 export function UndoIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <polyline points="1 4 1 10 7 10" />
-      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />
     </svg>
   )
 }
 
-export function RestoreToMapIcon(props: SVGProps<SVGSVGElement>) {
+// 지도 위쪽 이동 경로의 "되돌아가기" 표시와 2-4 제외 업종 목록이 같은 모양을 쓴다.
+export function ReturnArrowIcon(props: SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="m9 5-5 5 5 5" />
-      <path d="M4 10h10a5 5 0 0 1 5 5v4" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
     </svg>
   )
 }
@@ -98,8 +100,37 @@ export function RestoreToMapIcon(props: SVGProps<SVGSVGElement>) {
 export function RedoIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <polyline points="23 4 23 10 17 10" />
-      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+      <path d="m15 14 5-5-5-5" />
+      <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13" />
+    </svg>
+  )
+}
+
+// 열 필터 버튼 — 가로줄이 줄어드는 깔때기 모양(Lucide list-filter).
+export function FilterIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M3 6h18" />
+      <path d="M7 12h10" />
+      <path d="M10 18h4" />
+    </svg>
+  )
+}
+
+// 표 머리글 정렬 표시 — 정렬 중이면 방향을 가리키는 쐐기 하나(∧/∨), 아니면 위아래 쐐기 한 쌍. 줄기 없이 쐐기만 써서 작은 크기에서도 가볍다.
+export function SortIcon({ active, direction, ...props }: { active: boolean; direction: 'asc' | 'desc' } & SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      {!active ? (
+        <>
+          <path d="m8 9 4-4 4 4" />
+          <path d="m8 15 4 4 4-4" />
+        </>
+      ) : direction === 'asc' ? (
+        <path d="m6 15 6-6 6 6" />
+      ) : (
+        <path d="m6 9 6 6 6-6" />
+      )}
     </svg>
   )
 }

@@ -4,6 +4,7 @@ import { usePersistedState } from './usePersistedState'
 import { useLocalPersistedState } from './useLocalPersistedState'
 import { GUEST_DEFAULTS, MEMBER_DEFAULTS, settingDefaultsFor } from '@/utils/settingDefaults'
 import type { HeatmapKey } from '@/utils/heatmapNames'
+import { useNxtOnlyWindow } from '@/hooks/useNxtOnlyWindow'
 import { usePageSetting } from './usePageSetting'
 import { useRouteAwareMarket } from './useRouteAwareMarket'
 import { useIsLoggedIn, useSession } from './useSession'
@@ -114,10 +115,10 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
   // 비로그인은 저장값이 true여도 거래소 분류(false)로 고정한다 — MARKETRY 분류는 로그인이 필요하다.
   const [storedIsCustom, setStoredIsCustom] = usePageSetting('marketMap.isCustom', defaults.isCustom)
   const isCustom = isLoggedIn ? storedIsCustom : false
-  // NXT 종목만 보기 — 거래소 분류에서는 NXT 히트맵 선택이 이 값을 켜고, MARKETRY(내 분류)에서는 설정의 "NXT 종목만 보기"
-  // 스위치로 켠다. 두 경우 모두 분류는 그대로 두고 NXT 거래 종목만 남긴다.
-  const [storedNxtOnly, setStoredNxtOnly] = usePageSetting('marketMap.nxtOnly', false)
-  const nxtOnly = storedNxtOnly
+  // NXT 종목만 보기 — 어느 히트맵(거래소/MARKETRY)이든 시간대가 정한다. NXT 단독 시간대(08:00~08:50, 15:40~16:00)에만
+  // 분류는 그대로 두고 NXT 거래 종목만 남기고, 그 밖의 시간에는 전체 종목을 보여준다. 사용자가 직접 켜고 끄지 않는다.
+  const nxtOnlyWindow = useNxtOnlyWindow()
+  const nxtOnly = nxtOnlyWindow !== null
   const heatmap: HeatmapKey = isCustom ? 'marketry' : nxtOnly ? 'nxt' : 'krx'
   // 섹터 랭킹/강세 업종 계산에 쓰는 평균 방식은 박스 크기 비율과 별도로 저장한다.
   const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', defaults.avgChangeRateUseSimple)
@@ -283,12 +284,14 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     [isCustom, isLoggedIn, sectorFilterEnabled, excludedSectorNames],
   )
 
+  // 거래소(KRX·NXT) 분류는 대분류(0)만 있다. 2-2 업종 등락 방향의 단계도 저장값은 두고 여기서만 따라간다.
+  const effectiveSectorChangeDepth = heatmap === 'marketry' ? sectorChangeDepth : Math.min(sectorChangeDepth, 0)
   const directionFilters = useMemo(() => ({
     stockChangeFilter: pathname.startsWith('/map/') ? stockChangeFilter : 'all' as StockChangeFilter,
     sectorChangeFilter: pathname.startsWith('/map/') ? sectorChangeFilter : 'all' as SectorChangeFilter,
-    sectorChangeDepth,
+    sectorChangeDepth: effectiveSectorChangeDepth,
     sectorUseSimpleAverage: selectedDepthMetric === 'simpleAvgChangeRate',
-  }), [pathname, stockChangeFilter, sectorChangeFilter, sectorChangeDepth, selectedDepthMetric])
+  }), [pathname, stockChangeFilter, sectorChangeFilter, effectiveSectorChangeDepth, selectedDepthMetric])
 
   const { filteredRootNodes, availableMaxDepth } = useFilteredMarketMapTree(
     rootNodes,
@@ -320,13 +323,20 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
 
   // 선호 업종 라디오의 활성 상한은 업종 단계 설정을 따른다. 대/중/소분류 설정은 데이터가 얕아도
   // 미리 선택할 수 있게 두고, 현재 데이터에 해당 섹터가 없으면 강조 대상만 빈 Set으로 둔다.
-  const topPickMaxSelectableDepth = maxDepth === null ? Math.max(3, availableMaxDepth) : maxDepth
+  // 거래소(KRX·NXT) 분류는 대분류만 있어서, MARKETRY에서 중·소분류로 골라 둔 값은 저장은 그대로 두고
+  // 여기서만 대분류로 따라간다(1-1 업종 표시 단계와 같은 한계). MARKETRY로 돌아오면 원래 값이 살아난다.
+  const classificationMaxDepth = heatmap === 'marketry' ? null : 1
+  const topPickMaxSelectableDepth = Math.min(
+    maxDepth === null ? Math.max(3, availableMaxDepth) : maxDepth,
+    classificationMaxDepth ?? Number.POSITIVE_INFINITY,
+  )
+  const effectiveTopPickDepth = classificationMaxDepth === null ? topPickDepth : Math.min(topPickDepth, classificationMaxDepth - 1)
   const topPickSectorKeys = useMemo(() => {
-    if (!topPickEnabled || topPickDepth < 0 || topPickDepth >= topPickMaxSelectableDepth) {
+    if (!topPickEnabled || effectiveTopPickDepth < 0 || effectiveTopPickDepth >= topPickMaxSelectableDepth) {
       return new Set<string>()
     }
 
-    const candidates = collectSectorsAtDepth(filteredRootNodes, topPickDepth)
+    const candidates = collectSectorsAtDepth(filteredRootNodes, effectiveTopPickDepth)
       .map((node, index) => ({ node, index, average: topPickAverage(node, selectedDepthMetric) }))
       .filter((candidate): candidate is { node: FilteredMarketMapSectorNode; index: number; average: number } => {
         return candidate.average !== null
@@ -342,7 +352,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     filteredRootNodes,
     topPickEnabled,
     selectedTopPickCount,
-    topPickDepth,
+    effectiveTopPickDepth,
     topPickMaxSelectableDepth,
   ])
 
@@ -594,16 +604,14 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     setStoredIsCustom(prev => !prev)
   }
 
-  const handleToggleNxtOnly = () => setStoredNxtOnly(prev => !prev)
-
-  // 히트맵 선택(KRX / NXT / MARKETRY). MARKETRY는 로그인이 필요하고, KRX와 NXT는 거래소 분류를 같이 쓰며 NXT만 종목을 거른다.
+  // 히트맵 선택(거래소 / MARKETRY). MARKETRY는 로그인이 필요하다. 거래소는 KRX·NXT를 합친 한 칸이고, 시간대에 따라
+  // NXT 거래 종목만 남길지 자동으로 정한다(heatmap 값은 그 결과로 'krx' 또는 'nxt'가 된다).
   const handleSelectHeatmap = (next: HeatmapKey) => {
     if (next === 'marketry' && !isLoggedIn) {
       requireLogin(pathname)
       return
     }
     setStoredIsCustom(next === 'marketry')
-    setStoredNxtOnly(next === 'nxt')
   }
 
   const handleChangeActiveDepthMetric = (metric: DepthMetric) => setStoredDepthMetric(metric)
@@ -643,7 +651,6 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     heatmap,
     onSelectHeatmap: handleSelectHeatmap,
     nxtOnly,
-    onToggleNxtOnly: handleToggleNxtOnly,
     maxDepth: selectedMaxDepth,
     sectorLevelEnabled,
     onToggleSectorLevel: () => setSectorLevelEnabled(prev => !prev),
@@ -656,7 +663,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     depthMetricMinIndex: depthMetricClampedMinIndex,
     depthMetricMaxIndex: depthMetricClampedMaxIndex,
     onChangeDepthMetricRange: handleChangeDepthMetricRange,
-    topPickDepth,
+    topPickDepth: effectiveTopPickDepth,
     topPickCount: selectedTopPickCount,
     topPickEnabled,
     onToggleTopPick: () => setTopPickEnabled(prev => !prev),
@@ -724,6 +731,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     market,
     isCustom,
     nxtOnly,
+    nxtOnlyWindow,
     heatmap,
     data,
     refetchMarketMap,
@@ -738,7 +746,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean }) {
     onChangeStockChangeFilter: setStockChangeFilter,
     sectorChangeFilter,
     onChangeSectorChangeFilter: setSectorChangeFilter,
-    sectorChangeDepth,
+    sectorChangeDepth: effectiveSectorChangeDepth,
     onChangeSectorChangeDepth: setSectorChangeDepth,
     availableMaxDepth,
     // 선택한 업종 단계는 KRX와 MARKETRY 히트맵에 동일하게 적용한다.

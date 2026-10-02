@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useMemo, useState } from 'react'
 import { DndContext, DragOverlay, type DragEndEvent, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import type { SectorItem } from '@/types/api'
 import { useCreateSector, useRenameSector } from '@/hooks/useMarketMapCustom'
@@ -7,11 +6,12 @@ import { useSectorDeleteFlow } from '@/hooks/useSectorDeleteFlow'
 import { useSectorDragEnd } from '@/hooks/useSectorDragEnd'
 import { halfOverlapCollisionDetection } from '@/utils/dndCollision'
 import { charTier } from '@/utils/koreanSort'
+import { toCount } from '@/utils/format'
+import { SearchBar } from '@/components/ReadOnlyHeatmapSheet'
 import { CheckIcon, CloseIcon, CollapseAllIcon, EditIcon, ExpandAllIcon, PlusIcon, TrashIcon } from '@/components/icons/MarketMapIcons'
 
 interface Props {
   sectors: SectorItem[]
-  toolbarContainer: HTMLDivElement | null
 }
 
 // 루트 섹터를 몇 개 컬럼으로 나눠서 나란히 보여줄지 — 전체펼치기 시 한 컬럼이 과도하게
@@ -139,7 +139,8 @@ function DroppableSectorRow({
   )
 }
 
-export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
+export default function AdminSectorTable({ sectors }: Props) {
+  const [query, setQuery] = useState('')
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
   const [newName, setNewName] = useState('')
   const [childNameByParent, setChildNameByParent] = useState<Record<number, string>>({})
@@ -238,12 +239,33 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
     renameSector.mutate({ id: sector.id, name: trimmed }, { onSuccess: () => triggerHighlight(sector.id) })
   }
 
-  const rootSectors = sectors.filter(c => c.parentId === null).sort(compareSectorName)
+  // 검색 중에는 이름이 맞는 섹터와 그 조상만 남기고 전부 펼쳐서 보여준다(KRX 시트의 검색과 같은 느낌).
+  const trimmedQuery = query.trim()
+  const viewSectors = useMemo(() => {
+    if (!trimmedQuery) return sectors
+    const keep = new Set<number>()
+    const byId = new Map(sectors.map(c => [c.id, c]))
+    for (const sector of sectors) {
+      if (!sector.name.includes(trimmedQuery)) continue
+      let current: SectorItem | undefined = sector
+      while (current && !keep.has(current.id)) {
+        keep.add(current.id)
+        current = current.parentId === null ? undefined : byId.get(current.parentId)
+      }
+    }
+    return sectors.filter(c => keep.has(c.id))
+  }, [sectors, trimmedQuery])
+  const viewExpandedIds = useMemo(
+    () => (trimmedQuery ? new Set(viewSectors.filter(c => viewSectors.some(x => x.parentId === c.id)).map(c => c.id)) : expandedIds),
+    [trimmedQuery, viewSectors, expandedIds],
+  )
+
+  const rootSectors = viewSectors.filter(c => c.parentId === null).sort(compareSectorName)
   const columnSize = Math.ceil(rootSectors.length / ROOT_COLUMN_COUNT)
   const columnRoots = Array.from({ length: ROOT_COLUMN_COUNT }, (_, i) =>
     rootSectors.slice(i * columnSize, (i + 1) * columnSize),
   )
-  const columnRows = columnRoots.map(roots => buildRowsForRoots(sectors, roots, expandedIds, addingChildFor))
+  const columnRows = columnRoots.map(roots => buildRowsForRoots(viewSectors, roots, viewExpandedIds, addingChildFor))
 
   const rootIndexById = new Map<number, number>()
   rootSectors.forEach((c, i) => rootIndexById.set(c.id, i + 1))
@@ -406,31 +428,37 @@ export default function AdminSectorTable({ sectors, toolbarContainer }: Props) {
       }}
     >
       <div className="flex min-h-0 flex-1 flex-col">
-        {toolbarContainer ? createPortal(
-          <div className="ml-2 flex items-center gap-2">
-            <button type="button" aria-label="전체 펼치기" title="전체 펼치기" onClick={handleExpandAll} className={ICON_BUTTON_CLASS}>
-              <ExpandAllIcon className="h-4 w-4" />
-            </button>
-            <button type="button" aria-label="전체 접기" title="전체 접기" onClick={handleCollapseAll} className={ICON_BUTTON_CLASS}>
-              <CollapseAllIcon className="h-4 w-4" />
-            </button>
-            {/* 최상위 섹터 추가 — 드롭다운과 같은 높이(h-7)에 10글자 정도 폭만 차지한다. */}
-            <input
-              type="text"
-              maxLength={MAX_SECTOR_NAME_LENGTH}
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCreate()}
-              placeholder="섹터 추가"
-              aria-label="최상위 섹터 이름"
-              className="ml-2 h-7 w-40 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-medium text-white outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-[var(--brand)]"
-            />
-            <button type="button" aria-label="섹터 추가" title="추가" onClick={handleCreate} className={ICON_BUTTON_CLASS}>
-              <PlusIcon className="h-4 w-4" />
-            </button>
-          </div>,
-          toolbarContainer,
-        ) : null}
+        <SearchBar
+          query={query}
+          onChange={setQuery}
+          placeholder="섹터 검색"
+          ariaLabel="섹터 검색"
+          countLabel={`${toCount(viewSectors.length)}/${toCount(sectors.length)}섹터`}
+          extra={
+            <div className="flex items-center gap-2">
+              <button type="button" aria-label="전체 펼치기" title="전체 펼치기" onClick={handleExpandAll} className={ICON_BUTTON_CLASS}>
+                <ExpandAllIcon className="h-4 w-4" />
+              </button>
+              <button type="button" aria-label="전체 접기" title="전체 접기" onClick={handleCollapseAll} className={ICON_BUTTON_CLASS}>
+                <CollapseAllIcon className="h-4 w-4" />
+              </button>
+              {/* 최상위 섹터 추가 — 드롭다운과 같은 높이(h-7)에 10글자 정도 폭만 차지한다. */}
+              <input
+                type="text"
+                maxLength={MAX_SECTOR_NAME_LENGTH}
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                placeholder="섹터 추가"
+                aria-label="최상위 섹터 이름"
+                className="ml-2 h-7 w-40 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-medium text-white outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-[var(--brand)]"
+              />
+              <button type="button" aria-label="섹터 추가" title="추가" onClick={handleCreate} className={ICON_BUTTON_CLASS}>
+                <PlusIcon className="h-4 w-4" />
+              </button>
+            </div>
+          }
+        />
         {isDraggingSector && (
           <p className="px-2 py-2 text-sm text-[var(--brand)]">다른 섹터 위에 놓으면 그 밑으로, 빈 곳에 놓으면 최상위로 이동합니다</p>
         )}
