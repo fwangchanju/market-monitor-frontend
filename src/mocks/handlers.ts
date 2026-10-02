@@ -9,16 +9,57 @@ const stockHistory = <T>(stockCode: string | null, items: T[], latestSnapshotTim
   items,
 })
 const ok = () => HttpResponse.json({})
-const anonymousSession = () => HttpResponse.json({ authenticated: false, userId: null, email: null, role: null })
+const anonymousSession = () =>
+  HttpResponse.json({
+    authenticated: false,
+    userId: null,
+    email: null,
+    role: null,
+    nickname: null,
+    profileImageVersion: null,
+  })
 const authenticatedSession = () =>
   HttpResponse.json({
     authenticated: true,
     userId: data.mockAuth.userId,
     email: data.mockAuth.email,
     role: data.mockAuth.role,
+    nickname: data.mockProfile.nickname,
+    profileImageVersion: data.mockProfile.imageVersion,
+  })
+const profileResponse = () =>
+  HttpResponse.json({
+    nickname: data.mockProfile.nickname,
+    hasImage: data.mockProfile.image !== null,
+    imageVersion: data.mockProfile.imageVersion,
   })
 
 export const handlers = [
+  // ── 프로필(닉네임·사진) ───────────────────────────────────────────────
+  http.get('/api/profile', () => profileResponse()),
+  http.put('/api/profile/nickname', async ({ request }) => {
+    const body = (await request.json()) as { nickname?: string }
+    data.mockProfile.nickname = body.nickname?.trim() || null
+    return profileResponse()
+  }),
+  http.put('/api/profile/image', async ({ request }) => {
+    const form = await request.formData()
+    const file = form.get('file')
+    if (!(file instanceof Blob)) return new HttpResponse(null, { status: 400 })
+    data.mockProfile.image = await file.arrayBuffer()
+    data.mockProfile.imageVersion = Date.now()
+    return profileResponse()
+  }),
+  http.delete('/api/profile/image', () => {
+    data.mockProfile.image = null
+    data.mockProfile.imageVersion = null
+    return new HttpResponse(null, { status: 204 })
+  }),
+  http.get('/api/profile/image', () =>
+    data.mockProfile.image === null
+      ? new HttpResponse(null, { status: 404 })
+      : new HttpResponse(data.mockProfile.image, { headers: { 'Content-Type': 'image/jpeg' } }),
+  ),
   // ── 인증(가입/로그인 전환) ────────────────────────────────────────────
   // 실제 Google OAuth 대신, dev:mock에서는 이 요청 자체를 "로그인 성공"으로 취급하고 곧바로
   // returnTo로 리다이렉트한다 — LoginModal의 <a href>가 실제 페이지 이동을 트리거하므로 여기서도

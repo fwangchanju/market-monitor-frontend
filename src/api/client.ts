@@ -20,7 +20,14 @@ let refreshPromise: Promise<AuthSessionResponse> | null = null
 let lastRefreshAt = 0
 
 export function markSessionAnonymous() {
-  queryClient.setQueryData(authKeys.session(), { authenticated: false, userId: null, email: null, role: null })
+  queryClient.setQueryData(authKeys.session(), {
+    authenticated: false,
+    userId: null,
+    email: null,
+    role: null,
+    nickname: null,
+    profileImageVersion: null,
+  })
 }
 
 export function getLastRefreshAt() {

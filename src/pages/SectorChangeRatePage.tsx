@@ -7,7 +7,7 @@ import SettingsSidebar, { SettingsAverageModeSection, SettingsBeforeMinutesSecti
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Spinner from '@/components/Spinner'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
-import accountAvatar from '@/assets/account_avatar.png'
+import ProfileAvatar from '@/components/ProfileAvatar'
 import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
@@ -233,7 +233,7 @@ export default function SectorChangeRatePage() {
   // 지도 페이지 상단 바와 동일하게 점 대신 프로필 사진을 둔다. 24px 모서리가 둥근 사각형이다.
   const modeStatusText = (
     <span className="flex items-center">
-      <img src={accountAvatar} alt="" className="mr-[7px] size-6 shrink-0 object-cover" />
+      <ProfileAvatar className="mr-[7px] size-6 shrink-0 object-cover" />
       <span className="text-gray-400">{settingsModalProps.isCustom ? (nxtOnly ? 'MARKETRY · NXT' : 'MARKETRY') : nxtOnly ? 'NXT' : '거래소'}</span>
     </span>
   )

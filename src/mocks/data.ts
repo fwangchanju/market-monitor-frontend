@@ -387,6 +387,13 @@ export const mockAuth: { authenticated: boolean; userId: number; email: string; 
   role: 'USER',
 }
 
+// GET/PUT /profile/** 목업 — 사진은 올린 바이트를 그대로 들고 있다가 GET /profile/image로 돌려준다.
+export const mockProfile: { nickname: string | null; image: ArrayBuffer | null; imageVersion: number | null } = {
+  nickname: null,
+  image: null,
+  imageVersion: null,
+}
+
 // GET/PUT /custom/preferences 목업 — 사용자가 바꾼 값만 담기는 sparse JSON.
 export const mockCustomPreferences: Record<string, unknown> = {}
 

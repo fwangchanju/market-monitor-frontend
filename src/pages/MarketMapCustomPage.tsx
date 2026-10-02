@@ -17,7 +17,7 @@ import SettingsSidebar, {
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
-import accountAvatar from '@/assets/account_avatar.png'
+import ProfileAvatar from '@/components/ProfileAvatar'
 import { ChangeRateBasisToggle, MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/MarketMapControls'
 import MarketMapLegendBar from '@/components/MarketMapLegendBar'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
@@ -240,7 +240,7 @@ export default function MarketMapCustomPage() {
   const modeStatusText = (
     <span className="flex items-center">
       {/* 거래소·MARKETRY 모두 점 대신 프로필 사진을 둔다(시험). 24px 모서리가 둥근 사각형이다. 바 높이(28px)보다 조금 작다. */}
-      <img src={accountAvatar} alt="" className="mr-[7px] size-6 shrink-0 object-cover" />
+      <ProfileAvatar className="mr-[7px] size-6 shrink-0 object-cover" />
       <span className="text-gray-400">{HEATMAP_NAMES[heatmap].title}{isCustom && nxtOnly ? ' · NXT' : ''}</span>
     </span>
   )

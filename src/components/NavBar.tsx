@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useSession, useLogout, useSessionKeepAlive, useLocalDevLogin } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
-import accountAvatar from '@/assets/account_avatar.png'
+import ProfileAvatar from '@/components/ProfileAvatar'
 import marketryLogo from '@/assets/marketry-logo.png'
 
 // 모든 페이지에서 항상 똑같이 고정되는 최상단 바 — 홈 이동과 로그인 상태/프로필 메뉴를 담당한다.
@@ -74,7 +74,7 @@ export default function NavBar({ hideAccount = false }: { hideAccount?: boolean 
           onClick={() => setIsProfileMenuOpen(open => !open)}
           className="relative -top-[2.5px] mr-[9px] size-[38px] overflow-hidden rounded-[12%] ring-2 ring-transparent hover:ring-zinc-400 focus-visible:outline-none focus-visible:ring-[var(--accent)]"
         >
-          <img src={accountAvatar} alt="" className="size-full object-cover" />
+          <ProfileAvatar className="size-full object-cover" />
         </button>
         {isProfileMenuOpen && (
           <div className="absolute right-0 top-full z-30 w-64 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-800 py-2 text-white shadow-xl">
@@ -83,9 +83,9 @@ export default function NavBar({ hideAccount = false }: { hideAccount?: boolean 
             ) : session?.authenticated ? (
               <>
                 <div className="flex items-center gap-3 border-b border-zinc-700 px-4 py-3 text-sm">
-                  <img src={accountAvatar} alt="" className="size-10 shrink-0 object-cover" />
+                  <ProfileAvatar className="size-10 shrink-0 object-cover" />
                   <div className="min-w-0">
-                    <p className="font-semibold">내 계정</p>
+                    <p className="truncate font-semibold">{session.nickname || '내 계정'}</p>
                     <p className="mt-1 truncate text-zinc-400">{session.email || `사용자 ${session.userId}`}</p>
                   </div>
                 </div>
