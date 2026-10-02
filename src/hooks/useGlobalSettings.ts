@@ -1,15 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { usePersistedState } from './usePersistedState'
-import { useLocalPersistedState } from './useLocalPersistedState'
-import { GUEST_DEFAULTS, MEMBER_DEFAULTS, settingDefaultsFor } from '@/utils/settingDefaults'
+import { MEMBER_DEFAULTS, settingDefaultsFor } from '@/utils/settingDefaults'
 import type { HeatmapKey } from '@/utils/heatmapNames'
 import { useNxtOnlyWindow } from '@/hooks/useNxtOnlyWindow'
 import { isAfterHoursSelectable as isAfterHoursSelectableAt } from '@/utils/tradingWindow'
 import type { ChangeRateBasis } from '@/api/marketMap'
 import { usePageSetting } from './usePageSetting'
 import { useRouteAwareMarket } from './useRouteAwareMarket'
-import { useIsLoggedIn, useSession } from './useSession'
+import { useIsLoggedIn } from './useSession'
 import { useLoginGate } from './useLoginGate'
 import { useMarketMap } from './useMarketMap'
 import { useMarketMapColorScale } from './useMarketMapColorScale'
@@ -212,48 +211,15 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   const [topPickCount, setTopPickCount] = usePageSetting('marketMap.topPickCount', defaults.topPickCount)
   const [topPickEnabled, setTopPickEnabled] = usePageSetting('marketMap.topPickEnabled', topPickCount !== 0)
   const selectedTopPickCount = topPickCount || 2
-  // 핀 — 켜 두면(기본) 설정창을 지도 옆에 고정해서(지도를 밀어냄) 계속 열어 두고, 끄면 지도 위에 띄워서 밖을 누를 때 닫는다.
-  // 로그인 사용자는 핀 선택을 이 브라우저에 기억하고, 페이지에 들어올 때 설정창을 열지 닫을지도 이 값을 따른다(고정=열림, 해제=닫힘).
-  // 비로그인 사용자는 기억하지 않는다 — 항상 "열림 + 핀 켜짐"으로 시작하고, 핀을 꺼도 이번 화면에서만 적용된다.
-  const { isLoading: isSessionLoading } = useSession()
-  const [storedSettingsPinned, setStoredSettingsPinned] = useLocalPersistedState('settings.sidebarPinned', MEMBER_DEFAULTS.sidebarPinned)
-  const [guestSettingsPinned, setGuestSettingsPinned] = useState(GUEST_DEFAULTS.sidebarPinned)
-  const isSettingsPinned = isLoggedIn ? storedSettingsPinned : guestSettingsPinned
-  const [isSettingsOpen, setIsSettingsOpen] = useState(isSettingsPinned)
+  // 설정 사이드바 열림 상태. 페이지 진입 시 기본으로 연다.
+  const [isSettingsOpen, setIsSettingsOpen] = useState(true)
   const previousPathnameRef = useRef(pathname)
-  const isSettingsPinnedRef = useRef(isSettingsPinned)
-  useEffect(() => {
-    isSettingsPinnedRef.current = isSettingsPinned
-  })
-
-  // 세션 조회가 끝나기 전에는 비로그인으로 보여서 일단 열린 채로 시작한다. 조회가 끝나 로그인 사용자로 확인되면
-  // 그때 한 번 저장된 핀 선택(해제였다면 닫힘)을 반영한다.
-  const sessionSettledRef = useRef(!isSessionLoading)
-  useEffect(() => {
-    if (sessionSettledRef.current || isSessionLoading) return
-    sessionSettledRef.current = true
-    setIsSettingsOpen(isSettingsPinnedRef.current)
-  }, [isSessionLoading])
 
   useEffect(() => {
     if (previousPathnameRef.current === pathname) return
     previousPathnameRef.current = pathname
-    setIsSettingsOpen(isSettingsPinnedRef.current)
+    setIsSettingsOpen(true)
   }, [pathname])
-
-  // 핀이 꺼져(떠 있는 상태) 있을 때 설정창 밖을 누르면 닫는다. 위쪽 설정 버튼은 제외한다 — 그 버튼 자체가 열고 닫는 토글이라서
-  // 포함하면 닫혔다가 바로 다시 열린다. pointerdown을 캡처 단계에서 받아 지도 박스 등이 이벤트를 막아도 닫힌다.
-  useEffect(() => {
-    if (!isSettingsOpen || isSettingsPinned) return
-    const closeOnOutsidePress = (event: PointerEvent) => {
-      const target = event.target
-      if (!(target instanceof Element)) return
-      if (target.closest('[data-settings-sidebar], [data-settings-toggle]')) return
-      setIsSettingsOpen(false)
-    }
-    document.addEventListener('pointerdown', closeOnOutsidePress, true)
-    return () => document.removeEventListener('pointerdown', closeOnOutsidePress, true)
-  }, [isSettingsOpen, isSettingsPinned])
   // 새로 받아온 (market, isCustom) 조합의 데이터가 처음 도착했을 때만 서버 isExcluded로 시드하고,
   // 그 뒤 60초 백그라운드 재조회가 로컬에서 방금 토글한 상태를 덮어쓰지 않게 한다(fire-and-forget 저장이라
   // 서버 반영 전에 재조회가 먼저 도착할 수 있음).
@@ -714,8 +680,6 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     legendSwatches,
     isOpen: isSettingsOpen,
     onOpenChange: setIsSettingsOpen,
-    isPinned: isSettingsPinned,
-    onTogglePinned: () => (isLoggedIn ? setStoredSettingsPinned : setGuestSettingsPinned)(prev => !prev),
   }
 
   const colorEditorPanelProps =

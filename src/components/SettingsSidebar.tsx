@@ -1785,9 +1785,6 @@ interface Props {
   onChangeBoxSizeMarketCapRatio?: (value: number) => void
   // 지도 페이지의 현재/전체 종목 수를 제목 바로 옆에 표시한다.
   stockCountLabel?: string
-  // 핀 — 켜 두면(기본) 지도 옆에 고정(지도를 밀어냄)하고, 끄면 지도 위에 띄운다(밖을 누르면 닫힘). 넘기지 않은 페이지는 기존처럼 닫기(✕) 버튼을 보여준다.
-  isPinned?: boolean
-  onTogglePinned?: () => void
   // 북마크 기능 — 둘 다 넘긴 페이지에서만 항목 옆 북마크 버튼과 북마크 탭 내용이 동작한다.
   bookmarks?: readonly string[]
   onToggleBookmark?: (id: SettingsBookmarkId) => void
@@ -1823,8 +1820,6 @@ export default function SettingsSidebar({
   boxSizeMarketCapRatio,
   onChangeBoxSizeMarketCapRatio,
   stockCountLabel,
-  isPinned,
-  onTogglePinned,
   bookmarks,
   onToggleBookmark,
   bookmarkLoginRequired = false,
@@ -1897,10 +1892,7 @@ export default function SettingsSidebar({
   return (
     <div
       data-settings-sidebar
-      // 핀을 끈 상태는 자리를 차지하지 않고 지도 위에 띄운다 — 부모(지도 영역)가 relative라서 오른쪽 끝에 붙는다.
-      className={`tabular-nums flex w-72 shrink-0 flex-col overflow-hidden rounded-md border border-gray-500 bg-[#363639] ${
-        onTogglePinned && !isPinned ? 'absolute bottom-0 right-0 top-0 z-40 shadow-2xl' : ''
-      }`}
+      className="tabular-nums flex w-72 shrink-0 flex-col overflow-hidden rounded-md border border-gray-500 bg-[#363639]"
       style={{ '--accent': '#d1d5db', '--accent-hover': '#f3f4f6', '--accent-light': '#d1d5db' } as CSSProperties}
     >
       <div className="flex shrink-0 items-center border-b border-gray-500 px-4 pt-4 pb-3">
@@ -1912,31 +1904,16 @@ export default function SettingsSidebar({
             </span>
           )}
         </div>
-        {onTogglePinned ? (
-          <button
-            type="button"
-            onClick={onTogglePinned}
-            aria-label={isPinned ? '고정 해제' : '고정'}
-            aria-pressed={Boolean(isPinned)}
-            className={`ml-auto mr-[6px] flex h-5 w-5 shrink-0 items-center justify-center border-0 bg-transparent p-0 ${isPinned ? 'text-[var(--brand)]' : 'text-gray-400 hover:text-white'}`}
-          >
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 17v5" />
-              <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
-            </svg>
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              onOpenChange(false)
-            }}
-            aria-label="닫기"
-            className="ml-auto mr-2 shrink-0 border-0 bg-transparent text-xl text-gray-400 hover:text-white"
-          >
-            ✕
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => {
+            onOpenChange(false)
+          }}
+          aria-label="닫기"
+          className="ml-auto mr-2 shrink-0 border-0 bg-transparent text-xl text-gray-400 hover:text-white"
+        >
+          ✕
+        </button>
       </div>
       {plainContent && (
         <div className="settings-section-list settings-sidebar-tab-content min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-8 text-sm">

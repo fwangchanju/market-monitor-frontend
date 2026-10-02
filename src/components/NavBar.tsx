@@ -72,7 +72,7 @@ export default function NavBar({ hideAccount = false }: { hideAccount?: boolean 
           aria-label={isProfileMenuOpen ? '계정 메뉴 닫기' : '계정 메뉴 열기'}
           aria-expanded={isProfileMenuOpen}
           onClick={() => setIsProfileMenuOpen(open => !open)}
-          className="size-9 overflow-hidden rounded-full ring-2 ring-transparent hover:ring-zinc-400 focus-visible:outline-none focus-visible:ring-[var(--accent)]"
+          className="relative -top-[2.5px] mr-1.5 size-11 overflow-hidden rounded-[12%] ring-2 ring-transparent hover:ring-zinc-400 focus-visible:outline-none focus-visible:ring-[var(--accent)]"
         >
           <img src={accountAvatar} alt="" className="size-full object-cover" />
         </button>
@@ -83,7 +83,7 @@ export default function NavBar({ hideAccount = false }: { hideAccount?: boolean 
             ) : session?.authenticated ? (
               <>
                 <div className="flex items-center gap-3 border-b border-zinc-700 px-4 py-3 text-sm">
-                  <img src={accountAvatar} alt="" className="size-10 shrink-0 rounded-full object-cover" />
+                  <img src={accountAvatar} alt="" className="size-10 shrink-0 object-cover" />
                   <div className="min-w-0">
                     <p className="font-semibold">내 계정</p>
                     <p className="mt-1 truncate text-zinc-400">{session.email || `사용자 ${session.userId}`}</p>

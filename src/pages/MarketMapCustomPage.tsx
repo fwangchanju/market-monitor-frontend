@@ -237,11 +237,11 @@ export default function MarketMapCustomPage() {
 
   // 상단 바는 현재 히트맵을 점등 표시로 보여준다. 종목 수는 설정 사이드바에 표시한다.
   const modeStatusText = (
-    <>
-      {/* 거래소·MARKETRY 모두 점 대신 프로필 사진을 둔다(시험). 28px 원이다. 바 높이(28px)와 같아서 바 안에 딱 맞는다. */}
-      <img src={accountAvatar} alt="" className="mr-1.5 inline-block size-7 shrink-0 rounded-full object-cover" />
+    <span className="flex items-center">
+      {/* 거래소·MARKETRY 모두 점 대신 프로필 사진을 둔다(시험). 24px 모서리가 둥근 사각형이다. 바 높이(28px)보다 조금 작다. */}
+      <img src={accountAvatar} alt="" className="mr-[7px] size-6 shrink-0 object-cover" />
       <span className="text-gray-400">{HEATMAP_NAMES[heatmap].title}{isCustom && nxtOnly ? ' · NXT' : ''}</span>
-    </>
+    </span>
   )
 
   // market은 이제 useGlobalSettings(useRouteAwareMarket)가 경로/쿼리를 반영해서 매 렌더 계산해준다 —
@@ -452,7 +452,7 @@ export default function MarketMapCustomPage() {
                 />
                 <MarketMapPeriodCombobox />
                 {data?.snapshotTime && (
-                  <span className={`${FONT_BAR_TIME} ml-1 flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
+                  <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
                     <span>{toMarketMapSnapshotDateLabel(data.snapshotTime)}</span>
                     <span>{toMarketMapSnapshotTimeOnlyLabel(data.snapshotTime)}</span>
                   </span>
@@ -539,124 +539,130 @@ export default function MarketMapCustomPage() {
                   {stockChangeFilter === 'all' && sectorChangeFilter === 'all' ? '데이터가 없습니다' : '선택한 방향 조건에 해당하는 종목이 없습니다'}
                 </div>
               ) : (
-                <MarketMapTreemap
-                  groups={groups}
-                  selfSectorName={isFullyFlattened ? FLAT_GROUP_NAME : (currentNode?.sectorName ?? null)}
-                  depth={path.length}
-                  onSelectSector={enterSector}
-                  onExcludeSector={handleExcludeSector}
-                  heightClassName="min-h-0 flex-1"
-                  marketValueDepthRange={marketValueDepthRange}
-                  weightedAvgDepthRange={weightedAvgDepthRange}
-                  simpleAvgDepthRange={simpleAvgDepthRange}
-                  upDownCountDepthRange={upDownCountDepthRange}
-                  boxSizeMarketCapRatio={boxSizeMarketCapRatio}
-                  canExclude={isCustom || !isLoggedIn}
-                  colorScale={colorScale}
-                  labelMinAreaPercent={boxLabelMinAreaPercent}
-                  stockLabelMode={stockLabelMode}
-                  stockPopupOnHover={stockPopupOnHover}
-                  decimalPlaces={decimalPlaces}
-                  topPickSectorKeys={topPickSectorKeys}
-                  strongIndustryColor={strongIndustryColor}
-                  zoomOutRequestDepth={zoomOutRequestDepth}
-                  onZoomOutComplete={handleZoomOutComplete}
-                />
+                <div className="flex min-h-0 flex-1 flex-col px-2">
+                  {/* 양옆 여백 8px — 위 바의 드롭박스가 왼쪽 끝에서 떨어진 만큼(pl-2)과 같다. */}
+                  <MarketMapTreemap
+                    groups={groups}
+                    selfSectorName={isFullyFlattened ? FLAT_GROUP_NAME : (currentNode?.sectorName ?? null)}
+                    depth={path.length}
+                    onSelectSector={enterSector}
+                    onExcludeSector={handleExcludeSector}
+                    heightClassName="min-h-0 flex-1"
+                    marketValueDepthRange={marketValueDepthRange}
+                    weightedAvgDepthRange={weightedAvgDepthRange}
+                    simpleAvgDepthRange={simpleAvgDepthRange}
+                    upDownCountDepthRange={upDownCountDepthRange}
+                    boxSizeMarketCapRatio={boxSizeMarketCapRatio}
+                    canExclude={isCustom || !isLoggedIn}
+                    colorScale={colorScale}
+                    labelMinAreaPercent={boxLabelMinAreaPercent}
+                    stockLabelMode={stockLabelMode}
+                    stockPopupOnHover={stockPopupOnHover}
+                    decimalPlaces={decimalPlaces}
+                    topPickSectorKeys={topPickSectorKeys}
+                    strongIndustryColor={strongIndustryColor}
+                    zoomOutRequestDepth={zoomOutRequestDepth}
+                    onZoomOutComplete={handleZoomOutComplete}
+                  />
+                </div>
               )}
               {/* 등락률 색상 범례 — 지도 아래 오른쪽(설정창 왼쪽)에 오른쪽 끝에 붙여 둔다. 이 줄만큼 지도 아래쪽이 올라온다. */}
-              <div className="flex h-7 shrink-0 items-center justify-end pl-3">
+              <div className="flex h-7 shrink-0 items-end justify-end pl-3 pr-2">
                 <MarketMapLegendBar swatches={settingsModalProps.legendSwatches} />
               </div>
               </div>
             </div>
           </div>
-          <SettingsSidebar
-            {...settingsModalProps}
-            boxSizeMarketCapRatio={boxSizeMarketCapRatio}
-            onChangeBoxSizeMarketCapRatio={onChangeBoxSizeMarketCapRatio}
-            pageLabel="지도"
-            sectionOrder={MAP_SETTINGS_SECTION_ORDER}
-            classificationAtBottom
-            snapshotTime={data?.classificationUpdatedAt}
-            stockCountLabel={`${toCount(visibleItems.length)}/${toCount(totalItemCount)}종목`}
-            bookmarks={settingsBookmarks}
-            onToggleBookmark={toggleSettingsBookmark}
-            bookmarkLoginRequired={!isLoggedIn}
-            onRequestLogin={() => requireLogin(`${pathname}${search}${hash}`)}
-            onSelectHeatmap={next => {
-              settingsModalProps.onSelectHeatmap(next)
-              reset()
-            }}
-          >
-            <SettingsSidebarGroup section="composition">
-              <SettingsMarketValueSection {...settingsModalProps} showDivider={false} />
-              <SettingsSectorChangeSection
-                value={sectorChangeFilter}
-                onChange={value => {
-                  onChangeSectorChangeFilter(value)
-                  reset()
-                }}
-                depth={sectorChangeDepth}
-                onChangeDepth={depth => {
-                  onChangeSectorChangeDepth(depth)
-                  reset()
-                }}
-                maxSelectableDepth={Math.max(1, settingsModalProps.topPickMaxSelectableDepth)}
-                noDataLimited={settingsModalProps.heatmap !== 'marketry'}
-              />
-              <SettingsStockChangeSection
-                value={stockChangeFilter}
-                onChange={value => {
-                  onChangeStockChangeFilter(value)
-                  reset()
-                }}
-              />
-              <SettingsExcludeSection {...settingsModalProps} afterStockChange />
-            </SettingsSidebarGroup>
-            <SettingsSidebarGroup section="industry">
-              <SettingsSectorLevelSection {...settingsModalProps} showTopPick showStockDisplay={false} />
-            </SettingsSidebarGroup>
-            <SettingsSidebarGroup section="stockDisplay">
-              <SettingsSectorLevelSection {...settingsModalProps} showClassification={false} showDecimalPlaces />
-            </SettingsSidebarGroup>
-            {/* 북마크 탭 — 원래 탭의 항목을 같은 순서로 다시 그리고, 북마크한 항목만 보인다. */}
-            <SettingsSidebarGroup section="favorites">
-              <SettingsSectorLevelSection {...settingsModalProps} showTopPick showStockDisplay={false} />
-              <SettingsMarketValueSection {...settingsModalProps} showDivider={false} />
-              <SettingsSectorChangeSection
-                value={sectorChangeFilter}
-                onChange={value => {
-                  onChangeSectorChangeFilter(value)
-                  reset()
-                }}
-                depth={sectorChangeDepth}
-                onChangeDepth={depth => {
-                  onChangeSectorChangeDepth(depth)
-                  reset()
-                }}
-                maxSelectableDepth={Math.max(1, settingsModalProps.topPickMaxSelectableDepth)}
-                noDataLimited={settingsModalProps.heatmap !== 'marketry'}
-              />
-              <SettingsStockChangeSection
-                value={stockChangeFilter}
-                onChange={value => {
-                  onChangeStockChangeFilter(value)
-                  reset()
-                }}
-              />
-              <SettingsStockSizeSelector marketCapRatio={boxSizeMarketCapRatio} onChangeMarketCapRatio={onChangeBoxSizeMarketCapRatio} />
-              <SettingsSectorLevelSection {...settingsModalProps} showClassification={false} showDecimalPlaces />
-              {strongIndustryColor && onChangeStrongIndustryColor && (
-                <SettingsStrongIndustryColorSection color={strongIndustryColor} onChange={onChangeStrongIndustryColor} />
-              )}
-            </SettingsSidebarGroup>
-            <SettingsSidebarGroup section="colors">
-              {strongIndustryColor && onChangeStrongIndustryColor && (
-                <SettingsStrongIndustryColorSection color={strongIndustryColor} onChange={onChangeStrongIndustryColor} />
-              )}
-              <SettingsColorSection {...settingsModalProps} colorEditorProps={colorEditorPanelProps} />
-            </SettingsSidebarGroup>
-          </SettingsSidebar>
+          {/* 설정창 위쪽 여백 7px — 위쪽 바의 누적·따로 토글 윗선과 맞춘 값이다. 아래는 붙인다. */}
+          <div className="flex shrink-0 pt-[7px]">
+            <SettingsSidebar
+              {...settingsModalProps}
+              boxSizeMarketCapRatio={boxSizeMarketCapRatio}
+              onChangeBoxSizeMarketCapRatio={onChangeBoxSizeMarketCapRatio}
+              pageLabel="지도"
+              sectionOrder={MAP_SETTINGS_SECTION_ORDER}
+              classificationAtBottom
+              snapshotTime={data?.classificationUpdatedAt}
+              stockCountLabel={`${toCount(visibleItems.length)}/${toCount(totalItemCount)}종목`}
+              bookmarks={settingsBookmarks}
+              onToggleBookmark={toggleSettingsBookmark}
+              bookmarkLoginRequired={!isLoggedIn}
+              onRequestLogin={() => requireLogin(`${pathname}${search}${hash}`)}
+              onSelectHeatmap={next => {
+                settingsModalProps.onSelectHeatmap(next)
+                reset()
+              }}
+            >
+              <SettingsSidebarGroup section="composition">
+                <SettingsMarketValueSection {...settingsModalProps} showDivider={false} />
+                <SettingsSectorChangeSection
+                  value={sectorChangeFilter}
+                  onChange={value => {
+                    onChangeSectorChangeFilter(value)
+                    reset()
+                  }}
+                  depth={sectorChangeDepth}
+                  onChangeDepth={depth => {
+                    onChangeSectorChangeDepth(depth)
+                    reset()
+                  }}
+                  maxSelectableDepth={Math.max(1, settingsModalProps.topPickMaxSelectableDepth)}
+                  noDataLimited={settingsModalProps.heatmap !== 'marketry'}
+                />
+                <SettingsStockChangeSection
+                  value={stockChangeFilter}
+                  onChange={value => {
+                    onChangeStockChangeFilter(value)
+                    reset()
+                  }}
+                />
+                <SettingsExcludeSection {...settingsModalProps} afterStockChange />
+              </SettingsSidebarGroup>
+              <SettingsSidebarGroup section="industry">
+                <SettingsSectorLevelSection {...settingsModalProps} showTopPick showStockDisplay={false} />
+              </SettingsSidebarGroup>
+              <SettingsSidebarGroup section="stockDisplay">
+                <SettingsSectorLevelSection {...settingsModalProps} showClassification={false} showDecimalPlaces />
+              </SettingsSidebarGroup>
+              {/* 북마크 탭 — 원래 탭의 항목을 같은 순서로 다시 그리고, 북마크한 항목만 보인다. */}
+              <SettingsSidebarGroup section="favorites">
+                <SettingsSectorLevelSection {...settingsModalProps} showTopPick showStockDisplay={false} />
+                <SettingsMarketValueSection {...settingsModalProps} showDivider={false} />
+                <SettingsSectorChangeSection
+                  value={sectorChangeFilter}
+                  onChange={value => {
+                    onChangeSectorChangeFilter(value)
+                    reset()
+                  }}
+                  depth={sectorChangeDepth}
+                  onChangeDepth={depth => {
+                    onChangeSectorChangeDepth(depth)
+                    reset()
+                  }}
+                  maxSelectableDepth={Math.max(1, settingsModalProps.topPickMaxSelectableDepth)}
+                  noDataLimited={settingsModalProps.heatmap !== 'marketry'}
+                />
+                <SettingsStockChangeSection
+                  value={stockChangeFilter}
+                  onChange={value => {
+                    onChangeStockChangeFilter(value)
+                    reset()
+                  }}
+                />
+                <SettingsStockSizeSelector marketCapRatio={boxSizeMarketCapRatio} onChangeMarketCapRatio={onChangeBoxSizeMarketCapRatio} />
+                <SettingsSectorLevelSection {...settingsModalProps} showClassification={false} showDecimalPlaces />
+                {strongIndustryColor && onChangeStrongIndustryColor && (
+                  <SettingsStrongIndustryColorSection color={strongIndustryColor} onChange={onChangeStrongIndustryColor} />
+                )}
+              </SettingsSidebarGroup>
+              <SettingsSidebarGroup section="colors">
+                {strongIndustryColor && onChangeStrongIndustryColor && (
+                  <SettingsStrongIndustryColorSection color={strongIndustryColor} onChange={onChangeStrongIndustryColor} />
+                )}
+                <SettingsColorSection {...settingsModalProps} colorEditorProps={colorEditorPanelProps} />
+              </SettingsSidebarGroup>
+            </SettingsSidebar>
+          </div>
         </div>
       </div>
 

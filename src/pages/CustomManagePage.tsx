@@ -200,7 +200,7 @@ export default function CustomManagePage() {
                   onSelect={next => setSearchParams(next === 'marketry' ? {} : { sheet: next })}
                 />
                 {isReadOnlySheet && (
-                  <span className="ml-3 flex items-center gap-2 text-sm font-normal text-gray-400">
+                  <span className="flex items-center gap-2 text-sm font-normal text-gray-400">
                     <span>읽기 전용</span>
                     <span aria-hidden="true">·</span>
                     <span>키움 REST API</span>
