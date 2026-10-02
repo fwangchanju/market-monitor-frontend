@@ -6,7 +6,8 @@ import { MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/M
 import SettingsSidebar, { SettingsAverageModeSection, SettingsBeforeMinutesSection } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Spinner from '@/components/Spinner'
-import accountAvatar from '@/assets/account_avatar.png'
+import DisclaimerNotice from '@/components/DisclaimerNotice'
+import ProfileAvatar from '@/components/ProfileAvatar'
 import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
@@ -232,7 +233,7 @@ export default function SectorChangeRatePage() {
   // 지도 페이지 상단 바와 동일하게 점 대신 프로필 사진을 둔다. 24px 모서리가 둥근 사각형이다.
   const modeStatusText = (
     <span className="flex items-center">
-      <img src={accountAvatar} alt="" className="mr-[7px] size-6 shrink-0 object-cover" />
+      <ProfileAvatar className="mr-[7px] size-6 shrink-0 object-cover" />
       <span className="text-gray-400">{settingsModalProps.isCustom ? (nxtOnly ? 'MARKETRY · NXT' : 'MARKETRY') : nxtOnly ? 'NXT' : '거래소'}</span>
     </span>
   )
@@ -364,7 +365,7 @@ export default function SectorChangeRatePage() {
               항상 같은 폭을 유지하게 한다(지도 페이지와 동일) — 내부 그래프가 넘치면 이 컬럼
               안에서만 처리된다. */}
           <div ref={captureRef} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black text-white">
-            <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-2 pr-3 text-sm font-bold text-white">
+            <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-3 text-sm font-bold text-white">
               <div className="flex items-center gap-2 whitespace-nowrap">
                 <MarketMapMarketCombobox
                   market={market}
@@ -392,7 +393,7 @@ export default function SectorChangeRatePage() {
                 설정 사이드바가 열려도 본문이 밀리는 게 자연스럽게 느껴지도록 한다(밀림 자체는 다른
                 페이지와 동일한 flex 구조이고, 콘텐츠가 항상 남는 공간을 꽉 채우기만 하면 된다). */}
             <div className="flex min-h-0 flex-1">
-              <div className="flex min-h-0 w-full flex-1 flex-col px-2 py-4">
+              <div className="flex min-h-0 w-full flex-1 flex-col px-[7px] py-4">
               {isLoading ? (
                 <div className="flex flex-1 items-center justify-center">
                   <Spinner />
@@ -453,6 +454,10 @@ export default function SectorChangeRatePage() {
                 </div>
               )}
               </div>
+            </div>
+            {/* 면책조항 줄 — 지도 페이지 색상 바 줄과 같은 높이(28px)로 왼쪽 아래에 둔다. */}
+            <div className="flex h-7 shrink-0 items-center px-[7px]">
+              <DisclaimerNotice />
             </div>
           </div>
           {/* 설정창 윗선을 지도 페이지와 같은 높이로 맞춘다 — 지도 페이지에서 실제로 맞춘 모양(설정창 윗선이 위쪽 바 윗선보다 3px 아래)을 따른다. 이 칸은 바보다 5.25px 위에서 시작하므로 5.25 + 3 - 1(눈으로 맞춘 보정) = 7.25px을 띄운다. 아래는 붙인다. */}

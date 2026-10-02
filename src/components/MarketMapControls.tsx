@@ -222,7 +222,7 @@ export function ChangeRateBasisToggle({ basis, selectable, onChange }: {
   }, [popup])
 
   return (
-    <div className="-mr-1 flex shrink-0 items-center gap-2 whitespace-nowrap" data-basis-toggle>
+    <div className="-mr-[5px] flex shrink-0 items-center gap-2 whitespace-nowrap" data-basis-toggle>
       {/* 지금 시장 시간대를 알려주는 말머리 — 시계와 같은 글자 크기·색이다. */}
       <span className={`${FONT_BAR_TIME} flex items-center text-gray-400`}>
         {/* 상단바의 "● KRX·NXT"와 같은 점 모양이고, 색은 시간대마다 설정창 4-1(강조 색상)의 색이다. */}

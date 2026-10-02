@@ -20,7 +20,7 @@ export default function MarketSummaryPage() {
           (SettingsSidebar)은 이 박스의 맨 오른쪽 자식으로 넣으면 같은 높이에 붙는다. */}
       <div className="relative z-10 -mt-[10.5px] flex min-h-0 flex-1 overflow-hidden bg-black text-white">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-2 pr-3 text-sm font-bold text-white">
+          <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-3 text-sm font-bold text-white">
             {/* 콘솔 줄: 드롭다운 → 스냅샷 날짜/시간 순으로 왼쪽에 배치 */}
           </div>
           <div className="flex min-h-0 flex-1">

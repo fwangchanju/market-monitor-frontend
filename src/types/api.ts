@@ -324,8 +324,19 @@ export const AuthSessionResponseSchema = z.object({
   userId: z.number().nullable(),
   email: z.string().nullable(),
   role: AuthRoleSchema.nullable(),
+  // 프로필 닉네임과 사진 버전(없으면 null). 옛 응답에는 필드가 없을 수 있어 nullish로 받는다.
+  nickname: z.string().nullish(),
+  profileImageVersion: z.number().nullish(),
 })
 export type AuthSessionResponse = z.infer<typeof AuthSessionResponseSchema>
+
+// GET/PUT /profile/** 응답 — 사진이 있으면 imageVersion(epoch 밀리초)으로 GET /profile/image?v= 주소를 만든다.
+export const ProfileResponseSchema = z.object({
+  nickname: z.string().nullable(),
+  hasImage: z.boolean(),
+  imageVersion: z.number().nullable(),
+})
+export type ProfileResponse = z.infer<typeof ProfileResponseSchema>
 
 // GET/PUT /custom/preferences — 사용자가 바꾼 값만 담는 sparse JSON. 값 형태가 키마다 달라 값 자체는
 // 검증하지 않는다.

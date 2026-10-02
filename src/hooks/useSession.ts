@@ -136,7 +136,14 @@ export function useSessionKeepAlive(authenticated: boolean) {
   }, [authenticated])
 }
 
-const ANONYMOUS_SESSION: AuthSessionResponse = { authenticated: false, userId: null, email: null, role: null }
+const ANONYMOUS_SESSION: AuthSessionResponse = {
+  authenticated: false,
+  userId: null,
+  email: null,
+  role: null,
+  nickname: null,
+  profileImageVersion: null,
+}
 
 export function useLogout() {
   const queryClient = useQueryClient()
