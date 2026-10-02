@@ -17,7 +17,9 @@ import SettingsSidebar, {
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
+import accountAvatar from '@/assets/account_avatar.png'
 import { ChangeRateBasisToggle, MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/MarketMapControls'
+import MarketMapLegendBar from '@/components/MarketMapLegendBar'
 import Spinner from '@/components/Spinner'
 import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/components/NavBarPageActions'
 import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
@@ -236,11 +238,8 @@ export default function MarketMapCustomPage() {
   // 상단 바는 현재 히트맵을 점등 표시로 보여준다. 종목 수는 설정 사이드바에 표시한다.
   const modeStatusText = (
     <>
-      <span
-        className={`mr-1.5 inline-block h-2 w-2 rounded-full ${
-          isCustom ? 'bg-[#c6ff00] shadow-[0_0_5px_1px_rgba(198,255,0,0.8)]' : 'bg-gray-400'
-        }`}
-      />
+      {/* 거래소·MARKETRY 모두 점 대신 프로필 사진을 둔다(시험). 28px 원이다. 바 높이(28px)와 같아서 바 안에 딱 맞는다. */}
+      <img src={accountAvatar} alt="" className="mr-1.5 inline-block size-7 shrink-0 rounded-full object-cover" />
       <span className="text-gray-400">{HEATMAP_NAMES[heatmap].title}{isCustom && nxtOnly ? ' · NXT' : ''}</span>
     </>
   )
@@ -564,6 +563,10 @@ export default function MarketMapCustomPage() {
                   onZoomOutComplete={handleZoomOutComplete}
                 />
               )}
+              {/* 등락률 색상 범례 — 지도 아래 오른쪽(설정창 왼쪽)에 오른쪽 끝에 붙여 둔다. 이 줄만큼 지도 아래쪽이 올라온다. */}
+              <div className="flex h-7 shrink-0 items-center justify-end pl-3">
+                <MarketMapLegendBar swatches={settingsModalProps.legendSwatches} />
+              </div>
               </div>
             </div>
           </div>
