@@ -459,13 +459,14 @@ export default function MarketMapCustomPage() {
                   </span>
                 )}
                 <PageRefreshButton onRefresh={refetchMarketMap} isRefreshing={isRefetchingMarketMap} className="-ml-[10px]" helpText={SNAPSHOT_REFRESH_HELP} />
-                <ChangeRateBasisToggle basis={changeRateBasis} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateBasis} />
               </div>
               <span
                 className={`${FONT_BAR_MODE_STATUS} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-gray-400`}
               >
                 {modeStatusText}
               </span>
+              {/* 맨 오른쪽 — 시계 쪽 묶음(드롭박스·시각)과 가운데 KRX·NXT 표시와 겹치지 않게 따로 둔다. */}
+              <ChangeRateBasisToggle basis={changeRateBasis} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateBasis} />
             </div>
             <div className="flex min-h-0 flex-1">
               <div className="relative flex min-h-0 flex-1 flex-col bg-black">
