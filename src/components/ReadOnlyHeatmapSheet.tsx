@@ -1,4 +1,5 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import Spinner from '@/components/Spinner'
 import type { MarketMapResponse } from '@/types/api'
 import { toCount } from '@/utils/format'
@@ -93,6 +94,8 @@ function SortableHeader({ label, active, direction, onClick }: {
 
 const HEADER_CELL = `sticky top-0 z-10 ${COLOR.headerBg} px-3 py-1 text-center text-sm font-bold ${COLOR.headerText}`
 const BODY_CELL = `border-b ${COLOR.rowDivider} px-3 py-1 text-sm`
+// 종목 표 한 행의 예상 높이(글줄 20 + 위아래 여백 8 + 아래 선 1) — 실제 높이는 렌더 뒤에 다시 잰다.
+const STOCK_ROW_HEIGHT = 29
 
 interface Props {
   mode: 'category' | 'stock'
@@ -285,6 +288,23 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, extra }: { sectors: 
   const visibleRows = trimmed
     ? rows.filter(row => row.stockName.includes(trimmed) || row.stockCode.includes(trimmed) || row.sectorName.includes(trimmed))
     : rows
+  // 종목이 수천 개라 전부 그려 두면 검색할 때마다 화면 갱신이 느리고, 공유 캡처도 안 보이는 행까지 전부 복제한다 —
+  // 화면에 보이는 행(+위아래 여유)만 그리고, 나머지 높이는 앞뒤 스페이서 <tr>로 채운다(AdminStockTable과 같은 방식).
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  // eslint-disable-next-line react-hooks/incompatible-library -- 가상화 라이브러리의 함수는 메모하지 못한다는 경고 — AdminStockTable과 같은 사용 방식이라 무시한다
+  const rowVirtualizer = useVirtualizer({
+    count: visibleRows.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => STOCK_ROW_HEIGHT,
+    overscan: 15,
+  })
+  const virtualRows = rowVirtualizer.getVirtualItems()
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0
+  const paddingBottom = virtualRows.length > 0 ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end : 0
+  // 검색어나 정렬이 바뀌면 맨 위로 — 결과가 줄었는데 예전 스크롤 위치에 남으면 빈 화면이 보인다.
+  useEffect(() => {
+    scrollContainerRef.current?.scrollTo({ top: 0 })
+  }, [trimmed, sortKey, direction])
   return (
     <div className="flex min-h-0 flex-1 flex-col text-white">
       <SearchBar
@@ -295,7 +315,7 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, extra }: { sectors: 
         extra={extra}
         countLabel={`${toCount(visibleRows.length)}/${toCount(rows.length)}종목`}
       />
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto">
         <table className={TABLE_CLASS}>
           <thead>
             <tr>
@@ -308,23 +328,36 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, extra }: { sectors: 
           </thead>
           <tbody>
             {visibleRows.length === 0 && <EmptyRow colSpan={5} message={rows.length === 0 ? emptyMessage : '검색 결과가 없습니다.'} />}
-            {visibleRows.map(row => (
-              <tr key={row.stockCode}>
-                <td className={`${BODY_CELL} text-center text-gray-400`}>{row.stockCode}</td>
-                <td className={BODY_CELL}>
-                  <CenteredLeft>{row.stockName}</CenteredLeft>
-                </td>
-                <td className={BODY_CELL}>
-                  <CenteredLeft>{row.sectorName}</CenteredLeft>
-                </td>
-                <td className={`${BODY_CELL} text-center`}>
-                  <MarketValueCell won={row.totalMarketValue} />
-                </td>
-                <td className={`${BODY_CELL} text-center ${nxtStockCodes.has(row.stockCode) ? 'text-[var(--brand)]' : 'text-gray-500'}`}>
-                  {nxtStockCodes.has(row.stockCode) ? 'O' : '-'}
-                </td>
+            {paddingTop > 0 && (
+              <tr>
+                <td colSpan={5} style={{ height: paddingTop, padding: 0, border: 'none' }} />
               </tr>
-            ))}
+            )}
+            {virtualRows.map(virtualRow => {
+              const row = visibleRows[virtualRow.index]
+              return (
+                <tr key={row.stockCode} ref={rowVirtualizer.measureElement} data-index={virtualRow.index}>
+                  <td className={`${BODY_CELL} text-center text-gray-400`}>{row.stockCode}</td>
+                  <td className={BODY_CELL}>
+                    <CenteredLeft>{row.stockName}</CenteredLeft>
+                  </td>
+                  <td className={BODY_CELL}>
+                    <CenteredLeft>{row.sectorName}</CenteredLeft>
+                  </td>
+                  <td className={`${BODY_CELL} text-center`}>
+                    <MarketValueCell won={row.totalMarketValue} />
+                  </td>
+                  <td className={`${BODY_CELL} text-center ${nxtStockCodes.has(row.stockCode) ? 'text-[var(--brand)]' : 'text-gray-500'}`}>
+                    {nxtStockCodes.has(row.stockCode) ? 'O' : '-'}
+                  </td>
+                </tr>
+              )
+            })}
+            {paddingBottom > 0 && (
+              <tr>
+                <td colSpan={5} style={{ height: paddingBottom, padding: 0, border: 'none' }} />
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
