@@ -569,7 +569,6 @@ function RangeSlider({
         <SliderTickLabels
           labels={labels}
           steps={labelSteps}
-          inset
           highlightedRange={[minIndex, maxIndex]}
           blockedFromIndex={disabled && disabledReason ? 0 : !disabled && selectableMaxIndex < sliderSteps ? selectableMaxIndex + 1 : undefined}
           onBlockedHintChange={setLimitHintVisible}
@@ -588,10 +587,11 @@ function RangeSlider({
 // x% 위치에 절대 위치)으로 배치해야 라벨이 항상 그 tick과 x축이 맞는다 — 라벨 폭이 서로 달라도(예:
 // "끄기" vs "중분류") 흔들리지 않는다. 양 끝 라벨도 가운데 글자가 핸들 중심 아래에 오도록 가운데 정렬하고,
 // 바깥으로 나가는 절반은 설정 창의 좌우 여백(settings-control-inset)이 받아준다.
+// inset=false면 양 끝 라벨을 핸들 중심이 아니라 슬라이더 줄(트랙)의 왼쪽·오른쪽 끝에 가운데 맞춘다(강세 표시 개수 슬라이더만 쓴다).
 function SliderTickLabels({
   labels,
   steps,
-  inset = false,
+  inset = true,
   highlightedIndex,
   highlightedRange,
   blockedFromIndex,
@@ -641,12 +641,15 @@ function SingleValueSlider({
   disabled = false,
   maxSelectableIndex,
   blockedReason,
+  labelsAtTrackEnds = false,
 }: {
   index: number
   labels: string[]
   ariaLabel: string
   onChange: (index: number) => void
   disabled?: boolean
+  // true면 양 끝 눈금 글자를 손잡이 중심이 아니라 슬라이더 줄의 양끝에 가운데 맞춘다(강세 표시 개수).
+  labelsAtTrackEnds?: boolean
   // 눈금은 전부 보여주되, 이 인덱스를 넘는 칸은 고를 수 없고 blockedReason을 말풍선으로 알려준다.
   maxSelectableIndex?: number
   blockedReason?: (blockedLabel: string) => ReactNode
@@ -686,7 +689,7 @@ function SingleValueSlider({
       <SliderTickLabels
         labels={labels}
         steps={steps}
-        inset
+        inset={!labelsAtTrackEnds}
         highlightedIndex={index}
         blockedFromIndex={isCapped ? selectableMax + 1 : undefined}
         onBlockedHintChange={isCapped ? (visible, blocked) => {
@@ -1010,10 +1013,7 @@ export function SettingsStockSizeSelector({
           onChange={e => onChangeMarketCapRatio(Number(e.target.value))}
           className="block w-full accent-[var(--accent)]"
         />
-        <div className="mt-1 flex justify-between text-xs text-gray-400">
-          <span>동일 크기</span>
-          <span>시가총액 비례</span>
-        </div>
+        <SliderTickLabels labels={['동일 크기', '시총 비례']} steps={1} inset />
       </div>
     </div>
   )
@@ -1295,6 +1295,7 @@ export function SettingsSectorLevelSection({
                     ariaLabel="강세 표시 개수"
                     onChange={index => onChangeTopPickCount(index + 1)}
                     disabled={isTopPickDisabled || !topPickEnabled}
+                    labelsAtTrackEnds
                   />
                 </div>
               </div>
