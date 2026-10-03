@@ -1958,33 +1958,37 @@ export default function SettingsSidebar({
   const animationClass = !animated ? '' : isOpen ? `settings-sidebar-enter-${sideName}` : `settings-sidebar-leave-${sideName} pointer-events-none`
 
   return (
+    // 바깥 감싸개: 지도 쪽 가장자리 가운데에 튀어나오는 좌우 이동 탭을 패널(overflow-hidden) 밖에 그리려고 둔다. 슬라이드 애니메이션도 여기에 붙는다.
+    <div className={`relative z-20 flex shrink-0 ${animationClass}`}>
+    {onToggleSide && (
+      <button
+        type="button"
+        onClick={onToggleSide}
+        aria-label={isOnLeft ? '설정창을 오른쪽으로 이동' : '설정창을 왼쪽으로 이동'}
+        title={isOnLeft ? '설정창을 오른쪽으로 이동' : '설정창을 왼쪽으로 이동'}
+        className={`absolute top-1/2 z-10 flex h-8 w-[17px] -translate-y-1/2 items-center justify-center border border-gray-500 bg-[#363639] p-0 text-gray-400 hover:text-white ${
+          isOnLeft ? '-right-4 rounded-r-lg border-l-0' : '-left-4 rounded-l-lg border-r-0'
+        }`}
+      >
+        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
+          <path
+            d={isOnLeft ? 'M13.5 3v10M2 8h9M7.5 4.5 11 8l-3.5 3.5' : 'M2.5 3v10M14 8H5M8.5 4.5 5 8l3.5 3.5'}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+    )}
     <div
       data-settings-sidebar
-      className={`tabular-nums flex w-72 shrink-0 flex-col overflow-hidden rounded-md border border-gray-500 bg-[#363639] ${animationClass}`}
+      className="tabular-nums flex w-72 shrink-0 flex-col overflow-hidden rounded-md border border-gray-500 bg-[#363639]"
       style={{ '--accent': '#d1d5db', '--accent-hover': '#f3f4f6', '--accent-light': '#d1d5db' } as CSSProperties}
     >
       <div className="flex shrink-0 items-center border-b border-gray-500 px-4 pt-3 pb-2">
         <div className="flex min-w-0 items-center gap-2">
-          {onToggleSide && (
-            <button
-              type="button"
-              onClick={onToggleSide}
-              aria-label={isOnLeft ? '설정창을 오른쪽으로 이동' : '설정창을 왼쪽으로 이동'}
-              title={isOnLeft ? '설정창을 오른쪽으로 이동' : '설정창을 왼쪽으로 이동'}
-              className="flex h-7 w-5 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-gray-400 hover:text-white"
-            >
-              <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden="true">
-                <path
-                  d={isOnLeft ? 'M13.5 3v10M2 8h9M7.5 4.5 11 8l-3.5 3.5' : 'M2.5 3v10M14 8H5M8.5 4.5 5 8l3.5 3.5'}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          )}
           <p className="flex h-7 items-center whitespace-nowrap text-lg font-bold leading-none text-white">{pageLabel ?? '설정'}</p>
           {stockCountLabel && (
             <span className="flex h-7 w-[7rem] shrink-0 items-center justify-end whitespace-nowrap text-right text-sm leading-none text-gray-400">
@@ -2077,6 +2081,7 @@ export default function SettingsSidebar({
       {classificationAtBottom && hasClassificationSelector && availableSections.length > 0 && (
         <SettingsClassificationSelector heatmap={selectedHeatmap} onSelectHeatmap={handleSelectHeatmap} nxtOnly={nxtOnly} atBottom snapshotTime={snapshotTime} />
       )}
+    </div>
     </div>
   )
 }
