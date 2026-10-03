@@ -264,7 +264,7 @@ export default function MarketMapCustomPage() {
     const isValidMarket = marketParam === 'KOSPI' || marketParam === 'KOSDAQ' || marketParam === 'ALL_STOCK'
 
     // 백엔드가 캡처 URL에 싣는 avgMode=simple|weighted, sectorFilter=true|false 계약에 맞춘다
-    // (market-monitor-backend의 instructions-telegram-average-mode.md 결정 6).
+    // (marketry-backend의 instructions-telegram-average-mode.md 결정 6).
     const avgModeParam = searchParams.get('avgMode')
     const isValidAvgMode = avgModeParam === 'simple' || avgModeParam === 'weighted'
     if (isValidAvgMode) onChangeAvgChangeRateUseSimple(avgModeParam === 'simple')

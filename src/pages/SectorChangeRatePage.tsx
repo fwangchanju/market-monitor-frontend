@@ -173,7 +173,7 @@ export default function SectorChangeRatePage() {
 
   // now는 여기서 따로 조회하지 않는다 — useGlobalSettings()가 이미 부르는 useMarketMap(market, isCustom)
   // 결과(data)를 그대로 쓴다. before는 그 now.snapshotTime에서 계산한 시각을 쌍으로 묶어 조회한다
-  // (market-monitor-backend 지시서 결정 4) — 이렇게 해야 재조회로 now가 새 tick으로 바뀌는 순간에도
+  // (marketry-backend 지시서 결정 4) — 이렇게 해야 재조회로 now가 새 tick으로 바뀌는 순간에도
   // 화면이 새 now·옛 before를 잠깐이라도 섞어 그리지 않는다.
   const pairQuery = useSectorMarketMapPair(market, isCustom, nxtOnly, beforeMinutes, data)
   // 쌍 쿼리가 에러(재시도 1회 뒤)면 "before 없음"으로 보고 now 쿼리의 현재 data로 그린다. 그 외에는
@@ -208,7 +208,7 @@ export default function SectorChangeRatePage() {
     const isValidMarket = marketParam === 'KOSPI' || marketParam === 'KOSDAQ' || marketParam === 'ALL_STOCK'
 
     // 백엔드가 캡처 URL에 싣는 avgMode=simple|weighted, sectorFilter=true|false 계약에 맞춘다
-    // (market-monitor-backend의 instructions-telegram-average-mode.md 결정 6).
+    // (marketry-backend의 instructions-telegram-average-mode.md 결정 6).
     const avgModeParam = searchParams.get('avgMode')
     const isValidAvgMode = avgModeParam === 'simple' || avgModeParam === 'weighted'
     if (isValidAvgMode) onChangeAvgChangeRateUseSimple(avgModeParam === 'simple')
@@ -278,7 +278,7 @@ export default function SectorChangeRatePage() {
   // 대상 섹터는 트리의 최상위 노드(response.items)다. 설정 사이드바의 "제외 설정"(섹터 기준)에
   // 걸린 섹터는 지도 페이지와 동일하게 여기서도 뺀다. now/before 짝은 sectorId가 아니라
   // sectorName으로 맞춘다 — 기본 모드 노드는 sectorId가 전부 0(NO_SECTOR_ID)이라 id로는 짝을
-  // 맞출 수 없다(market-monitor-backend 지시서 결정 5). ALL_STOCK은 응답 하나가 이미 두 마켓을 합친
+  // 맞출 수 없다(marketry-backend 지시서 결정 5). ALL_STOCK은 응답 하나가 이미 두 마켓을 합친
   // 트리라 마켓별로 따로 합칠 필요가 없다.
   const charts = useMemo(() => {
     if (!displayNow) return { current: buildRankChart([]), delta: buildRankChart([]) }
