@@ -152,8 +152,8 @@ export default function CustomManagePage() {
       <div className="flex h-screen flex-col overflow-hidden bg-black">
         <NavBar />
         <SubNavBar />
-        <div className="flex justify-center p-16">
-          <Spinner />
+        <div className="flex min-h-0 flex-1 items-center justify-center p-8">
+          <Spinner showElapsed />
         </div>
       </div>
     )

@@ -36,6 +36,10 @@ interface Props {
   ancestorPath: string
 }
 
+// 글자 줄 높이 배율(leading-tight)과 등락률 글자가 종목명보다 작은 비율 — 아래 높이 계산과 화면 모양이 같은 값을 쓴다.
+const LABEL_LINE_HEIGHT = 1.25
+const RATE_FONT_SCALE = 0.85
+
 function fontSizePx(width: number, height: number): number {
   return Math.max(12, Math.min(22, Math.min(width, height) / 5))
 }
@@ -57,10 +61,18 @@ export default function MarketMapBox({
   highlightedKey,
   ancestorPath,
 }: Props) {
-  const showLabel = stockLabelMode !== 'off' && areaPercent >= labelMinAreaPercent
-  const showName = stockLabelMode !== 'rateOnly'
-  const showRate = stockLabelMode !== 'nameOnly'
   const fontSize = fontSizePx(width, height)
+  // 박스가 납작하면 글자가 위아래로 잘려 보이므로 높이에 들어가는 만큼만 보여준다 — 두 줄이 들어가면 둘 다, 한 줄만 들어가면 종목명(종목명 없이 등락률만
+  // 고른 경우는 등락률), 한 줄도 안 들어가면 아무것도 그리지 않는다. 줄 높이는 leading-tight(1.25)이고 테두리 위아래 1px씩을 뺀다.
+  const innerHeight = height - 2
+  const nameLineHeight = fontSize * LABEL_LINE_HEIGHT
+  const rateLineHeight = fontSize * RATE_FONT_SCALE * LABEL_LINE_HEIGHT
+  const wantName = stockLabelMode !== 'rateOnly'
+  const wantRate = stockLabelMode !== 'nameOnly'
+  const fitsBoth = nameLineHeight + rateLineHeight <= innerHeight
+  const showName = wantName && (nameLineHeight <= innerHeight)
+  const showRate = wantRate && (wantName ? fitsBoth : rateLineHeight <= innerHeight)
+  const showLabel = stockLabelMode !== 'off' && areaPercent >= labelMinAreaPercent && (showName || showRate)
   const backgroundColor = resolveMarketMapColor(item.changeRate, colorScale)
   const stockKey = `stock:${ancestorPath}\u0000${item.stockCode}`
   // 팝업이 이 종목을 대상으로 떠 있는 동안 hover 모양을 고정해서 보여준다(index.css의 .is-pinned).
@@ -108,7 +120,7 @@ export default function MarketMapBox({
             </span>
           )}
           {showRate && (
-            <span className="text-center leading-tight" style={{ fontSize: fontSize * 0.85 }}>
+            <span className="text-center leading-tight" style={{ fontSize: fontSize * RATE_FONT_SCALE }}>
               {toPctSigned(item.changeRate, decimalPlaces)}
             </span>
           )}
