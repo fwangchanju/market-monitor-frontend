@@ -110,7 +110,7 @@ export default function MarketMapShareModal({
       >
         {/* 설정창 헤더와 같은 모양 — 왼쪽 제목, 오른쪽 ✕, 아래 구분선. */}
         <div className="flex shrink-0 items-center border-b border-gray-500 p-4">
-          <p className="flex h-7 items-center whitespace-nowrap text-lg font-bold leading-none text-white">Capture</p>
+          <p className="flex h-7 items-center whitespace-nowrap text-lg font-bold leading-none text-white">CAPTURE</p>
           <button
             type="button"
             onClick={onClose}
