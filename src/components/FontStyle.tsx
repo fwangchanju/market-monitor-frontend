@@ -28,8 +28,8 @@ export const FONT_BAR_MARKET_INDEX = 'text-xl leading-none font-medium'
 export const FONT_BAR_MODE_STATUS = 'text-base leading-none font-medium'
 
 // 세 번째 바 — 시간(스냅샷 시각). 페이지의 숫자 폭 설정과 무관하게 일반 숫자 폭을 쓴다.
-// 16px(FONT_BAR_MODE_STATUS와 동일), medium(500).
-export const FONT_BAR_TIME = 'text-base leading-none font-medium normal-nums'
+// 16px(FONT_BAR_MODE_STATUS와 동일), medium(500). 글자 사이 간격(자간)은 조금 좁힌다(tracking-tight, -0.025em).
+export const FONT_BAR_TIME = 'text-base leading-none font-medium normal-nums tracking-tight'
 
 // 세 번째 바 — 범례. 12px, bold.
 export const FONT_BAR_LEGEND = 'text-xs font-bold'

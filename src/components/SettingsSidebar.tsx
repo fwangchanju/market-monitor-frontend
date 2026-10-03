@@ -867,7 +867,7 @@ function SettingsClassificationSelector({
   // key가 null인 항목(내 히트맵)은 아직 고를 수 없다. KRX와 NXT는 "거래소" 한 칸으로 합쳤고, 지금 어느 쪽 종목을 보여줄지는 시간대가 정한다.
   const options: { key: HeatmapKey | null; label: string }[] = [
     { key: null, label: HEATMAP_NAMES.mine.tab },
-    { key: 'krx', label: '거래소' },
+    { key: 'krx', label: '한국거래소' },
     { key: 'marketry', label: HEATMAP_NAMES.marketry.tab },
   ]
   const isExchange = heatmap === 'krx' || heatmap === 'nxt'

@@ -24,16 +24,19 @@ export default function Spinner({ className, showElapsed = false }: Props) {
 
   // 시간을 보여주는 로딩은 화면 한가운데에서 오래 보게 되므로 원을 아주 크게(작은 화면에서는 화면 짧은 변의 60%까지) 그린다.
   // 숫자와 로고가 같이 돌지 않도록 도는 테두리와 안쪽 내용을 따로 겹쳐 놓는다.
+  // 안쪽은 [빈 칸 / 로고 / 문구+시간]의 3줄 격자다. 위·아래 빈 칸이 같은 크기(1fr)라 로고가 원의 정확한 가운데에 오고,
+  // 문구와 시간은 로고 바로 아래에 이어 붙는다.
   return (
-    <div role="status" className="flex flex-col items-center gap-4">
-      <div className={`relative ${className ?? 'h-[min(20rem,60vmin)] w-[min(20rem,60vmin)]'}`}>
-        <div className="absolute inset-0 animate-spin rounded-full border-[6px] border-gray-600 border-t-[var(--accent)]" />
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-          <img src={marketryLogo} alt="" className="w-[72%] object-contain" />
+    <div role="status" className={`relative ${className ?? 'h-[min(20rem,60vmin)] w-[min(20rem,60vmin)]'}`}>
+      <div className="absolute inset-0 animate-spin rounded-full border-[6px] border-gray-600 border-t-[var(--accent)]" />
+      <div className="absolute inset-0 grid grid-rows-[1fr_auto_1fr] justify-items-center">
+        <div />
+        <img src={marketryLogo} alt="" className="w-[72%] object-contain" />
+        <div className="flex flex-col items-center gap-1 pt-4">
+          <span className="text-base text-gray-300">데이터를 불러오는 중입니다.</span>
           <span className="h-7 text-xl tabular-nums text-gray-300">{elapsedSeconds >= 1 ? `${elapsedSeconds}초` : ''}</span>
         </div>
       </div>
-      <span className="text-base text-gray-300">데이터를 불러오는 중입니다.</span>
     </div>
   )
 }
