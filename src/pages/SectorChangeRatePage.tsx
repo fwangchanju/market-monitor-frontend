@@ -15,7 +15,7 @@ import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
 import { computeSectorAverage } from '@/utils/sectorAverage'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/components/NavBarPageActions'
-import { FONT_BAR_TIME, FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
+import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload } from '@/utils/captureToDownload'
@@ -233,9 +233,9 @@ export default function SectorChangeRatePage() {
   }, [searchParams])
   // 지도 페이지 상단 바와 동일하게 점 대신 프로필 사진을 둔다. 24px 모서리가 둥근 사각형이다.
   const modeStatusText = (
-    <span className="flex items-center">
-      <ProfileAvatar className="mr-[7px] size-6 shrink-0 object-cover" />
-      <span className="text-gray-400">{settingsModalProps.isCustom ? (nxtOnly ? 'MARKETRY · NXT' : 'MARKETRY') : nxtOnly ? 'NXT' : '거래소'}</span>
+    <span className="flex min-w-0 items-center">
+      <span className="min-w-0 truncate text-gray-400">{settingsModalProps.isCustom ? (nxtOnly ? 'MARKETRY · NXT' : 'MARKETRY') : nxtOnly ? 'NXT' : '거래소'}</span>
+      <ProfileAvatar className="ml-[7px] size-6 shrink-0 object-cover" />
     </span>
   )
 
@@ -368,7 +368,7 @@ export default function SectorChangeRatePage() {
               안에서만 처리된다. */}
           <div ref={captureRef} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black text-white">
             <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-3 text-sm font-bold text-white">
-              <div className="flex items-center gap-2 whitespace-nowrap">
+              <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
                 <MarketMapMarketCombobox
                   market={market}
                   onSelect={selectedMarket => {
@@ -384,12 +384,8 @@ export default function SectorChangeRatePage() {
                 )}
                 <PageRefreshButton onRefresh={refetchMarketMap} isRefreshing={isRefreshing} className="-ml-[10px]" helpText={SNAPSHOT_REFRESH_HELP} />
               </div>
-              {/* 지도 페이지와 동일하게 바 전체 폭 기준 절대 중앙에 고정 — 좌/우 칸 폭에 영향받지 않는다. */}
-              <span
-                className={`${FONT_BAR_MODE_STATUS} absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-gray-400`}
-              >
-                {modeStatusText}
-              </span>
+              {/* 지도 페이지와 동일하게 맨 오른쪽 끝에 프로필(사진이 끝, 글자는 그 왼쪽)을 둔다. */}
+              <div className={`${FONT_BAR_MODE_STATUS} flex min-w-0 items-center justify-end text-gray-400`}>{modeStatusText}</div>
             </div>
             {/* 지도/어드민 페이지와 동일하게 본문이 화면을 꽉 채우는 형태 — 가운데 정렬/폭 제한을 없애서
                 설정 사이드바가 열려도 본문이 밀리는 게 자연스럽게 느껴지도록 한다(밀림 자체는 다른
