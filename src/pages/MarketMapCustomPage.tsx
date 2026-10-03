@@ -39,6 +39,7 @@ import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captu
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { ReturnArrowIcon } from '@/components/icons/MarketMapIcons'
 import { HEATMAP_NAMES } from '@/utils/heatmapNames'
+import { mapStretchFor, mapTileMethod } from '@/utils/mapStretch'
 import { marketRoute } from '@/utils/marketRoute'
 import { captureElementToDownload, downloadDataUrl } from '@/utils/captureToDownload'
 import { limitDepth, flattenAllItems, type FilteredMarketMapSectorNode } from '@/hooks/useFilteredMarketMapTree'
@@ -555,6 +556,8 @@ export default function MarketMapCustomPage() {
                     simpleAvgDepthRange={simpleAvgDepthRange}
                     upDownCountDepthRange={upDownCountDepthRange}
                     boxSizeMarketCapRatio={boxSizeMarketCapRatio}
+                    stretch={mapStretchFor(settingsModalProps.heatmap)}
+                    tile={mapTileMethod()}
                     canExclude={isCustom || !isLoggedIn}
                     colorScale={colorScale}
                     labelMinAreaPercent={boxLabelMinAreaPercent}
