@@ -175,13 +175,13 @@ export default function MarketMapTreemap({
     setPopup({
       ...content,
       anchorRect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
-      mapBounds: { left: mapRect.left, right: mapRect.right },
+      mapBounds: { left: mapRect.left, right: mapRect.right, top: mapRect.top, bottom: mapRect.bottom },
     })
   }
 
   // 커서 이동 방식 팝업을 닫는다 — 이미 다른 대상의 팝업으로 바뀌었으면(targetKey 불일치) 건드리지 않는다.
   const handleClosePopup = (targetKey: string) => {
-    setPopup(prev => (prev?.targetKey === targetKey ? null : prev))
+    setPopup(prev => (prev?.targetKey === targetKey && prev.transient ? null : prev))
   }
 
   // 팝업이 떠 있는 대상(섹터/종목)의 식별 키 — 그 박스에만 초록 하이라이트를 붙이는 데 쓴다.
@@ -195,7 +195,10 @@ export default function MarketMapTreemap({
       setPopup(null)
     }
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPopup(null)
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setPopup(null)
+      }
     }
     document.addEventListener('pointerdown', handlePointerDown)
     document.addEventListener('keydown', handleKeyDown)

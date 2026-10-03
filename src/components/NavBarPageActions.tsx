@@ -21,7 +21,7 @@ const BUTTON_CLASS =
 const INACTIVE_BUTTON_CLASS = `${BUTTON_CLASS} text-gray-400`
 
 // 스냅샷 수집 주기 안내 — 시계 옆 새로고침 버튼을 누르면 설명창으로 보여준다.
-export const SNAPSHOT_REFRESH_HELP = '5분 간격으로 데이터를 수집합니다.\n수집 후 배포에 1분 정도 소요될 수 있습니다.'
+export const SNAPSHOT_REFRESH_HELP = '5분 간격으로 데이터를 수집합니다.\n수집 후 배포까지 1분 가량 지연이 있을 수 있습니다.'
 
 // 스냅샷 새로고침 아이콘 버튼 — 상단바 우측 묶음(NavBarPageActions)과 콘솔 줄(시계 옆) 어디에 두든 같은 모양이다.
 // helpText를 주면 커서를 올리거나 포커스하면 설명창(지도 설정의 도움말 팝업과 같은 모양·글자 크기/굵기)을 버튼 아래에 띄운다.
@@ -102,7 +102,7 @@ export function PageRefreshButton({
           ref={tooltipRef}
           role="tooltip"
           style={{ position: 'fixed', left: tooltipPosition.left, top: tooltipPosition.top }}
-          className={`z-50 w-max max-w-64 whitespace-pre-line font-normal ${HINT_BUBBLE_CLASS}`}
+          className={`z-50 w-max max-w-80 whitespace-pre-line font-normal ${HINT_BUBBLE_CLASS}`}
         >
           {helpText}
         </span>
