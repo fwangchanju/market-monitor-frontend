@@ -533,7 +533,7 @@ export default function MarketMapCustomPage() {
               )}
               {isLoading ? (
                 <div className="flex flex-1 items-center justify-center">
-                  <Spinner />
+                  <Spinner showElapsed />
                 </div>
               ) : isError ? (
                 <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
