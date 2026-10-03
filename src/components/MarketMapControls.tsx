@@ -4,6 +4,7 @@ import { accentColor } from '@/utils/accentPalette'
 import { LONGEST_MARKET_PHASE, type MarketPhase } from '@/utils/tradingWindow'
 import { useMarketPhase } from '@/hooks/useMarketPhase'
 import { FONT_BAR_TIME } from '@/components/FontStyle'
+import { HINT_BUBBLE_CLASS } from '@/components/hintBubbleStyle'
 
 const MARKET_LABEL: Record<MarketQuery, string> = { KOSPI: 'KOSPI', KOSDAQ: 'KOSDAQ', ALL_STOCK: 'ALL STOCK' }
 const MARKET_OPTIONS: { market: MarketQuery; label: string }[] = [
@@ -264,7 +265,7 @@ export function ChangeRateBasisToggle({ basis, selectable, onChange }: {
           role="tooltip"
           data-basis-toggle
           style={{ position: 'fixed', left: popup.anchor.left, top: popup.anchor.bottom + 4 }}
-          className="z-50 w-max max-w-64 whitespace-pre-line rounded border border-[#7a6d55] bg-[#fff8e7] p-2 text-left text-xs font-normal leading-relaxed text-black shadow-lg"
+          className={`z-50 w-max max-w-64 whitespace-pre-line font-normal ${HINT_BUBBLE_CLASS}`}
         >
           {popup.text}
         </span>

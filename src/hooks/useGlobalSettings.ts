@@ -262,7 +262,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     [isCustom, isLoggedIn, sectorFilterEnabled, excludedSectorNames],
   )
 
-  // 거래소(KRX·NXT) 분류는 대분류(0)만 있다. 2-2 업종 등락 방향의 단계도 저장값은 두고 여기서만 따라간다.
+  // 거래소(KRX·NXT) 분류는 대분류(0)만 있다. 1-2 업종 등락 방향의 단계도 저장값은 두고 여기서만 따라간다.
   const effectiveSectorChangeDepth = heatmap === 'marketry' ? sectorChangeDepth : Math.min(sectorChangeDepth, 0)
   const directionFilters = useMemo(() => ({
     stockChangeFilter: pathname.startsWith('/map/') ? stockChangeFilter : 'all' as StockChangeFilter,

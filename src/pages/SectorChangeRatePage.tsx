@@ -468,7 +468,7 @@ export default function SectorChangeRatePage() {
               {...settingsModalProps}
               isOnLeft={isSettingsOnLeft}
               onToggleSide={toggleSettingsSide}
-              pageLabel="그룹"
+              pageLabel="GROUP"
               plainContent={
                 <>
                   <SettingsAverageModeSection
