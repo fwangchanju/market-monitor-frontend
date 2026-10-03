@@ -236,7 +236,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     enabled: needsTree,
     basis: requestedBasis,
   })
-  const isAfterHoursSelectable = isAfterHoursSelectableAt(data?.snapshotTime, new Date())
+  const isAfterHoursSelectable = isAfterHoursSelectableAt(data?.snapshotTime)
   const changeRateBasis: ChangeRateBasis = isAfterHoursSelectable ? requestedBasis : 'daily'
   const rawRootNodes = data?.items
   // 비로그인의 거래소 분류는 업종 id가 모두 0이라, 제외 기능이 동작하도록 이름 기반 고유 id를 붙인다.

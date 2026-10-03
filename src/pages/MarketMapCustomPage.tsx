@@ -241,7 +241,7 @@ export default function MarketMapCustomPage() {
   // 상단 바는 현재 히트맵을 점등 표시로 보여준다. 종목 수는 설정 사이드바에 표시한다.
   const modeStatusText = (
     <span className="flex min-w-0 items-center">
-      <span className="min-w-0 truncate text-gray-400">{HEATMAP_NAMES[heatmap].title}{isCustom && nxtOnly ? ' · NXT' : ''}</span>
+      <span className="min-w-0 truncate text-gray-400">분류: {HEATMAP_NAMES[heatmap].title}</span>
       {/* 거래소·MARKETRY 모두 점 대신 프로필 사진을 둔다(시험). 24px 모서리가 둥근 사각형이다. 바 높이(28px)보다 조금 작다. 맨 오른쪽 끝에 두고 글자는 그 왼쪽에 오른쪽 정렬로 붙는다. */}
       <ProfileAvatar className="ml-[7px] size-6 shrink-0 object-cover" />
     </span>
