@@ -35,12 +35,12 @@ import { useLoginGate } from '@/hooks/useLoginGate'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
 import { toCount, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
-import { captureElementToClipboard } from '@/utils/captureToClipboard'
+import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { ReturnArrowIcon } from '@/components/icons/MarketMapIcons'
 import { HEATMAP_NAMES } from '@/utils/heatmapNames'
 import { marketRoute } from '@/utils/marketRoute'
-import { captureElementToDownload } from '@/utils/captureToDownload'
+import { captureElementToDownload, downloadDataUrl } from '@/utils/captureToDownload'
 import { limitDepth, flattenAllItems, type FilteredMarketMapSectorNode } from '@/hooks/useFilteredMarketMapTree'
 import type { MarketQuery, MarketMapSectorNode, MarketMapItem } from '@/types/api'
 
@@ -382,11 +382,12 @@ export default function MarketMapCustomPage() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isShareOpen])
 
-  const handleCopy = async () => {
-    if (!captureRef.current) return
+  const handleCopy = async (previewSrc?: string | null) => {
+    if (!previewSrc && !captureRef.current) return
     setCopyStatus('copying')
     try {
-      await captureElementToClipboard(captureRef.current)
+      if (previewSrc) await copyDataUrlToClipboard(previewSrc)
+      else if (captureRef.current) await captureElementToClipboard(captureRef.current)
       setCopyStatus('copied')
     } catch {
       setCopyStatus('error')
@@ -395,11 +396,12 @@ export default function MarketMapCustomPage() {
     }
   }
 
-  const handleDownload = async () => {
-    if (!captureRef.current) return
+  const handleDownload = async (previewSrc?: string | null) => {
+    if (!previewSrc && !captureRef.current) return
     setDownloadStatus('downloading')
     try {
-      await captureElementToDownload(captureRef.current, 'market-map.png')
+      if (previewSrc) downloadDataUrl(previewSrc, 'market-map.png')
+      else if (captureRef.current) await captureElementToDownload(captureRef.current, 'market-map.png')
       setDownloadStatus('idle')
     } catch {
       setDownloadStatus('error')
