@@ -897,9 +897,9 @@ function SettingsClassificationSelector({
       <p className="flex items-center text-base">
         {/* 발표 자료의 제목 강조처럼 앞에 세로 막대를 하나 둔다. 색은 홈페이지 메인색(청록)이다. */}
         <span aria-hidden="true" className="mr-2 inline-block h-5 w-1 shrink-0 rounded-sm bg-[var(--brand)]" />
-        히트맵 선택
+        MAP 선택
       </p>
-      <div role="radiogroup" aria-label="히트맵 선택" className="mt-2 grid grid-cols-3 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
+      <div role="radiogroup" aria-label="MAP 선택" className="mt-2 grid grid-cols-3 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
         {options.map(option => (
           <button
             key={option.label}
