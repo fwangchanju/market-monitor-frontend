@@ -33,8 +33,12 @@ function SettingDescription({ children }: { children: ReactNode }) {
   return <p className="settings-description mt-1 max-w-[16rem] text-xs text-gray-400">{children}</p>
 }
 
-// wide: 첫 문장이 긴 설명창은 가로를 넓혀서(16rem → 18rem) 한 줄에 들어오게 한다.
-function SettingHelpIcon({ label, description, bookmarkId, wide = false }: { label: string; description: ReactNode; bookmarkId?: SettingsBookmarkId; wide?: boolean }) {
+// 도움말 말풍선이 설정창 가장자리에서 띄우는 최소 간격.
+const HELP_TOOLTIP_MARGIN = 6
+
+// 말풍선 폭은 가장 긴 줄에 맞춘다(w-max whitespace-pre) — 줄바꿈은 문구마다 \n(문자열) 또는 <br />(JSX)로 직접 정한다. 줄 하나가 설정창(18rem)
+// 안에 들어와야 하니 한 줄을 23글자 안쪽으로 쓴다.
+function SettingHelpIcon({ label, description, bookmarkId }: { label: string; description: ReactNode; bookmarkId?: SettingsBookmarkId }) {
   const [isOpen, setIsOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const tooltipRef = useRef<HTMLSpanElement>(null)
@@ -48,16 +52,15 @@ function SettingHelpIcon({ label, description, bookmarkId, wide = false }: { lab
       const tooltip = tooltipRef.current?.getBoundingClientRect()
       if (!anchor || !tooltip) return
 
-      const margin = 8
-      // 설정창이 오른쪽에 있으면(아이콘이 화면 오른쪽 절반) 아이콘 오른쪽 끝에 맞춰 왼쪽 지도 쪽으로 펼치고,
-      // 왼쪽에 있으면 아이콘 왼쪽 끝에 맞춰 오른쪽 지도 쪽으로 펼친다. 화면 밖으로는 나가지 않게 가둔다.
-      const opensLeft = anchor.left + anchor.width / 2 > window.innerWidth / 2
-      const preferredLeft = opensLeft ? anchor.right - tooltip.width : anchor.left
-      const left = Math.max(margin, Math.min(preferredLeft, window.innerWidth - tooltip.width - margin))
+      // 설정창 밖으로 나가지 않게 가둔다 — 아이콘 왼쪽 끝에 맞추되 설정창 오른쪽에 걸리면 안쪽으로 밀고, 아래에 자리가 모자라면 아이콘 위로 뒤집는다.
+      const sidebar = buttonRef.current?.closest('[data-settings-sidebar]')?.getBoundingClientRect()
+      const bounds = sidebar ?? { left: 0, right: window.innerWidth, top: 0, bottom: window.innerHeight }
+      const margin = HELP_TOOLTIP_MARGIN
+      const left = Math.max(bounds.left + margin, Math.min(anchor.left, bounds.right - tooltip.width - margin))
       let top = anchor.bottom + 4
-      if (top + tooltip.height > window.innerHeight - margin) {
+      if (top + tooltip.height > bounds.bottom - margin) {
         const above = anchor.top - tooltip.height - 4
-        top = above >= margin ? above : Math.max(margin, window.innerHeight - tooltip.height - margin)
+        top = above >= bounds.top + margin ? above : Math.max(bounds.top + margin, bounds.bottom - tooltip.height - margin)
       }
       setTooltipPosition({ left, top })
     }
@@ -96,7 +99,7 @@ function SettingHelpIcon({ label, description, bookmarkId, wide = false }: { lab
           ref={tooltipRef}
           role="tooltip"
           style={{ position: 'fixed', left: tooltipPosition.left, top: tooltipPosition.top }}
-          className={`z-50 ${wide ? 'w-[18rem]' : 'w-64'} max-w-[calc(100vw-16px)] whitespace-pre-line ${HINT_BUBBLE_CLASS}`}
+          className={`z-50 w-max whitespace-pre ${HINT_BUBBLE_CLASS}`}
         >
           {description}
         </span>
@@ -293,32 +296,48 @@ const RANGE_HANDLE_CLASS =
   'pointer-events-none absolute top-1/2 flex h-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--accent)] text-black touch-none'
 
 // 섹션 전체가 막혔을 때의 안내 말풍선은 섹션 아래 끝이 아니라 마우스 커서 바로 옆에 띄운다 —
-// 섹션이 높아도 안내가 컨트롤에서 멀어지지 않는다. x는 이벤트를 받은 요소(섹션) 안의 가로 위치, y는 화면 기준 세로 위치,
-// left는 그 요소의 화면 기준 왼쪽 끝이다.
+// 섹션이 높아도 안내가 컨트롤에서 멀어지지 않는다. x·y는 마우스의 화면 좌표이고, bounds는 말풍선이 나가면 안 되는 설정창의 화면 위치다.
 interface CursorHint {
   x: number
   y: number
-  left: number
-  width: number
+  bounds: { left: number; right: number; top: number; bottom: number }
 }
-const CURSOR_HINT_WIDTH = 200
+// 말풍선이 설정창 가장자리에서 띄우는 최소 간격.
+const BUBBLE_MARGIN = 8
 const cursorHintFrom = (e: ReactPointerEvent<HTMLElement>): CursorHint => {
-  const rect = e.currentTarget.getBoundingClientRect()
-  return { x: e.clientX - rect.left, y: e.clientY, left: rect.left, width: rect.width }
+  const sidebar = e.currentTarget.closest('[data-settings-sidebar]')?.getBoundingClientRect()
+  const bounds = sidebar
+    ? { left: sidebar.left, right: sidebar.right, top: sidebar.top, bottom: sidebar.bottom }
+    : { left: 0, right: window.innerWidth, top: 0, bottom: window.innerHeight }
+  return { x: e.clientX, y: e.clientY, bounds }
 }
 function CursorHintBubble({ hint, children }: { hint: CursorHint; children: ReactNode }) {
-  // 폭을 고정해서 커서를 따라 움직여도 줄바꿈이 바뀌지 않게 하고, 섹션 밖으로 나가지 않게 가둔다.
-  const maxLeft = hint.width - CURSOR_HINT_WIDTH
-  const left = Math.min(Math.max(hint.x + 12, Math.min(0, maxLeft)), maxLeft)
+  const bubbleRef = useRef<HTMLDivElement>(null)
+  // 마우스 오른쪽 아래에 띄우되 설정창 밖으로 나가지 않게 한다. 오른쪽에 자리가 모자라면 왼쪽으로 밀고, 아래에 모자라면 마우스 위로 뒤집는다.
+  // 크기를 잰 뒤 DOM 위치만 직접 고치므로(상태를 다시 설정하지 않는다) 마우스가 움직여도 화면이 튀지 않는다.
+  useLayoutEffect(() => {
+    const el = bubbleRef.current
+    if (!el) return
+    const { width, height } = el.getBoundingClientRect()
+    const { bounds } = hint
+    const left = Math.max(bounds.left + BUBBLE_MARGIN, Math.min(hint.x + 12, bounds.right - BUBBLE_MARGIN - width))
+    let top = hint.y + 16
+    if (top + height > bounds.bottom - BUBBLE_MARGIN) {
+      top = hint.y - height - 8
+    }
+    top = Math.max(bounds.top + BUBBLE_MARGIN, Math.min(top, bounds.bottom - BUBBLE_MARGIN - height))
+    el.style.left = `${left}px`
+    el.style.top = `${top}px`
+  })
   // 설정창 안에 그리면 위치 지정(relative)된 아래 항목의 제목·버튼이 말풍선 위로 올라오므로, 화면 맨 바깥(body)에 고정 위치로 그린다.
+  // 줄바꿈은 문구마다 <br />로 직접 정하고(w-max whitespace-nowrap), 한글이 중간에서 끊기지 않게 "선택이 가능합니다." 같은 끝 문구는
+  // 공백을 &nbsp;로 묶어 둔다.
   return createPortal(
     <div
+      ref={bubbleRef}
       role="status"
-      style={{ position: 'fixed', top: hint.y + 16, left: hint.left + left, width: CURSOR_HINT_WIDTH }}
-      // whitespace-normal: 말풍선이 whitespace-nowrap인 컨트롤(예: 업종 단계 선택) 안에 있어도 그 속성을 물려받지 않고 줄바꿈되게 한다.
-      // break-keep: 한글이 "가/능합니다"처럼 글자 중간에서 끊기지 않고 띄어쓰기에서만 줄이 바뀌게 한다. "선택이 가능합니다." 같은 끝 문구는
-      // 문구 안의 공백을 &nbsp;로 묶어 한 덩어리로 다음 줄에 내려가게 한다.
-      className={`pointer-events-none z-50 whitespace-normal break-keep ${HINT_BUBBLE_CLASS}`}
+      style={{ position: 'fixed', left: 0, top: 0 }}
+      className={`pointer-events-none z-50 w-max whitespace-nowrap ${HINT_BUBBLE_CLASS}`}
     >
       {children}
     </div>,
@@ -389,9 +408,9 @@ function DepthTextSelect({
       {hint && !disabled && (
         <CursorHintBubble hint={hint}>
           {noDataLimited ? (
-            <>현재 {blockedLabel} 데이터가 없어 선택이&nbsp;불가합니다.</>
+            <>현재 {blockedLabel} 데이터가 없어<br />선택이&nbsp;불가합니다.</>
           ) : (
-            <><span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 슬라이더를 더 깊게 설정해야 선택이&nbsp;가능합니다.</>
+            <><span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 슬라이더를 더 깊게<br />설정해야 선택이&nbsp;가능합니다.</>
           )}
         </CursorHintBubble>
       )}
@@ -704,7 +723,7 @@ export function SettingsAverageModeSection({
     <div className="text-sm">
       <span className="flex max-w-[16rem] items-center text-left text-[15px] text-white">
         <span className="settings-section-num">등락률 평균</span>
-        <SettingHelpIcon label="등락률 평균" description="업종 등락률 계산에 적용할 평균 방식을 선택합니다." />
+        <SettingHelpIcon label="등락률 평균" description={"업종 등락률 계산에 적용할\n평균 방식을 선택합니다."} />
       </span>
       <div role="radiogroup" aria-label="등락률 평균" className="mt-2 grid max-w-[16rem] settings-control-inset grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
         {options.map(option => {
@@ -749,7 +768,7 @@ export function SettingsBeforeMinutesSection({
     <div className="mt-[49px] text-sm">
       <span className="flex max-w-[16rem] items-center text-left text-[15px] text-white">
         <span className="settings-section-num">비교 시점</span>
-        <SettingHelpIcon label="비교 시점" description="현재 등락률을 몇 분 전과 비교해 변화폭을 산출합니다." />
+        <SettingHelpIcon label="비교 시점" description={"현재 등락률을 몇 분 전과\n비교해 변화폭을 산출합니다."} />
       </span>
       <div className="mt-2 max-w-[16rem] settings-control-inset">
         <SingleValueSlider
@@ -826,7 +845,7 @@ function EqualWeightToggleSwitch({
       labelSuffix={
         <>
           <span className="text-gray-500">↔ {avgChangeRateUseSimple ? '시총 가중' : '동일 가중'}</span>
-          <SettingHelpIcon label="등락률 평균" description="업종 등락률을 시가총액 가중 또는 동일 가중으로 계산합니다." />
+          <SettingHelpIcon label="등락률 평균" description={"업종 등락률을 시가총액 가중\n또는 동일 가중으로 계산합니다."} />
         </>
       }
       forceLabelWhite
@@ -936,7 +955,7 @@ function SettingsAverageModeSelector({
     <div className="settings-first-stock-size mb-6 pt-5 pb-6 text-white">
       <p className="flex items-center text-[15px]">
         <span className="settings-section-num">등락률 평균</span>
-        <SettingHelpIcon label="등락률 평균" description="업종 등락률 계산에 적용할 평균 방식을 선택합니다." />
+        <SettingHelpIcon label="등락률 평균" description={"업종 등락률 계산에 적용할\n평균 방식을 선택합니다."} />
       </p>
       <div role="radiogroup" aria-label="등락률 평균" className="mt-3 grid grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
         {options.map(option => (
@@ -974,7 +993,7 @@ export function SettingsStockSizeSelector({
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <SettingTitle bookmarkId="boxSize" help className="text-[15px]">박스 크기</SettingTitle>
-          <SettingHelpIcon bookmarkId="boxSize" wide label="박스 크기" description={"박스 면적은 시가총액^(비율÷100)으로 계산합니다.\n0%는 모든 종목을 같은 크기로 표시합니다.\n50%는 시가총액의 제곱근 비율로 표시합니다.\n100%는 시가총액에 비례해 표시합니다."} />
+          <SettingHelpIcon bookmarkId="boxSize" label="박스 크기" description={"박스 면적은 시가총액^(비율÷100)으로 계산합니다.\n0%는 모든 종목을 같은 크기로 표시합니다.\n50%는 시가총액의 제곱근 비율로 표시합니다.\n100%는 시가총액에 비례해 표시합니다."} />
         </div>
         <span className="text-sm text-gray-400">{marketCapRatio}%</span>
       </div>
@@ -1122,9 +1141,9 @@ export function SettingsSectorLevelSection({
   ]
   if (inBookmarkTab && bookmarkableIds.every(hideItem)) return null
   const depthMetricRangeDisabledReason = !sectorLevelEnabled
-    ? <><span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 토글을 켜야 선택이&nbsp;가능합니다.</>
+    ? <><span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 토글을 켜야<br />선택이&nbsp;가능합니다.</>
     : !depthMetricEnabled
-      ? <><span className="inline-block whitespace-nowrap font-bold">2-2) 표시 지표</span> 토글을 켜야 선택이&nbsp;가능합니다.</>
+      ? <><span className="inline-block whitespace-nowrap font-bold">2-2) 표시 지표</span> 토글을 켜야<br />선택이&nbsp;가능합니다.</>
       : null
 
   return (
@@ -1153,7 +1172,7 @@ export function SettingsSectorLevelSection({
                 onChange={index => onChangeMaxDepth(index + 1)}
                 disabled={!sectorLevelEnabled}
                 maxSelectableIndex={selectableDepth - 1}
-                blockedReason={label => `현재 ${label} 데이터가 없어 선택이\u00a0불가합니다.`}
+                blockedReason={label => <>현재 {label} 데이터가 없어<br />선택이&nbsp;불가합니다.</>}
               />
             </div>
           </div>
@@ -1213,7 +1232,7 @@ export function SettingsSectorLevelSection({
             )}
             {isDepthMetricDisabled && depthMetricSectionHint && (
               <CursorHintBubble hint={depthMetricSectionHint}>
-                <span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 토글을 켜야 선택이&nbsp;가능합니다.
+                <span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 토글을 켜야<br />선택이&nbsp;가능합니다.
               </CursorHintBubble>
             )}
           </div>
@@ -1236,7 +1255,7 @@ export function SettingsSectorLevelSection({
                 minAriaLabel="최소 표시 뎁스"
                 maxAriaLabel="최대 표시 뎁스"
                 maxSelectableIndex={depthMetricMaxSelectableIndex}
-                limitReason={<><span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 슬라이더를 더 깊게 설정해야 선택이&nbsp;가능합니다.</>}
+                limitReason={<><span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 슬라이더를 더 깊게<br />설정해야 선택이&nbsp;가능합니다.</>}
                 disabledReason={depthMetricRangeDisabledReason}
                 onChange={onChangeDepthMetricRange}
                 disabled={isDepthMetricRangeDisabled}
@@ -1293,7 +1312,7 @@ export function SettingsSectorLevelSection({
               )}
               {isTopPickDisabled && topPickSectionHint && (
                 <CursorHintBubble hint={topPickSectionHint}>
-                  <span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 토글을 켜야 선택이&nbsp;가능합니다.
+                  <span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 토글을 켜야<br />선택이&nbsp;가능합니다.
                 </CursorHintBubble>
               )}
             </div>
@@ -1370,7 +1389,7 @@ export function SettingsSectorLevelSection({
                 <SettingHelpIcon
                   bookmarkId="textThreshold"
                   label="텍스트 표시 기준"
-                  description="기준 퍼센트는 지도 전체 면적 대비 종목 박스 면적입니다."
+                  description={"기준 퍼센트는 지도 전체 면적 대비\n종목 박스 면적입니다."}
                 />
               </span>
               <span className="text-gray-400">{boxLabelMinAreaPercent.toFixed(2)}%</span>
@@ -1390,7 +1409,7 @@ export function SettingsSectorLevelSection({
             </div>
             {!stockLabelEnabled && textThresholdHint && (
               <CursorHintBubble hint={textThresholdHint}>
-                <span className="inline-block whitespace-nowrap font-bold">3-2) 박스 내 표기</span> 토글을 켜야 선택이&nbsp;가능합니다.
+                <span className="inline-block whitespace-nowrap font-bold">3-2) 박스 내 표기</span> 토글을 켜야<br />선택이&nbsp;가능합니다.
               </CursorHintBubble>
             )}
           </div>
@@ -1753,7 +1772,7 @@ export function SettingsStrongIndustryColorSection({
         <SettingHelpIcon
           bookmarkId="strongColor"
           label="강조 색상"
-          description={<>지도 내 업종명(대분류)과 <span className="inline-block whitespace-nowrap font-bold">2-4) 강세 표시</span>의 색상을 설정합니다.</>}
+          description={<>지도 내 업종명(대분류)과<br /><span className="inline-block whitespace-nowrap font-bold">2-4) 강세 표시</span>의 색상을 설정합니다.</>}
         />
       </p>
       <SettingDescription>업종명과 강세 업종의 색상</SettingDescription>

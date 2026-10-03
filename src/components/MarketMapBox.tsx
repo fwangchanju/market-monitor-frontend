@@ -65,7 +65,7 @@ export default function MarketMapBox({
   const stockKey = `stock:${ancestorPath}\u0000${item.stockCode}`
   // 팝업이 이 종목을 대상으로 떠 있는 동안 hover 모양을 고정해서 보여준다(index.css의 .is-pinned).
   const isPinned = highlightedKey === stockKey
-  const openStockPopup = (target: HTMLElement, transient = false) => {
+  const openStockPopup = (target: HTMLElement, transient = false, pointer?: { x: number; y: number }) => {
     onOpenPopup({
       title: item.stockName,
       rows: [
@@ -76,6 +76,7 @@ export default function MarketMapBox({
       ],
       targetKey: stockKey,
       transient,
+      pointer,
     }, target)
   }
   return (
@@ -95,7 +96,7 @@ export default function MarketMapBox({
         if (stockPopupOnHover) return
         openStockPopup(e.currentTarget)
       }}
-      onPointerEnter={stockPopupOnHover ? e => openStockPopup(e.currentTarget, true) : undefined}
+      onPointerEnter={stockPopupOnHover ? e => openStockPopup(e.currentTarget, true, { x: e.clientX, y: e.clientY }) : undefined}
       onPointerLeave={stockPopupOnHover ? () => onClosePopup(stockKey) : undefined}
       className={`market-map-stock flex flex-col items-center justify-center overflow-hidden border border-black/40 text-white ${isPinned ? 'is-pinned' : ''}`}
     >

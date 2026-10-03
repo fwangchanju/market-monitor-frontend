@@ -164,15 +164,15 @@ export function ChangeRateBasisToggle({ basis, selectable, onChange }: {
   onChange: (basis: 'daily' | 'afterHours') => void
 }) {
   const options = [
-    { value: 'daily' as const, label: '누적', help: <><b>전일</b> 종가 대비</>, locked: false },
+    { value: 'daily' as const, label: '누적', help: <><b className="text-red-600">전일</b> 종가 대비</>, locked: false },
     {
       value: 'afterHours' as const,
       label: '따로',
       help: (
         <>
-          <b>당일</b> 종가 대비
+          <b className="text-red-600">당일</b> 종가 대비
           <br />
-          당일 15:40 부터 가능
+          15:40 부터 가능
         </>
       ),
       locked: !selectable,

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
 export interface MarketMapPopupContent {
@@ -11,6 +11,8 @@ export interface MarketMapPopupContent {
   // true면 커서 이동(hover)으로 뜬 임시 팝업 — 마우스 이벤트를 받지 않아서 커서가 팝업 위로 가도
   // 박스의 pointerleave가 튀지 않는다.
   transient?: boolean
+  // 커서 이동(hover)으로 뜬 팝업이 따라갈 마우스의 뷰포트 좌표. 있으면 박스 가장자리가 아니라 마우스 근처에 놓고 마우스를 따라 움직인다.
+  pointer?: { x: number; y: number }
 }
 
 // 우클릭한 박스(섹터 전체 박스 혹은 종목 박스)의 뷰포트 기준 rect. 팝업은 마우스 좌표가 아니라
@@ -25,7 +27,7 @@ export interface MarketMapPopupAnchorRect {
 
 export interface MarketMapPopupState extends MarketMapPopupContent {
   anchorRect: MarketMapPopupAnchorRect
-  mapBounds: { left: number; right: number }
+  mapBounds: { left: number; right: number; top: number; bottom: number }
 }
 
 interface Props {
@@ -48,8 +50,36 @@ export default function MarketMapPopup({ popup, onExcludeSector, onClose }: Prop
 
 // 팝업 본체와 우클릭한 박스 사이의 간격.
 const POPUP_GAP = 2
+// 커서 이동 팝업과 마우스 사이의 간격(오른쪽·아래).
+const POINTER_GAP = 14
 const POPUP_MARGIN = 8
 const POPUP_BACKGROUND = '#fff8e7'
+
+interface PointerBounds {
+  minLeft: number
+  maxRight: number
+  minTop: number
+  maxBottom: number
+}
+
+// 마우스 오른쪽 아래에 GAP만큼 띄워 놓는다. 지도 경계에 걸리면 마우스 왼쪽·위쪽으로 뒤집고, 그래도 넘치면 경계 안으로 클램프해서
+// 지도 밖으로 나가지 않게 한다.
+function placeNearPointer(el: HTMLElement, point: { x: number; y: number }, bounds: PointerBounds) {
+  const { width, height } = el.getBoundingClientRect()
+  let left = point.x + POINTER_GAP
+  if (left + width > bounds.maxRight) {
+    left = point.x - POINTER_GAP - width
+  }
+  left = Math.min(Math.max(left, bounds.minLeft), bounds.maxRight - width)
+  let top = point.y + POINTER_GAP
+  if (top + height > bounds.maxBottom) {
+    top = point.y - POINTER_GAP - height
+  }
+  top = Math.min(Math.max(top, bounds.minTop), bounds.maxBottom - height)
+  el.style.left = `${left}px`
+  el.style.top = `${top}px`
+  el.style.visibility = 'visible'
+}
 
 interface PopupBodyProps {
   popup: MarketMapPopupState
@@ -62,6 +92,9 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
   const minLeft = Math.max(POPUP_MARGIN, popup.mapBounds.left + POPUP_MARGIN)
   const maxRight = Math.min(window.innerWidth - POPUP_MARGIN, popup.mapBounds.right - POPUP_MARGIN)
   const maxWidth = Math.max(1, maxRight - minLeft)
+  const minTop = Math.max(POPUP_MARGIN, popup.mapBounds.top + POPUP_MARGIN)
+  const maxBottom = Math.min(window.innerHeight - POPUP_MARGIN, popup.mapBounds.bottom - POPUP_MARGIN)
+  const pointer = popup.pointer
   // 팝업 크기는 내용(제목/행 목록 vs 삭제 확인 문구+버튼)에 따라 달라서 미리 알 수 없다. 일단
   // 기본 위치(혹은 이전 위치)로 그려보고, 실제 렌더된 크기를 getBoundingClientRect로 잰 뒤
   // 뷰포트를 넘치지 않는 최종 위치를 다시 계산한다 — useLayoutEffect라 이 보정은 브라우저가
@@ -69,6 +102,10 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
   useLayoutEffect(() => {
     const el = elRef.current
     if (!el) return
+    if (pointer) {
+      placeNearPointer(el, pointer, { minLeft, maxRight, minTop, maxBottom })
+      return
+    }
     const { width, height } = el.getBoundingClientRect()
     const { anchorRect } = popup
 
@@ -101,7 +138,28 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
     el.style.left = `${left}px`
     el.style.top = `${top}px`
     el.style.visibility = 'visible'
-  }, [popup, minLeft, maxRight])
+  }, [popup, pointer, minLeft, maxRight, minTop, maxBottom])
+
+  // 커서 이동 팝업은 마우스를 따라간다. 지도 전체를 다시 그리지 않도록 상태를 바꾸지 않고 위치만 직접 옮기며, 프레임당 한 번만 갱신한다.
+  useEffect(() => {
+    const el = elRef.current
+    if (!pointer || !el) return
+    let frame = 0
+    let latest = pointer
+    const handlePointerMove = (e: PointerEvent) => {
+      latest = { x: e.clientX, y: e.clientY }
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        placeNearPointer(el, latest, { minLeft, maxRight, minTop, maxBottom })
+      })
+    }
+    document.addEventListener('pointermove', handlePointerMove)
+    return () => {
+      document.removeEventListener('pointermove', handlePointerMove)
+      cancelAnimationFrame(frame)
+    }
+  }, [pointer, minLeft, maxRight, minTop, maxBottom])
 
   const excludeSector = popup.excludeSector
 
