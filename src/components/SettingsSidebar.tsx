@@ -12,6 +12,9 @@ import { FONT_BAR_TIME } from '@/components/FontStyle'
 import { ACCENT_PALETTE } from '@/utils/accentPalette'
 import { HEATMAP_NAMES, type HeatmapKey } from '@/utils/heatmapNames'
 import { toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
+import { useIsLoggedIn } from '@/hooks/useSession'
+import { useCustomPreferences } from '@/hooks/useCustomPreferences'
+import { commitDrafts, discardDrafts, useHasDrafts } from '@/utils/settingsDraft'
 import { BOOKMARK_ORDER, type SettingsBookmarkId } from '@/utils/settingsBookmarks'
 
 export type { SettingsBookmarkId }
@@ -31,6 +34,31 @@ export function SettingsSidebarGroup({ children }: SettingsSidebarGroupProps) {
 // 한 줄(16px) + 위 간격(4px)이라 높이를 20px로 계산해서 index.css의 탭 정렬 값을 맞춘다.
 function SettingDescription({ children }: { children: ReactNode }) {
   return <p className="settings-description mt-1 max-w-[16rem] text-xs text-gray-400">{children}</p>
+}
+
+// 설정창 맨 위 아이콘 버튼(초기화·저장)에 마우스를 올리거나 키보드로 오면 아래에 뜨는 설명. 오른쪽 끝에 맞춰 설정창 밖으로 나가지 않게 한다.
+function HeaderButtonHint({ children }: { children: string }) {
+  return (
+    <span
+      role="tooltip"
+      className={`pointer-events-none absolute right-0 top-full z-50 mt-2 hidden w-max whitespace-pre group-hover:block group-focus-visible:block ${HINT_BUBBLE_CLASS}`}
+    >
+      {children}
+    </span>
+  )
+}
+
+// 좌우 이동 탭을 "MAP 선택" 줄 높이로 옮기고, 그 줄 위에 구분선이 있으면(아래쪽 MAP 선택) 탭을 그 선까지 키운 뒤 아래도 같은 길이만큼 대칭으로
+// 키운다. 그릴 때마다 재는 값이라 상태가 아니라 DOM에 바로 쓴다(상태로 두면 다시 그리기가 이어진다). 해당 줄이 없으면 가운데·기본 크기로 둔다.
+function alignSideTab(outerElement: HTMLElement | null, tab: HTMLElement | null) {
+  if (!outerElement || !tab) return
+  const outer = outerElement.getBoundingClientRect()
+  const title = outerElement.querySelector('[data-map-select-title]')?.getBoundingClientRect()
+  const topLine = outerElement.querySelector('[data-map-select-top-line]')?.getBoundingClientRect()
+  const center = title ? title.top + title.height / 2 : null
+  tab.style.top = center === null ? '' : `${Math.round(center - outer.top)}px`
+  const half = center !== null && topLine ? Math.round(center - topLine.top) : null
+  tab.style.height = half !== null && half > 16 ? `${half * 2}px` : ''
 }
 
 // 도움말 말풍선이 설정창 가장자리에서 띄우는 최소 간격.
@@ -197,6 +225,7 @@ function ToggleSwitch({
   disabled = false,
   bold = false,
   labelClassName = '',
+  labelDataNum,
   hideLabel = false,
   forceLabelWhite = false,
 }: {
@@ -209,6 +238,8 @@ function ToggleSwitch({
   disabled?: boolean
   bold?: boolean
   labelClassName?: string
+  // 북마크 탭에서 라벨 앞에 보이는 원래 위치 번호(settings-bookmark-num이 data-num을 그린다).
+  labelDataNum?: string
   // true면 라벨을 화면에 그리지 않고 스위치만 그린다(접근성용 aria-label은 label을 그대로 씀) —
   // 바깥에서 이미 같은 텍스트를 제목(예: "색상 범위")으로 보여주고 있어 중복 표시를 피할 때 쓴다.
   hideLabel?: boolean
@@ -225,6 +256,7 @@ function ToggleSwitch({
       {!hideLabel && (
         <span className="flex min-w-0 items-center gap-2">
           <span
+            data-num={labelDataNum}
             className={`${labelClassName} ${bold ? 'font-bold' : ''} ${forceLabelWhite || checked ? 'text-white' : 'text-gray-500'}`}
           >
             {label}
@@ -896,8 +928,8 @@ function SettingsClassificationSelector({
   const isSelected = (key: HeatmapKey | null) => key !== null && (key === 'krx' ? isExchange : heatmap === key)
 
   return (
-    <div className={`${atBottom ? 'shrink-0 border-t border-gray-500 px-4 py-3' : 'mb-6 pt-5 pb-6'} text-white`}>
-      <p className="flex items-center text-base">
+    <div data-map-select-top-line={atBottom || undefined} className={`${atBottom ? 'shrink-0 border-t border-gray-500 px-4 py-3' : 'mb-6 pt-5 pb-6'} text-white`}>
+      <p data-map-select-title className="flex items-center text-base">
         {/* 발표 자료의 제목 강조처럼 앞에 세로 막대를 하나 둔다. 색은 홈페이지 메인색(청록)이다. */}
         <span aria-hidden="true" className="mr-2 inline-block h-5 w-1 shrink-0 rounded-sm bg-[var(--brand)]" />
         MAP 선택
@@ -1631,17 +1663,21 @@ export function SettingsExcludeSection({
   onRemoveExcludedSector: (sectorId: number) => void
   afterStockChange?: boolean
 }) {
+  const bookmark = useContext(SettingsBookmarkContext)
+  const number = bookmark.mode === 'bookmark' ? bookmark.numbers.excludeSector : undefined
   return (
-    <div className={`${afterStockChange ? 'settings-fourth-exclude' : 'settings-second-exclude'} mt-4 pt-6 text-white`}>
+    <div className={`${afterStockChange ? 'settings-fourth-exclude' : 'settings-second-exclude'} text-white ${bookmark.mode === 'bookmark' ? '' : 'mt-4 pt-6'} ${bookmarkItemClass(bookmark, 'excludeSector')}`}>
       <div className="text-sm">
         <ToggleSwitch
           checked={sectorFilterEnabled}
           onChange={onToggleSectorFilter}
           label="제외 업종"
-          labelClassName="text-[15px] settings-section-num"
+          labelClassName={`text-[15px] settings-section-num ${number ? 'settings-bookmark-num' : ''}`}
+          labelDataNum={number}
+          labelSuffix={<BookmarkButton id="excludeSector" label="제외 업종" />}
         />
         <SettingDescription>업종을 우클릭하면 제외 가능</SettingDescription>
-        <div className="settings-control-inset mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
+        <div className={`settings-control-inset settings-exclude-list mt-2 flex flex-col gap-1 overflow-y-auto ${bookmark.mode === 'bookmark' ? 'max-h-14' : 'max-h-40'}`}>
             {excludedSectors.map(sector => (
               // 지도 위쪽 이동 경로의 되돌아가기 버튼과 같은 모양 — 이름 앞에 되돌아가기 표시가 붙은 한 버튼이다.
               <button
@@ -1858,7 +1894,6 @@ export default function SettingsSidebar({
   snapshotTime,
   classificationSection = 'industry',
   isOpen,
-  onOpenChange,
   isCustom,
   onToggleCustom,
   heatmap,
@@ -1878,6 +1913,29 @@ export default function SettingsSidebar({
   plainContent,
   children,
 }: Props) {
+  const isLoggedIn = useIsLoggedIn()
+  const { setPreference, isLoaded: preferencesLoaded } = useCustomPreferences()
+  const hasDrafts = useHasDrafts()
+  // 좌우 이동 탭은 "MAP 선택" 줄(앞에 색 막대가 있는 줄)의 높이에 맞춘다. 그 줄이 없으면 가운데에 둔다.
+  const outerRef = useRef<HTMLDivElement>(null)
+  const sideTabRef = useRef<HTMLButtonElement>(null)
+  // 설정창 안 내용(분류 선택 줄의 위치, 창 높이)이 바뀔 수 있어 그릴 때마다 다시 잰다. 전체화면처럼 다시 그리지 않고 크기만 바뀌는 경우는
+  // 크기 변화를 지켜보다가 다시 잰다.
+  useLayoutEffect(() => {
+    alignSideTab(outerRef.current, sideTabRef.current)
+  })
+  useEffect(() => {
+    const outer = outerRef.current
+    if (!outer) return
+    const realign = () => alignSideTab(outerRef.current, sideTabRef.current)
+    const observer = new ResizeObserver(realign)
+    observer.observe(outer)
+    window.addEventListener('resize', realign)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', realign)
+    }
+  })
   const [activeSection, setActiveSection] = useState<SettingsSidebarSectionId>(sectionOrder?.[0] ?? 'composition')
   // 닫힐 때 사라지는 모습을 보여주려고, isOpen이 꺼져도 닫기 애니메이션이 끝날 때까지는 화면에 남겨 둔다.
   // animated는 열림 상태가 한 번이라도 바뀐 뒤에만 켜서, 페이지를 처음 열 때 이미 열려 있는 설정창은 애니메이션 없이 보인다.
@@ -1943,6 +2001,7 @@ export default function SettingsSidebar({
       marketValueRange: `${sourceTabNumber('composition')}-1`,
       sectorChange: `${sourceTabNumber('composition')}-2`,
       stockChange: `${sourceTabNumber('composition')}-3`,
+      excludeSector: `${sourceTabNumber('composition')}-4`,
       boxSize: `${sourceTabNumber('stockDisplay')}-1`,
       boxLabel: `${sourceTabNumber('stockDisplay')}-2`,
       textThreshold: `${sourceTabNumber('stockDisplay')}-3`,
@@ -1959,13 +2018,14 @@ export default function SettingsSidebar({
 
   return (
     // 바깥 감싸개: 지도 쪽 가장자리 가운데에 튀어나오는 좌우 이동 탭을 패널(overflow-hidden) 밖에 그리려고 둔다. 슬라이드 애니메이션도 여기에 붙는다.
-    <div className={`relative z-20 flex shrink-0 ${animationClass}`}>
+    <div ref={outerRef} className={`relative z-20 flex shrink-0 ${animationClass}`}>
     {onToggleSide && (
       <button
         type="button"
         onClick={onToggleSide}
         aria-label={isOnLeft ? '설정창을 오른쪽으로 이동' : '설정창을 왼쪽으로 이동'}
         title={isOnLeft ? '설정창을 오른쪽으로 이동' : '설정창을 왼쪽으로 이동'}
+        ref={sideTabRef}
         className={`absolute top-1/2 z-10 flex h-8 w-[17px] -translate-y-1/2 items-center justify-center border border-gray-500 bg-[#363639] p-0 text-gray-400 hover:text-white ${
           isOnLeft ? '-right-4 rounded-r-lg border-l-0' : '-left-4 rounded-l-lg border-r-0'
         }`}
@@ -1996,16 +2056,34 @@ export default function SettingsSidebar({
             </span>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            onOpenChange(false)
-          }}
-          aria-label="닫기"
-          className="ml-auto mr-2 shrink-0 border-0 bg-transparent text-xl text-gray-400 hover:text-white"
-        >
-          ✕
-        </button>
+        {/* 바꾼 값은 임시값이라 저장을 눌러야 서버에 올라간다. 초기화는 임시값을 버리고 저장값으로 돌아간다. 비로그인은 저장할 곳이 없어 로그인 창을 띄운다. */}
+        <div className="ml-auto mr-2 flex shrink-0 items-center gap-3">
+          <button type="button" aria-label="초기화" onClick={() => {
+              if (hasDrafts && window.confirm('저장값으로 되돌릴까요?')) discardDrafts()
+            }} className="group relative flex border-0 bg-transparent p-0 text-gray-400 hover:text-white">
+            <HeaderButtonHint>{'저장값으로 되돌리기'}</HeaderButtonHint>
+            <svg viewBox="0 0 16 16" className="h-[18px] w-[18px]" aria-hidden="true">
+              <path d="M2.5 8a5.5 5.5 0 1 0 1.8-4.07M2.5 2.5v3h3" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            aria-label="저장"
+            onClick={() => {
+              if (!isLoggedIn) onRequestLogin?.()
+              else if (preferencesLoaded && hasDrafts && window.confirm('변경사항을 저장할까요?')) commitDrafts(setPreference)
+            }}
+            className="group relative flex border-0 bg-transparent p-0 text-gray-400 hover:text-white"
+          >
+            <HeaderButtonHint>
+              {isLoggedIn ? '변경사항 저장하기' : '로그인하면 설정을 저장할 수 있습니다.'}
+            </HeaderButtonHint>
+            {hasDrafts && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[var(--brand)]" />}
+            <svg viewBox="0 0 16 16" className="h-[18px] w-[18px]" aria-hidden="true">
+              <path d="M2.5 2.5h8l3 3v8h-11zM5 2.5v3.5h5V2.5M5 13.5V9h6v4.5" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
       </div>
       {plainContent && (
         <div className="settings-section-list settings-sidebar-tab-content min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-8 text-sm">

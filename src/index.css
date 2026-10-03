@@ -669,3 +669,9 @@ a { color: var(--accent-light); text-decoration: none; }
     }
   }
 }
+
+/* 설정창 스크롤 영역(탭 내용 전체, 제외 업종 목록) — 맥 기본 스크롤바는 스크롤할 때만 보여서 내용이 잘린 것처럼 보인다. 가는 스크롤바를 항상 보이게 한다.
+   브라우저를 확대하면 탭 내용도 넘쳐서 스크롤이 생긴다. */
+:is(.settings-exclude-list, .settings-sidebar-tab-content)::-webkit-scrollbar { width: 6px; }
+:is(.settings-exclude-list, .settings-sidebar-tab-content)::-webkit-scrollbar-track { background: rgb(255 255 255 / 8%); border-radius: 3px; }
+:is(.settings-exclude-list, .settings-sidebar-tab-content)::-webkit-scrollbar-thumb { background: rgb(255 255 255 / 40%); border-radius: 3px; }
