@@ -17,8 +17,8 @@ import { CAPTURE_ID } from '@/utils/captureIds'
 import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/components/NavBarPageActions'
 import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
-import { captureElementToClipboard } from '@/utils/captureToClipboard'
-import { captureElementToDownload } from '@/utils/captureToDownload'
+import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
+import { captureElementToDownload, downloadDataUrl } from '@/utils/captureToDownload'
 import { toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel, avgChangeRateLabel } from '@/utils/format'
 import { marketRoute } from '@/utils/marketRoute'
 import {
@@ -246,11 +246,12 @@ export default function SectorChangeRatePage() {
   const { isNativeFullscreen, handleToggleNativeFullscreen } = useNativeFullscreen()
   const captureRef = useRef<HTMLDivElement>(null)
 
-  const handleCopy = async () => {
-    if (!captureRef.current) return
+  const handleCopy = async (previewSrc?: string | null) => {
+    if (!previewSrc && !captureRef.current) return
     setCopyStatus('copying')
     try {
-      await captureElementToClipboard(captureRef.current)
+      if (previewSrc) await copyDataUrlToClipboard(previewSrc)
+      else if (captureRef.current) await captureElementToClipboard(captureRef.current)
       setCopyStatus('copied')
     } catch {
       setCopyStatus('error')
@@ -259,11 +260,12 @@ export default function SectorChangeRatePage() {
     }
   }
 
-  const handleDownload = async () => {
-    if (!captureRef.current) return
+  const handleDownload = async (previewSrc?: string | null) => {
+    if (!previewSrc && !captureRef.current) return
     setDownloadStatus('downloading')
     try {
-      await captureElementToDownload(captureRef.current, 'sector-change-rate.png')
+      if (previewSrc) downloadDataUrl(previewSrc, 'sector-change-rate.png')
+      else if (captureRef.current) await captureElementToDownload(captureRef.current, 'sector-change-rate.png')
     } catch {
       setDownloadStatus('error')
     } finally {

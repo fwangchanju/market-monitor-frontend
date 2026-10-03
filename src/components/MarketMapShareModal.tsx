@@ -5,8 +5,9 @@ import Spinner from '@/components/Spinner'
 
 interface Props {
   onClose: () => void
-  onCopy: () => void
-  onDownload: () => void
+  // 미리보기 이미지(data URL)를 넘긴다 — 있으면 같은 영역을 다시 찍지 않고 그 이미지를 쓴다.
+  onCopy: (previewSrc: string | null) => void
+  onDownload: (previewSrc: string | null) => void
   copyLabel: string
   downloadLabel: string
   isCopying: boolean
@@ -91,7 +92,7 @@ export default function MarketMapShareModal({
     const url = `${window.location.origin}${window.location.pathname}`
     window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent('MARKETRY')}`, '_blank', 'noopener,noreferrer')
     // 링크에는 이미지를 붙일 수 없으니, 클립보드에 이미지를 복사해 두어 텔레그램 대화창에 붙여넣게 한다.
-    onCopy()
+    onCopy(previewSrc)
   }
 
   // 높이는 화면(85dvh에서 버튼 줄을 뺀 만큼), 폭은 화면 폭 안에서 이미지 비율로 정한다 — 원래 크기보다 작으면 키우고 크면 줄여서 화면에
@@ -142,7 +143,7 @@ export default function MarketMapShareModal({
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={onDownload}
+              onClick={() => onDownload(previewSrc)}
               disabled={isDownloading}
               className="nes-btn flex items-center gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800"
             >
@@ -166,7 +167,7 @@ export default function MarketMapShareModal({
                 아이콘(복사 중=스피너, 완료=체크)과 색(완료=강조색)으로 보여준다. 실패만 "복사실패"(4글자). */}
             <button
               type="button"
-              onClick={onCopy}
+              onClick={() => onCopy(previewSrc)}
               disabled={!previewSrc || isCopying}
               className={`nes-btn flex items-center gap-2 px-3 py-1.5 text-sm disabled:opacity-50 ${
                 copyLabel === 'Copied'

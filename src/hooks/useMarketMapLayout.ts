@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { hierarchy, treemap, type HierarchyRectangularNode } from 'd3-hierarchy'
+import { hierarchy, treemap, treemapBinary, treemapSquarify, type HierarchyRectangularNode } from 'd3-hierarchy'
 import type { MarketMapItem } from '@/types/api'
 
 export interface DisplayGroup {
@@ -80,6 +80,12 @@ export const ITEM_SIBLING_GAP = 1
 // 보이고, hover 중인 쪽은 z-index로 항상 위에 그려짐). 상단 헤더 공간은 paddingTop으로 별도 처리.
 export const PADDING = 0
 
+// 자식이 전부 종목(하위 섹터 없음)인 노드만 더 좁은 간격을 쓴다 — 섹터와 종목이 섞여 있으면 섹터 헤더 쪽 여유가 더 필요하니
+// 섹터 기준 간격을 그대로 쓴다. d3의 paddingInner와 stretch 보정이 같은 값을 쓰도록 한 곳에 둔다.
+function siblingGap(node: HierarchyRectangularNode<HierarchyDatum>): number {
+  return (node.children ?? []).every(child => child.data.item) ? ITEM_SIBLING_GAP : SECTOR_SIBLING_GAP
+}
+
 // 시총 반영 비율을 0~100 지수로 변환한다. 0은 종목별 동일 크기, 100은 시가총액 비례,
 // 중간은 거듭제곱으로 시총 격차를 압축한다(예: 50이면 제곱근 비율).
 function boxValue(totalMarketValue: number, marketCapRatio: number): number {
@@ -112,6 +118,12 @@ export function useMarketMapLayout(
   width: number,
   height: number,
   marketCapRatio: number,
+  // 폭을 1/stretch로 줄인 가상 영역에서 배치한 뒤 가로 좌표를 stretch배로 늘린다(1이면 그대로). 가상 영역이 세로로 길어지면 d3가
+  // 박스를 나란히 놓는 가로 줄을 먼저 만들어 시가총액 2위가 1위 오른쪽에 놓이기 쉽고, 모든 박스가 가로로 길어져 한글 종목명이 들어갈
+  // 폭이 늘어난다. 순서(큰 것이 좌상단)는 그대로고, 박스 사이 간격은 늘리지 않는다(아래 toRealRange).
+  stretch = 1,
+  // 박스를 놓는 방식 — squarify는 모양을 정사각형에 맞추고(기본), binary는 시가총액 순서를 지키며 반씩 나눈다(시험용, utils/mapStretch.ts).
+  tile: 'squarify' | 'binary' = 'squarify',
 ): LaidOutSector[] {
   return useMemo(() => {
     if (width <= 0 || height <= 0 || groups.length === 0) return []
@@ -129,13 +141,10 @@ export function useMarketMapLayout(
     if (totalValue <= 0) return []
 
     const root: HierarchyRectangularNode<HierarchyDatum> = treemap<HierarchyDatum>()
-      .size([width, height])
+      .size([width / stretch, height])
+      .tile(tile === 'binary' ? treemapBinary : treemapSquarify)
       .paddingOuter(PADDING)
-      // 자식이 전부 종목(하위 섹터 없음)인 노드만 더 좁은 간격을 쓴다 — 섹터와 종목이 섞여
-      // 있으면 섹터 헤더 쪽 여유가 더 필요하니 섹터 기준 간격을 그대로 쓴다.
-      .paddingInner(node =>
-        (node.children ?? []).every(child => child.data.item) ? ITEM_SIBLING_GAP : SECTOR_SIBLING_GAP,
-      )
+      .paddingInner(siblingGap)
       // d3 계층에서 node.depth===0은 화면에 안 보이는 합성 root라, 화면 기준 depth로 맞추려면 -1.
       // selfSectorName(드릴다운으로 들어온 자기 자신)은 헤더를 안 그리므로(MarketMapSectorSection
       // 참고 — breadcrumb과 중복이라 뺐다) 그 몫의 공간도 안 비워두고, 그 아래 자손들은 전부 한 뎁스씩
@@ -150,30 +159,51 @@ export function useMarketMapLayout(
       })
       .round(true)(hierarchyRoot)
 
+    // 가상 영역(폭 1/stretch)에서 d3가 배치한 가로 좌표를 실제 폭으로 되돌린다. 박스와 박스 사이 간격은 늘리지 않고 박스 폭만 늘린다:
+    // d3는 각 노드를 "자리(tile)"에서 간격의 절반씩 안쪽으로 줄여 그리므로, 자리를 부모 안쪽 구간에 비례해 늘린 뒤 다시 같은 간격만큼 줄인다.
+    // stretch가 1이면 d3 결과와 같다. 부모의 실제 가로 범위(parentReal)가 이미 정해져 있어야 해서 위에서 아래로 차례로 계산한다.
+    const toRealRange = (
+      node: HierarchyRectangularNode<HierarchyDatum>,
+      parent: HierarchyRectangularNode<HierarchyDatum>,
+      parentReal: { x0: number; x1: number },
+    ) => {
+      const gap = siblingGap(parent)
+      const virtualLeft = (parent.x0 ?? 0) - gap / 2
+      const virtualWidth = (parent.x1 ?? 0) - (parent.x0 ?? 0) + gap
+      const scale = virtualWidth > 0 ? (parentReal.x1 - parentReal.x0 + gap) / virtualWidth : 1
+      const toReal = (virtualX: number) => parentReal.x0 - gap / 2 + (virtualX - virtualLeft) * scale
+      const x0 = toReal((node.x0 ?? 0) - gap / 2) + gap / 2
+      const x1 = toReal((node.x1 ?? 0) + gap / 2) - gap / 2
+      return { x0, x1: Math.max(x0, x1) }
+    }
+
     const toLaidOutSector = (
       node: HierarchyRectangularNode<HierarchyDatum>,
+      parent: HierarchyRectangularNode<HierarchyDatum>,
+      parentReal: { x0: number; x1: number },
       originX: number,
       originY: number,
     ): LaidOutSector => {
-      const nx0 = node.x0 ?? 0
+      const nodeReal = toRealRange(node, parent, parentReal)
       const ny0 = node.y0 ?? 0
       const boxes: LaidOutStockBox[] = []
       const subSectors: LaidOutSector[] = []
 
       for (const child of node.children ?? []) {
         if (child.data.item) {
-          const boxWidth = (child.x1 ?? 0) - (child.x0 ?? 0)
+          const childReal = toRealRange(child, node, nodeReal)
+          const boxWidth = childReal.x1 - childReal.x0
           const boxHeight = (child.y1 ?? 0) - (child.y0 ?? 0)
           boxes.push({
             item: child.data.item,
-            x: (child.x0 ?? 0) - nx0,
+            x: childReal.x0 - nodeReal.x0,
             y: (child.y0 ?? 0) - ny0,
             width: boxWidth,
             height: boxHeight,
             areaPercent: ((boxWidth * boxHeight) / (width * height)) * 100,
           })
         } else {
-          subSectors.push(toLaidOutSector(child, nx0, ny0))
+          subSectors.push(toLaidOutSector(child, node, nodeReal, nodeReal.x0, ny0))
         }
       }
 
@@ -184,15 +214,16 @@ export function useMarketMapLayout(
         weightedAvgChangeRate: node.data.weightedAvgChangeRate ?? null,
         simpleAvgChangeRate: node.data.simpleAvgChangeRate ?? null,
         isSelf: node.data.name === selfSectorName,
-        x: nx0 - originX,
+        x: nodeReal.x0 - originX,
         y: ny0 - originY,
-        width: (node.x1 ?? 0) - nx0,
+        width: nodeReal.x1 - nodeReal.x0,
         height: (node.y1 ?? 0) - ny0,
         boxes,
         subSectors,
       }
     }
 
-    return (root.children ?? []).map(sectorNode => toLaidOutSector(sectorNode, 0, 0))
-  }, [groups, selfSectorName, width, height, marketCapRatio])
+    const rootReal = { x0: 0, x1: width }
+    return (root.children ?? []).map(sectorNode => toLaidOutSector(sectorNode, root, rootReal, 0, 0))
+  }, [groups, selfSectorName, width, height, marketCapRatio, stretch, tile])
 }

@@ -8,6 +8,7 @@ import { charTier } from '@/utils/koreanSort'
 import { useAssignStockSector, useBulkAssignStockSector, useUpdateStockAlias } from '@/hooks/useMarketMapCustom'
 import { useMarketValueTiers } from '@/hooks/useMarketValueTiers'
 import { usePersistedState } from '@/hooks/usePersistedState'
+import { useSession } from '@/hooks/useSession'
 import Spinner from './Spinner'
 import { FONT_BAR_TIME } from './FontStyle'
 import { SearchBar } from './ReadOnlyHeatmapSheet'
@@ -1182,6 +1183,7 @@ const AdminStockRow = memo(function AdminStockRow({
   sectorOptionsById,
   onAssign,
   onUpdateAlias,
+  showAlias,
 }: {
   item: StockSectorListItem
   index: number
@@ -1198,6 +1200,7 @@ const AdminStockRow = memo(function AdminStockRow({
   sectorOptionsById: Map<number, SectorOption>
   onAssign: (stockCode: string, sectorId: number) => void
   onUpdateAlias: (stockCode: string, alias: string | null) => void
+  showAlias: boolean
 }) {
   // 행 어디에 마우스를 올려도(체크박스/#/시가총액 등 포함) 줄 전체가 옅게 강조되고, 대분류/소분류/약칭
   // 중 하나를 hover 중일 때는 그 열만 추가로 진하게 표시해서 어떤 걸 hover 중인지 구분되게 한다.
@@ -1269,15 +1272,17 @@ const AdminStockRow = memo(function AdminStockRow({
       </td>
       <td className={`${alignClass('left')} text-gray-400 ${rowHoverClass}`}>{item.stockCode}</td>
       <td className={`${alignClass('left')} ${marketColorClass(item.market)} ${rowHoverClass}`}>{item.stockName}</td>
-      <AdminAliasCell
-        alias={item.alias}
-        onUpdate={alias => onUpdateAlias(item.stockCode, alias)}
-        isHighlighted={hoveredKind === 'alias'}
-        rowHoverClass={rowHoverClass}
-        onHoverStart={() => onAliasHoverStart(item.stockCode)}
-        onHoverEnd={onHoverEnd}
-        onEditingChange={editing => setCellEditing('alias', editing)}
-      />
+      {showAlias && (
+        <AdminAliasCell
+          alias={item.alias}
+          onUpdate={alias => onUpdateAlias(item.stockCode, alias)}
+          isHighlighted={hoveredKind === 'alias'}
+          rowHoverClass={rowHoverClass}
+          onHoverStart={() => onAliasHoverStart(item.stockCode)}
+          onHoverEnd={onHoverEnd}
+          onEditingChange={editing => setCellEditing('alias', editing)}
+        />
+      )}
       <td className={`${alignClass('right')} text-gray-400 ${rowHoverClass}`}>
         {item.totalMarketValue != null ? toJoEokDecimal(item.totalMarketValue / 100_000_000) : '-'}
       </td>
@@ -1337,6 +1342,9 @@ export default function AdminStockTable({
   const assignStockSector = useAssignStockSector()
   const bulkAssignStockSector = useBulkAssignStockSector()
   const updateAlias = useUpdateStockAlias()
+  // 약칭 지정은 관리자 전용이다 — 일반 사용자에게는 약칭 열 자체를 보여주지 않는다(백엔드도 관리자만 허용한다).
+  const isAdmin = useSession().data?.role === 'ADMIN'
+  const columns = useMemo(() => (isAdmin ? COLUMNS : COLUMNS.filter(col => col.key !== 'alias')), [isAdmin])
   // handleAssign/runBulkAssign에서 "변경 전" 섹터를 읽어야 하는데, items를 그대로 의존성에 넣으면
   // 섹터가 바뀔 때마다(=매 변경마다) 콜백 identity가 바뀌어 AdminStockRow의 memo가 무력화된다 —
   // ref로 최신 값만 따라가게 해서 콜백은 그대로 안정적으로 유지한다.
@@ -2173,7 +2181,7 @@ export default function AdminStockTable({
               >
                 <input type="checkbox" className="mx-auto my-0 block h-5 w-5 cursor-pointer accent-[var(--brand)]" checked={isAllVisibleSelected} onChange={toggleSelectAllVisible} />
               </th>
-              {COLUMNS.map(col => {
+              {columns.map(col => {
                 const label = (
                   <span className="cursor-pointer select-none text-slate-100 hover:text-slate-300" onClick={() => handleSort(col.key)}>
                     {col.header}
@@ -2268,7 +2276,7 @@ export default function AdminStockTable({
           <tbody>
             {isPending ? (
               <tr>
-                <td colSpan={COLUMNS.length + 1} className="p-8">
+                <td colSpan={columns.length + 1} className="p-8">
                   <div className="flex justify-center">
                     <Spinner />
                   </div>
@@ -2278,7 +2286,7 @@ export default function AdminStockTable({
               <>
                 {paddingTop > 0 && (
                   <tr>
-                    <td colSpan={COLUMNS.length + 1} style={{ height: paddingTop, padding: 0, border: 'none' }} />
+                    <td colSpan={columns.length + 1} style={{ height: paddingTop, padding: 0, border: 'none' }} />
                   </tr>
                 )}
                 {virtualRows.map(virtualRow => {
@@ -2286,6 +2294,7 @@ export default function AdminStockTable({
                   return (
                     <AdminStockRow
                       key={item.stockCode}
+                      showAlias={isAdmin}
                       item={item}
                       index={virtualRow.index}
                       isSelected={selectedStockCodes.has(item.stockCode)}
@@ -2306,7 +2315,7 @@ export default function AdminStockTable({
                 })}
                 {paddingBottom > 0 && (
                   <tr>
-                    <td colSpan={COLUMNS.length + 1} style={{ height: paddingBottom, padding: 0, border: 'none' }} />
+                    <td colSpan={columns.length + 1} style={{ height: paddingBottom, padding: 0, border: 'none' }} />
                   </tr>
                 )}
               </>

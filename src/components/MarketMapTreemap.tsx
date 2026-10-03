@@ -21,6 +21,10 @@ interface Props {
   upDownCountDepthRange: [number, number] | null
   // 0이면 종목별 동일 크기, 100이면 시가총액 비례로 박스 크기를 계산한다.
   boxSizeMarketCapRatio: number
+  // 가로 늘리기 배율(1이면 그대로) — 히트맵마다 다르게 정한다(utils/mapStretch.ts).
+  stretch?: number
+  // 박스를 놓는 방식(시험용) — utils/mapStretch.ts.
+  tile?: 'squarify' | 'binary'
   // 커스텀 모드가 아닐 때는(기본 분류 트리) 섹터 제외 액션 자체를 제공하지 않는다.
   canExclude: boolean
   // 하위 MarketMapBox까지 그대로 관통해서 전달 — 박스 색칠 설정의 단일 출처(어드민 라이브 프리뷰에서는
@@ -104,6 +108,8 @@ export default function MarketMapTreemap({
   simpleAvgDepthRange,
   upDownCountDepthRange,
   boxSizeMarketCapRatio,
+  stretch,
+  tile,
   canExclude,
   colorScale,
   labelMinAreaPercent,
@@ -161,7 +167,7 @@ export default function MarketMapTreemap({
   }, [])
 
   // 시가총액 차이를 거듭제곱으로 압축하는 비율을 레이아웃 계산에 전달한다.
-  const sectors = useMarketMapLayout(groups, selfSectorName, size.width, size.height, boxSizeMarketCapRatio)
+  const sectors = useMarketMapLayout(groups, selfSectorName, size.width, size.height, boxSizeMarketCapRatio, stretch, tile)
 
   // 팝업을 마우스 좌표가 아니라 우클릭한 박스(섹터 전체 박스, 혹은 종목 박스)의 화면상 위치에 붙인다.
   // 여기서는 그 박스의 뷰포트 기준 rect만 그대로 popup 상태에 실어두고, 그 rect의 어느 가장자리에

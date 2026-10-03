@@ -16,8 +16,8 @@ import { useMarketMap } from '@/hooks/useMarketMap'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { useSession, useIsLoggedIn } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
-import { captureElementToClipboard } from '@/utils/captureToClipboard'
-import { captureElementToDownload } from '@/utils/captureToDownload'
+import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
+import { captureElementToDownload, downloadDataUrl } from '@/utils/captureToDownload'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
@@ -88,11 +88,12 @@ export default function CustomManagePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 세션 로딩이 끝나 인증 여부가 바뀔 때만 반응하면 됨
   }, [isSessionLoading, session])
 
-  const handleCopy = async () => {
-    if (!captureRef.current) return
+  const handleCopy = async (previewSrc?: string | null) => {
+    if (!previewSrc && !captureRef.current) return
     setCopyStatus('copying')
     try {
-      await captureElementToClipboard(captureRef.current)
+      if (previewSrc) await copyDataUrlToClipboard(previewSrc)
+      else if (captureRef.current) await captureElementToClipboard(captureRef.current)
       setCopyStatus('copied')
     } catch {
       setCopyStatus('error')
@@ -101,11 +102,12 @@ export default function CustomManagePage() {
     }
   }
 
-  const handleDownload = async () => {
-    if (!captureRef.current) return
+  const handleDownload = async (previewSrc?: string | null) => {
+    if (!previewSrc && !captureRef.current) return
     setDownloadStatus('downloading')
     try {
-      await captureElementToDownload(captureRef.current, 'market-map-admin.png')
+      if (previewSrc) downloadDataUrl(previewSrc, 'market-map-admin.png')
+      else if (captureRef.current) await captureElementToDownload(captureRef.current, 'market-map-admin.png')
     } catch {
       setDownloadStatus('error')
     } finally {
