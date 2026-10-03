@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { hexToHsl, hslToHex, type ColorScaleThreshold } from '@/utils/marketMapColorScale'
+import { HINT_BUBBLE_CLASS } from '@/components/hintBubbleStyle'
 
 const SATURATION = 75
 
@@ -156,7 +157,7 @@ export default function MarketMapColorThresholdEditorPanel({
               {/* 색 이름 — 강조 색상(4-1)과 같은 말풍선으로, 마우스를 올렸을 때만 뜬다. */}
               <span
                 role="tooltip"
-                className="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 whitespace-nowrap rounded border border-[#7a6d55] bg-[#fff8e7] px-2 py-1 text-xs text-black opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100"
+                className={`pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 whitespace-nowrap ${HINT_BUBBLE_CLASS} opacity-0 transition-opacity group-hover:visible group-hover:opacity-100`}
               >
                 {swatch.label}
               </span>

@@ -55,7 +55,7 @@ function BreadcrumbBackIcon() {
 // 북마크 탭이 한 화면에 들어가도록 항목 수를 제한한다.
 const MAX_SETTINGS_BOOKMARKS = 5
 const MAP_SETTINGS_SECTION_ORDER: SettingsSidebarSectionId[] = [
-  'industry', 'composition', 'stockDisplay', 'colors', 'favorites',
+  'composition', 'industry', 'stockDisplay', 'colors', 'favorites',
 ]
 
 // "업종 단계" 슬라이더가 "끄기"(뎁스 0)일 때만 쓰는 합성 섹터 — 실제 섹터가 아니므로
@@ -587,7 +587,7 @@ export default function MarketMapCustomPage() {
               onToggleSide={toggleSettingsSide}
               boxSizeMarketCapRatio={boxSizeMarketCapRatio}
               onChangeBoxSizeMarketCapRatio={onChangeBoxSizeMarketCapRatio}
-              pageLabel="지도"
+              pageLabel="MAP"
               sectionOrder={MAP_SETTINGS_SECTION_ORDER}
               classificationAtBottom
               snapshotTime={data?.classificationUpdatedAt}

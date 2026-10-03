@@ -1,5 +1,7 @@
-import { Children, Fragment, createContext, isValidElement, useContext, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from 'react'
+import { Children, Fragment, createContext, isValidElement, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import type { DepthMetric } from '@/hooks/useGlobalSettings'
+import { HINT_BUBBLE_CLASS } from '@/components/hintBubbleStyle'
 import type { StockChangeFilter, SectorChangeFilter } from '@/hooks/useFilteredMarketMapTree'
 import type { ColorScaleConfig, LegendSwatch } from '@/utils/marketMapColorScale'
 import MarketMapColorThresholdEditorPanel, { type ColorThresholdEditorProps } from '@/components/MarketMapColorThresholdEditorPanel'
@@ -94,7 +96,7 @@ function SettingHelpIcon({ label, description, bookmarkId, wide = false }: { lab
           ref={tooltipRef}
           role="tooltip"
           style={{ position: 'fixed', left: tooltipPosition.left, top: tooltipPosition.top }}
-          className={`z-50 ${wide ? 'w-[18rem]' : 'w-64'} max-w-[calc(100vw-16px)] whitespace-pre-line rounded border border-[#7a6d55] bg-[#fff8e7] p-2 text-left text-xs leading-relaxed text-black shadow-lg`}
+          className={`z-50 ${wide ? 'w-[18rem]' : 'w-64'} max-w-[calc(100vw-16px)] whitespace-pre-line ${HINT_BUBBLE_CLASS}`}
         >
           {description}
         </span>
@@ -283,38 +285,48 @@ function ChevronGlyph({ direction, outward = false }: { direction: 'left' | 'rig
   )
 }
 
+// 설정창이 열리고 닫힐 때의 애니메이션 길이(ms) — index.css의 settings-sidebar-* 애니메이션 시간(0.25s)과 같아야 한다.
+const SIDEBAR_ANIMATION_MS = 250
+
 // 핸들 크기는 SingleValueSlider(네이티브 range thumb, 16px)와 맞춘다.
 const RANGE_HANDLE_CLASS =
   'pointer-events-none absolute top-1/2 flex h-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--accent)] text-black touch-none'
 
 // 섹션 전체가 막혔을 때의 안내 말풍선은 섹션 아래 끝이 아니라 마우스 커서 바로 옆에 띄운다 —
-// 섹션이 높아도 안내가 컨트롤에서 멀어지지 않는다. 좌표는 이벤트를 받은 요소(섹션 기준) 안의 위치다.
+// 섹션이 높아도 안내가 컨트롤에서 멀어지지 않는다. x는 이벤트를 받은 요소(섹션) 안의 가로 위치, y는 화면 기준 세로 위치,
+// left는 그 요소의 화면 기준 왼쪽 끝이다.
 interface CursorHint {
   x: number
   y: number
+  left: number
   width: number
 }
-const CURSOR_HINT_WIDTH = 224
+const CURSOR_HINT_WIDTH = 200
 const cursorHintFrom = (e: ReactPointerEvent<HTMLElement>): CursorHint => {
   const rect = e.currentTarget.getBoundingClientRect()
-  return { x: e.clientX - rect.left, y: e.clientY - rect.top, width: rect.width }
+  return { x: e.clientX - rect.left, y: e.clientY, left: rect.left, width: rect.width }
 }
 function CursorHintBubble({ hint, children }: { hint: CursorHint; children: ReactNode }) {
   // 폭을 고정해서 커서를 따라 움직여도 줄바꿈이 바뀌지 않게 하고, 섹션 밖으로 나가지 않게 가둔다.
   const maxLeft = hint.width - CURSOR_HINT_WIDTH
   const left = Math.min(Math.max(hint.x + 12, Math.min(0, maxLeft)), maxLeft)
-  return (
+  // 설정창 안에 그리면 위치 지정(relative)된 아래 항목의 제목·버튼이 말풍선 위로 올라오므로, 화면 맨 바깥(body)에 고정 위치로 그린다.
+  return createPortal(
     <div
       role="status"
-      style={{ top: hint.y + 16, left, width: CURSOR_HINT_WIDTH }}
-      className="pointer-events-none absolute z-50 rounded border border-[#7a6d55] bg-[#fff8e7] px-2 py-1 text-xs text-black shadow-lg"
+      style={{ position: 'fixed', top: hint.y + 16, left: hint.left + left, width: CURSOR_HINT_WIDTH }}
+      // whitespace-normal: 말풍선이 whitespace-nowrap인 컨트롤(예: 업종 단계 선택) 안에 있어도 그 속성을 물려받지 않고 줄바꿈되게 한다.
+      // break-keep: 한글이 "가/능합니다"처럼 글자 중간에서 끊기지 않고 띄어쓰기에서만 줄이 바뀌게 한다. "선택이 가능합니다." 같은 끝 문구는
+      // 문구 안의 공백을 &nbsp;로 묶어 한 덩어리로 다음 줄에 내려가게 한다.
+      className={`pointer-events-none z-50 whitespace-normal break-keep ${HINT_BUBBLE_CLASS}`}
     >
       {children}
-    </div>
+    </div>,
+    document.body,
   )
 }
 
-// 업종 단계(대/중/소분류) 텍스트 선택 — 업종 표시 단계(1-1)보다 깊거나 분류에 없는 단계는 비활성이고,
+// 업종 단계(대/중/소분류) 텍스트 선택 — 업종 표시 단계(2-1)보다 깊거나 분류에 없는 단계는 비활성이고,
 // 올리거나 누르면 이유를 커서 옆 말풍선으로 알려준다.
 function DepthTextSelect({
   depth,
@@ -330,7 +342,7 @@ function DepthTextSelect({
   maxSelectableDepth: number
   ariaLabel: string
   disabled?: boolean
-  // true면 1-1 설정이 아니라 분류 자체에 그 단계 데이터가 없어서 막힌 것이다(KRX·NXT).
+  // true면 2-1 설정이 아니라 분류 자체에 그 단계 데이터가 없어서 막힌 것이다(KRX·NXT).
   noDataLimited?: boolean
   className?: string
 }) {
@@ -377,9 +389,9 @@ function DepthTextSelect({
       {hint && !disabled && (
         <CursorHintBubble hint={hint}>
           {noDataLimited ? (
-            <>현재 {blockedLabel} 데이터가 없어 선택이 불가합니다.</>
+            <>현재 {blockedLabel} 데이터가 없어 선택이&nbsp;불가합니다.</>
           ) : (
-            <><span className="inline-block whitespace-nowrap font-bold">1-1) 업종 표시 단계</span> 슬라이더를 더 깊게 설정해야 선택이 가능합니다.</>
+            <><span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 슬라이더를 더 깊게 설정해야 선택이&nbsp;가능합니다.</>
           )}
         </CursorHintBubble>
       )}
@@ -862,7 +874,7 @@ function SettingsClassificationSelector({
   const isSelected = (key: HeatmapKey | null) => key !== null && (key === 'krx' ? isExchange : heatmap === key)
 
   return (
-    <div className={`${atBottom ? 'shrink-0 px-4 py-3' : 'mb-6 pt-5 pb-6'} text-white`}>
+    <div className={`${atBottom ? 'shrink-0 border-t border-gray-500 px-4 py-3' : 'mb-6 pt-5 pb-6'} text-white`}>
       <p className="flex items-center text-base">
         {/* 발표 자료의 제목 강조처럼 앞에 세로 막대를 하나 둔다. 색은 홈페이지 메인색(청록)이다. */}
         <span aria-hidden="true" className="mr-2 inline-block h-5 w-1 shrink-0 rounded-sm bg-[var(--brand)]" />
@@ -898,7 +910,7 @@ function SettingsClassificationSelector({
         <p className={`${FONT_BAR_TIME} mt-2 flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400`}>
           <span className="flex items-center">
             마지막 업데이트
-            <SettingHelpIcon label="마지막 업데이트" description="운영자가 종목 분류를 마지막으로 변경한 시각입니다." />
+            <SettingHelpIcon label="마지막 업데이트" description="종목의 그룹을 마지막으로 변경한 시각입니다." />
           </span>
           <span>{toMarketMapSnapshotDateLabel(snapshotTime)}</span>
           <span>{toMarketMapSnapshotTimeOnlyLabel(snapshotTime)}</span>
@@ -1110,9 +1122,9 @@ export function SettingsSectorLevelSection({
   ]
   if (inBookmarkTab && bookmarkableIds.every(hideItem)) return null
   const depthMetricRangeDisabledReason = !sectorLevelEnabled
-    ? <><span className="inline-block whitespace-nowrap font-bold">1-1) 업종 표시 단계</span> 토글을 켜야 선택이 가능합니다.</>
+    ? <><span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 토글을 켜야 선택이&nbsp;가능합니다.</>
     : !depthMetricEnabled
-      ? <><span className="inline-block whitespace-nowrap font-bold">1-2) 표시 지표</span> 토글을 켜야 선택이 가능합니다.</>
+      ? <><span className="inline-block whitespace-nowrap font-bold">2-2) 표시 지표</span> 토글을 켜야 선택이&nbsp;가능합니다.</>
       : null
 
   return (
@@ -1141,7 +1153,7 @@ export function SettingsSectorLevelSection({
                 onChange={index => onChangeMaxDepth(index + 1)}
                 disabled={!sectorLevelEnabled}
                 maxSelectableIndex={selectableDepth - 1}
-                blockedReason={label => `현재 ${label} 데이터가 없어 선택이 불가합니다.`}
+                blockedReason={label => `현재 ${label} 데이터가 없어 선택이\u00a0불가합니다.`}
               />
             </div>
           </div>
@@ -1162,26 +1174,29 @@ export function SettingsSectorLevelSection({
               </div>
               <SettingDescription>업종 항목에 표시할 지표</SettingDescription>
               <div role="radiogroup" aria-label="표시 지표" className={`mt-[18px] grid max-w-[16rem] settings-control-inset grid-cols-4 rounded-md border border-gray-600 bg-zinc-700 p-0.5 ${depthMetricEnabled ? '' : 'opacity-40'}`}>
-                {GROUP_TAB_METRIC_OPTIONS.map(option => (
+                {GROUP_TAB_METRIC_OPTIONS.map(option => {
+                  const selected = activeDepthMetric === option.key
+                  return (
                   <button
                     key={option.key}
                     type="button"
                     role="radio"
-                    aria-checked={activeDepthMetric === option.key}
+                    aria-checked={selected}
                     onClick={() => onChangeActiveDepthMetric(option.key)}
                     disabled={isDepthMetricDisabled || !depthMetricEnabled}
                     aria-label={option.label}
                     className={`min-h-9 rounded px-0.5 py-1 text-xs font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed ${
-                      activeDepthMetric === option.key
+                      selected
                         ? 'bg-[var(--accent)] text-black'
                         : 'border-0 bg-transparent text-gray-300 hover:text-white'
                     }`}
                   >
-                    <span className="flex flex-col items-center ">
+                    <span className="flex flex-col items-center">
                       {option.label.split(' ').map(line => <span key={line}>{line}</span>)}
                     </span>
                   </button>
-                ))}
+                  )
+                })}
               </div>
             </div>
             {isDepthMetricDisabled && (
@@ -1198,7 +1213,7 @@ export function SettingsSectorLevelSection({
             )}
             {isDepthMetricDisabled && depthMetricSectionHint && (
               <CursorHintBubble hint={depthMetricSectionHint}>
-                <span className="inline-block whitespace-nowrap font-bold">1-1) 업종 표시 단계</span> 토글을 켜야 선택이 가능합니다.
+                <span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 토글을 켜야 선택이&nbsp;가능합니다.
               </CursorHintBubble>
             )}
           </div>
@@ -1221,7 +1236,7 @@ export function SettingsSectorLevelSection({
                 minAriaLabel="최소 표시 뎁스"
                 maxAriaLabel="최대 표시 뎁스"
                 maxSelectableIndex={depthMetricMaxSelectableIndex}
-                limitReason={<><span className="inline-block whitespace-nowrap font-bold">1-1) 업종 표시 단계</span> 슬라이더를 더 깊게 설정해야 선택이 가능합니다.</>}
+                limitReason={<><span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 슬라이더를 더 깊게 설정해야 선택이&nbsp;가능합니다.</>}
                 disabledReason={depthMetricRangeDisabledReason}
                 onChange={onChangeDepthMetricRange}
                 disabled={isDepthMetricRangeDisabled}
@@ -1278,7 +1293,7 @@ export function SettingsSectorLevelSection({
               )}
               {isTopPickDisabled && topPickSectionHint && (
                 <CursorHintBubble hint={topPickSectionHint}>
-                  <span className="inline-block whitespace-nowrap font-bold">1-1) 업종 표시 단계</span> 토글을 켜야 선택이 가능합니다.
+                  <span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 토글을 켜야 선택이&nbsp;가능합니다.
                 </CursorHintBubble>
               )}
             </div>
@@ -1375,7 +1390,7 @@ export function SettingsSectorLevelSection({
             </div>
             {!stockLabelEnabled && textThresholdHint && (
               <CursorHintBubble hint={textThresholdHint}>
-                <span className="inline-block whitespace-nowrap font-bold">3-2) 박스 내 표기</span> 토글을 켜야 선택이 가능합니다.
+                <span className="inline-block whitespace-nowrap font-bold">3-2) 박스 내 표기</span> 토글을 켜야 선택이&nbsp;가능합니다.
               </CursorHintBubble>
             )}
           </div>
@@ -1738,7 +1753,7 @@ export function SettingsStrongIndustryColorSection({
         <SettingHelpIcon
           bookmarkId="strongColor"
           label="강조 색상"
-          description={<>지도 내 업종명(대분류)과 <span className="inline-block whitespace-nowrap font-bold">1-4) 강세 표시</span>의 색상을 설정합니다.</>}
+          description={<>지도 내 업종명(대분류)과 <span className="inline-block whitespace-nowrap font-bold">2-4) 강세 표시</span>의 색상을 설정합니다.</>}
         />
       </p>
       <SettingDescription>업종명과 강세 업종의 색상</SettingDescription>
@@ -1755,7 +1770,7 @@ export function SettingsStrongIndustryColorSection({
             />
             <span
               role="tooltip"
-              className="pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 whitespace-nowrap rounded border border-[#7a6d55] bg-[#fff8e7] px-2 py-1 text-xs text-black opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100"
+              className={`pointer-events-none invisible absolute bottom-full left-1/2 z-50 mb-1 -translate-x-1/2 whitespace-nowrap ${HINT_BUBBLE_CLASS} opacity-0 transition-opacity group-hover:visible group-hover:opacity-100`}
             >
               {option.label}
             </span>
@@ -1767,7 +1782,7 @@ export function SettingsStrongIndustryColorSection({
 }
 
 interface Props {
-  // 헤더에 "{pageLabel} 설정"으로 표시 — SubNavBar 탭 이름과 동일한 문구를 각 페이지가 그대로 넘겨준다.
+  // 헤더에 그대로 표시 — SubNavBar 탭 이름과 동일한 문구(MAP, GROUP 등)를 각 페이지가 그대로 넘겨준다. 안 넘기면 "설정".
   // 생략하면 페이지 이름 없이 "설정"만 표시한다(페이지 이름을 반복하는 동어 반복을 피하고 싶은 페이지용).
   pageLabel?: string
   // 탭 없이 패널 본문에 바로 그리는 내용 — 설정 항목이 한두 개뿐인 페이지(그룹)용. 탭 분류(children의
@@ -1844,6 +1859,21 @@ export default function SettingsSidebar({
   children,
 }: Props) {
   const [activeSection, setActiveSection] = useState<SettingsSidebarSectionId>(sectionOrder?.[0] ?? 'composition')
+  // 닫힐 때 사라지는 모습을 보여주려고, isOpen이 꺼져도 닫기 애니메이션이 끝날 때까지는 화면에 남겨 둔다.
+  // animated는 열림 상태가 한 번이라도 바뀐 뒤에만 켜서, 페이지를 처음 열 때 이미 열려 있는 설정창은 애니메이션 없이 보인다.
+  const [mounted, setMounted] = useState(isOpen)
+  const [animated, setAnimated] = useState(false)
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen)
+    setAnimated(true)
+    if (isOpen) setMounted(true)
+  }
+  useEffect(() => {
+    if (isOpen || !mounted) return
+    const timer = window.setTimeout(() => setMounted(false), SIDEBAR_ANIMATION_MS)
+    return () => window.clearTimeout(timer)
+  }, [isOpen, mounted])
   const childNodes = Children.toArray(children)
   const sectionContent = new Map<SettingsSidebarSectionId, ReactNode[]>()
   const addSectionContent = (section: SettingsSidebarSectionId, content: ReactNode) => {
@@ -1903,12 +1933,14 @@ export default function SettingsSidebar({
   }
 
   // 닫혀있을 땐 아예 렌더링하지 않는다(트리거 버튼은 더 이상 이 컴포넌트가 아니라 호출부가 따로 그린다).
-  if (!isOpen) return null
+  if (!isOpen && !mounted) return null
+  const sideName = isOnLeft ? 'left' : 'right'
+  const animationClass = !animated ? '' : isOpen ? `settings-sidebar-enter-${sideName}` : `settings-sidebar-leave-${sideName} pointer-events-none`
 
   return (
     <div
       data-settings-sidebar
-      className="tabular-nums flex w-72 shrink-0 flex-col overflow-hidden rounded-md border border-gray-500 bg-[#363639]"
+      className={`tabular-nums flex w-72 shrink-0 flex-col overflow-hidden rounded-md border border-gray-500 bg-[#363639] ${animationClass}`}
       style={{ '--accent': '#d1d5db', '--accent-hover': '#f3f4f6', '--accent-light': '#d1d5db' } as CSSProperties}
     >
       <div className="flex shrink-0 items-center border-b border-gray-500 px-4 pt-3 pb-2">
@@ -1933,7 +1965,7 @@ export default function SettingsSidebar({
               </svg>
             </button>
           )}
-          <p className="flex h-7 items-center whitespace-nowrap text-lg font-bold leading-none text-white">{pageLabel ? `${pageLabel} 설정` : '설정'}</p>
+          <p className="flex h-7 items-center whitespace-nowrap text-lg font-bold leading-none text-white">{pageLabel ?? '설정'}</p>
           {stockCountLabel && (
             <span className="flex h-7 w-[7rem] shrink-0 items-center justify-end whitespace-nowrap text-right text-sm leading-none text-gray-400">
               {stockCountLabel}
@@ -1981,7 +2013,7 @@ export default function SettingsSidebar({
                 <span className="max-w-full truncate font-bold">{section.label}</span>
                 <span
                   aria-hidden="true"
-                  className={`absolute inset-x-2 bottom-0 h-0.5 bg-[var(--accent)] transition-opacity ${selected ? 'opacity-100' : 'opacity-0'}`}
+                  className={`absolute inset-x-2 bottom-0 h-0.5 bg-[var(--brand)] transition-opacity ${selected ? 'opacity-100' : 'opacity-0'}`}
                 />
               </button>
             )

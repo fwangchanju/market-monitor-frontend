@@ -13,25 +13,25 @@ export type DepthMetricDefault = 'weightedAvgChangeRate' | 'simpleAvgChangeRate'
 export interface SettingDefaults {
   // 분류 체계 — true는 MARKETRY 분류다. 비로그인은 이 값과 상관없이 항상 거래소 분류(KRX)로 고정된다(useGlobalSettings).
   isCustom: boolean
-  // 1-1 업종 표시 단계: 켜짐 여부와 단계(1=대분류, 2=중분류, 3=소분류)
+  // 2-1 업종 표시 단계: 켜짐 여부와 단계(1=대분류, 2=중분류, 3=소분류)
   sectorLevelEnabled: boolean
   maxDepth: number
-  // 1-2 표시 지표
+  // 2-2 표시 지표
   depthMetric: DepthMetricDefault
-  // 1-3 표시 위치: 단계 범위(0=대분류, 1=중분류, 2=소분류)
+  // 2-3 표시 위치: 단계 범위(0=대분류, 1=중분류, 2=소분류)
   depthMetricMinIndex: number
   depthMetricMaxIndex: number
-  // 1-4 강세 표시: 단계(0=대분류, 1=중분류, 2=소분류)와 개수
+  // 2-4 강세 표시: 단계(0=대분류, 1=중분류, 2=소분류)와 개수
   topPickDepth: number
   topPickCount: number
-  // 2-1 시가총액 범위: 'all'은 모든 구간, 'excludeDefaultTiers'는 기본 제외 구간(소형주)을 뺀다,
+  // 1-1 시가총액 범위: 'all'은 모든 구간, 'excludeDefaultTiers'는 기본 제외 구간(소형주)을 뺀다,
   // 'topTwoTiers'는 시가총액이 큰 두 구간(초대형주+대형주)만 보여준다
   tierRange: 'all' | 'excludeDefaultTiers' | 'topTwoTiers'
-  // 2-2 / 2-3 등락 방향 필터('all' | 'rising' | 'falling')와 2-2의 업종 단계(0=대분류)
+  // 1-2 / 1-3 등락 방향 필터('all' | 'rising' | 'falling')와 1-2의 업종 단계(0=대분류)
   sectorChangeFilter: 'all' | 'rising' | 'falling'
   sectorChangeDepth: number
   stockChangeFilter: 'all' | 'rising' | 'falling'
-  // 2-4 제외 업종 변경 사용 여부
+  // 1-4 제외 업종 변경 사용 여부
   sectorFilterEnabled: boolean
   // 3-1 박스 크기: 시가총액 반영 비율(0=동일 크기 ~ 100=시가총액 비례)
   boxSizeMarketCapRatio: number
@@ -56,13 +56,13 @@ export interface SettingDefaults {
 export const MEMBER_DEFAULTS: SettingDefaults = {
   isCustom: true,
   sectorLevelEnabled: true,
-  maxDepth: 1, // 1-1 대분류
-  depthMetric: 'weightedAvgChangeRate', // 1-2 시총 가중
+  maxDepth: 1, // 2-1 대분류
+  depthMetric: 'weightedAvgChangeRate', // 2-2 시총 가중
   depthMetricMinIndex: 0,
-  depthMetricMaxIndex: 0, // 1-3 대분류만
-  topPickDepth: 0, // 1-4 대분류
-  topPickCount: 1, // 1-4 강세 표시 1개
-  tierRange: 'topTwoTiers', // 2-1 초대형주+대형주
+  depthMetricMaxIndex: 0, // 2-3 대분류만
+  topPickDepth: 0, // 2-4 대분류
+  topPickCount: 1, // 2-4 강세 표시 1개
+  tierRange: 'topTwoTiers', // 1-1 초대형주+대형주
   sectorChangeFilter: 'all',
   sectorChangeDepth: 0,
   stockChangeFilter: 'all',

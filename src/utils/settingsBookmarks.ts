@@ -7,8 +7,8 @@ export type SettingsBookmarkId =
   | 'strongColor'
 
 export const BOOKMARK_ORDER: readonly SettingsBookmarkId[] = [
-  'depthLevel', 'depthMetric', 'depthRange', 'topPick',
   'marketValueRange', 'sectorChange', 'stockChange',
+  'depthLevel', 'depthMetric', 'depthRange', 'topPick',
   'boxSize', 'boxLabel', 'textThreshold', 'decimalPlaces',
   'strongColor',
 ]
