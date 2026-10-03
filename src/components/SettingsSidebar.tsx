@@ -47,7 +47,11 @@ function SettingHelpIcon({ label, description, bookmarkId, wide = false }: { lab
       if (!anchor || !tooltip) return
 
       const margin = 8
-      const left = Math.max(margin, Math.min(anchor.left, window.innerWidth - tooltip.width - margin))
+      // 설정창이 오른쪽에 있으면(아이콘이 화면 오른쪽 절반) 아이콘 오른쪽 끝에 맞춰 왼쪽 지도 쪽으로 펼치고,
+      // 왼쪽에 있으면 아이콘 왼쪽 끝에 맞춰 오른쪽 지도 쪽으로 펼친다. 화면 밖으로는 나가지 않게 가둔다.
+      const opensLeft = anchor.left + anchor.width / 2 > window.innerWidth / 2
+      const preferredLeft = opensLeft ? anchor.right - tooltip.width : anchor.left
+      const left = Math.max(margin, Math.min(preferredLeft, window.innerWidth - tooltip.width - margin))
       let top = anchor.bottom + 4
       if (top + tooltip.height > window.innerHeight - margin) {
         const above = anchor.top - tooltip.height - 4
@@ -262,9 +266,11 @@ const STOCK_LABEL_MODE_LABELS = ['종목명', '등락률', '모두']
 const DECIMAL_PLACES_LABELS = ['정수', '1자리', '2자리']
 
 // 범위 슬라이더 핸들 안의 화살표. 유니코드 화살표는 16px 안에서 뭉개져서 SVG로 그린다.
-function ChevronGlyph({ direction }: { direction: 'left' | 'right' }) {
+function ChevronGlyph({ direction, outward = false }: { direction: 'left' | 'right'; outward?: boolean }) {
+  // outward: 핸들(원) 안에서 꺽쇠를 바깥쪽(왼쪽 화살표는 왼쪽, 오른쪽 화살표는 오른쪽)으로 1px 옮긴다.
+  const shift = outward ? (direction === 'left' ? '-translate-x-px' : 'translate-x-px') : ''
   return (
-    <svg viewBox="0 0 8 12" className="h-2.5 w-2 shrink-0" aria-hidden="true">
+    <svg viewBox="0 0 8 12" className={`h-2.5 w-2 shrink-0 ${shift}`} aria-hidden="true">
       <path
         d={direction === 'left' ? 'M6 1 2 6l4 5' : 'M2 1l4 5-4 5'}
         fill="none"
@@ -508,10 +514,10 @@ function RangeSlider({
         ) : (
           <>
             <div aria-label={minAriaLabel} className={`${RANGE_HANDLE_CLASS} z-10 w-4`} style={{ left: `calc(8px + ${minPct}% - ${minPct * 0.16}px)` }}>
-              <ChevronGlyph direction="left" />
+              <ChevronGlyph direction="left" outward />
             </div>
             <div aria-label={maxAriaLabel} className={`${RANGE_HANDLE_CLASS} z-20 w-4`} style={{ left: `calc(8px + ${maxPct}% - ${maxPct * 0.16}px)` }}>
-              <ChevronGlyph direction="right" />
+              <ChevronGlyph direction="right" outward />
             </div>
           </>
         )}
@@ -643,7 +649,8 @@ function SingleValueSlider({
           onChange(Math.min(next, selectableMax))
         }}
         disabled={disabled}
-        className="block w-full accent-[var(--accent)] disabled:cursor-not-allowed"
+        className="settings-single-slider block w-full disabled:cursor-not-allowed"
+        style={{ '--slider-pct': steps > 0 ? index / steps * 100 : 0 } as CSSProperties}
       />
       <SliderTickLabels
         labels={labels}
@@ -1163,13 +1170,16 @@ export function SettingsSectorLevelSection({
                     aria-checked={activeDepthMetric === option.key}
                     onClick={() => onChangeActiveDepthMetric(option.key)}
                     disabled={isDepthMetricDisabled || !depthMetricEnabled}
-                    className={`min-h-7 rounded px-0.5 py-1 text-xs font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed ${
+                    aria-label={option.label}
+                    className={`min-h-9 rounded px-0.5 py-1 text-xs font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed ${
                       activeDepthMetric === option.key
                         ? 'bg-[var(--accent)] text-black'
                         : 'border-0 bg-transparent text-gray-300 hover:text-white'
                     }`}
                   >
-                    {option.label}
+                    <span className="flex flex-col items-center ">
+                      {option.label.split(' ').map(line => <span key={line}>{line}</span>)}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -1316,7 +1326,7 @@ export function SettingsSectorLevelSection({
                     }`}
                   >
                     {label === '모두' ? (
-                      <span className="flex flex-col items-center leading-[1.1]">
+                      <span className="flex flex-col items-center ">
                         <span>종목명</span>
                         <span>등락률</span>
                       </span>
@@ -1792,6 +1802,9 @@ interface Props {
   // 비로그인이면 북마크 탭을 누를 때 탭을 열지 않고 이 함수(로그인 팝업)를 부른다.
   bookmarkLoginRequired?: boolean
   onRequestLogin?: () => void
+  // 설정창이 화면 왼쪽에 붙어 있는지와 좌우 이동 함수 — onToggleSide를 넘긴 페이지에서만 헤더에 이동 화살표를 보인다.
+  isOnLeft?: boolean
+  onToggleSide?: () => void
   // 실제로 보여줄 옵션 섹션들 — 페이지가 자기한테 유효한 Settings*Section만 골라 조립한다.
   // 아무것도 안 넘기면(요약/어드민처럼 이 설정이 전혀 적용 안 되는 페이지) 헤더만 있는 빈 사이드바가 된다.
   children?: ReactNode
@@ -1825,6 +1838,8 @@ export default function SettingsSidebar({
   onToggleBookmark,
   bookmarkLoginRequired = false,
   onRequestLogin,
+  isOnLeft = false,
+  onToggleSide,
   plainContent,
   children,
 }: Props) {
@@ -1896,8 +1911,28 @@ export default function SettingsSidebar({
       className="tabular-nums flex w-72 shrink-0 flex-col overflow-hidden rounded-md border border-gray-500 bg-[#363639]"
       style={{ '--accent': '#d1d5db', '--accent-hover': '#f3f4f6', '--accent-light': '#d1d5db' } as CSSProperties}
     >
-      <div className="flex shrink-0 items-center border-b border-gray-500 px-4 pt-4 pb-3">
+      <div className="flex shrink-0 items-center border-b border-gray-500 px-4 pt-3 pb-2">
         <div className="flex min-w-0 items-center gap-2">
+          {onToggleSide && (
+            <button
+              type="button"
+              onClick={onToggleSide}
+              aria-label={isOnLeft ? '설정창을 오른쪽으로 이동' : '설정창을 왼쪽으로 이동'}
+              title={isOnLeft ? '설정창을 오른쪽으로 이동' : '설정창을 왼쪽으로 이동'}
+              className="flex h-7 w-5 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-gray-400 hover:text-white"
+            >
+              <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden="true">
+                <path
+                  d={isOnLeft ? 'M13.5 3v10M2 8h9M7.5 4.5 11 8l-3.5 3.5' : 'M2.5 3v10M14 8H5M8.5 4.5 5 8l3.5 3.5'}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
           <p className="flex h-7 items-center whitespace-nowrap text-lg font-bold leading-none text-white">{pageLabel ? `${pageLabel} 설정` : '설정'}</p>
           {stockCountLabel && (
             <span className="flex h-7 w-[7rem] shrink-0 items-center justify-end whitespace-nowrap text-right text-sm leading-none text-gray-400">

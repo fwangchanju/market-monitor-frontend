@@ -26,6 +26,7 @@ import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/c
 import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
+import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
 import { usePageSetting } from '@/hooks/usePageSetting'
 import { sanitizeBookmarkIds } from '@/utils/settingsBookmarks'
 import { useIsLoggedIn } from '@/hooks/useSession'
@@ -197,6 +198,7 @@ export default function MarketMapCustomPage() {
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
   // NXT 안내 알림을 닫았는지 — 다른 히트맵으로 바꾸면 초기화돼서, NXT를 다시 고를 때 또 보인다.
   const [isNxtNoticeDismissed, setIsNxtNoticeDismissed] = useState(false)
+  const { isOnLeft: isSettingsOnLeft, toggleSide: toggleSettingsSide } = useSettingsSidebarSide()
   useEffect(() => {
     if (!nxtOnly) setIsNxtNoticeDismissed(false)
   }, [nxtOnly])
@@ -567,7 +569,7 @@ export default function MarketMapCustomPage() {
                   />
                 </div>
               )}
-              {/* 등락률 색상 범례 — 지도 아래 오른쪽(설정창 왼쪽)에 오른쪽 끝에 붙여 둔다. 이 줄만큼 지도 아래쪽이 올라온다. */}
+              {/* 등락률 색상 범례 — 지도 우하단에 오른쪽 끝에 붙여 둔다. 이 줄만큼 지도 아래쪽이 올라온다. */}
               <div className="flex h-7 shrink-0 items-end justify-between gap-3 pl-[7px] pr-[7px]">
                 <div className="flex h-7 min-w-0 items-center">
                   <DisclaimerNotice />
@@ -578,9 +580,11 @@ export default function MarketMapCustomPage() {
             </div>
           </div>
           {/* 설정창 위쪽 여백 7px — 위쪽 바의 누적·따로 토글 윗선과 맞춘 값이다. 아래는 붙인다. */}
-          <div className="flex shrink-0 pt-[7px]">
+          <div className={`flex shrink-0 pt-[7px] ${isSettingsOnLeft ? 'order-first' : ''}`}>
             <SettingsSidebar
               {...settingsModalProps}
+              isOnLeft={isSettingsOnLeft}
+              onToggleSide={toggleSettingsSide}
               boxSizeMarketCapRatio={boxSizeMarketCapRatio}
               onChangeBoxSizeMarketCapRatio={onChangeBoxSizeMarketCapRatio}
               pageLabel="지도"
