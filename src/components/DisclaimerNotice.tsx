@@ -7,7 +7,7 @@ const DISCLAIMER_LINES = [
 
 export default function DisclaimerNotice() {
   return (
-    <p title={DISCLAIMER_LINES.join(' ')} className="min-w-0 text-left text-xs font-medium text-white">
+    <p title={DISCLAIMER_LINES.join(' ')} className="min-w-0 text-left text-xs font-medium text-white/50">
       <span className="min-w-0 leading-[14px]">
         {DISCLAIMER_LINES.map(line => (
           <span key={line} className="block truncate">

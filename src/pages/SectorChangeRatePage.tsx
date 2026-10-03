@@ -11,6 +11,7 @@ import ProfileAvatar from '@/components/ProfileAvatar'
 import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
+import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
 import { computeSectorAverage } from '@/utils/sectorAverage'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/components/NavBarPageActions'
@@ -238,6 +239,7 @@ export default function SectorChangeRatePage() {
     </span>
   )
 
+  const { isOnLeft: isSettingsOnLeft, toggleSide: toggleSettingsSide } = useSettingsSidebarSide()
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
@@ -461,9 +463,11 @@ export default function SectorChangeRatePage() {
             </div>
           </div>
           {/* 설정창 윗선을 지도 페이지와 같은 높이로 맞춘다 — 지도 페이지에서 실제로 맞춘 모양(설정창 윗선이 위쪽 바 윗선보다 3px 아래)을 따른다. 이 칸은 바보다 5.25px 위에서 시작하므로 5.25 + 3 - 1(눈으로 맞춘 보정) = 7.25px을 띄운다. 아래는 붙인다. */}
-          <div className="flex shrink-0 pt-[7.25px]">
+          <div className={`flex shrink-0 pt-[7.25px] ${isSettingsOnLeft ? 'order-first' : ''}`}>
             <SettingsSidebar
               {...settingsModalProps}
+              isOnLeft={isSettingsOnLeft}
+              onToggleSide={toggleSettingsSide}
               pageLabel="그룹"
               plainContent={
                 <>
