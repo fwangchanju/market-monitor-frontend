@@ -336,6 +336,9 @@ export default function SectorChangeRatePage() {
     return { current: buildRankChart(currentEntries), delta: buildRankChart(deltaEntries) }
   }, [displayNow, displayBefore, excludedSectorIds, excludedMarketValueTiers, avgChangeRateUseSimple])
 
+  // 본문에 로딩 원이 보이는 상태 — 아래 본문 분기(isLoading, 쌍 데이터를 기다리는 중)와 같은 조건이다.
+  const isSpinnerShown = isLoading || (!isError && data?.snapshotTime != null && !displayNow)
+
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden bg-black">
       <NavBar />
@@ -453,10 +456,12 @@ export default function SectorChangeRatePage() {
               )}
               </div>
             </div>
-            {/* 면책조항 줄 — 지도 페이지 색상 바 줄과 같은 높이(28px)로 왼쪽 아래에 둔다. */}
-            <div className="flex h-7 shrink-0 items-center px-[7px]">
-              <DisclaimerNotice />
-            </div>
+            {/* 면책조항 줄 — 지도 페이지 색상 바 줄과 같은 높이(28px)로 왼쪽 아래에 둔다. 로딩 원이 보이는 동안은 뺀다. */}
+            {!isSpinnerShown && (
+              <div className="flex h-7 shrink-0 items-center px-[7px]">
+                <DisclaimerNotice />
+              </div>
+            )}
           </div>
           {/* 설정창 윗선을 지도 페이지와 같은 높이로 맞춘다 — 지도 페이지에서 실제로 맞춘 모양(설정창 윗선이 위쪽 바 윗선보다 3px 아래)을 따른다. 이 칸은 바보다 5.25px 위에서 시작하므로 5.25 + 3 - 1(눈으로 맞춘 보정) = 7.25px을 띄운다. 아래는 붙인다. */}
           <div className={`flex shrink-0 pt-[7.25px] ${isSettingsOnLeft ? 'order-first' : ''}`}>

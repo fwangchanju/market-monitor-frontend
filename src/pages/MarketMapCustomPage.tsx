@@ -21,6 +21,7 @@ import ProfileAvatar from '@/components/ProfileAvatar'
 import { ChangeRateBasisToggle, MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/MarketMapControls'
 import MarketMapLegendBar from '@/components/MarketMapLegendBar'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
+import { HINT_BUBBLE_COLOR_CLASS } from '@/components/hintBubbleStyle'
 import Spinner from '@/components/Spinner'
 import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/components/NavBarPageActions'
 import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
@@ -235,8 +236,6 @@ export default function MarketMapCustomPage() {
   // 지금 뎁스(path) 기준으로, 섹터 제외/시가총액 구간 필터를 적용하기 전 원본 트리에 있는 전체 종목 수.
   const rawCurrentNode = findRawNodeByPath(rootNodes, path)
   const totalItemCount = collectRawItems(rawCurrentNode ? [rawCurrentNode] : rootNodes).length
-  // NXT 안내에 보여주는 종목 수 — 업종으로 들어가 있어도 NXT 전체 종목 수를 보여준다(위 totalItemCount는 지금 단계의 종목 수다).
-  const nxtStockCount = nxtOnly ? collectRawItems(rootNodes).length : 0
 
   // 상단 바는 현재 히트맵을 점등 표시로 보여준다. 종목 수는 설정 사이드바에 표시한다.
   const modeStatusText = (
@@ -472,21 +471,21 @@ export default function MarketMapCustomPage() {
               <div className="relative flex min-h-0 flex-1 flex-col bg-black">
               {/* NXT 단독 시간대 공지 — 그 시간대에만 보여주는 알림이다. 닫을 수 있고, 시간대가 끝났다가 다시 오면 또 나온다. */}
               {nxtOnlyWindow && !isNxtNoticeDismissed && (
+                // 색은 설정창의 말풍선과 같고, 지도 한가운데에 설정창 헤더(text-lg)와 같은 크기의 글자로 보여준다.
                 <div
                   role="status"
-                  className="absolute left-1/2 top-9 z-30 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-start gap-3 rounded-md border border-slate-500 bg-[#2b3a4f] px-4 py-2 text-sm text-slate-100 shadow-lg"
+                  className={`${HINT_BUBBLE_COLOR_CLASS} absolute left-1/2 top-1/2 z-30 flex max-w-[calc(100%-1rem)] -translate-x-1/2 -translate-y-1/2 items-start gap-4 px-5 py-3 text-lg leading-snug`}
                 >
                   <span>
-                    <b className="text-[var(--brand)]">{nxtOnlyWindow.label}</b>
-                    {nxtOnlyWindow.name && <b className="ml-1.5 text-[var(--brand)]">{nxtOnlyWindow.name}</b>}
+                    <b>{nxtOnlyWindow.label}</b>
                     <br />
-                    NXT {nxtStockCount > 0 && <>{toCount(nxtStockCount)} </>}종목만 거래 중.
+                    NXT 종목만 표시 중
                   </span>
                   <button
                     type="button"
                     onClick={() => setIsNxtNoticeDismissed(true)}
                     aria-label="안내 닫기"
-                    className="shrink-0 border-0 bg-transparent p-0 text-slate-400 hover:text-slate-100"
+                    className="shrink-0 border-0 bg-transparent p-0 text-gray-500 hover:text-black"
                   >
                     ✕
                   </button>
@@ -567,13 +566,15 @@ export default function MarketMapCustomPage() {
                   />
                 </div>
               )}
-              {/* 등락률 색상 범례 — 지도 우하단에 오른쪽 끝에 붙여 둔다. 이 줄만큼 지도 아래쪽이 올라온다. */}
-              <div className="flex h-7 shrink-0 items-end justify-between gap-3 pl-[7px] pr-[7px]">
-                <div className="flex h-7 min-w-0 items-center">
-                  <DisclaimerNotice />
+              {/* 등락률 색상 범례 — 지도 우하단에 오른쪽 끝에 붙여 둔다. 이 줄만큼 지도 아래쪽이 올라온다. 로딩 원이 보이는 동안은 지도도 범례도 의미가 없어서 면책 문구와 함께 뺀다. */}
+              {!isLoading && (
+                <div className="flex h-7 shrink-0 items-end justify-between gap-3 pl-[7px] pr-[7px]">
+                  <div className="flex h-7 min-w-0 items-center">
+                    <DisclaimerNotice />
+                  </div>
+                  <MarketMapLegendBar swatches={settingsModalProps.legendSwatches} />
                 </div>
-                <MarketMapLegendBar swatches={settingsModalProps.legendSwatches} />
-              </div>
+              )}
               </div>
             </div>
           </div>

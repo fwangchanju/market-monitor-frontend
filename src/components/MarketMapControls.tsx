@@ -146,10 +146,9 @@ export function MarketMapPeriodCombobox() {
 }
 
 // 시간대 말머리 앞 점의 색 — 모두 설정창 색상 탭 4-1(강조 색상)의 색이다. 프리 마켓은 노랑, 애프터 마켓은 보라, 정규 시장은 청록(홈페이지 메인색과
-// 같은 색), 사이의 동시 호가는 주황, 시장 마감은 연회색이다.
+// 같은 색), 시장 마감은 연회색이다.
 const PHASE_DOT_COLOR: Record<MarketPhase, string> = {
   '프리 마켓': accentColor('연노랑'),
-  '동시 호가': accentColor('주황'),
   '정규 시장': accentColor('청록'),
   '애프터 마켓': accentColor('보라'),
   '시장 마감': accentColor('연회색'),
@@ -179,7 +178,7 @@ export function ChangeRateBasisToggle({ basis, selectable, onChange }: {
       locked: !selectable,
     },
   ]
-  // 말머리는 지금 시간대 이름이다 — 08:00~08:50 프리 마켓, 08:50~09:00 동시 호가, 09:00~15:30 정규 시장, 15:40~20:00 애프터 마켓(그 밖에는 시장 마감).
+  // 말머리는 지금 시간대 이름이다 — 08:00~09:00 프리 마켓, 09:00~15:30 정규 시장, 15:40~20:00 애프터 마켓(그 밖에는 시장 마감).
   const phase = useMarketPhase()
   const [popup, setPopup] = useState<{ text: ReactNode; anchor: DOMRect } | null>(null)
   const popupRef = useRef<HTMLSpanElement>(null)
