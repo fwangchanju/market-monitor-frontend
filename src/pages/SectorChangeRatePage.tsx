@@ -398,7 +398,7 @@ export default function SectorChangeRatePage() {
               <div className="flex min-h-0 w-full flex-1 flex-col px-[7px] py-4">
               {isLoading ? (
                 <div className="flex flex-1 items-center justify-center">
-                  <Spinner />
+                  <Spinner showElapsed />
                 </div>
               ) : isError ? (
                 <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
@@ -411,7 +411,7 @@ export default function SectorChangeRatePage() {
                 // now는 성공했지만(비어 있지 않음) 쌍 쿼리가 아직 첫 결과를 내지 못한 순간 — 짝이 안
                 // 맞는 반쪽짜리 화면을 그리지 않고 기다린다(결정 4).
                 <div className="flex flex-1 items-center justify-center">
-                  <Spinner />
+                  <Spinner showElapsed />
                 </div>
               ) : charts.current.rankedItems.length === 0 && charts.delta.rankedItems.length === 0 ? (
                 <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
