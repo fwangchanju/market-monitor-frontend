@@ -661,6 +661,7 @@ export default function MarketMapCustomPage() {
                     reset()
                   }}
                 />
+                <SettingsExcludeSection {...settingsModalProps} afterStockChange />
                 <SettingsStockSizeSelector marketCapRatio={boxSizeMarketCapRatio} onChangeMarketCapRatio={onChangeBoxSizeMarketCapRatio} />
                 <SettingsSectorLevelSection {...settingsModalProps} showClassification={false} showDecimalPlaces />
                 {strongIndustryColor && onChangeStrongIndustryColor && (
