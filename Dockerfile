@@ -6,5 +6,5 @@ COPY . .
 RUN npm run build
 
 FROM scratch
-LABEL org.opencontainers.image.source=https://github.com/fwangchanju/market-monitor-frontend
+LABEL org.opencontainers.image.source=https://github.com/fwangchanju/marketry-frontend
 COPY --from=build /app/dist /dist
