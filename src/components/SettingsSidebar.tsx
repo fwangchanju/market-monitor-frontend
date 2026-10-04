@@ -63,6 +63,7 @@ function alignSideTab(outerElement: HTMLElement | null, tab: HTMLElement | null)
 
 // 도움말 말풍선이 설정창 가장자리에서 띄우는 최소 간격.
 const HELP_TOOLTIP_MARGIN = 6
+const SETTINGS_LOAD_WAIT_MS = 4000
 
 // 말풍선 폭은 가장 긴 줄에 맞춘다(w-max whitespace-pre) — 줄바꿈은 문구마다 \n(문자열) 또는 <br />(JSX)로 직접 정한다. 줄 하나가 설정창(18rem)
 // 안에 들어와야 하니 한 줄을 23글자 안쪽으로 쓴다.
@@ -1916,6 +1917,15 @@ export default function SettingsSidebar({
   const isLoggedIn = useIsLoggedIn()
   const { setPreference, isLoaded: preferencesLoaded } = useCustomPreferences()
   const hasDrafts = useHasDrafts()
+  // 로그인 사용자는 서버 저장값이 오기 전까지 설정창 값을 흐리게 두고 조작을 막는다(기본값이 저장값처럼 보이는 것을 막기 위해).
+  // 서버가 끝내 응답하지 않으면 SETTINGS_LOAD_WAIT_MS 뒤에는 풀어 준다.
+  const [loadWaitExpired, setLoadWaitExpired] = useState(false)
+  const waitingForPreferences = isLoggedIn && !preferencesLoaded && !loadWaitExpired
+  useEffect(() => {
+    if (!isLoggedIn || preferencesLoaded) return
+    const timer = setTimeout(() => setLoadWaitExpired(true), SETTINGS_LOAD_WAIT_MS)
+    return () => clearTimeout(timer)
+  }, [isLoggedIn, preferencesLoaded])
   // 좌우 이동 탭은 "MAP 선택" 줄(앞에 색 막대가 있는 줄)의 높이에 맞춘다. 그 줄이 없으면 가운데에 둔다.
   const outerRef = useRef<HTMLDivElement>(null)
   const sideTabRef = useRef<HTMLButtonElement>(null)
@@ -2129,7 +2139,9 @@ export default function SettingsSidebar({
           id={`settings-panel-${selectedSection.id}`}
           aria-labelledby={`settings-tab-${selectedSection.id}`}
           data-align-second-heading={(classificationAtBottom && selectedSection.id !== 'favorites') || undefined}
-          className={`settings-section-list settings-sidebar-tab-content min-h-0 flex-1 px-4 text-sm ${selectedSection.id === 'favorites' ? 'settings-bookmark-tab' : ''} ${
+          aria-busy={waitingForPreferences || undefined}
+          inert={waitingForPreferences || undefined}
+          className={`${waitingForPreferences ? 'opacity-40 transition-opacity' : ''} settings-section-list settings-sidebar-tab-content min-h-0 flex-1 px-4 text-sm ${selectedSection.id === 'favorites' ? 'settings-bookmark-tab' : ''} ${
             isNonScrollingSection ? 'overflow-y-clip pb-2' : 'overflow-y-auto pb-8'
           }`}
         >
