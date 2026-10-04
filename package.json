@@ -1,6 +1,6 @@
 {
-  "name": "market-monitor-frontend",
-  "description": "market-monitor",
+  "name": "marketry-frontend",
+  "description": "marketry",
   "private": true,
   "version": "0.0.0",
   "type": "module",

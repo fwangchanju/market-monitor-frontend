@@ -41,5 +41,5 @@ jobs:
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.BACKEND_REPO_PAT }}
-          repository: fwangchanju/market-monitor-backend
+          repository: fwangchanju/marketry-backend
           event-type: frontend-assets-published

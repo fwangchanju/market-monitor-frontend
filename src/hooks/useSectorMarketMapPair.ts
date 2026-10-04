@@ -9,7 +9,7 @@ export interface SectorMarketMapPair {
   before: MarketMapResponse | null
 }
 
-// before로 인정하는 조건(market-monitor-backend 지시서 결정 4) — 아래 셋을 전부 만족해야 한다.
+// before로 인정하는 조건(marketry-backend 지시서 결정 4) — 아래 셋을 전부 만족해야 한다.
 // 하나라도 아니면 "before 없음"이다.
 // - 요청이 성공했다: queryFn이 에러를 잡지 않고 던지므로, 여기 도달했다는 것 자체가 성공이다.
 // - 응답 snapshotTime이 null이 아니다: 그 시각이 없으면 백엔드가 빈 응답을 준다.
