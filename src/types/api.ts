@@ -223,7 +223,7 @@ export const MarketMapResponseSchema = z.object({
   snapshotTime: z.string().nullable(),
   items: z.array(MarketMapSectorNodeSchema),
   marketOverview: MarketOverviewItemSchema.nullable(),
-  // 운영자가 종목 분류를 마지막으로 바꾼 시각 — 배정 행이 없으면 null.
+  // 선택한 분류의 갱신 시각: MARKETRY는 운영자의 업종 정보·종목 배정 수정, 한국거래소는 종목 정보 동기화.
   classificationUpdatedAt: z.string().nullish(),
 })
 export type MarketMapResponse = z.infer<typeof MarketMapResponseSchema>

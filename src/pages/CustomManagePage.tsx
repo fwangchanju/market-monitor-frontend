@@ -89,13 +89,13 @@ export default function CustomManagePage() {
     isRefetching: isRefetchingStockSectors,
   } = useStockSectors({ enabled: isLoggedIn })
 
-  // 읽기 전용 시트 데이터와 지도·그룹에 공통으로 표시하는 분류 최종 변경 시각을 함께 가져온다.
+  // 선택한 분류에 맞는 최종 갱신 시각을 가져오며 거래소 시트에서는 본문 데이터도 함께 쓴다.
   const {
-    data: krxMap,
-    isLoading: isKrxLoading,
-    refetch: refetchKrx,
-    isRefetching: isRefetchingKrx,
-  } = useMarketMap('ALL_STOCK', false, false, { enabled: isLoggedIn })
+    data: classificationMap,
+    isLoading: isClassificationLoading,
+    refetch: refetchClassification,
+    isRefetching: isRefetchingClassification,
+  } = useMarketMap('ALL_STOCK', !isReadOnlySheet, false, { enabled: isLoggedIn })
 
   const nxtStockCodes = useMemo(
     () => new Set((stockSectors?.items ?? []).filter(item => item.nxtEnabled).map(item => item.stockCode)),
@@ -154,23 +154,16 @@ export default function CustomManagePage() {
 
   const actions = (
     <NavBarPageActions
-      onRefresh={
-        isReadOnlySheet
-          ? refetchKrx
-          : mode === 'stock'
-            ? // 종목 화면은 종목 배정 목록과 섹터 목록을 둘 다 새로 받는다(필터는 유지된다).
-              () => {
-                refetchStockSectors()
-                refetchSectors()
-              }
-            : refetchSectors
-      }
+      onRefresh={() => {
+        void refetchClassification()
+        if (isReadOnlySheet) return
+        void refetchSectors()
+        if (mode === 'stock') void refetchStockSectors()
+      }}
       isRefreshing={
-        isReadOnlySheet
-          ? isRefetchingKrx
-          : mode === 'stock'
-            ? isRefetchingStockSectors || isRefetchingSectors
-            : isRefetchingSectors
+        isRefetchingClassification || (!isReadOnlySheet && (
+          isRefetchingSectors || (mode === 'stock' && isRefetchingStockSectors)
+        ))
       }
       onOpenShare={() => setIsShareOpen(true)}
       isCaptureOpen={isShareOpen}
@@ -254,8 +247,8 @@ export default function CustomManagePage() {
                 {isReadOnlySheet ? (
                   <ReadOnlyHeatmapSheet
                     mode={mode === 'stock' ? 'stock' : 'category'}
-                    data={krxMap}
-                    isLoading={isKrxLoading}
+                    data={classificationMap}
+                    isLoading={isClassificationLoading}
                     nxtOnly={nxtOnly}
                     onNxtOnlyChange={setIsNxtOnlyView}
                     nxtStockCodes={nxtStockCodes}
@@ -286,7 +279,7 @@ export default function CustomManagePage() {
               onToggleSide={toggleSettingsSide}
               onRequestLogin={() => requireLogin(pathname)}
               classificationAtBottom
-              snapshotTime={krxMap?.classificationUpdatedAt}
+              snapshotTime={classificationMap?.classificationUpdatedAt}
               heatmap={sheet}
               onSelectHeatmap={next => handleSelectSheet(next === 'marketry' ? 'marketry' : 'krx')}
             />

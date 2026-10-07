@@ -20,13 +20,21 @@ import {
   updateCustomScaleThreshold,
   deleteCustomScaleThreshold,
 } from '@/api/custom'
-import { customMarketMapKeys } from './queryKeys'
+import { customMarketMapKeys, marketMapKeys } from './queryKeys'
 import { STATIC_REFERENCE_CACHE, INFREQUENT_DATA_CACHE } from './cacheConfig'
 import type { StockSectorListItem } from '@/types/api'
 
 interface StockSectorListResponse {
   snapshotTime: string | null
   items: StockSectorListItem[]
+}
+
+function invalidateCustomClassification(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({
+    queryKey: marketMapKeys.all,
+    predicate: ({ queryKey }) =>
+      (queryKey[1] === 'map' || queryKey[1] === 'sectorPair') && queryKey[3] === true,
+  })
 }
 
 export function useCustomSectors(options?: { enabled?: boolean }) {
@@ -49,7 +57,10 @@ export function useCreateSector() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ name, parentId }: { name: string; parentId: number | null }) => createSector(name, parentId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() })
+      invalidateCustomClassification(queryClient)
+    },
   })
 }
 
@@ -57,7 +68,10 @@ export function useRenameSector() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, name }: { id: number; name: string }) => renameSector(id, name),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() })
+      invalidateCustomClassification(queryClient)
+    },
   })
 }
 
@@ -65,7 +79,10 @@ export function useReparentSector() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, parentId }: { id: number; parentId: number | null }) => reparentSector(id, parentId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() })
+      invalidateCustomClassification(queryClient)
+    },
   })
 }
 
@@ -73,7 +90,10 @@ export function useDeleteSector() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => deleteSector(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() })
+      invalidateCustomClassification(queryClient)
+    },
     meta: { skipGlobalError: true },
   })
 }
@@ -123,6 +143,7 @@ export function useRestoreSnapshot() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() })
       queryClient.invalidateQueries({ queryKey: customMarketMapKeys.currentSnapshot() })
+      invalidateCustomClassification(queryClient)
     },
   })
 }
@@ -147,6 +168,7 @@ function patchStockSectorId(queryClient: ReturnType<typeof useQueryClient>, stoc
       ? { ...old, items: old.items.map(item => (stockCodeSet.has(item.stockCode) ? { ...item, sectorId } : item)) }
       : old,
   )
+  invalidateCustomClassification(queryClient)
 }
 
 export function useAssignStockSector() {

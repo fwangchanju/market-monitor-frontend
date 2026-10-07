@@ -17,7 +17,6 @@ import SettingsSidebar, {
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import MarketMapTreemap from '@/components/MarketMapTreemap'
-import ProfileAvatar from '@/components/ProfileAvatar'
 import { ChangeRateBasisToggle, MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/MarketMapControls'
 import MarketMapLegendBar from '@/components/MarketMapLegendBar'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
@@ -159,6 +158,7 @@ export default function MarketMapCustomPage() {
     nxtOnly,
     nxtOnlyWindow,
     changeRateBasis,
+    isAfterHoursControlsVisible,
     isAfterHoursSelectable,
     onChangeChangeRateBasis,
     data,
@@ -239,13 +239,10 @@ export default function MarketMapCustomPage() {
   const rawCurrentNode = findRawNodeByPath(rootNodes, path)
   const totalItemCount = collectRawItems(rawCurrentNode ? [rawCurrentNode] : rootNodes).length
 
-  // 상단 바는 현재 히트맵을 점등 표시로 보여준다. 종목 수는 설정 사이드바에 표시한다.
+  // 상단 오른쪽은 설정창의 선택된 업종 분류 버튼처럼 현재 히트맵 이름을 표시한다. 바의 글자 크기는 FONT_BAR_MODE_STATUS를 그대로 쓴다.
   const modeStatusText = (
-    <span className="flex min-w-0 items-center">
-      <span aria-hidden="true" className="mr-[6px] inline-block h-5 w-1 shrink-0 rounded-sm bg-[var(--brand)]" />
-      <span className="min-w-0 truncate text-gray-400">{HEATMAP_NAMES[heatmap].title}</span>
-      {/* 거래소·MARKETRY 모두 점 대신 24px 프로필 사진을 둔다. */}
-      <ProfileAvatar className="ml-[7px] size-6 shrink-0 object-cover" />
+    <span className="flex min-w-0 items-center justify-end">
+      <span className="min-w-0 truncate rounded bg-[var(--brand)] px-2 py-1 text-black">{HEATMAP_NAMES[heatmap].title}</span>
     </span>
   )
 
@@ -468,10 +465,10 @@ export default function MarketMapCustomPage() {
                 </span>
                 {/* 시장 시간대 말머리와 누적/따로 — 시간과 관련된 표시라 시계 옆에 붙인다. */}
                 <span className="ml-2 flex shrink-0">
-                  <ChangeRateBasisToggle basis={changeRateBasis} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateBasis} />
+                  <ChangeRateBasisToggle basis={changeRateBasis} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateBasis} />
                 </span>
               </div>
-              {/* 맨 오른쪽 — 프로필 사진이 끝에 오고 글자는 그 왼쪽에 오른쪽 정렬된다. 좁아지면 글자부터 줄어든다. */}
+              {/* 맨 오른쪽 — 분류명을 설정창 업종 분류 선택 버튼 모양으로 표시하고, 좁아지면 이름을 줄인다. */}
               <div className={`${FONT_BAR_MODE_STATUS} flex min-w-0 items-center justify-end text-gray-400`}>{modeStatusText}</div>
             </div>
             <div className="flex min-h-0 flex-1">
@@ -642,7 +639,6 @@ export default function MarketMapCustomPage() {
               </SettingsSidebarGroup>
               {/* 북마크 탭 — 원래 탭의 항목을 같은 순서로 다시 그리고, 북마크한 항목만 보인다. */}
               <SettingsSidebarGroup section="favorites">
-                <SettingsSectorLevelSection {...settingsModalProps} showTopPick showStockDisplay={false} />
                 <SettingsMarketValueSection {...settingsModalProps} showDivider={false} />
                 <SettingsSectorChangeSection
                   value={sectorChangeFilter}
@@ -666,6 +662,7 @@ export default function MarketMapCustomPage() {
                   }}
                 />
                 <SettingsExcludeSection {...settingsModalProps} afterStockChange />
+                <SettingsSectorLevelSection {...settingsModalProps} showTopPick showStockDisplay={false} />
                 <SettingsStockSizeSelector marketCapRatio={boxSizeMarketCapRatio} onChangeMarketCapRatio={onChangeBoxSizeMarketCapRatio} />
                 <SettingsSectorLevelSection {...settingsModalProps} showClassification={false} showDecimalPlaces />
                 {strongIndustryColor && onChangeStrongIndustryColor && (

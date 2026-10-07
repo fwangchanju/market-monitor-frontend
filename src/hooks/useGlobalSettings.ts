@@ -5,6 +5,7 @@ import { useHeatmapSelection } from './useHeatmapSelection'
 import { MEMBER_DEFAULTS, settingDefaultsFor } from '@/utils/settingDefaults'
 import type { HeatmapKey } from '@/utils/heatmapNames'
 import { useNxtOnlyWindow } from '@/hooks/useNxtOnlyWindow'
+import { useAfterHoursControlsVisible } from '@/hooks/useMarketPhase'
 import { isAfterHoursSelectable as isAfterHoursSelectableAt } from '@/utils/tradingWindow'
 import type { ChangeRateBasis } from '@/api/marketMap'
 import { usePageSetting } from './usePageSetting'
@@ -125,10 +126,11 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   // 분류는 그대로 두고 NXT 거래 종목만 남기고, 그 밖의 시간에는 전체 종목을 보여준다. 사용자가 직접 켜고 끄지 않는다.
   const nxtOnlyWindow = useNxtOnlyWindow()
   const nxtOnly = nxtOnlyWindow !== null
-  // 등락률 기준 — 탭을 닫으면 사라지는 보기 옵션이다. 시간외는 15:40 이후 오늘 스냅샷에서만 고를 수 있어서, 그 밖에는 선택이
-  // 남아 있어도 누적으로 보인다(서버도 같은 조건으로 누적 값을 준다).
+  // 등락률 기준은 애프터 마켓 시작부터 다음 프리 마켓 개장 전까지 선택한다.
+  // 표시 시간대가 아니거나 시간외 스냅샷이 아직 없으면 저장한 선택과 무관하게 누적으로 보인다.
+  const isAfterHoursControlsVisible = useAfterHoursControlsVisible()
   const [storedChangeRateBasis, setStoredChangeRateBasis] = usePersistedState<ChangeRateBasis>('marketMap.changeRateBasis', 'daily')
-  const requestedBasis: ChangeRateBasis = allowChangeRateBasis ? storedChangeRateBasis : 'daily'
+  const requestedBasis: ChangeRateBasis = allowChangeRateBasis && isAfterHoursControlsVisible ? storedChangeRateBasis : 'daily'
   const heatmap: HeatmapKey = isCustom ? 'marketry' : nxtOnly ? 'nxt' : 'krx'
   // 섹터 랭킹/강세 업종 계산에 쓰는 평균 방식은 박스 크기 비율과 별도로 저장한다.
   const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', defaults.avgChangeRateUseSimple)
@@ -238,7 +240,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     enabled: needsTree,
     basis: requestedBasis,
   })
-  const isAfterHoursSelectable = isAfterHoursSelectableAt(data?.snapshotTime)
+  const isAfterHoursSelectable = isAfterHoursControlsVisible && isAfterHoursSelectableAt(data?.snapshotTime)
   const changeRateBasis: ChangeRateBasis = isAfterHoursSelectable ? requestedBasis : 'daily'
   const rawRootNodes = data?.items
   // 비로그인의 거래소 분류는 업종 id가 모두 0이라, 제외 기능이 동작하도록 이름 기반 고유 id를 붙인다.
@@ -620,7 +622,6 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     onToggleCustom: handleToggleCustom,
     heatmap,
     onSelectHeatmap: handleSelectHeatmap,
-    nxtOnly,
     maxDepth: selectedMaxDepth,
     sectorLevelEnabled,
     onToggleSectorLevel: () => setSectorLevelEnabled(prev => !prev),
@@ -701,6 +702,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     nxtOnly,
     nxtOnlyWindow,
     changeRateBasis,
+    isAfterHoursControlsVisible,
     isAfterHoursSelectable,
     onChangeChangeRateBasis: setStoredChangeRateBasis,
     heatmap,

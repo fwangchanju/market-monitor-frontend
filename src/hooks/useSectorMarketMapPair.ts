@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { getMarketMap } from '@/api/marketMap'
+import { getMarketMap, type ChangeRateBasis } from '@/api/marketMap'
 import { marketMapKeys } from './queryKeys'
 import { subtractMinutesFromSnapshotTime } from '@/utils/snapshotTime'
+import { isAfterHoursSelectable } from '@/utils/tradingWindow'
 import type { MarketMapResponse, MarketQuery } from '@/types/api'
 
 export interface SectorMarketMapPair {
@@ -23,10 +24,10 @@ function isValidBefore(response: MarketMapResponse, requestedSnapshotTime: strin
  * 섹터 페이지의 now·before 쌍. now는 useGlobalSettings()가 이미 부르는 useMarketMap(market, isCustom)
  * 결과를 그대로 받아 쓴다 — 여기서 now를 다시 조회하지 않는다.
  *
- * 쌍은 (market, isCustom, beforeMinutes, now.snapshotTime)에 묶인다. now.snapshotTime만 바뀌면(60초
+ * 쌍은 (market, isCustom, beforeMinutes, now.snapshotTime, basis)에 묶인다. now.snapshotTime만 바뀌면(60초
  * 재조회로 새 tick) placeholderData가 새 쌍이 도착할 때까지 직전 쌍을 그대로 돌려준다 — 그 사이 새
  * now와 옛 before가 섞이는 것도, before를 비워 그래프가 깜빡이는 것도 막는다. market·isCustom·
- * beforeMinutes가 바뀌면(사용자 조작) 직전 쌍을 쓰지 않고 undefined를 돌려줘서 화면이 스피너로
+ * beforeMinutes·basis가 바뀌면(사용자 조작) 직전 쌍을 쓰지 않고 undefined를 돌려줘서 화면이 스피너로
  * 돌아가게 한다.
  *
  * staleTime: Infinity·refetchInterval: false — 과거 시각의 트리는 바뀌지 않으므로 재조회하지 않는다.
@@ -39,18 +40,25 @@ export function useSectorMarketMapPair(
   nxtOnly: boolean,
   beforeMinutes: number,
   now: MarketMapResponse | undefined,
+  basis: ChangeRateBasis = 'daily',
 ) {
   const nowSnapshotTime = now?.snapshotTime ?? null
 
   return useQuery({
-    queryKey: marketMapKeys.sectorPair(market, isCustom, nxtOnly, beforeMinutes, nowSnapshotTime),
+    queryKey: marketMapKeys.sectorPair(market, isCustom, nxtOnly, beforeMinutes, nowSnapshotTime, basis),
     queryFn: async (): Promise<SectorMarketMapPair> => {
       if (!now || now.snapshotTime === null) {
         // enabled가 이 경로를 막지만, TypeScript는 그걸 모른다 — 방어적으로 명시한다.
         throw new Error('now.snapshotTime 없이 쌍 쿼리가 실행됐다')
       }
       const beforeSnapshotTime = subtractMinutesFromSnapshotTime(now.snapshotTime, beforeMinutes)
-      const beforeResponse = await getMarketMap(market, isCustom, beforeSnapshotTime, nxtOnly)
+      // 애프터 마켓 시작 이전에는 당일 종가 대비 값이 없다. 누적 값과 섞어 변화율을 계산하지 않는다.
+      if (basis === 'afterHours' && (
+        !isAfterHoursSelectable(beforeSnapshotTime) || beforeSnapshotTime.slice(0, 10) !== now.snapshotTime.slice(0, 10)
+      )) {
+        return { now, before: null }
+      }
+      const beforeResponse = await getMarketMap(market, isCustom, beforeSnapshotTime, nxtOnly, basis)
       return {
         now,
         before: isValidBefore(beforeResponse, beforeSnapshotTime) ? beforeResponse : null,
@@ -63,12 +71,13 @@ export function useSectorMarketMapPair(
     placeholderData: (previousData, previousQuery) => {
       const previousKey = previousQuery?.queryKey
       if (!previousKey) return undefined
-      const [, , previousMarket, previousIsCustom, previousNxtOnly, previousBeforeMinutes] = previousKey
+      const [, , previousMarket, previousIsCustom, previousNxtOnly, previousBeforeMinutes, , previousBasis] = previousKey
       const sameParams =
         previousMarket === market &&
         previousIsCustom === isCustom &&
         previousNxtOnly === nxtOnly &&
-        previousBeforeMinutes === beforeMinutes
+        previousBeforeMinutes === beforeMinutes &&
+        previousBasis === basis
       return sameParams ? previousData : undefined
     },
   })

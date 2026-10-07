@@ -1,4 +1,4 @@
-// 지도 설정 북마크가 가리킬 수 있는 항목 id와 북마크 탭의 표시 순서(원래 탭·항목 순서와 같다).
+// 지도 설정 북마크가 가리킬 수 있는 항목 id와 북마크 탭의 실제 표시 순서.
 // 항목을 없애거나 이름을 바꾸면 서버에 저장된 북마크 id가 가리킬 곳을 잃으므로, 읽을 때 알려진 id만 남긴다(isSettingsBookmarkId).
 export type SettingsBookmarkId =
   | 'depthLevel' | 'depthMetric' | 'depthRange' | 'topPick'

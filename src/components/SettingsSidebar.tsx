@@ -211,8 +211,14 @@ const SETTINGS_SECTIONS: { id: SettingsSidebarSectionId; label: string; icon: Se
   { id: 'favorites', label: '북마크', icon: 'favorites' },
 ]
 
-function SettingsFavoritesPlaceholder() {
-  return null
+// 탭 제목에는 숫자를 표시하지 않지만 북마크에는 원래 설정 위치를 표기한다.
+// 탭 순서를 바꾸면 이 번호와 BOOKMARK_ORDER, 북마크 그룹의 렌더 순서도 함께 바꾼다.
+const SETTINGS_SECTION_NUMBERS: Record<SettingsSidebarSectionId, number> = {
+  composition: 1,
+  industry: 2,
+  stockDisplay: 3,
+  colors: 4,
+  favorites: 5,
 }
 
 interface ExcludedSector {
@@ -762,10 +768,10 @@ export function SettingsAverageModeSection({
   return (
     <div className="text-sm">
       <span className="flex max-w-[16rem] items-center text-left text-[15px] text-white">
-        <span className="settings-section-num">등락률 평균</span>
-        <SettingHelpIcon label="등락률 평균" description={"업종 등락률 계산에 적용할\n평균 방식을 선택합니다."} />
+        <span className="settings-section-num">등락률 기준</span>
+        <SettingHelpIcon label="등락률 기준" description={"업종 등락률 계산에 적용할\n기준을 선택합니다."} />
       </span>
-      <div role="radiogroup" aria-label="등락률 평균" className="mt-2 grid max-w-[16rem] settings-control-inset grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
+      <div role="radiogroup" aria-label="등락률 기준" className="mt-2 grid max-w-[16rem] settings-control-inset grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
         {options.map(option => {
           const selected = avgChangeRateUseSimple === option.value
           return (
@@ -837,8 +843,7 @@ export function SettingsCustomModeSection({
   avgChangeRateUseSimple: boolean
   onToggleAvgChangeRateUseSimple: () => void
   // true면 "동일 가중" 토글을 이 스티키 블록 안(구분선 위)에 커스텀 모드 바로 아래 줄로 같이 그린다
-  // — 지도 페이지 전용(섹터 페이지는 아직 SettingsEqualWeightSection을 별도로 그대로 쓴다, 나중에
-  // 똑같이 정리 예정). 기본 false라 이 prop을 안 넘기는 호출부는 기존과 동일하게 동작한다.
+  // — 지도 페이지 전용. 기본 false라 이 prop을 안 넘기는 호출부는 기존과 동일하게 동작한다.
   showEqualWeightToggle?: boolean
 }) {
   return (
@@ -893,33 +898,14 @@ function EqualWeightToggleSwitch({
   )
 }
 
-export function SettingsEqualWeightSection({
-  avgChangeRateUseSimple,
-  onToggleAvgChangeRateUseSimple,
-}: {
-  avgChangeRateUseSimple: boolean
-  onToggleAvgChangeRateUseSimple: () => void
-}) {
-  return (
-    <div className="pt-4 text-white">
-      <EqualWeightToggleSwitch
-        avgChangeRateUseSimple={avgChangeRateUseSimple}
-        onToggleAvgChangeRateUseSimple={onToggleAvgChangeRateUseSimple}
-      />
-    </div>
-  )
-}
-
 function SettingsClassificationSelector({
   heatmap,
   onSelectHeatmap,
-  nxtOnly,
   atBottom = false,
   snapshotTime,
 }: {
   heatmap: HeatmapKey
   onSelectHeatmap: (heatmap: HeatmapKey) => void
-  nxtOnly?: boolean
   atBottom?: boolean
   snapshotTime?: string | null
 }) {
@@ -961,15 +947,16 @@ function SettingsClassificationSelector({
           </button>
         ))}
       </div>
-      {/* 어느 히트맵이든 같은 규칙이다 — NXT 단독 시간(08:00~08:50, 15:40~16:00)에만 NXT 거래 종목만 보여주고, 그 밖의 시간은 안내가 필요 없다. */}
-      {nxtOnly && (
-        <p className="mt-2 text-xs leading-relaxed text-gray-400">NXT 단독 시간대(08:00~08:50, 15:40~16:00)라 NXT 거래 종목만 보여줍니다.</p>
-      )}
       {atBottom && snapshotTime && (
         <p className={`${FONT_BAR_TIME} mt-2 flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400`}>
           <span className="flex items-center">
             업데이트
-            <SettingHelpIcon label="업데이트" description="커스텀 페이지를 업데이트한 시간입니다." />
+            <SettingHelpIcon
+              label="업데이트"
+              description={isExchange
+                ? "키움 REST API로 받은\n종목·업종 정보를 서버에\n마지막으로 동기화한 시각입니다.\n\n시세 갱신 시각이나 한국거래소의\n공식 분류 변경 시각과는 다릅니다."
+                : "MARKETRY 운영자가 종목·업종 정보를\n마지막으로 수정한 시각입니다."}
+            />
           </span>
           <span>{toMarketMapSnapshotDateLabel(snapshotTime)}</span>
           <span>{toMarketMapSnapshotTimeOnlyLabel(snapshotTime)}</span>
@@ -1883,6 +1870,7 @@ interface Props {
   plainContent?: ReactNode
   sectionOrder?: readonly SettingsSidebarSectionId[]
   classificationAtBottom?: boolean
+  classificationNotice?: string
   // 하단 히트맵 선택 아래에 표시할 운영자 종목 분류 최종 변경 시각(지도 상단 표기와 같은 형식).
   snapshotTime?: string | null
   // 사이드바 열림 상태는 페이지가 관리한다.
@@ -1895,8 +1883,6 @@ interface Props {
   // 지도의 히트맵 선택(KRX / NXT / MARKETRY) — 주면 선택 탭이 이 값을 쓰고, 안 주면 isCustom으로 KRX/MARKETRY만 고른다.
   heatmap?: HeatmapKey
   onSelectHeatmap?: (heatmap: HeatmapKey) => void
-  // 지금 NXT 단독 시간대라 NXT 거래 종목만 보여주는 중인지(시간대로 자동 결정).
-  nxtOnly?: boolean
   avgChangeRateUseSimple?: boolean
   onToggleAvgChangeRateUseSimple?: () => void
   // 지도 페이지의 박스 면적 시가총액 반영 비율(0=동일 크기, 100=시가총액 비례).
@@ -1929,6 +1915,7 @@ export default function SettingsSidebar({
   showPreferenceActions = true,
   sectionOrder,
   classificationAtBottom = false,
+  classificationNotice,
   snapshotTime,
   classificationSection = 'industry',
   isOpen,
@@ -1936,7 +1923,6 @@ export default function SettingsSidebar({
   onToggleCustom,
   heatmap,
   onSelectHeatmap,
-  nxtOnly,
   avgChangeRateUseSimple,
   onToggleAvgChangeRateUseSimple,
   boxSizeMarketCapRatio,
@@ -2031,10 +2017,6 @@ export default function SettingsSidebar({
   // 계속 표시한다. 각 페이지 통합이 끝나면 모든 설정이 명시적인 group 아래에 놓인다.
   const ungroupedNodes = childNodes.filter(node => !isSettingsSidebarGroup(node))
   if (ungroupedNodes.length > 0) addSectionContent('composition', ungroupedNodes)
-  if (sectionContent.size > 0 && !sectionContent.has('favorites')) {
-    addSectionContent('favorites', <SettingsFavoritesPlaceholder />)
-  }
-
   const hasClassificationSelector = Boolean(heatmap && onSelectHeatmap) || (typeof isCustom === 'boolean' && Boolean(onToggleCustom))
   const selectedHeatmap: HeatmapKey = heatmap ?? (isCustom ? 'marketry' : 'krx')
   const handleSelectHeatmap = onSelectHeatmap ?? (() => onToggleCustom?.())
@@ -2049,7 +2031,7 @@ export default function SettingsSidebar({
   const isNonScrollingSection = !classificationAtBottom && (selectedSection?.id === 'industry' || selectedSection?.id === 'colors')
 
   // 북마크 탭에는 원래 위치 번호(탭 번호-항목 번호)를 보여준다. 항목 번호는 각 탭에서 항상 고정된 자리다.
-  const sourceTabNumber = (id: SettingsSidebarSectionId) => availableSections.findIndex(section => section.id === id) + 1
+  const sourceTabNumber = (id: SettingsSidebarSectionId) => SETTINGS_SECTION_NUMBERS[id]
   const bookmarkContext: SettingsBookmarkContextValue = {
     enabled: Boolean(onToggleBookmark),
     mode: selectedSection?.id === 'favorites' ? 'bookmark' : 'source',
@@ -2204,7 +2186,7 @@ export default function SettingsSidebar({
           }`}
         >
           {!classificationAtBottom && selectedSection.id === classificationSection && hasClassificationSelector && (
-            <SettingsClassificationSelector heatmap={selectedHeatmap} onSelectHeatmap={handleSelectHeatmap} nxtOnly={nxtOnly} />
+            <SettingsClassificationSelector heatmap={selectedHeatmap} onSelectHeatmap={handleSelectHeatmap} />
           )}
           {selectedSection.id === 'stockDisplay' && hasBoxSizeRatioSlider ? (
             <SettingsStockSizeSelector
@@ -2234,7 +2216,14 @@ export default function SettingsSidebar({
       )}
       </div>
       {classificationAtBottom && hasClassificationSelector && (
-        <SettingsClassificationSelector heatmap={selectedHeatmap} onSelectHeatmap={handleSelectHeatmap} nxtOnly={nxtOnly} atBottom snapshotTime={snapshotTime} />
+        <>
+          {classificationNotice && (
+            <p style={{ backgroundColor: CLASSIFICATION_BACKGROUND_COLOR }} className="shrink-0 px-4 pb-2 text-xs leading-relaxed text-gray-400">
+              {classificationNotice}
+            </p>
+          )}
+          <SettingsClassificationSelector heatmap={selectedHeatmap} onSelectHeatmap={handleSelectHeatmap} atBottom snapshotTime={snapshotTime} />
+        </>
       )}
     </div>
     </div>
