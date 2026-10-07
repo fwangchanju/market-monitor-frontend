@@ -968,8 +968,8 @@ function SettingsClassificationSelector({
       {atBottom && snapshotTime && (
         <p className={`${FONT_BAR_TIME} mt-2 flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400`}>
           <span className="flex items-center">
-            수정
-            <SettingHelpIcon label="수정" description="커스텀 페이지를 수정한 시간입니다." />
+            업데이트
+            <SettingHelpIcon label="업데이트" description="커스텀 페이지를 업데이트한 시간입니다." />
           </span>
           <span>{toMarketMapSnapshotDateLabel(snapshotTime)}</span>
           <span>{toMarketMapSnapshotTimeOnlyLabel(snapshotTime)}</span>
