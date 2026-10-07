@@ -452,7 +452,10 @@ export default function MarketMapCustomPage() {
                   }}
                 />
                 <MarketMapPeriodCombobox />
-                <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
+                {/* 데이터를 불러오는 중이거나 불러오지 못했을 때는 마켓·기간 드롭박스만 남기고 시계·시간대·누적/따로·분류명은 숨긴다. */}
+                {!isLoading && !isError && (
+                  <>
+                    <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
                   {data?.snapshotTime && <span>{toMarketMapSnapshotDateLabel(data.snapshotTime)}</span>}
                   <PageRefreshButton
                     onRefresh={refetchMarketMap}
@@ -468,9 +471,11 @@ export default function MarketMapCustomPage() {
                 <span className="ml-2 flex shrink-0">
                   <ChangeRateBasisToggle basis={changeRateBasis} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateBasis} />
                 </span>
+                  </>
+                )}
               </div>
               {/* 맨 오른쪽 — 분류명을 설정창 업종 분류 선택 버튼 모양으로 표시하고, 좁아지면 이름을 줄인다. */}
-              <div className={`${FONT_BAR_MODE_STATUS} flex min-w-0 items-center justify-end text-gray-400`}>{modeStatusText}</div>
+              {!isLoading && !isError && <div className={`${FONT_BAR_MODE_STATUS} flex min-w-0 items-center justify-end text-gray-400`}>{modeStatusText}</div>}
             </div>
             <div className="flex min-h-0 flex-1">
               <div className="relative flex min-h-0 flex-1 flex-col bg-black">
@@ -538,7 +543,9 @@ export default function MarketMapCustomPage() {
                   <Spinner showElapsed />
                 </div>
               ) : isError ? (
-                <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
+                <div className="flex flex-1 items-center justify-center">
+                  <Spinner errorMessage="데이터를 불러오지 못했습니다." />
+                </div>
               ) : visibleItems.length === 0 ? (
                 <div className="p-8 text-center text-xs text-gray-500">
                   {stockChangeFilter === 'all' && sectorChangeFilter === 'all' ? '데이터가 없습니다' : '선택한 방향 조건에 해당하는 종목이 없습니다'}
@@ -573,8 +580,8 @@ export default function MarketMapCustomPage() {
                   />
                 </div>
               )}
-              {/* 등락률 색상 범례 — 지도 우하단에 오른쪽 끝에 붙여 둔다. 이 줄만큼 지도 아래쪽이 올라온다. 로딩 원이 보이는 동안은 지도도 범례도 의미가 없어서 면책 문구와 함께 뺀다. */}
-              {!isLoading && (
+              {/* 등락률 색상 범례 — 지도 우하단에 오른쪽 끝에 붙여 둔다. 이 줄만큼 지도 아래쪽이 올라온다. 로딩 원이나 오류 문구가 보이는 동안은 지도도 범례도 의미가 없어서 면책 문구와 함께 뺀다. */}
+              {!isLoading && !isError && (
                 <div className="flex h-7 shrink-0 items-end justify-between gap-3 pl-[7px] pr-[7px]">
                   <div className="flex h-7 min-w-0 items-center">
                     <DisclaimerNotice />
