@@ -239,7 +239,7 @@ export default function MarketMapCustomPage() {
   const rawCurrentNode = findRawNodeByPath(rootNodes, path)
   const totalItemCount = collectRawItems(rawCurrentNode ? [rawCurrentNode] : rootNodes).length
 
-  // 상단 오른쪽은 설정창의 선택된 업종 분류 버튼처럼 현재 히트맵 이름을 표시한다. 바의 글자 크기는 FONT_BAR_MODE_STATUS를 그대로 쓴다.
+  // 상단 오른쪽 분류자명은 설정창의 업종 분류 선택 버튼과 같은 청록색 버튼으로 표시한다.
   const modeStatusText = (
     <span className="flex min-w-0 items-center justify-end">
       <span className="min-w-0 truncate rounded bg-[var(--brand)] px-2 py-1 text-black">{HEATMAP_NAMES[heatmap].title}</span>

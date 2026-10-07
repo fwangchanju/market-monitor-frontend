@@ -11,7 +11,6 @@ import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Spinner from '@/components/Spinner'
 import { REFRESH_FEEDBACK_MIN_DURATION_MS } from '@/utils/uiFeedback'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
-import ProfileAvatar from '@/components/ProfileAvatar'
 import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
@@ -239,12 +238,10 @@ export default function SectorChangeRatePage() {
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 파라미터가 있을 때만 반응하면 됨
   }, [searchParams])
-  // 지도 페이지 상단 바와 동일하게 점 대신 프로필 사진을 둔다. 24px 모서리가 둥근 사각형이다.
+  // 맵·커스텀 페이지와 같은 청록색 분류자명 버튼을 표시한다.
   const modeStatusText = (
-    <span className="flex min-w-0 items-center">
-      <span aria-hidden="true" className="mr-[6px] inline-block h-5 w-1 shrink-0 rounded-sm bg-[var(--brand)]" />
-      <span className="min-w-0 truncate text-gray-400">{settingsModalProps.isCustom ? 'MARKETRY' : '한국거래소'}</span>
-      <ProfileAvatar className="ml-[7px] size-6 shrink-0 object-cover" />
+    <span className="flex min-w-0 items-center justify-end">
+      <span className="min-w-0 truncate rounded bg-[var(--brand)] px-2 py-1 text-black">{settingsModalProps.isCustom ? 'MARKETRY' : '한국거래소'}</span>
     </span>
   )
 
