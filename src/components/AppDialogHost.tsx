@@ -20,15 +20,15 @@ export default function AppDialogHost() {
 
   const dismiss = () => resolveCurrentAppDialog(false)
 
+  // 바깥(어두운 배경)을 눌러도 닫히지 않는다 — 반드시 버튼이나 Esc로 답해야 한다.
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" onClick={dismiss}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
       <section
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="app-dialog-title"
         aria-describedby="app-dialog-message"
         className="w-full max-w-sm border border-gray-600 bg-[var(--surface)] p-5 shadow-xl"
-        onClick={event => event.stopPropagation()}
       >
         <h2 id="app-dialog-title" className="text-base font-bold text-white">{dialog.kind === 'confirm' ? '확인' : '안내'}</h2>
         <p id="app-dialog-message" className="mt-3 whitespace-pre-line text-sm leading-relaxed text-gray-200">{dialog.message}</p>

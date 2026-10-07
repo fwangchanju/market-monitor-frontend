@@ -21,7 +21,7 @@ import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/c
 import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
-import { captureElementToDownload, downloadDataUrl } from '@/utils/captureToDownload'
+import { captureElementToDownload, downloadDataUrl, captureFileName } from '@/utils/captureToDownload'
 import { toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { marketRoute } from '@/utils/marketRoute'
 import {
@@ -270,8 +270,8 @@ export default function SectorChangeRatePage() {
     if (!previewSrc && !captureRef.current) return
     setDownloadStatus('downloading')
     try {
-      if (previewSrc) downloadDataUrl(previewSrc, 'sector-change-rate.png')
-      else if (captureRef.current) await captureElementToDownload(captureRef.current, 'sector-change-rate.png')
+      if (previewSrc) downloadDataUrl(previewSrc, captureFileName('GROUP'))
+      else if (captureRef.current) await captureElementToDownload(captureRef.current, captureFileName('GROUP'))
     } catch {
       setDownloadStatus('error')
     } finally {
@@ -375,7 +375,7 @@ export default function SectorChangeRatePage() {
               항상 같은 폭을 유지하게 한다(지도 페이지와 동일) — 내부 그래프가 넘치면 이 컬럼
               안에서만 처리된다. */}
           <div ref={captureRef} data-captureid={CAPTURE_ID.SECTOR} data-capture-ready={isDataCaptureReady} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black text-white">
-            <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-3 text-sm font-bold text-white">
+            <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-[18px] text-sm font-bold text-white">
               <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
                 <MarketMapMarketCombobox
                   market={market}

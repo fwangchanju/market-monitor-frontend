@@ -10,6 +10,7 @@ import NavBarPageActions from '@/components/NavBarPageActions'
 import SettingsSidebar from '@/components/SettingsSidebar'
 import { FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
 import CustomManageModeCombobox from '@/components/CustomManageModeCombobox'
+import CustomHeatmapSheetCombobox from '@/components/CustomHeatmapSheetCombobox'
 import ReadOnlyHeatmapSheet from '@/components/ReadOnlyHeatmapSheet'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
@@ -20,7 +21,7 @@ import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { useSession, useIsLoggedIn } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
 import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
-import { captureElementToDownload, downloadDataUrl } from '@/utils/captureToDownload'
+import { captureElementToDownload, downloadDataUrl, captureFileName } from '@/utils/captureToDownload'
 import { HEATMAP_NAMES } from '@/utils/heatmapNames'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
@@ -44,6 +45,8 @@ export default function CustomManagePage() {
   const sheet = explicitSheet ?? selectedHeatmap
   const isReadOnlySheet = sheet !== 'marketry'
   const [sectorSettingsActionsTarget, setSectorSettingsActionsTarget] = useState<HTMLDivElement | null>(null)
+  // 종목 화면의 실행취소·다시실행 아이콘이 들어갈 설정창 안의 자리.
+  const [stockHistoryTarget, setStockHistoryTarget] = useState<HTMLDivElement | null>(null)
   const handleSelectSheet = (next: HeatmapSelection) => {
     setSelectedHeatmap(next)
     setSearchParams(previous => {
@@ -141,8 +144,8 @@ export default function CustomManagePage() {
     if (!previewSrc && !captureRef.current) return
     setDownloadStatus('downloading')
     try {
-      if (previewSrc) downloadDataUrl(previewSrc, 'market-map-admin.png')
-      else if (captureRef.current) await captureElementToDownload(captureRef.current, 'market-map-admin.png')
+      if (previewSrc) downloadDataUrl(previewSrc, captureFileName('CUSTOM'))
+      else if (captureRef.current) await captureElementToDownload(captureRef.current, captureFileName('CUSTOM'))
     } catch {
       setDownloadStatus('error')
     } finally {
@@ -180,7 +183,7 @@ export default function CustomManagePage() {
   // 스피너만 보여준다 — 비로그인용 안내와 실제 테이블이 뒤섞여 잠깐 보였다 사라지는 걸 막는다.
   if (isSessionLoading || (isLoggedIn && isSectorsLoading)) {
     return (
-      <div className="flex h-screen flex-col overflow-hidden bg-black">
+      <div className="flex h-screen select-none flex-col overflow-hidden bg-black">
         <NavBar />
         <SubNavBar />
         <div className="flex min-h-0 flex-1 items-center justify-center p-8">
@@ -192,7 +195,7 @@ export default function CustomManagePage() {
 
   if (!isLoggedIn) {
     return (
-      <div className="flex h-screen flex-col overflow-hidden bg-black">
+      <div className="flex h-screen select-none flex-col overflow-hidden bg-black">
         <NavBar />
         <SubNavBar />
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
@@ -210,7 +213,7 @@ export default function CustomManagePage() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-black">
+    <div className="flex h-screen select-none flex-col overflow-hidden bg-black">
       <NavBar />
       <SubNavBar actions={actions} />
       {/* 좌측 사이드바(종목/섹터 전환 + 버전관리 저장) 삭제 — 종목/섹터 전환은 SubNavBar의
@@ -222,11 +225,16 @@ export default function CustomManagePage() {
           {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서 창을 좁혀도 사이드바(w-80)가 항상 같은
               폭을 유지하게 한다(지도/섹터/요약 페이지와 동일). */}
           <div ref={captureRef} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black text-white">
-            <div className="mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-3 text-sm font-bold text-white">
+            <div className="mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-[18px] text-sm font-bold text-white">
               <div className="flex h-full shrink-0 items-center gap-2">
                 <CustomManageModeCombobox
                   mode={mode === 'stock' ? 'stock' : 'category'}
                   onSelect={path => navigate(path)}
+                />
+                {/* 히트맵 시트 선택 — 설정창 하단의 "업종 분류" 선택과 같은 값을 함께 쓴다. */}
+                <CustomHeatmapSheetCombobox
+                  sheet={sheet === 'marketry' ? 'marketry' : 'krx'}
+                  onSelect={next => handleSelectSheet(next)}
                 />
                 {isReadOnlySheet && (
                   <span className="whitespace-nowrap text-sm font-normal text-gray-400">키움 REST API</span>
@@ -262,6 +270,7 @@ export default function CustomManagePage() {
                     sectors={sectors ?? []}
                     snapshotTime={stockSectors?.snapshotTime ?? null}
                     toolbarContainer={toolbarContainer}
+                    historyContainer={stockHistoryTarget}
                     onCountLabelChange={setCountLabel}
                   />
                 ) : (
@@ -288,6 +297,10 @@ export default function CustomManagePage() {
               plainContent={mode === 'sector' && !isReadOnlySheet ? (
                 <div>
                   <div ref={setSectorSettingsActionsTarget} />
+                </div>
+              ) : mode === 'stock' && !isReadOnlySheet ? (
+                <div>
+                  <div ref={setStockHistoryTarget} />
                 </div>
               ) : null}
               classificationAtBottom

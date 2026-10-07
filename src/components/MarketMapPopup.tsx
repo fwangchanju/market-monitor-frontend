@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { appConfirm } from '@/utils/appDialogBus'
 
 export interface MarketMapPopupContent {
   title: string
@@ -185,10 +186,11 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
               aria-label={`${excludeSector.name} 제외`}
               title="섹터 제외"
               className="flex h-5 w-5 items-center justify-center border-0 bg-transparent p-0 outline-none text-gray-700 hover:text-black"
-              onClick={() => {
-                if (!window.confirm(`${excludeSector.name}\n히트맵에서 제외하시겠습니까?`)) return
-                onExcludeSector(excludeSector.id, excludeSector.name)
+              onClick={async () => {
+                // 확인 창이 뜨는 동안 우클릭 팝업은 먼저 닫는다(두 창이 겹쳐 보이지 않게).
                 onClose()
+                if (!await appConfirm(`${excludeSector.name}\n히트맵에서 제외하시겠습니까?`)) return
+                onExcludeSector(excludeSector.id, excludeSector.name)
               }}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
