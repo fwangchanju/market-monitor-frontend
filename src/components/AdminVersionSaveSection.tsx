@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { appConfirm } from '@/utils/appDialogBus'
 import {
   useSnapshots,
   useCurrentSnapshot,
@@ -30,13 +31,13 @@ export default function AdminVersionSaveSection() {
     setLabel(versionLabel)
   }
 
-  const handleRestore = (id: number, versionLabel: string) => {
-    if (!window.confirm(`${versionLabel}\n이 버전으로 불러오시겠습니까?`)) return
+  const handleRestore = async (id: number, versionLabel: string) => {
+    if (!await appConfirm(`${versionLabel}\n이 버전으로 불러오시겠습니까?`)) return
     restoreVersion.mutate(id)
   }
 
-  const handleDelete = (id: number, versionLabel: string) => {
-    if (!window.confirm(`${versionLabel}\n삭제하시겠습니까?`)) return
+  const handleDelete = async (id: number, versionLabel: string) => {
+    if (!await appConfirm(`${versionLabel}\n삭제하시겠습니까?`)) return
     deleteVersion.mutate(id)
     if (selectedId === id) {
       setSelectedId(null)

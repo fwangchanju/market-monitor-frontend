@@ -18,6 +18,7 @@ import { commitDrafts, discardDrafts, useHasDrafts } from '@/utils/settingsDraft
 import { BOOKMARK_ORDER, type SettingsBookmarkId } from '@/utils/settingsBookmarks'
 import Spinner from '@/components/Spinner'
 import { REFRESH_FEEDBACK_MIN_DURATION_MS } from '@/utils/uiFeedback'
+import { appConfirm } from '@/utils/appDialogBus'
 
 export type { SettingsBookmarkId }
 export type SettingsSidebarSectionId = 'favorites' | 'composition' | 'industry' | 'stockDisplay' | 'colors'
@@ -155,6 +156,9 @@ interface SettingsBookmarkContextValue {
   firstId?: SettingsBookmarkId
   onToggle: (id: SettingsBookmarkId) => void
 }
+
+// 설정 반영 때 설정창 전체에 로딩 화면을 잠깐 덮는 실행기 — 저장·되돌리기와 같은 로딩 화면을 하위 항목(색상 초기화 등)도 쓰게 한다.
+const SettingsFeedbackContext = createContext<(action: () => void) => void>(action => action())
 
 const SettingsBookmarkContext = createContext<SettingsBookmarkContextValue>({
   enabled: false,
@@ -808,7 +812,7 @@ export function SettingsAverageModeSection({
   ]
   return (
     <div className="settings-first-depth-level text-sm">
-      <span className="flex max-w-[16rem] items-center text-left text-[15px] text-white">
+      <span className="flex max-w-[16rem] items-center text-left text-[15px] font-medium leading-[22px] text-white">
         <span>등락률 기준</span>
       </span>
       <SettingDescription>업종 등락률 계산 기준</SettingDescription>
@@ -853,7 +857,7 @@ export function SettingsBeforeMinutesSection({
   )
   return (
     <div className="settings-second-depth-metric relative mt-6 text-sm">
-      <span className="flex max-w-[16rem] items-center text-left text-[15px] text-white">
+      <span className="flex max-w-[16rem] items-center text-left text-[15px] font-medium leading-[22px] text-white">
         <span>비교 시점</span>
       </span>
       <SettingDescription>현재 등락률과 비교할 시점</SettingDescription>
@@ -1743,8 +1747,8 @@ export function SettingsExcludeSection({
               <button
                 key={sector.sectorId}
                 type="button"
-                onClick={() => {
-                  if (!window.confirm(`${sector.sectorName}\n히트맵으로 복원하시겠습니까?`)) return
+                onClick={async () => {
+                  if (!await appConfirm(`${sector.sectorName}\n히트맵으로 복원하시겠습니까?`)) return
                   onRemoveExcludedSector(sector.sectorId)
                 }}
                 aria-label={`${sector.sectorName} 히트맵에 다시 표시`}
@@ -1791,6 +1795,7 @@ export function SettingsColorSection({
 }) {
   // 색상 설정은 비로그인에게도 보인다 — 기본 색상(공개 /map/scale)으로 시작해서 바꿀 수 있고, 비로그인의
   // 변경은 서버에 저장되지 않고 이 탭의 세션에만 남는다(다른 화면 설정과 같다).
+  const runWithFeedback = useContext(SettingsFeedbackContext)
   if (colorScaleDraft === null) return null
 
   // 편집 중인 구간의 범례 칸을 강조해서, 아래 편집 영역이 어느 칸의 것인지 바로 보이게 한다.
@@ -1806,7 +1811,7 @@ export function SettingsColorSection({
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => { if (window.confirm('등락률 색상을 기본 색상으로 초기화할까요?')) onResetColorScale() }}
+            onClick={async () => { if (await appConfirm('등락률 색상을 기본 색상으로 초기화하시겠습니까?')) runWithFeedback(onResetColorScale) }}
             disabled={isResettingColorScale}
             className="-my-px h-6 rounded border border-gray-600 bg-zinc-700 px-2 text-xs text-gray-300 transition-colors hover:border-gray-400 hover:text-white disabled:cursor-wait disabled:opacity-60"
           >
@@ -2127,7 +2132,7 @@ export default function SettingsSidebar({
     )}
     <div
       data-settings-sidebar
-      className="relative tabular-nums flex w-72 shrink-0 flex-col overflow-hidden rounded-md border border-gray-500 bg-[#363639]"
+      className="relative tabular-nums select-none flex w-72 shrink-0 flex-col overflow-hidden rounded-md border border-gray-500 bg-[#363639]"
       style={{ '--accent': '#d1d5db', '--accent-hover': '#f3f4f6', '--accent-light': '#d1d5db' } as CSSProperties}
     >
       <div className="flex shrink-0 items-center border-b border-gray-500 px-4 py-2">
@@ -2141,8 +2146,8 @@ export default function SettingsSidebar({
         </div>
         {/* 바꾼 값은 임시값이라 저장을 눌러야 서버에 올라간다. 초기화는 임시값을 버리고 저장값으로 돌아간다. 비로그인은 저장할 곳이 없어 로그인 창을 띄운다. */}
         {showPreferenceActions && <div className="ml-auto mr-2 flex shrink-0 items-center gap-3">
-          <button type="button" aria-label="초기화" disabled={isPreferenceFeedbackActive} onClick={() => {
-              if (hasDrafts && window.confirm('기존 저장값으로 되돌릴까요?')) runPreferenceAction(discardDrafts)
+          <button type="button" aria-label="초기화" disabled={isPreferenceFeedbackActive} onClick={async () => {
+              if (hasDrafts && await appConfirm('기존 저장값으로 되돌리시겠습니까?')) runPreferenceAction(discardDrafts)
             }} className="group relative flex border-0 bg-transparent p-0 text-gray-400 hover:text-white">
             <HeaderButtonHint>{'기존 저장값으로 되돌리기'}</HeaderButtonHint>
             <svg viewBox="0 0 16 16" className="h-[18px] w-[18px]" aria-hidden="true">
@@ -2153,9 +2158,9 @@ export default function SettingsSidebar({
             type="button"
             aria-label="저장"
             disabled={isPreferenceFeedbackActive}
-            onClick={() => {
+            onClick={async () => {
               if (!isLoggedIn) onRequestLogin?.()
-              else if (preferencesLoaded && hasDrafts && window.confirm('변경사항을 저장할까요?')) runPreferenceAction(() => commitDrafts(setPreference))
+              else if (preferencesLoaded && hasDrafts && await appConfirm('변경사항을 저장하시겠습니까?')) runPreferenceAction(() => commitDrafts(setPreference))
             }}
             className="group relative flex border-0 bg-transparent p-0 text-gray-400 hover:text-white"
           >
@@ -2210,6 +2215,7 @@ export default function SettingsSidebar({
         </div>
       )}
       {!plainContent && availableSections.length === 0 && <div className="min-h-0 flex-1" />}
+      <SettingsFeedbackContext.Provider value={runPreferenceAction}>
       <SettingsBookmarkContext.Provider value={bookmarkContext}>
       {selectedSection && (
         <div
@@ -2246,6 +2252,7 @@ export default function SettingsSidebar({
         </div>
       )}
       </SettingsBookmarkContext.Provider>
+      </SettingsFeedbackContext.Provider>
       </div>
       {isPreferenceFeedbackActive && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#363639]">

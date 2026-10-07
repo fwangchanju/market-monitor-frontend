@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useReportCountLabel } from '@/hooks/useReportCountLabel'
+import { useRowRangeSelection } from '@/hooks/useRowRangeSelection'
+import { STOCK_COLUMN_PERCENT, stockColumnPercentWidth } from '@/utils/stockTableColumns'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import Spinner from '@/components/Spinner'
 import type { Market, MarketMapResponse } from '@/types/api'
-import { toCount } from '@/utils/format'
+import { toCount, toJoEokDecimal } from '@/utils/format'
 import { charTier } from '@/utils/koreanSort'
 import { SortIcon } from '@/components/icons/MarketMapIcons'
 
@@ -17,29 +19,9 @@ function compareName(a: string, b: string): number {
   return KOREAN_COLLATOR.compare(a, b)
 }
 
-// 지도 응답의 시가총액은 원 단위 — 표에는 '조/억'으로 보여준다. 조와 억을 따로 오른쪽 정렬한 고정 폭 칸에 넣어서,
-// 줄마다 자릿수가 달라도 "조"와 "억" 글자가 같은 세로선에 놓이게 한다(숫자 폭은 tabular-nums로 맞춘다).
-// 열 가운데에 놓되 글자는 왼쪽 정렬 — 고정 폭 상자를 가운데에 두고 그 안에서 왼쪽 정렬하므로, 줄마다 글자가 시작하는
-// 위치가 같다. 폭을 넘는 글자는 줄임표로 자른다.
-function CenteredLeft({ children }: { children: string }) {
-  return <span className="mx-auto block w-[12rem] truncate text-left">{children}</span>
-}
-
 // 열 가운데에 놓되 숫자는 오른쪽 정렬 — 고정 폭 상자를 가운데에 두고 그 안에서 오른쪽 정렬하므로 자릿수가 달라도 끝이 맞는다.
 function CenteredRightNumber({ value }: { value: number }) {
   return <span className="mx-auto block w-[6ch] text-right tabular-nums">{toCount(value)}</span>
-}
-
-function MarketValueCell({ won }: { won: number }) {
-  const totalEok = Math.round(won / 100_000_000)
-  const jo = Math.floor(totalEok / 10_000)
-  const eok = totalEok % 10_000
-  return (
-    <span className="inline-flex tabular-nums">
-      <span className="w-[7ch] text-right">{jo > 0 ? `${toCount(jo)}조` : ''}</span>
-      <span className="w-[7ch] text-right">{`${toCount(eok)}억`}</span>
-    </span>
-  )
 }
 
 // 이 시트 전용 색 — MARKETRY 표(커스텀 종목 표)의 강조색·노란 화살표를 가져다 쓰지 않는다. MARKETRY 색을 바꿔도
@@ -98,6 +80,9 @@ const HEADER_CELL = `sticky top-0 z-10 ${COLOR.headerBg} px-3 py-1 text-center t
 const BODY_CELL = `border-b ${COLOR.rowDivider} px-3 py-1 text-sm`
 // 종목 표 한 행의 예상 높이(글줄 20 + 위아래 여백 8 + 아래 선 1) — 실제 높이는 렌더 뒤에 다시 잰다.
 const STOCK_ROW_HEIGHT = 29
+// 맨 왼쪽 체크박스 칸 — MARKETRY 종목 표(AdminStockTable)와 같은 폭(체크박스 20px + 좌우 4.5px씩)이다.
+const CHECKBOX_COLUMN_WIDTH = '29px'
+const CHECKBOX_CELL_STYLE = { width: CHECKBOX_COLUMN_WIDTH, minWidth: CHECKBOX_COLUMN_WIDTH, maxWidth: CHECKBOX_COLUMN_WIDTH, paddingLeft: 0, paddingRight: 0 } as const
 
 interface Props {
   mode: 'category' | 'stock'
@@ -153,7 +138,7 @@ export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, nxtOnly, o
         checked={nxtOnly}
         onChange={event => onNxtOnlyChange(event.target.checked)}
       />
-      NXT만 보기
+      NXT
     </label>
   )
   return mode === 'stock' ? (
@@ -175,7 +160,7 @@ export function SearchBar({ query, onChange, placeholder, ariaLabel, countLabel,
   extra?: ReactNode
 }) {
   return (
-    <div className={settingsLayout ? 'mb-6 flex min-w-0 flex-col gap-2' : 'flex shrink-0 items-center pl-2 pr-3 pb-2'}>
+    <div className={settingsLayout ? 'mb-6 flex min-w-0 flex-col gap-2' : 'flex shrink-0 items-center pl-2 pr-[18px] pb-2'}>
       <input
         type="text"
         value={query}
@@ -239,7 +224,8 @@ function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { s
         extra={extra}
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <table className={TABLE_CLASS}>
+        {/* 업종·종목 수·시가총액 세 칸을 같은 폭(삼등분)으로 나눈다 — MARKETRY 업종 화면의 대·중·소분류 칸과 같은 모양이다. */}
+        <table className={`${TABLE_CLASS} table-fixed select-none`}>
           <thead>
             <tr>
               {header('name', '업종')}
@@ -250,16 +236,14 @@ function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { s
           <tbody>
             {visibleRows.length === 0 && <EmptyRow colSpan={3} message={rows.length === 0 ? emptyMessage : '검색 결과가 없습니다.'} />}
             {visibleRows.map(row => (
-              <tr key={row.name}>
-                <td className={BODY_CELL}>
-                  <CenteredLeft>{row.name}</CenteredLeft>
-                </td>
+              <tr key={row.name} className="text-gray-400">
+                {/* 업종 이름 시작 위치를 MARKETRY 업종 화면의 대분류 이름과 같게 한다 — 칸 왼쪽에서 8px(여백) + 손잡이 24px + 4px + 번호 칸 28px + 8px = 72px. */}
+                <td className={`${BODY_CELL} truncate text-left !pl-[72px]`}>{row.name}</td>
                 <td className={BODY_CELL}>
                   <CenteredRightNumber value={row.stockCount} />
                 </td>
-                <td className={`${BODY_CELL} text-center`}>
-                  <MarketValueCell won={row.marketValue} />
-                </td>
+                {/* 종목 표와 같은 시가총액 표기('137조 2,762억' 대신 '137.3조')와 오른쪽 정렬이다. */}
+                <td className={`${BODY_CELL} text-right !pr-4 text-gray-400`}>{toJoEokDecimal(row.marketValue / 100_000_000)}</td>
               </tr>
             ))}
           </tbody>
@@ -296,9 +280,21 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra,
     ? rows.filter(row => row.stockName.includes(trimmed) || row.stockCode.includes(trimmed) || row.sectorName.includes(trimmed))
     : rows
   useReportCountLabel(`${toCount(visibleRows.length)}/${toCount(rows.length)}종목`, onCountLabelChange)
+  // 맨 왼쪽 체크박스 — MARKETRY 종목 표와 같은 모양이다. 읽기 전용 시트라 고른 종목으로 할 수 있는 작업은 아직 없고, 표시만 한다.
+  const [selectedCodes, setSelectedCodes] = useState<ReadonlySet<string>>(new Set())
+  const isAllVisibleSelected = visibleRows.length > 0 && visibleRows.every(row => selectedCodes.has(row.stockCode))
+  const toggleSelectAllVisible = () =>
+    setSelectedCodes(isAllVisibleSelected ? new Set() : new Set(visibleRows.map(row => row.stockCode)))
   // 종목이 수천 개라 전부 그려 두면 검색할 때마다 화면 갱신이 느리고, 공유 캡처도 안 보이는 행까지 전부 복제한다 —
   // 화면에 보이는 행(+위아래 여유)만 그리고, 나머지 높이는 앞뒤 스페이서 <tr>로 채운다(AdminStockTable과 같은 방식).
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  // 줄 누르기·Shift+클릭 범위·끌어서 연속 선택 — MARKETRY 종목 표와 같은 동작이다.
+  const { rowProps } = useRowRangeSelection(
+    useMemo(() => visibleRows.map(row => row.stockCode), [visibleRows]),
+    scrollContainerRef,
+    selectedCodes,
+    setSelectedCodes,
+  )
   // eslint-disable-next-line react-hooks/incompatible-library -- 가상화 라이브러리의 함수는 메모하지 못한다는 경고 — AdminStockTable과 같은 사용 방식이라 무시한다
   const rowVirtualizer = useVirtualizer({
     count: visibleRows.length,
@@ -323,9 +319,30 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra,
         extra={extra}
       />
       <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto">
-        <table className={TABLE_CLASS}>
+        {/* 열 너비는 MARKETRY 종목 표와 같은 비율이다 — 종목명은 그쪽의 "종목명 + 약칭" 너비이고, 남는 폭은 NXT 칸이 받는다. */}
+        {/* 열이 MARKETRY 표 폭으로 좁아져도 머리글·시가총액이 두 줄로 접히거나 옆 칸으로 넘치지 않게 좌우 여백을 줄이고 한 줄로 고정한다. */}
+        <table className={`${TABLE_CLASS} table-fixed select-none [&_td]:whitespace-nowrap [&_td]:px-1 [&_th]:whitespace-nowrap [&_th]:px-1`}>
+          <colgroup>
+            <col style={{ width: CHECKBOX_COLUMN_WIDTH }} />
+            <col style={{ width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.stockCode) }} />
+            <col style={{ width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.stockName + STOCK_COLUMN_PERCENT.alias) }} />
+            <col style={{ width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.totalMarketValue) }} />
+            <col style={{ width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.market) }} />
+            <col style={{ width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.industry) }} />
+            <col />
+          </colgroup>
           <thead>
             <tr>
+              <th className={`${HEADER_CELL} cursor-pointer`} style={CHECKBOX_CELL_STYLE} onClick={toggleSelectAllVisible}>
+                <input
+                  type="checkbox"
+                  aria-label="보이는 종목 전체 선택"
+                  className="mx-auto my-0 block h-5 w-5 cursor-pointer accent-[var(--brand)]"
+                  checked={isAllVisibleSelected}
+                  onChange={toggleSelectAllVisible}
+                  onClick={event => event.stopPropagation()}
+                />
+              </th>
               {header('stockCode', '종목코드')}
               {header('stockName', '종목명')}
               {header('totalMarketValue', '시가총액')}
@@ -335,31 +352,36 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra,
             </tr>
           </thead>
           <tbody>
-            {visibleRows.length === 0 && <EmptyRow colSpan={6} message={rows.length === 0 ? emptyMessage : '검색 결과가 없습니다.'} />}
+            {visibleRows.length === 0 && <EmptyRow colSpan={7} message={rows.length === 0 ? emptyMessage : '검색 결과가 없습니다.'} />}
             {paddingTop > 0 && (
               <tr>
-                <td colSpan={6} style={{ height: paddingTop, padding: 0, border: 'none' }} />
+                <td colSpan={7} style={{ height: paddingTop, padding: 0, border: 'none' }} />
               </tr>
             )}
             {virtualRows.map(virtualRow => {
               const row = visibleRows[virtualRow.index]
               const isKosdaq = row.market === 'KOSDAQ'
               return (
-                <tr key={row.stockCode} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className={isKosdaq ? 'text-[var(--brand)]' : 'text-white'}>
+                <tr key={row.stockCode} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} {...rowProps(virtualRow.index)} className={`cursor-pointer text-gray-400 ${selectedCodes.has(row.stockCode) ? '[&>td]:bg-[var(--brand)]/35' : '[&:hover>td]:bg-[var(--brand)]/10'}`}>
+                  <td className={`${BODY_CELL} text-center`} style={CHECKBOX_CELL_STYLE}>
+                    <input
+                      type="checkbox"
+                      aria-label={`${row.stockName} 선택`}
+                      className="mx-auto my-0 block h-5 w-5 cursor-pointer accent-[var(--brand)]"
+                      checked={selectedCodes.has(row.stockCode)}
+                      onChange={() => {}}
+                    />
+                  </td>
                   <td className={`${BODY_CELL} text-center`}>{row.stockCode}</td>
-                  <td className={BODY_CELL}>
-                    <CenteredLeft>{row.stockName}</CenteredLeft>
-                  </td>
-                  <td className={`${BODY_CELL} text-center`}>
-                    <MarketValueCell won={row.totalMarketValue} />
-                  </td>
-                  <td className={`${BODY_CELL} text-center`}>
+                  <td className={`${BODY_CELL} truncate text-left !pl-4 ${isKosdaq ? 'text-[var(--brand)]' : ''}`}>{row.stockName}</td>
+                  {/* MARKETRY 종목 표와 같은 표기('1,613.6조')와 오른쪽 정렬이다. */}
+                  <td className={`${BODY_CELL} text-right !pr-4 text-gray-400`}>{toJoEokDecimal(row.totalMarketValue / 100_000_000)}</td>
+                  <td className={`${BODY_CELL} text-center ${isKosdaq ? 'text-[var(--brand)]' : ''}`}>
                     {row.market ? MARKET_LABEL[row.market] : '-'}
                   </td>
-                  <td className={BODY_CELL}>
-                    <CenteredLeft>{row.sectorName}</CenteredLeft>
-                  </td>
-                  <td className={`${BODY_CELL} text-center ${!isKosdaq && !nxtStockCodes.has(row.stockCode) ? 'text-gray-500' : ''}`}>
+                  {/* 업종 글자 시작 위치(칸 왼쪽에서 16px)를 MARKETRY 종목 표의 업종 칸과 같게 한다. */}
+                  <td className={`${BODY_CELL} truncate text-left !pl-4`}>{row.sectorName}</td>
+                  <td className={`${BODY_CELL} text-center ${!nxtStockCodes.has(row.stockCode) ? 'text-gray-500' : ''}`}>
                     {nxtStockCodes.has(row.stockCode) ? 'O' : '-'}
                   </td>
                 </tr>
@@ -367,7 +389,7 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra,
             })}
             {paddingBottom > 0 && (
               <tr>
-                <td colSpan={6} style={{ height: paddingBottom, padding: 0, border: 'none' }} />
+                <td colSpan={7} style={{ height: paddingBottom, padding: 0, border: 'none' }} />
               </tr>
             )}
           </tbody>

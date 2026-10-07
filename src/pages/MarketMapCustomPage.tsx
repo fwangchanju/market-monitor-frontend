@@ -42,7 +42,7 @@ import { HEATMAP_NAMES } from '@/utils/heatmapNames'
 import { appAlert } from '@/utils/appDialogBus'
 import { mapStretchFor, mapTileMethod } from '@/utils/mapStretch'
 import { marketRoute } from '@/utils/marketRoute'
-import { captureElementToDownload, downloadDataUrl } from '@/utils/captureToDownload'
+import { captureElementToDownload, downloadDataUrl, captureFileName } from '@/utils/captureToDownload'
 import { limitDepth, flattenAllItems, type FilteredMarketMapSectorNode } from '@/hooks/useFilteredMarketMapTree'
 import type { MarketQuery, MarketMapSectorNode, MarketMapItem } from '@/types/api'
 
@@ -401,8 +401,8 @@ export default function MarketMapCustomPage() {
     if (!previewSrc && !captureRef.current) return
     setDownloadStatus('downloading')
     try {
-      if (previewSrc) downloadDataUrl(previewSrc, 'market-map.png')
-      else if (captureRef.current) await captureElementToDownload(captureRef.current, 'market-map.png')
+      if (previewSrc) downloadDataUrl(previewSrc, captureFileName('MAP'))
+      else if (captureRef.current) await captureElementToDownload(captureRef.current, captureFileName('MAP'))
       setDownloadStatus('idle')
     } catch {
       setDownloadStatus('error')
@@ -442,7 +442,7 @@ export default function MarketMapCustomPage() {
           <div ref={captureRef} data-captureid={CAPTURE_ID.MAP} data-capture-ready={!isLoading} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black">
             {/* 왼쪽은 마켓·기간·시계·시간대 묶음, 오른쪽 끝은 프로필(사진 + 거래소·MARKETRY). 두 묶음이 같은 줄에서 서로 밀어내므로
                 창이 좁아져도 겹치지 않고, 부족하면 오른쪽 글자가 먼저 줄어든다. */}
-            <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-3 text-sm font-bold text-white">
+            <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-[18px] text-sm font-bold text-white">
               <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
                 <MarketMapMarketCombobox
                   market={market}

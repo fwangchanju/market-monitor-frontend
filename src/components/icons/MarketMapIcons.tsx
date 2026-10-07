@@ -39,6 +39,25 @@ export function ChevronLeftIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+// 스프레드시트 파일 모양 — 모서리가 접힌 초록 문서 안에 흰 표. 엑셀로 내려받는 버튼에 쓴다(자체 색을 가진 아이콘이라 글자색을 따르지 않는다).
+export function ExcelIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path d="M7 2h7l5 5v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#1fa463" />
+      <path d="M14 2l5 5h-3a2 2 0 0 1-2-2V2z" fill="#8fd3b0" />
+      <rect x="8" y="11" width="8" height="7.5" fill="#ffffff" />
+      <g fill="#1fa463">
+        <rect x="9" y="12" width="2.7" height="1.3" />
+        <rect x="12.3" y="12" width="2.7" height="1.3" />
+        <rect x="9" y="14.1" width="2.7" height="1.3" />
+        <rect x="12.3" y="14.1" width="2.7" height="1.3" />
+        <rect x="9" y="16.2" width="2.7" height="1.3" />
+        <rect x="12.3" y="16.2" width="2.7" height="1.3" />
+      </g>
+    </svg>
+  )
+}
+
 export function DownloadIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>

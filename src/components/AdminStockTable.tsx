@@ -12,9 +12,9 @@ import { useMarketValueTiers } from '@/hooks/useMarketValueTiers'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSession } from '@/hooks/useSession'
 import Spinner from './Spinner'
-import { FONT_BAR_TIME } from './FontStyle'
 import { SearchBar } from './ReadOnlyHeatmapSheet'
-import { ChevronDownIcon, CloseIcon, DownloadIcon, FilterIcon, RedoIcon, SearchIcon, SortIcon, UndoIcon } from './icons/MarketMapIcons'
+import { STOCK_COLUMN_PERCENT, stockColumnPercentWidth } from '@/utils/stockTableColumns'
+import { ChevronDownIcon, CloseIcon, ExcelIcon, FilterIcon, RedoIcon, SearchIcon, SortIcon, UndoIcon } from './icons/MarketMapIcons'
 
 interface Props {
   items: StockSectorListItem[]
@@ -24,6 +24,8 @@ interface Props {
   // 안에 그려야 해서, 이 컴포넌트 안에서 직접 렌더링하지 않고 부모(MarketMapAdminPage)가 그 바 안에
   // 마련해준 DOM 노드로 옮겨 그린다. 상태/핸들러는 전부 이 컴포넌트에 그대로 남아있다.
   toolbarContainer: HTMLElement | null
+  // 실행취소·다시실행 아이콘을 그릴 설정창 안의 자리 — 없으면 상단 바 도구줄에 같이 그린다.
+  historyContainer?: HTMLElement | null
   // 검색창 옆에 두던 "N/N종목" 개수를 받아 갈 곳 — 페이지가 설정창 머리글에 그려 준다.
   onCountLabelChange?: (label: string | undefined) => void
 }
@@ -40,8 +42,8 @@ type SortKey =
   | 'subSectorName'
 type SortDirection = 'asc' | 'desc'
 
-// 체크박스(20px)가 줄 높이(약 24px)에서 남기는 상하 여백(약 2px)과 같게 좌우 여백도 2px씩만 둔다.
-const CHECKBOX_COLUMN_WIDTH = '22px'
+// 체크박스(20px)가 줄 높이(29px)에서 남기는 상하 여백(약 4.5px)과 비슷하게 좌우 여백도 4.5px씩 둔다(20 + 9 = 29px).
+const CHECKBOX_COLUMN_WIDTH = '29px'
 // nes.css의 셀 좌우 패딩(1rem)이 남지 않도록 인라인으로 0에 가깝게 고정한다.
 const CHECKBOX_CELL_STYLE = { width: CHECKBOX_COLUMN_WIDTH, minWidth: CHECKBOX_COLUMN_WIDTH, maxWidth: CHECKBOX_COLUMN_WIDTH, paddingLeft: 0, paddingRight: 0 } as const
 
@@ -49,15 +51,15 @@ const CHECKBOX_CELL_STYLE = { width: CHECKBOX_COLUMN_WIDTH, minWidth: CHECKBOX_C
 const DEFAULT_SORT_KEY: SortKey = 'totalMarketValue'
 
 const COLUMNS: { key: SortKey; header: string; width: string; align: 'center' | 'left' | 'right' }[] = [
-  { key: 'stockCode', header: '종목코드', width: '7%', align: 'left' },
-  { key: 'stockName', header: '종목명', width: '15%', align: 'left' },
-  { key: 'alias', header: '약칭', width: '13%', align: 'left' },
-  { key: 'totalMarketValue', header: '시가총액', width: '10%', align: 'right' },
-  { key: 'market', header: '마켓', width: '7%', align: 'center' },
-  { key: 'originCategoryName', header: '업종', width: '11%', align: 'left' },
-  { key: 'parentSectorName', header: '대분류', width: '11%', align: 'right' },
-  { key: 'midSectorName', header: '중분류', width: '11%', align: 'right' },
-  { key: 'subSectorName', header: '소분류', width: '11%', align: 'right' },
+  { key: 'stockCode', header: '종목코드', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.stockCode), align: 'center' },
+  { key: 'stockName', header: '종목명', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.stockName), align: 'left' },
+  { key: 'alias', header: '약칭', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.alias), align: 'left' },
+  { key: 'totalMarketValue', header: '시가총액', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.totalMarketValue), align: 'right' },
+  { key: 'market', header: '마켓', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.market), align: 'center' },
+  { key: 'originCategoryName', header: '업종', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.industry), align: 'left' },
+  { key: 'parentSectorName', header: '대분류', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.parentSector), align: 'right' },
+  { key: 'midSectorName', header: '중분류', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.midSector), align: 'right' },
+  { key: 'subSectorName', header: '소분류', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.subSector), align: 'right' },
 ]
 
 const alignClass = (align: 'center' | 'left' | 'right') =>
@@ -692,7 +694,7 @@ function BulkAssignButton({
         type="button"
         onClick={handleClick}
         style={widthPx != null ? { width: widthPx } : undefined}
-        className="flex h-6 items-center justify-center rounded border-0 bg-transparent px-1.5 text-xs text-[var(--brand)] transition-colors hover:bg-white/10"
+        className="flex h-6 items-center justify-center rounded border-0 bg-transparent px-1.5 text-sm text-[var(--brand)] transition-colors hover:bg-white/10"
       >
         일괄변경 ({count})
       </button>
@@ -762,7 +764,8 @@ function AdminAliasCell({
 
   if (isEditing) {
     return (
-      <td className={`${alignClass('left')} ${rowHoverClass}`} data-no-row-select onClick={e => e.stopPropagation()}>
+      // 입력칸은 칸 안쪽(좌우 8px 여백)에 두고 입력 글자 시작선을 보통 글자(pl-4=16px)와 맞춘다.
+      <td className={`text-left px-2 ${rowHoverClass}`} data-no-row-select onClick={e => e.stopPropagation()}>
         <input
           type="text"
           autoFocus
@@ -773,7 +776,7 @@ function AdminAliasCell({
             if (e.key === 'Enter') submit()
             if (e.key === 'Escape') stopEdit()
           }}
-          className="nes-input is-dark w-full text-left text-xs"
+          className="nes-input is-dark h-5 w-full rounded-md border-0 bg-[#3b3b3b] px-2 text-left text-sm text-white outline-none focus:ring-1 focus:ring-inset focus:ring-[var(--brand)]"
         />
       </td>
     )
@@ -1276,7 +1279,7 @@ const AdminStockRow = memo(function AdminStockRow({
         {/* 상태 변경은 줄 클릭(handleRowClick)에서 하므로 onChange는 비워 둔다 — 제어되는 체크박스에 필요한 자리표시다. */}
         <input type="checkbox" className="mx-auto my-0 block h-5 w-5 cursor-pointer accent-[var(--brand)]" checked={isSelected} onChange={() => {}} />
       </td>
-      <td className={`${alignClass('left')} text-gray-400 ${rowHoverClass}`}>{item.stockCode}</td>
+      <td className={`${alignClass('center')} text-gray-400 ${rowHoverClass}`}>{item.stockCode}</td>
       <td className={`${alignClass('left')} ${marketColorClass(item.market)} ${rowHoverClass}`}>{item.stockName}</td>
       {showAlias && (
         <AdminAliasCell
@@ -1337,6 +1340,7 @@ export default function AdminStockTable({
   sectors,
   snapshotTime,
   toolbarContainer,
+  historyContainer,
   onCountLabelChange,
 }: Props) {
   const [sortKey, setSortKey] = usePersistedState<SortKey | null>('adminStockTable.sortKey', DEFAULT_SORT_KEY)
@@ -1957,7 +1961,7 @@ export default function AdminStockTable({
     const now = new Date()
     const pad = (n: number) => String(n).padStart(2, '0')
     const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
-    const filename = `커스텀_종목_${timestamp}.xlsx`
+    const filename = `MARKETRY_LIST_${timestamp}.xlsx`
     const rows = sorted.map(item => {
       const display = displayByStockCode.get(item.stockCode)!
       return {
@@ -2009,13 +2013,8 @@ export default function AdminStockTable({
   const GHOST_BUTTON = 'flex h-6 items-center justify-center gap-1.5 rounded border-0 bg-transparent px-1.5 text-xs text-gray-300 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-300'
   // 세 번째 바(페이지 공통 상태/옵션 바) 높이(h-7=28px)에 맞춰야 해서, nes.css 기본 버튼 패딩(6px 8px)보다
   // 좁게 오버라이드한다 — 그 외 로직/상태는 전부 그대로다.
-  const toolbar = (
-    <div className="flex h-full min-h-0 w-full items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          {/* 지도 설정창 제목 옆과 같은 "표시/전체종목" 표기 — 필터가 없으면 전체 수만 보여준다. */}
-          <p className={`${FONT_BAR_TIME} ml-2 whitespace-nowrap text-gray-400`}>
-            {sorted.length !== items.length ? `${toCount(sorted.length)}/${toCount(items.length)}` : toCount(items.length)}종목
-          </p>
+  // 실행취소·다시실행 아이콘 묶음.
+  const historyControls = (
           <div className="flex items-center gap-2">
             <div
               ref={undoGroupRef}
@@ -2086,7 +2085,12 @@ export default function AdminStockTable({
               onPick={handleRedoItem}
             />
           </div>
-        </div>
+  )
+
+  const toolbar = (
+    <div className="flex h-full min-h-0 w-full items-center justify-between gap-3">
+        {/* 실행취소·다시실행은 설정창 안(historyContainer)에 그린다 — 컨테이너가 없으면 이 자리에 그대로 그린다. */}
+        {!historyContainer && historyControls}
         <div className="flex items-center gap-2">
           {hasAnyFilter && (
             <>
@@ -2100,15 +2104,6 @@ export default function AdminStockTable({
               </button>
             </>
           )}
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            className={GHOST_BUTTON}
-            title="지금 화면에 보이는(필터/정렬 적용된) 목록을 엑셀로 내려받습니다"
-            aria-label="엑셀 다운로드"
-          >
-            <DownloadIcon className="h-3.5 w-3.5" />
-          </button>
           {selectedStockCodes.size > 0 && (
             <>
               <BulkAssignButton
@@ -2146,11 +2141,30 @@ export default function AdminStockTable({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {toolbarContainer && createPortal(toolbar, toolbarContainer)}
+      {historyContainer && createPortal(
+        <div>
+          <h2 className="mb-3 text-[15px] font-medium leading-[22px] text-white">실행 취소</h2>
+          {historyControls}
+        </div>,
+        historyContainer,
+      )}
       <SearchBar
         query={searchQuery}
         onChange={setSearchQuery}
         placeholder="종목명·코드·업종 검색"
         ariaLabel="종목 검색"
+        extra={
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            // 버튼 폭을 상단 바의 설정(톱니) 버튼과 같은 28px로 맞춰서, 설정창을 닫았을 때 아이콘의 가로 위치가 톱니와 같게 한다.
+            className="-mr-[7px] flex h-6 w-7 items-center justify-center rounded border-0 bg-transparent p-0 transition-colors hover:bg-white/10"
+            title="지금 화면에 보이는(필터/정렬 적용된) 목록을 엑셀로 내려받습니다"
+            aria-label="엑셀 다운로드"
+          >
+            <ExcelIcon className="h-6 w-6" />
+          </button>
+        }
       />
       {/* 바깥 테두리(외곽선)는 두지 않는다 — KRX·NXT 시트와 같은 모양이다. */}
       <div className="relative min-h-0 flex-1">
@@ -2211,7 +2225,7 @@ export default function AdminStockTable({
                             ? subThRef
                             : undefined
                     }
-                    style={{ width: col.width }}
+                    style={{ width: col.key === columns[columns.length - 1].key ? undefined : col.width }}
                     className="whitespace-nowrap bg-[#2b3a4f] text-center font-bold text-slate-100"
                   >
                     {filterKey ? (
