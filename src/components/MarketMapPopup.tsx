@@ -162,6 +162,7 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
   }, [pointer, minLeft, maxRight, minTop, maxBottom])
 
   const excludeSector = popup.excludeSector
+  const isSectorPopup = popup.targetKey.startsWith('sector:')
 
   return (
     <>
@@ -172,7 +173,12 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
         style={{ maxWidth, backgroundColor: POPUP_BACKGROUND }}
       >
         <div className="flex items-center justify-between gap-3 font-bold">
-          <span>{popup.title}</span>
+          <div className="flex items-center gap-1.5">
+            <span className={`shrink-0 rounded-sm border border-current px-1 py-0.5 text-xs font-medium leading-none ${isSectorPopup ? 'text-[var(--brand)]' : 'text-gray-500'}`}>
+              {isSectorPopup ? '업종' : '종목'}
+            </span>
+            <span className={isSectorPopup ? 'text-[var(--brand)]' : undefined}>{popup.title}</span>
+          </div>
           {excludeSector && (
             <button
               type="button"

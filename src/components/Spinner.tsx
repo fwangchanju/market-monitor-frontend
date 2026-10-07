@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import marketryLogo from '@/assets/marketry-logo.png'
+import MarketryLogo from '@/components/MarketryLogo'
 
 interface Props {
   className?: string
@@ -29,7 +29,7 @@ export default function Spinner({ className, showElapsed = false, showLogo = fal
       <div role="status" aria-label="설정 처리 중" className={`relative ${className ?? 'h-24 w-24'}`}>
         <div aria-hidden="true" className="absolute inset-0 animate-spin rounded-full border-[3px] border-gray-600 border-t-[var(--accent)]" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <img src={marketryLogo} alt="" className="w-[72%] object-contain" />
+          <MarketryLogo className="h-auto w-[72%]" />
         </div>
       </div>
     )
@@ -44,7 +44,7 @@ export default function Spinner({ className, showElapsed = false, showLogo = fal
       <div className="absolute inset-0 animate-spin rounded-full border-[6px] border-gray-600 border-t-[var(--accent)]" />
       <div className="absolute inset-0 grid grid-rows-[1fr_auto_1fr] justify-items-center">
         <div />
-        <img src={marketryLogo} alt="" className="w-[72%] object-contain" />
+        <MarketryLogo className="h-auto w-[72%]" />
         <div className="flex flex-col items-center gap-1 pt-4">
           <span className="text-base text-gray-300">데이터를 불러오는 중입니다.</span>
           <span className="h-7 text-xl tabular-nums text-gray-300">{elapsedSeconds >= 1 ? `${elapsedSeconds}초` : ''}</span>

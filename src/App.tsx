@@ -9,7 +9,7 @@ import ProfilePage from './pages/ProfilePage'
 import LoginGateProvider from './components/LoginGateProvider'
 
 // 페이지 전체와 document.body로 포털 렌더링한 메뉴/팝업에 같은 숫자 폭 규칙을 적용한다.
-// 공통 스냅샷 시간은 FONT_BAR_TIME의 normal-nums로 이 상속에서 제외한다.
+// 공통 스냅샷 날짜·시간도 FONT_BAR_TIME에서 동일한 숫자 폭을 명시한다.
 function PageNumberStyle() {
   const { pathname } = useLocation()
   const useTabularNumbers = pathname === '/group' || pathname.startsWith('/group/')

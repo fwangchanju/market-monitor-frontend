@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { CalendarIcon, ClockIcon, MaximizeIcon, MinimizeIcon, RefreshIcon, SettingsIcon, ShareIcon } from '@/components/icons/MarketMapIcons'
+import { CaptureIcon, MaximizeIcon, MinimizeIcon, RefreshIcon, SettingsIcon } from '@/components/icons/MarketMapIcons'
 import { HINT_BUBBLE_CLASS } from '@/components/hintBubbleStyle'
 
 interface Props {
@@ -9,9 +9,9 @@ interface Props {
   onToggleSettings?: () => void
   isSettingsOpen?: boolean
   onOpenShare: () => void
+  isCaptureOpen: boolean
   isNativeFullscreen: boolean
   onToggleFullscreen: () => void
-  showSnapshotControls?: boolean
   // false면 새로고침 버튼을 이 묶음에서 뺀다 — 콘솔 줄(시계 옆)에 PageRefreshButton으로 따로 둘 때.
   showRefresh?: boolean
 }
@@ -19,7 +19,6 @@ interface Props {
 const BUTTON_BASE_CLASS =
   'flex h-7 items-center justify-center border-0 bg-transparent outline-none hover:text-[var(--accent)] focus-visible:text-[var(--accent)]'
 const BUTTON_CLASS = `${BUTTON_BASE_CLASS} w-7`
-const INACTIVE_BUTTON_CLASS = `${BUTTON_CLASS} text-gray-400`
 
 // 스냅샷 수집 주기 안내 — 새로고침 버튼에 커서를 올리거나 포커스하면 보여준다.
 export const SNAPSHOT_REFRESH_HELP = '5분 간격으로 데이터를 수집합니다.\n수집 후 배포까지 1분 가량 지연이 있을 수 있습니다.'
@@ -151,37 +150,23 @@ export default function NavBarPageActions({
   onToggleSettings,
   isSettingsOpen = false,
   onOpenShare,
+  isCaptureOpen,
   isNativeFullscreen,
   onToggleFullscreen,
-  showSnapshotControls = false,
   showRefresh = true,
 }: Props) {
   return (
     <>
-      {showSnapshotControls && (
-        <>
-          <button type="button" aria-label="스냅샷 날짜" className={INACTIVE_BUTTON_CLASS}>
-            <CalendarIcon className="h-4 w-4" />
-          </button>
-          <button type="button" aria-label="스냅샷 시간" className={INACTIVE_BUTTON_CLASS}>
-            <ClockIcon className="h-4 w-4" />
-          </button>
-        </>
-      )}
       {showRefresh && <PageRefreshButton onRefresh={onRefresh} isRefreshing={isRefreshing} />}
-      {onToggleSettings && (
-        <button
-          type="button"
-          aria-label="설정"
-          data-settings-toggle
-          className={`${BUTTON_CLASS} ${isSettingsOpen ? 'text-[var(--accent)]' : 'text-gray-400'}`}
-          onClick={onToggleSettings}
-        >
-          <SettingsIcon className="h-4 w-4" />
-        </button>
-      )}
-      <button type="button" aria-label="공유" className={INACTIVE_BUTTON_CLASS} onClick={onOpenShare}>
-        <ShareIcon className="h-4 w-4" />
+      <button
+        type="button"
+        aria-label="캡처"
+        aria-haspopup="dialog"
+        aria-expanded={isCaptureOpen}
+        className={`flex h-7 w-7 items-center justify-center border-0 bg-transparent outline-none ${isCaptureOpen ? 'text-[var(--brand)]' : 'text-gray-400 hover:text-white focus-visible:text-white'}`}
+        onClick={onOpenShare}
+      >
+        <CaptureIcon className="h-4 w-4" />
       </button>
       <button
         type="button"
@@ -193,6 +178,17 @@ export default function NavBarPageActions({
       >
         {isNativeFullscreen ? <MinimizeIcon className="h-4 w-4" /> : <MaximizeIcon className="h-4 w-4" />}
       </button>
+      {onToggleSettings && (
+        <button
+          type="button"
+          aria-label="설정"
+          data-settings-toggle
+          className={`${BUTTON_CLASS} ${isSettingsOpen ? 'text-[var(--accent)]' : 'text-gray-400'}`}
+          onClick={onToggleSettings}
+        >
+          <SettingsIcon className="h-4 w-4" />
+        </button>
+      )}
     </>
   )
 }

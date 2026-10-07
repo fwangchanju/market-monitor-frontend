@@ -173,6 +173,7 @@ export default function CustomManagePage() {
             : isRefetchingSectors
       }
       onOpenShare={() => setIsShareOpen(true)}
+      isCaptureOpen={isShareOpen}
       onToggleSettings={() => setIsSettingsOpen(previous => !previous)}
       isSettingsOpen={isSettingsOpen}
       isNativeFullscreen={isNativeFullscreen}

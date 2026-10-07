@@ -12,9 +12,9 @@ interface Props {
   // rect는 이 섹터 박스 전체의 화면상 위치 — 줌인 애니메이션이 어디서부터 확대되는지 계산하는 데 쓴다.
   onSelectSector: (sectorName: string, rect: DOMRect) => void
   onOpenPopup: (content: MarketMapPopupContent, target: HTMLElement) => void
-  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목 팝업을 커서 이동으로 띄울 때 박스를 벗어나면 닫는다.
+  // 하위 종목 박스에 전달 — 마우스를 올려 띄운 종목 팝업은 박스를 벗어나면 닫는다.
   onClosePopup: (targetKey: string) => void
-  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목 팝업을 우클릭(false)/커서 이동(true) 중 뭘로 띄울지.
+  // 하위 종목 박스에만 적용 — 업종 정보는 이 설정과 무관하게 항상 우클릭으로 연다.
   stockPopupOnHover: boolean
   // 헤더를 좌클릭(주 버튼)으로 누르는 "순간"(pointerdown) 알림 — MarketMapTreemap이 이걸로
   // suppressSectorHoverBorder를 곧장 켜서, 줌인 애니메이션 시작 전에 hover 테두리가 잠깐
@@ -103,8 +103,8 @@ export default function MarketMapSectorSection({
   const sectorKey = `sector:${sectorPath}`
   // 팝업이 이 섹터를 대상으로 떠 있는 동안 호버 오버레이를 고정해서 보여준다(index.css의 .is-pinned).
   const isPinned = highlightedKey === sectorKey
-  // 우클릭 팝업은 제외 버튼이 있어서 클릭할 수 있어야 하고, 커서 이동 팝업(transient)은 마우스 이벤트를 받지 않으니 제외 버튼을 빼고 정보만 보여준다.
-  const openSectorPopup = (target: HTMLElement, transient: boolean, pointer?: { x: number; y: number }) => {
+  // 업종 정보는 제외 버튼을 사용할 수 있도록 우클릭으로만 연다.
+  const openSectorPopup = (target: HTMLElement) => {
     onOpenPopup({
       title: sector.sectorName,
       rows: [
@@ -113,10 +113,9 @@ export default function MarketMapSectorSection({
         `등락 종목: ▲${advancerCount} ▼${declinerCount} ■${unchangedCount}`,
         `그룹 시총: ${toJoEokDecimal(sector.totalMarketValue / 100_000_000)}`,
       ],
-      excludeSector: canExclude && !transient ? { id: sector.sectorId, name: sector.sectorName } : undefined,
+      excludeSector: canExclude ? { id: sector.sectorId, name: sector.sectorName } : undefined,
       targetKey: sectorKey,
-      transient,
-      pointer,
+      transient: false,
     }, target)
   }
   const items = collectSectorItems(sector)
@@ -223,14 +222,11 @@ export default function MarketMapSectorSection({
               e.preventDefault()
               e.stopPropagation()
               // 팝업 위치/하이라이트는 헤더가 아니라 섹터 박스 전체(boxRef) 기준이어야 한다.
-              openSectorPopup(boxRef.current ?? e.currentTarget, false)
+              openSectorPopup(boxRef.current ?? e.currentTarget)
               // 위 onMouseDown이 오른쪽 버튼의 포커스 이동 자체를 막아주지만, 혹시를 대비한 안전망으로
               // 여기서도 한 번 더 blur — 이미 포커스가 없으면 아무 효과 없는 no-op이라 안전하다.
               e.currentTarget.blur()
             }}
-            // 커서 이동 방식이면 종목 박스와 똑같이 헤더에 마우스를 올리면 마우스를 따라다니는 팝업이 뜬다(우클릭은 제외 버튼이 있는 팝업).
-            onPointerEnter={stockPopupOnHover ? e => openSectorPopup(boxRef.current ?? e.currentTarget, true, { x: e.clientX, y: e.clientY }) : undefined}
-            onPointerLeave={stockPopupOnHover ? () => onClosePopup(sectorKey) : undefined}
             style={{
               height: sectorHeaderHeight(depth),
               fontSize: sectorHeaderFontSize(depth),
