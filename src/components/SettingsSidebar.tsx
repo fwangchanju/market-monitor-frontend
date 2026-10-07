@@ -151,7 +151,7 @@ interface SettingsBookmarkContextValue {
   ids: readonly string[]
   // 북마크 탭에서 보여줄 "원래 위치" 번호(예: "1-2") — 탭 번호-항목 번호.
   numbers: Partial<Record<SettingsBookmarkId, string>>
-  // 북마크 탭에서 맨 위에 보이는 항목 — 이 항목 위에는 구분선을 긋지 않는다.
+  // 북마크 탭에서 첫 번째로 표시할 항목.
   firstId?: SettingsBookmarkId
   onToggle: (id: SettingsBookmarkId) => void
 }
@@ -164,7 +164,7 @@ const SettingsBookmarkContext = createContext<SettingsBookmarkContextValue>({
   onToggle: () => {},
 })
 
-// 북마크 탭에서 항목 컨테이너에 붙일 클래스 — 북마크하지 않은 항목은 숨기고, 보이는 항목은 같은 높이 규칙을 따른다.
+// 북마크 탭에서 선택하지 않은 항목은 숨기고, 선택한 항목은 북마크 전용 간격으로 표시한다.
 function bookmarkItemClass(ctx: SettingsBookmarkContextValue, id: SettingsBookmarkId) {
   if (ctx.mode !== 'bookmark') return ''
   if (!ctx.ids.includes(id)) return 'hidden'
@@ -674,6 +674,51 @@ function SliderTickLabels({
   )
 }
 
+// 싱글 슬라이더의 실제 레일도 듀얼 슬라이더와 같은 양 끝 핸들 중심(좌우 8px 안쪽)에 맞춘다.
+function SingleRangeInput({
+  value,
+  min,
+  max,
+  step,
+  ariaLabel,
+  onChange,
+  disabled = false,
+  ariaValueText,
+}: {
+  value: number
+  min: number
+  max: number
+  step: number
+  ariaLabel: string
+  onChange: (value: number) => void
+  disabled?: boolean
+  ariaValueText?: string
+}) {
+  const pct = max === min ? 0 : ((value - min) / (max - min)) * 100
+  return (
+    <div className={`relative h-4 ${disabled ? 'opacity-40' : ''}`}>
+      <span aria-hidden="true" className="absolute inset-x-2 top-1/2 h-1 -translate-y-1/2 rounded bg-gray-600" />
+      <span
+        aria-hidden="true"
+        className="absolute left-2 top-1/2 h-1 -translate-y-1/2 rounded bg-[var(--accent)]"
+        style={{ width: `calc(${pct}% - ${pct * 0.16}px)` }}
+      />
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        aria-label={ariaLabel}
+        aria-valuetext={ariaValueText}
+        onChange={e => onChange(Number(e.target.value))}
+        disabled={disabled}
+        className="settings-single-slider absolute inset-0 block h-4 w-full disabled:cursor-not-allowed"
+      />
+    </div>
+  )
+}
+
 // 핸들 하나로 딱 하나의 칸만 고르는 슬라이더 — RangeSlider와 달리 범위가 아니라 단일 값(예: 종목
 // 박스 표시 내용)을 고를 때 쓴다. 눈금 라벨 배치 방식은 RangeSlider와 동일(라벨 폭과 무관하게 위치 고정).
 function SingleValueSlider({
@@ -710,15 +755,13 @@ function SingleValueSlider({
       onPointerMove={e => setHintPos(cursorHintFrom(e))}
       onPointerLeave={() => setHintVisible(false)}
     >
-      <input
-        type="range"
+      <SingleRangeInput
         min={0}
         max={steps}
         step={1}
         value={index}
-        aria-label={ariaLabel}
-        onChange={e => {
-          const next = Number(e.target.value)
+        ariaLabel={ariaLabel}
+        onChange={next => {
           if (next > selectableMax) {
             setBlockedIndex(next)
             setHintVisible(true)
@@ -726,8 +769,6 @@ function SingleValueSlider({
           onChange(Math.min(next, selectableMax))
         }}
         disabled={disabled}
-        className="settings-single-slider block w-full disabled:cursor-not-allowed"
-        style={{ '--slider-pct': steps > 0 ? index / steps * 100 : 0 } as CSSProperties}
       />
       <SliderTickLabels
         labels={labels}
@@ -766,12 +807,13 @@ export function SettingsAverageModeSection({
     { value: true, label: '동일 가중' },
   ]
   return (
-    <div className="text-sm">
+    <div className="settings-first-depth-level text-sm">
       <span className="flex max-w-[16rem] items-center text-left text-[15px] text-white">
         <span className="settings-section-num">등락률 기준</span>
         <SettingHelpIcon label="등락률 기준" description={"업종 등락률 계산에 적용할\n기준을 선택합니다."} />
       </span>
-      <div role="radiogroup" aria-label="등락률 기준" className="mt-2 grid max-w-[16rem] settings-control-inset grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
+      <SettingDescription>업종 등락률 계산 기준</SettingDescription>
+      <div role="radiogroup" aria-label="등락률 기준" className="mt-4 grid max-w-[16rem] settings-control-inset grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
         {options.map(option => {
           const selected = avgChangeRateUseSimple === option.value
           return (
@@ -811,12 +853,13 @@ export function SettingsBeforeMinutesSection({
     0,
   )
   return (
-    <div className="mt-[49px] text-sm">
+    <div className="settings-second-depth-metric relative mt-6 text-sm">
       <span className="flex max-w-[16rem] items-center text-left text-[15px] text-white">
         <span className="settings-section-num">비교 시점</span>
         <SettingHelpIcon label="비교 시점" description={"현재 등락률을 몇 분 전과\n비교해 변화폭을 산출합니다."} />
       </span>
-      <div className="mt-2 max-w-[16rem] settings-control-inset">
+      <SettingDescription>현재 등락률과 비교할 시점</SettingDescription>
+      <div className="settings-slider-control mt-[18px]">
         <SingleValueSlider
           index={index}
           labels={BEFORE_MINUTES_OPTIONS.map(minutes => `${minutes}분`)}
@@ -1025,17 +1068,15 @@ export function SettingsStockSizeSelector({
         <span className="text-sm text-gray-400">{marketCapRatio}%</span>
       </div>
       <SettingDescription>시가총액이 박스 크기에 반영되는 정도</SettingDescription>
-      <div className="mt-[18px] settings-control-inset">
-        <input
-          type="range"
+      <div className="settings-slider-control mt-[18px]">
+        <SingleRangeInput
           min={0}
           max={100}
           step={1}
           value={marketCapRatio}
-          aria-label="박스 크기 시가총액 비율"
-          aria-valuetext={`${marketCapRatio}%`}
-          onChange={e => onChangeMarketCapRatio(Number(e.target.value))}
-          className="block w-full accent-[var(--accent)]"
+          ariaLabel="박스 크기 시가총액 비율"
+          ariaValueText={`${marketCapRatio}%`}
+          onChange={onChangeMarketCapRatio}
         />
         <SliderTickLabels labels={['동일 크기', '시총 비례']} steps={1} inset />
       </div>
@@ -1190,7 +1231,7 @@ export function SettingsSectorLevelSection({
               />
             </div>
             <SettingDescription>지도에 표시할 업종 분류의 깊이</SettingDescription>
-            <div className={`mt-[18px] max-w-[16rem] settings-control-inset ${sectorLevelEnabled ? '' : 'opacity-40'}`}>
+            <div className={`settings-slider-control mt-[18px] ${sectorLevelEnabled ? '' : 'opacity-40'}`}>
               <SingleValueSlider
                 index={depthValue - 1}
                 labels={depthMetricLabels}
@@ -1218,7 +1259,7 @@ export function SettingsSectorLevelSection({
                 />
               </div>
               <SettingDescription>업종 항목에 표시할 지표</SettingDescription>
-              <div role="radiogroup" aria-label="표시 지표" className={`mt-[18px] grid max-w-[16rem] settings-control-inset grid-cols-4 rounded-md border border-gray-600 bg-zinc-700 p-0.5 ${depthMetricEnabled ? '' : 'opacity-40'}`}>
+              <div role="radiogroup" aria-label="표시 지표" className={`mt-4 grid max-w-[16rem] settings-control-inset grid-cols-4 rounded-md border border-gray-600 bg-zinc-700 p-0.5 ${depthMetricEnabled ? '' : 'opacity-40'}`}>
                 {GROUP_TAB_METRIC_OPTIONS.map(option => {
                   const selected = activeDepthMetric === option.key
                   return (
@@ -1272,7 +1313,7 @@ export function SettingsSectorLevelSection({
             <div className={isDepthMetricRangeDisabled ? 'opacity-40' : ''}>
               <SettingDescription>지표를 나타낼 업종 단계</SettingDescription>
             </div>
-            <div className="mt-[18px] max-w-[16rem] settings-control-inset">
+            <div className="settings-slider-control mt-[18px]">
               <RangeSlider
                 minIndex={depthMetricSliderMinIndex}
                 maxIndex={depthMetricSliderMaxIndex}
@@ -1314,7 +1355,7 @@ export function SettingsSectorLevelSection({
                   disabled={isTopPickDisabled || !topPickEnabled}
                   className={`mt-2 justify-center ${topPickEnabled ? '' : 'opacity-40'}`}
                 />
-                <div className={`mt-2 max-w-[16rem] settings-control-inset ${topPickEnabled ? '' : 'opacity-40'}`}>
+                <div className={`settings-slider-control mt-2 ${topPickEnabled ? '' : 'opacity-40'}`}>
                   <SingleValueSlider
                     index={topPickCount - 1}
                     labels={TOP_PICK_COUNT_LABELS}
@@ -1369,7 +1410,7 @@ export function SettingsSectorLevelSection({
             <div
               role="radiogroup"
               aria-label="박스 내 표기"
-              className={`mt-[18px] grid max-w-[16rem] settings-control-inset grid-cols-3 rounded-md border border-gray-600 bg-zinc-700 p-0.5 ${stockLabelEnabled ? '' : 'opacity-40'}`}
+              className={`mt-4 grid max-w-[16rem] settings-control-inset grid-cols-3 rounded-md border border-gray-600 bg-zinc-700 p-0.5 ${stockLabelEnabled ? '' : 'opacity-40'}`}
             >
               {STOCK_LABEL_MODE_LABELS.map((label, index) => {
                 const value = index + 1
@@ -1401,7 +1442,7 @@ export function SettingsSectorLevelSection({
           </div>
           <div
             aria-disabled={!stockLabelEnabled || undefined}
-            className={`settings-third-text-threshold relative text-sm ${inBookmarkTab ? '' : 'mt-6'} ${itemClass('textThreshold')} ${stockLabelEnabled ? '' : 'cursor-not-allowed'}`}
+              className={`settings-third-text-threshold relative text-sm ${inBookmarkTab ? '' : 'mt-6'} ${itemClass('textThreshold')} ${stockLabelEnabled ? '' : 'cursor-not-allowed'}`}
             onPointerEnter={!stockLabelEnabled ? e => setTextThresholdHint(cursorHintFrom(e)) : undefined}
             onPointerMove={!stockLabelEnabled ? e => setTextThresholdHint(cursorHintFrom(e)) : undefined}
             onPointerLeave={() => setTextThresholdHint(null)}
@@ -1426,16 +1467,15 @@ export function SettingsSectorLevelSection({
               <span className="text-gray-400">{boxLabelMinAreaPercent.toFixed(2)}%</span>
             </div>
             <SettingDescription>작은 박스의 글자를 숨기는 기준</SettingDescription>
-            <div className="mt-[18px] max-w-[16rem] settings-control-inset">
-              <input
-                type="range"
+            <div className="settings-slider-control mt-[18px]">
+              <SingleRangeInput
                 min={0.01}
                 max={0.3}
                 step={0.01}
                 value={boxLabelMinAreaPercent}
-                onChange={e => onChangeBoxLabelMinAreaPercent(Number(e.target.value))}
+                ariaLabel="텍스트 표시 기준"
+                onChange={onChangeBoxLabelMinAreaPercent}
                 disabled={!stockLabelEnabled}
-                className="block w-full accent-[var(--accent)] disabled:cursor-not-allowed"
               />
             </div>
             </div>
@@ -1462,7 +1502,7 @@ export function SettingsSectorLevelSection({
                 <SettingTitle bookmarkId="decimalPlaces">등락률 소수점</SettingTitle>
               </span>
               <SettingDescription>종목 등락률의 소수점 자릿수</SettingDescription>
-              <div className="mt-[18px] max-w-[16rem] settings-control-inset">
+              <div className="settings-slider-control mt-[18px]">
                 <SingleValueSlider
                   index={decimalPlacesIndex}
                   labels={DECIMAL_PLACES_LABELS}
@@ -1563,7 +1603,7 @@ export function SettingsMarketValueSection({
       </p>
       <SettingDescription>지도에 포함할 종목의 시총 구간</SettingDescription>
       <div className="settings-subsection-list mt-[18px] text-sm">
-        <div className="max-w-[16rem] settings-control-inset">
+        <div className="settings-slider-control">
           <RangeSlider
             minIndex={tierDisplayMinIndex}
             maxIndex={tierDisplayMaxIndex}
@@ -2092,7 +2132,7 @@ export default function SettingsSidebar({
       className="relative tabular-nums flex w-72 shrink-0 flex-col overflow-hidden rounded-md border border-gray-500 bg-[#363639]"
       style={{ '--accent': '#d1d5db', '--accent-hover': '#f3f4f6', '--accent-light': '#d1d5db' } as CSSProperties}
     >
-      <div className="flex shrink-0 items-center border-b border-gray-500 px-4 pt-3 pb-2">
+      <div className="flex shrink-0 items-center border-b border-gray-500 px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <p className="flex h-7 items-center whitespace-nowrap text-lg font-bold leading-none text-white">{pageLabel ?? '설정'}</p>
           {stockCountLabel && (
@@ -2167,7 +2207,7 @@ export default function SettingsSidebar({
       <div aria-busy={isPreferenceFeedbackActive || undefined} className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="contents" inert={isPreferenceFeedbackActive || undefined}>
       {plainContent && (
-        <div className="settings-section-list settings-sidebar-tab-content min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-8 text-sm">
+        <div data-align-second-heading className="settings-section-list settings-sidebar-tab-content min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-8 text-sm">
           {plainContent}
         </div>
       )}

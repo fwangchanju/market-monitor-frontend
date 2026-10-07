@@ -8,7 +8,6 @@ import AdminStockTable from '@/components/AdminStockTable'
 import Spinner from '@/components/Spinner'
 import NavBarPageActions from '@/components/NavBarPageActions'
 import SettingsSidebar from '@/components/SettingsSidebar'
-import ProfileAvatar from '@/components/ProfileAvatar'
 import { FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
 import CustomManageModeCombobox from '@/components/CustomManageModeCombobox'
 import ReadOnlyHeatmapSheet from '@/components/ReadOnlyHeatmapSheet'
@@ -44,6 +43,7 @@ export default function CustomManagePage() {
   const explicitSheet = sheetParam === 'krx' || sheetParam === 'nxt' ? 'krx' : sheetParam === 'marketry' ? 'marketry' : null
   const sheet = explicitSheet ?? selectedHeatmap
   const isReadOnlySheet = sheet !== 'marketry'
+  const [sectorSettingsActionsTarget, setSectorSettingsActionsTarget] = useState<HTMLDivElement | null>(null)
   const handleSelectSheet = (next: HeatmapSelection) => {
     setSelectedHeatmap(next)
     setSearchParams(previous => {
@@ -233,10 +233,8 @@ export default function CustomManagePage() {
               {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다. */}
               {!isReadOnlySheet && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 min-w-0 flex-1 items-center" />}
               <div className={`${FONT_BAR_MODE_STATUS} ml-2 flex min-w-0 items-center justify-end text-gray-400`}>
-                <span className="flex min-w-0 items-center">
-                  <span aria-hidden="true" className="mr-[6px] inline-block h-5 w-1 shrink-0 rounded-sm bg-[var(--brand)]" />
-                  <span className="min-w-0 truncate text-gray-400">{HEATMAP_NAMES[sheet].title}</span>
-                  <ProfileAvatar className="ml-[7px] size-6 shrink-0 object-cover" />
+                <span className="flex min-w-0 items-center justify-end">
+                  <span className="min-w-0 truncate rounded bg-[var(--brand)] px-2 py-1 text-black">{HEATMAP_NAMES[sheet].title}</span>
                 </span>
               </div>
             </div>
@@ -263,7 +261,7 @@ export default function CustomManagePage() {
                     toolbarContainer={toolbarContainer}
                   />
                 ) : (
-                  <AdminSectorTable sectors={sectors ?? []} />
+                  <AdminSectorTable sectors={sectors ?? []} settingsActionsTarget={sectorSettingsActionsTarget} />
                 )}
               </div>
             </div>
@@ -278,6 +276,7 @@ export default function CustomManagePage() {
               isOnLeft={isSettingsOnLeft}
               onToggleSide={toggleSettingsSide}
               onRequestLogin={() => requireLogin(pathname)}
+              plainContent={mode === 'sector' && !isReadOnlySheet ? <div ref={setSectorSettingsActionsTarget} /> : null}
               classificationAtBottom
               snapshotTime={classificationMap?.classificationUpdatedAt}
               heatmap={sheet}
