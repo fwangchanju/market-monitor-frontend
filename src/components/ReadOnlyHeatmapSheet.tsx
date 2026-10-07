@@ -161,31 +161,32 @@ export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, nxtOnly, o
 }
 
 // 표 위의 검색창과 개수 — 카테고리·종목 화면이 같은 틀(위치·크기)을 쓰도록 한 곳에 둔다. 커스텀 종목 표도 이걸 쓴다.
-export function SearchBar({ query, onChange, placeholder, ariaLabel, countLabel, extra }: {
+export function SearchBar({ query, onChange, placeholder, ariaLabel, countLabel, extra, settingsLayout = false }: {
   query: string
   onChange: (query: string) => void
   placeholder: string
   ariaLabel: string
   countLabel: string
+  settingsLayout?: boolean
   // 개수 오른쪽 끝에 붙는 추가 조작(예: "NXT만 보기" 체크박스).
   extra?: ReactNode
 }) {
   return (
-    <div className="flex shrink-0 items-center pl-2 pr-3 pb-2">
+    <div className={settingsLayout ? 'mb-6 flex min-w-0 flex-col gap-2' : 'flex shrink-0 items-center pl-2 pr-3 pb-2'}>
       <input
         type="text"
         value={query}
         onChange={event => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={ariaLabel}
-        className="nes-input is-dark h-7 w-[15.5rem] text-sm"
+        className={`nes-input is-dark ${settingsLayout ? 'h-8 w-full text-sm' : 'h-7 w-[15.5rem] text-sm'}`}
         // 안내 문구와 입력 글자가 위 드롭박스의 글자와 같은 선에서 시작하게 한다: 드롭박스 안쪽 여백(0.5rem)에서
         // 이 입력창의 테두리(1px)만큼 뺀다. 유틸리티 클래스는 nes.css보다 약해서 인라인으로 준다.
         style={{ paddingLeft: 'calc(0.5rem - 1px)' }}
       />
       {/* 개수는 위 헤더의 "읽기 전용"과 같은 위치에서 시작한다: 드롭박스 둘(15.5rem) + 간격(0.5rem) + "읽기 전용"의 왼쪽 여백(0.75rem)
           = 16.75rem이고, 검색창이 15.5rem이므로 사이에 1.25rem을 둔다. */}
-      <span className="ml-5 text-sm text-gray-400">{countLabel}</span>
+      <span className={settingsLayout ? 'text-xs text-gray-400' : 'ml-5 text-sm text-gray-400'}>{countLabel}</span>
       {extra && <div className="ml-auto flex items-center">{extra}</div>}
     </div>
   )

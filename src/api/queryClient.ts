@@ -1,12 +1,13 @@
 import { QueryClient, MutationCache } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { getErrorDetail } from '@/utils/errorMessage'
+import { appAlert } from '@/utils/appDialogBus'
 
 const queryClient = new QueryClient({
   mutationCache: new MutationCache({
     onError: (error, _variables, _context, mutation) => {
       if (mutation.options.meta?.skipGlobalError) return
-      window.alert(getErrorDetail(error))
+      appAlert(getErrorDetail(error))
     },
   }),
   defaultOptions: {

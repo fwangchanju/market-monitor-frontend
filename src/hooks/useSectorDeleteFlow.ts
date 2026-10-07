@@ -2,24 +2,25 @@ import { isAxiosError } from 'axios'
 import { useSectorDeletePreview, useDeleteSector } from './useMarketMapCustom'
 import type { StockSectorItem } from '@/types/api'
 import { getErrorDetail } from '@/utils/errorMessage'
+import { appAlert, appConfirm } from '@/utils/appDialogBus'
 
 function confirmDeletable(sectorName: string, deletableSectors: string[]) {
   const list = deletableSectors.length > 0 ? deletableSectors.join(', ') : '없음'
-  return window.confirm(`${sectorName}\n세부 업종: ${list}\n삭제하시겠습니까?`)
+  return appConfirm(`${sectorName}\n세부 업종: ${list}\n삭제하시겠습니까?`)
 }
 
 function alertBlocked(sectorName: string, blockingStocks: StockSectorItem[]) {
   // 같은 종목이 하위 섹터 여러 곳에 걸려 있을 수 있어 종목 코드로 중복을 없애서 센다.
   const stockCount = new Set(blockingStocks.map(s => s.stockCode)).size
   if (stockCount === 0) {
-    window.alert(`${sectorName}\n이 업종은 삭제할 수 없습니다.`)
+    appAlert(`${sectorName}\n이 업종은 삭제할 수 없습니다.`)
     return
   }
-  window.alert(`${sectorName}\n${stockCount}종목이 있어 삭제할 수 없습니다.`)
+  appAlert(`${sectorName}\n${stockCount}종목이 있어 삭제할 수 없습니다.`)
 }
 
 function alertDeleteFailed(sectorName: string, error: unknown) {
-  window.alert(`${sectorName}\n${getErrorDetail(error)}`)
+  appAlert(`${sectorName}\n${getErrorDetail(error)}`)
 }
 
 /** 섹터 삭제 미리보기→확인→삭제 플로우. 삭제 실행 자체가 409(레이스)로 실패하면
@@ -41,7 +42,7 @@ export function useSectorDeleteFlow() {
       alertBlocked(preview.sectorName, preview.blockingStocks)
       return
     }
-    if (!confirmDeletable(preview.sectorName, preview.deletableSectors)) return
+    if (!await confirmDeletable(preview.sectorName, preview.deletableSectors)) return
 
     try {
       await deleteSector.mutateAsync(sectorId)

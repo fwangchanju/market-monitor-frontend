@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 const OPTIONS = [
-  { mode: 'category', label: 'CATEGORY', to: '/custom/category' },
+  { mode: 'category', label: 'INDUSTRY', to: '/custom/industry' },
   { mode: 'stock', label: 'STOCK', to: '/custom/stock' },
 ] as const
 

@@ -39,6 +39,7 @@ import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captu
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { ReturnArrowIcon } from '@/components/icons/MarketMapIcons'
 import { HEATMAP_NAMES } from '@/utils/heatmapNames'
+import { appAlert } from '@/utils/appDialogBus'
 import { mapStretchFor, mapTileMethod } from '@/utils/mapStretch'
 import { marketRoute } from '@/utils/marketRoute'
 import { captureElementToDownload, downloadDataUrl } from '@/utils/captureToDownload'
@@ -144,7 +145,7 @@ export default function MarketMapCustomPage() {
     if (settingsBookmarks.includes(id)) {
       setSettingsBookmarks(settingsBookmarks.filter(item => item !== id))
     } else if (settingsBookmarks.length >= MAX_SETTINGS_BOOKMARKS) {
-      window.alert(`북마크는 최대 ${MAX_SETTINGS_BOOKMARKS}개까지 설정할 수 있습니다.`)
+      appAlert(`북마크는 최대 ${MAX_SETTINGS_BOOKMARKS}개까지 설정할 수 있습니다.`)
     } else {
       setSettingsBookmarks([...settingsBookmarks, id])
     }

@@ -333,17 +333,13 @@ a { color: var(--accent-light); text-decoration: none; }
   font-variant-numeric: tabular-nums;
 }
 
-/* 색상 편집기의 단계 라벨(등락률/색상/명도)은 ①②③으로 매긴다. */
-@counter-style circled-step {
-  system: fixed;
-  symbols: "\2460" "\2461" "\2462" "\2463" "\2464";
-}
+/* 색상 편집기의 단계 라벨(등락률/색상/명도)은 (1)(2)(3)으로 매긴다. */
 .color-editor-steps {
   counter-reset: color-editor-step;
 }
 .color-editor-step::before {
   counter-increment: color-editor-step;
-  content: counter(color-editor-step, circled-step) " ";
+  content: "(" counter(color-editor-step) ") ";
 }
 
 /* 탭 제목 아래의 중제목은 화면에 보이는 순서대로 1), 2)로 매긴다. */

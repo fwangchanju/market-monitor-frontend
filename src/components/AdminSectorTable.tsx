@@ -5,19 +5,15 @@ import type { SectorItem } from '@/types/api'
 import { useCreateSector, useRenameSector, useReparentSector } from '@/hooks/useMarketMapCustom'
 import { useSectorDeleteFlow } from '@/hooks/useSectorDeleteFlow'
 import { halfOverlapCollisionDetection } from '@/utils/dndCollision'
-import { charTier } from '@/utils/koreanSort'
 import { toCount } from '@/utils/format'
+import { appAlert } from '@/utils/appDialogBus'
 import { SearchBar } from '@/components/ReadOnlyHeatmapSheet'
-import { CheckIcon, CloseIcon, CollapseAllIcon, EditIcon, ExpandAllIcon, PlusIcon, TrashIcon } from '@/components/icons/MarketMapIcons'
+import { CheckIcon, CloseIcon, EditIcon, PlusIcon, TrashIcon } from '@/components/icons/MarketMapIcons'
 
 interface Props {
   sectors: SectorItem[]
   settingsActionsTarget?: HTMLElement | null
 }
-
-// 루트 섹터를 몇 개 컬럼으로 나눠서 나란히 보여줄지 — 전체펼치기 시 한 컬럼이 과도하게
-// 길어지는 걸 줄이기 위해 나눈다.
-const ROOT_COLUMN_COUNT = 1
 
 // 섹터 깊이 상한(최상위=0) — 4단계(0~3)까지만 허용하고 5단계 섹터는 만들지 못하게 한다. 나중에 한 단계 더
 // 늘릴 때는 이 값만 바꾸면 추가 버튼과 드래그 이동 제한이 같이 따라간다.
@@ -32,82 +28,16 @@ const MAX_SECTOR_NAME_LENGTH = 12
 const ICON_BUTTON_CLASS =
   'flex h-7 w-7 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-gray-400 outline-none hover:text-[var(--brand)]'
 
-type SectorSortMode = 'custom' | 'alphabetical'
 type SectorOrder = Record<string, number[]>
 
 type Row =
   | { type: 'sector'; item: SectorItem; siblingIndex: number }
   | { type: 'add-child'; parentId: number; parentPath: string[]; depth: number }
 
-// 소분류(세부의 세부) 번호 표기용 원문자. 유니코드에 50까지만 있어서 그 이상은 괄호 표기로 대체.
-const CIRCLED_NUMBERS = [
-  ...Array.from({ length: 20 }, (_, i) => String.fromCodePoint(0x2460 + i)), // ①~⑳ (1~20)
-  ...Array.from({ length: 15 }, (_, i) => String.fromCodePoint(0x3251 + i)), // ㉑~㉟ (21~35)
-  ...Array.from({ length: 15 }, (_, i) => String.fromCodePoint(0x32b1 + i)), // ㊱~㊿ (36~50)
-]
-function toCircledNumber(n: number): string {
-  return CIRCLED_NUMBERS[n - 1] ?? `(${n})`
-}
-
-function compareSectorName(a: SectorItem, b: SectorItem): number {
-  const tierA = charTier(a.name[0] ?? '')
-  const tierB = charTier(b.name[0] ?? '')
-  if (tierA !== tierB) return tierA - tierB
-  return a.name.localeCompare(b.name, 'ko')
-}
-
-function orderSectors(items: SectorItem[], parentId: number | null, mode: SectorSortMode, order: SectorOrder): SectorItem[] {
-  if (mode === 'alphabetical') return items.sort(compareSectorName)
+function orderSectors(items: SectorItem[], parentId: number | null, order: SectorOrder): SectorItem[] {
   const saved = order[String(parentId)] ?? []
   const rank = new Map(saved.map((id, index) => [id, index]))
   return items.sort((a, b) => (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER) || a.id - b.id)
-}
-
-function buildVisibleRows(
-  sectors: SectorItem[],
-  parentId: number | null,
-  parentPath: string[],
-  expandedIds: Set<number>,
-  addingChildFor: number | null,
-  sortMode: SectorSortMode,
-  sectorOrder: SectorOrder,
-): Row[] {
-  const children = orderSectors(sectors.filter(c => c.parentId === parentId), parentId, sortMode, sectorOrder)
-  const rows: Row[] = []
-  children.forEach((child, index) => {
-    rows.push({ type: 'sector', item: child, siblingIndex: index + 1 })
-    const childPath = [...parentPath, child.name]
-    // 펼침 여부와 무관하게, 세부 섹터 추가 버튼을 누른 섹터 바로 아래에 입력줄을 끼워 넣는다.
-    if (addingChildFor === child.id) {
-      rows.push({ type: 'add-child', parentId: child.id, parentPath: childPath, depth: child.depth + 1 })
-    }
-    if (expandedIds.has(child.id)) {
-      rows.push(...buildVisibleRows(sectors, child.id, childPath, expandedIds, addingChildFor, sortMode, sectorOrder))
-    }
-  })
-  return rows
-}
-
-function buildRowsForRoots(
-  sectors: SectorItem[],
-  roots: SectorItem[],
-  expandedIds: Set<number>,
-  addingChildFor: number | null,
-  sortMode: SectorSortMode,
-  sectorOrder: SectorOrder,
-): Row[] {
-  const rows: Row[] = []
-  roots.forEach((root, index) => {
-    rows.push({ type: 'sector', item: root, siblingIndex: index + 1 })
-    const rootPath = [root.name]
-    if (addingChildFor === root.id) {
-      rows.push({ type: 'add-child', parentId: root.id, parentPath: rootPath, depth: root.depth + 1 })
-    }
-    if (expandedIds.has(root.id)) {
-      rows.push(...buildVisibleRows(sectors, root.id, rootPath, expandedIds, addingChildFor, sortMode, sectorOrder))
-    }
-  })
-  return rows
 }
 
 function DraggableSectorHandle({
@@ -137,12 +67,12 @@ function DroppableSectorRow({
   className: string
   children: React.ReactNode
 }) {
-  const { setNodeRef, isOver } = useDroppable({
+  const { setNodeRef } = useDroppable({
     id: `sector-drop-${sectorId}`,
     data: { sectorId },
   })
   return (
-    <tr ref={setNodeRef} className={`${className} ${isOver ? 'bg-[var(--brand)]/15' : ''}`}>
+    <tr ref={setNodeRef} className={className}>
       {children}
     </tr>
   )
@@ -150,11 +80,13 @@ function DroppableSectorRow({
 
 export default function AdminSectorTable({ sectors, settingsActionsTarget }: Props) {
   const [query, setQuery] = useState('')
-  const [sortMode, setSortMode] = useState<SectorSortMode>(() => localStorage.getItem('marketry:custom-sector-sort-mode') === 'custom' ? 'custom' : 'alphabetical')
   const [sectorOrder, setSectorOrder] = useState<SectorOrder>(() => {
     try { return JSON.parse(localStorage.getItem('marketry:custom-sector-order') ?? '{}') as SectorOrder } catch { return {} }
   })
-  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
+  const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null)
+  const [selectedMiddleId, setSelectedMiddleId] = useState<number | null>(null)
+  const [selectedSectorId, setSelectedSectorId] = useState<number | null>(null)
+  const [dropIndicator, setDropIndicator] = useState<{ sectorId: number; position: 'before' | 'after' } | null>(null)
   const [newName, setNewName] = useState('')
   const [childNameByParent, setChildNameByParent] = useState<Record<number, string>>({})
   // 펼침과 무관하게 "지금 이 섹터 밑에 추가 입력줄을 보여줄지"만 따로 관리 — 한 번에 하나만 연다.
@@ -163,7 +95,6 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
   const [renameValue, setRenameValue] = useState('')
   const [movingSectorId, setMovingSectorId] = useState<number | null>(null)
   const [highlightedId, setHighlightedId] = useState<number | null>(null)
-  const [isDraggingSector, setIsDraggingSector] = useState(false)
   const [draggedSector, setDraggedSector] = useState<SectorItem | null>(null)
 
   const createSector = useCreateSector()
@@ -208,18 +139,6 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
     return path.join(' › ')
   }
 
-  const toggleExpand = (id: number) => {
-    setExpandedIds(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  const handleExpandAll = () => setExpandedIds(new Set(sectors.filter(c => hasChildren(c.id)).map(c => c.id)))
-  const handleCollapseAll = () => setExpandedIds(new Set())
-
   const updateSiblingOrder = (parentId: number | null, nextSiblings: SectorItem[]) => {
     setSectorOrder(previous => {
       const next = { ...previous, [String(parentId)]: nextSiblings.map(item => item.id) }
@@ -228,17 +147,14 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
     })
   }
 
-  const changeSortMode = (mode: SectorSortMode) => {
-    setSortMode(mode)
-    localStorage.setItem('marketry:custom-sector-sort-mode', mode)
-  }
-
   const toggleAddChild = (id: number) => {
     const parent = sectors.find(c => c.id === id)
     if (parent && parent.depth >= MAX_SECTOR_DEPTH) {
-      window.alert(`업종은 ${MAX_SECTOR_LEVELS}단계까지만 만들 수 있습니다.`)
+      appAlert(`업종은 ${MAX_SECTOR_LEVELS}단계까지만 만들 수 있습니다.`)
       return
     }
+    if (parent?.depth === 0) { setSelectedMajorId(id); setSelectedMiddleId(null) }
+    if (parent?.depth === 1) setSelectedMiddleId(id)
     setAddingChildFor(prev => (prev === id ? null : id))
   }
 
@@ -299,17 +215,19 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
     // 3단계 이하의 세부 업종도 소분류에 포함해 전체 개수가 항상 합산되게 한다.
     small: viewSectors.filter(sector => sector.depth >= 2).length,
   }), [viewSectors])
-  const viewExpandedIds = useMemo(
-    () => (trimmedQuery ? new Set(viewSectors.filter(c => viewSectors.some(x => x.parentId === c.id)).map(c => c.id)) : expandedIds),
-    [trimmedQuery, viewSectors, expandedIds],
-  )
-
-  const rootSectors = orderSectors(viewSectors.filter(c => c.parentId === null), null, sortMode, sectorOrder)
-  const columnSize = Math.ceil(rootSectors.length / ROOT_COLUMN_COUNT)
-  const columnRoots = Array.from({ length: ROOT_COLUMN_COUNT }, (_, i) =>
-    rootSectors.slice(i * columnSize, (i + 1) * columnSize),
-  )
-  const columnRows = columnRoots.map(roots => buildRowsForRoots(viewSectors, roots, viewExpandedIds, addingChildFor, sortMode, sectorOrder))
+  const rootSectors = orderSectors(viewSectors.filter(c => c.parentId === null), null, sectorOrder)
+  const middleSectors = selectedMajorId === null ? [] : orderSectors(viewSectors.filter(c => c.parentId === selectedMajorId), selectedMajorId, sectorOrder)
+  const smallSectors = selectedMiddleId === null ? [] : orderSectors(viewSectors.filter(c => c.parentId === selectedMiddleId), selectedMiddleId, sectorOrder)
+  const makeRows = (items: SectorItem[], parentId: number | null): Row[] => {
+    const rows: Row[] = items.map((item, index) => ({ type: 'sector', item, siblingIndex: index + 1 }))
+    if (parentId !== null && addingChildFor === parentId) {
+      const parent = sectors.find(item => item.id === parentId)
+      if (parent) rows.push({ type: 'add-child', parentId, parentPath: getSectorPath(parent).split(' › '), depth: parent.depth + 1 })
+    }
+    return rows
+  }
+  const columnRows = [makeRows(rootSectors, null), makeRows(middleSectors, selectedMajorId), makeRows(smallSectors, selectedMiddleId)]
+  const selectedSector = sectors.find(item => item.id === selectedSectorId) ?? null
 
   const rootIndexById = new Map<number, number>()
   rootSectors.forEach((c, i) => rootIndexById.set(c.id, i + 1))
@@ -356,13 +274,11 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
     const sector = row.item
     const isRoot = sector.parentId === null
     const expandable = isRoot || hasChildren(sector.id)
-    const label = isRoot
-      ? `${rootIndexById.get(sector.id)}. ${sector.name}`
-      : sector.depth === 2
-        ? `${toCircledNumber(row.siblingIndex)} ${sector.name}`
-        : sector.depth >= 3
-          ? `(${row.siblingIndex}) ${sector.name}`
-          : `${row.siblingIndex}) ${sector.name}`
+    const itemNumber = isRoot
+      ? `${rootIndexById.get(sector.id) ?? row.siblingIndex}`
+      : sector.depth >= 2
+        ? `(${row.siblingIndex})`
+        : `${row.siblingIndex})`
     const isRenaming = renamingId === sector.id
     return (
       <DroppableSectorRow
@@ -370,10 +286,16 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
         sectorId={sector.id}
         className={`group ${highlightedId === sector.id ? 'animate-row-blink' : ''}`}
       >
-        <td className="py-0.5 text-left" style={{ paddingLeft: `${sector.depth * 20 + 8}px` }}>
-          <div className="flex items-center gap-6">
+        <td className="relative py-0.5 text-left" style={{ paddingLeft: `${sector.depth * 20 + 8}px` }}>
+          {dropIndicator?.sectorId === sector.id && (
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none absolute inset-x-0 z-10 h-[2px] bg-[var(--brand)] ${dropIndicator.position === 'before' ? 'top-0' : 'bottom-0'}`}
+            />
+          )}
+          <div className="flex items-center gap-2">
             <div className={`flex items-center ${isRenaming ? 'min-w-0 flex-1' : ''}`}>
-              <DraggableSectorHandle sectorId={sector.id} parentId={sector.parentId} enabled={sortMode === 'custom'} />
+              <DraggableSectorHandle sectorId={sector.id} parentId={sector.parentId} enabled />
               {isRenaming ? (
                 <input
                   type="text"
@@ -388,71 +310,21 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
                   className="nes-input is-dark min-w-0 flex-1 text-sm"
                 />
               ) : (
-                <button type="button" onClick={() => expandable && toggleExpand(sector.id)} aria-expanded={expandable ? expandedIds.has(sector.id) : undefined} className="truncate border-0 bg-transparent p-0 text-left tabular-nums text-white hover:text-[var(--brand)]">{label}</button>
-              )}
-            </div>
-            <div
-              className={`flex shrink-0 items-center gap-1 ${isRenaming ? '' : 'opacity-0 transition-opacity group-hover:opacity-100'}`}
-            >
-              {isRenaming ? (
                 <>
-                  <button type="button" aria-label="변경 확인" title="확인" onClick={() => submitRename(sector)} className={ICON_BUTTON_CLASS}>
-                    <CheckIcon className="h-4 w-4" />
-                  </button>
-                  <button type="button" aria-label="변경 취소" title="취소" onClick={cancelRename} className={ICON_BUTTON_CLASS}>
-                    <CloseIcon className="h-4 w-4" />
-                  </button>
-                </>
-              ) : (
-                <>
-                  {movingSectorId === sector.id ? (
-                    <>
-                      <select
-                        autoFocus
-                        aria-label={`${sector.name}의 상위 업종 선택`}
-                        defaultValue=""
-                        onChange={event => {
-                          const value = event.target.value
-                          if (value === '') return
-                          const parentId = value === '__root__' ? null : Number(value)
-                          reparentSector.mutate({ id: sector.id, parentId }, { onSuccess: () => setMovingSectorId(null) })
-                        }}
-                        onKeyDown={event => event.key === 'Escape' && setMovingSectorId(null)}
-                        className="h-7 max-w-40 rounded border border-gray-600 bg-zinc-800 px-1 text-xs text-white"
-                      >
-                        <option value="" disabled>상위 업종 선택</option>
-                        {sector.parentId !== null && <option value="__root__">최상위로 이동</option>}
-                        {getMoveCandidates(sector).map(candidate => (
-                          <option key={candidate.id} value={candidate.id}>{getSectorPath(candidate)}</option>
-                        ))}
-                      </select>
-                      <button type="button" aria-label="상위 업종 선택 취소" title="취소" onClick={() => setMovingSectorId(null)} className={ICON_BUTTON_CLASS}>
-                        <CloseIcon className="h-4 w-4" />
-                      </button>
-                    </>
-                  ) : (
-                    <button type="button" aria-label="상위 업종 변경" title="다른 업종 안으로 이동" onClick={() => setMovingSectorId(sector.id)} className={ICON_BUTTON_CLASS}>
-                      <span aria-hidden="true" className="text-base leading-none">↪</span>
-                    </button>
-                  )}
-                  {sector.depth < MAX_SECTOR_DEPTH ? (
-                    <button type="button" aria-label="세부 업종 추가" title="추가" onClick={() => toggleAddChild(sector.id)} className={ICON_BUTTON_CLASS}>
-                      <PlusIcon className="h-4 w-4" />
-                    </button>
-                  ) : (
-                    <span className="inline-block h-7 w-7 shrink-0" aria-hidden="true" />
-                  )}
-                  <button type="button" aria-label="이름 변경" title="변경" onClick={() => startRename(sector)} className={ICON_BUTTON_CLASS}>
-                    <EditIcon className="h-4 w-4" />
-                  </button>
+                  <span aria-hidden="true" className="mr-2 inline-flex h-5 w-7 shrink-0 items-center justify-center rounded-sm border border-gray-400 bg-white text-[16px] leading-none font-bold text-gray-500 tabular-nums">
+                    {itemNumber}
+                  </span>
                   <button
                     type="button"
-                    aria-label="삭제"
-                    title="삭제"
-                    onClick={() => remove(sector.id, sector.name)}
-                    className={`${ICON_BUTTON_CLASS} hover:!text-red-500`}
+                    onClick={() => {
+                      setSelectedSectorId(sector.id)
+                      if (sector.depth === 0) { setSelectedMajorId(current => current === sector.id ? null : sector.id); setSelectedMiddleId(null) }
+                      if (sector.depth === 1) setSelectedMiddleId(current => current === sector.id ? null : sector.id)
+                    }}
+                    aria-expanded={expandable ? (sector.depth === 0 ? selectedMajorId === sector.id : selectedMiddleId === sector.id) : undefined}
+                    className={`truncate border-0 bg-transparent p-0 text-left text-[16px] hover:text-[var(--brand)] ${selectedSectorId === sector.id ? 'text-[var(--brand)]' : 'text-white'}`}
                   >
-                    <TrashIcon className="h-4 w-4" />
+                    {sector.name}
                   </button>
                 </>
               )}
@@ -468,20 +340,34 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
     <DndContext
       sensors={sensors}
       collisionDetection={halfOverlapCollisionDetection}
+      onDragOver={event => {
+        const draggedData = event.active.data.current as { sectorId: number; parentId: number | null } | undefined
+        const targetData = event.over?.data.current as { sectorId: number } | undefined
+        const draggedItem = draggedData && sectors.find(item => item.id === draggedData.sectorId)
+        const targetItem = targetData && sectors.find(item => item.id === targetData.sectorId)
+        const activeRect = event.active.rect.current.translated
+        const overRect = event.over?.rect
+        if (draggedItem && targetItem && draggedItem.parentId === targetItem.parentId && draggedItem.id !== targetItem.id && activeRect && overRect) {
+          const insertAfter = activeRect.top + activeRect.height / 2 > overRect.top + overRect.height / 2
+          setDropIndicator({ sectorId: targetItem.id, position: insertAfter ? 'after' : 'before' })
+        } else {
+          setDropIndicator(null)
+        }
+      }}
       onDragStart={event => {
-        setIsDraggingSector(true)
+        setDropIndicator(null)
         const dragData = event.active.data.current as { sectorId: number } | undefined
         setDraggedSector(dragData ? (sectors.find(c => c.id === dragData.sectorId) ?? null) : null)
       }}
       onDragEnd={event => {
-        setIsDraggingSector(false)
+        setDropIndicator(null)
         setDraggedSector(null)
         const draggedData = event.active.data.current as { sectorId: number; parentId: number | null } | undefined
         const targetData = event.over?.data.current as { sectorId: number } | undefined
         const draggedItem = draggedData && sectors.find(item => item.id === draggedData.sectorId)
         const targetItem = targetData && sectors.find(item => item.id === targetData.sectorId)
-        if (sortMode === 'custom' && draggedItem && targetItem && draggedItem.parentId === targetItem.parentId && draggedItem.id !== targetItem.id) {
-          const siblings = orderSectors(sectors.filter(item => item.parentId === draggedItem.parentId), draggedItem.parentId, sortMode, sectorOrder)
+        if (draggedItem && targetItem && draggedItem.parentId === targetItem.parentId && draggedItem.id !== targetItem.id) {
+          const siblings = orderSectors(sectors.filter(item => item.parentId === draggedItem.parentId), draggedItem.parentId, sectorOrder)
           const fromIndex = siblings.findIndex(item => item.id === draggedItem.id)
           const targetIndex = siblings.findIndex(item => item.id === targetItem.id)
           const activeRect = event.active.rect.current.translated
@@ -494,7 +380,7 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
         }
       }}
       onDragCancel={() => {
-        setIsDraggingSector(false)
+        setDropIndicator(null)
         setDraggedSector(null)
       }}
     >
@@ -506,17 +392,16 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
           ariaLabel="업종 검색"
           countLabel={`대분류 ${toCount(sectorCounts.major)} · 중분류 ${toCount(sectorCounts.middle)} · 소분류 ${toCount(sectorCounts.small)}`}
         />
-        {isDraggingSector && (
-          <p className="px-2 py-2 text-sm text-[var(--brand)]">같은 단계의 업종 사이에 놓아 순서를 바꿉니다</p>
-        )}
-        <div className="grid min-h-0 flex-1 grid-cols-1">
-          {columnRows.map((rows, columnIndex) => (
-            <div key={columnIndex} className="h-full overflow-auto scrollbar-hide">
-              <table className="nes-table is-dark custom-page-table custom-sector-table h-full w-full text-sm [&_td]:border-white/10">
-                <tbody>
-                  {rows.map(renderRow)}
-                </tbody>
-              </table>
+        <div className="grid min-h-0 flex-1 grid-cols-3 overflow-hidden border-t border-white/10">
+          {(['대분류', '중분류', '소분류'] as const).map((label, index) => (
+            <div key={label} className={`flex min-h-0 min-w-0 flex-col ${index < 2 ? 'border-r border-white/15' : ''}`}>
+              <div className={`flex h-10 shrink-0 items-center justify-center gap-2 border-b border-white/10 bg-[#2b3a4f] text-sm font-bold ${index === (selectedMiddleId !== null ? 2 : selectedMajorId !== null ? 1 : 0) ? 'text-[var(--brand)]' : 'text-slate-100'}`}>
+                {label}
+                {index === (selectedMiddleId !== null ? 2 : selectedMajorId !== null ? 1 : 0) && <span aria-hidden="true" className="text-[var(--brand)]">⌃</span>}
+              </div>
+              <div className="min-h-0 flex-1 overflow-auto scrollbar-hide">
+                <table className="nes-table is-dark custom-page-table custom-sector-table w-full text-sm [&_td]:border-white/10"><tbody>{columnRows[index].map(renderRow)}</tbody></table>
+              </div>
             </div>
           ))}
         </div>
@@ -524,7 +409,7 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
       {/* 커서를 따라다니는 드래그 미리보기 — 손잡이만 흐려지는 것만으론 뭔가 잡혔다는 느낌이 안 나서 추가. */}
       <DragOverlay>
         {draggedSector && (
-          <div className="nes-container is-dark w-max !bg-violet-950 px-3 py-1.5 text-xs whitespace-nowrap text-white shadow-lg">
+          <div className="w-max bg-transparent px-2 py-1.5 text-[16px] whitespace-nowrap text-white">
             ⠿ {draggedSector.name}
           </div>
         )}
@@ -533,22 +418,17 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
     {settingsActionsTarget && createPortal(
       <section aria-label="업종 관리" className="mb-6">
         <h2 className="mb-3 text-base font-semibold text-white">업종 관리</h2>
-        <p className="mb-2 text-xs text-gray-400">항목 정렬</p>
-        <div role="radiogroup" aria-label="업종 항목 정렬" className="mb-3 grid grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
-          {([['custom', '사용자 지정'], ['alphabetical', '가나다순']] as const).map(([mode, label]) => (
-            <button key={mode} type="button" role="radio" aria-checked={sortMode === mode} onClick={() => changeSortMode(mode)} className={`min-h-8 rounded px-1 text-xs font-medium ${sortMode === mode ? 'border-2 border-[#171717] bg-gray-300 text-black' : 'border-0 bg-transparent text-gray-300 hover:text-white'}`}>
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="mb-3 grid grid-cols-2 gap-2">
-          <button type="button" onClick={handleExpandAll} className="flex h-9 items-center justify-center gap-1 rounded-md border-2 border-[#171717] bg-gray-300 text-xs font-medium text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] hover:bg-gray-200">
-            <ExpandAllIcon className="h-4 w-4" /> 전체 펼치기
-          </button>
-          <button type="button" onClick={handleCollapseAll} className="flex h-9 items-center justify-center gap-1 rounded-md border-2 border-[#171717] bg-gray-300 text-xs font-medium text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] hover:bg-gray-200">
-            <CollapseAllIcon className="h-4 w-4" /> 전체 접기
-          </button>
-        </div>
+        {selectedSector && <div className="mb-3 rounded-md border border-white/15 bg-black/20 p-2 text-sm text-white">
+          <div className="mb-2 truncate font-medium">{getSectorPath(selectedSector)}</div>
+          <div className="flex flex-wrap items-center gap-1">
+            <button type="button" title="다른 업종 안으로 이동" onClick={() => setMovingSectorId(selectedSector.id)} className={ICON_BUTTON_CLASS}><span aria-hidden="true" className="text-base leading-none">↪</span></button>
+            {movingSectorId === selectedSector.id && <select autoFocus aria-label={`${selectedSector.name}의 상위 업종 선택`} defaultValue="" onChange={event => { const value = event.target.value; if (value === '') return; const parentId = value === '__root__' ? null : Number(value); reparentSector.mutate({ id: selectedSector.id, parentId }, { onSuccess: () => setMovingSectorId(null) }) }} onKeyDown={event => event.key === 'Escape' && setMovingSectorId(null)} className="h-7 max-w-40 rounded border border-gray-600 bg-zinc-800 px-1 text-xs text-white"><option value="" disabled>상위 업종 선택</option>{selectedSector.parentId !== null && <option value="__root__">최상위로 이동</option>}{getMoveCandidates(selectedSector).map(candidate => <option key={candidate.id} value={candidate.id}>{getSectorPath(candidate)}</option>)}</select>}
+            {selectedSector.depth < MAX_SECTOR_DEPTH && <button type="button" title="세부 업종 추가" onClick={() => toggleAddChild(selectedSector.id)} className={ICON_BUTTON_CLASS}><PlusIcon className="h-4 w-4" /></button>}
+            <button type="button" title="이름 변경" onClick={() => startRename(selectedSector)} className={ICON_BUTTON_CLASS}><EditIcon className="h-4 w-4" /></button>
+            <button type="button" title="삭제" onClick={() => remove(selectedSector.id, selectedSector.name)} className={`${ICON_BUTTON_CLASS} hover:!text-red-500`}><TrashIcon className="h-4 w-4" /></button>
+          </div>
+          {renamingId === selectedSector.id && <div className="mt-2 flex gap-1"><input autoFocus value={renameValue} maxLength={MAX_SECTOR_NAME_LENGTH} onChange={event => setRenameValue(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') submitRename(selectedSector); if (event.key === 'Escape') cancelRename() }} className="h-7 min-w-0 flex-1 rounded bg-zinc-800 px-2 text-sm text-white"/><button type="button" title="확인" onClick={() => submitRename(selectedSector)} className={ICON_BUTTON_CLASS}><CheckIcon className="h-4 w-4"/></button><button type="button" title="취소" onClick={cancelRename} className={ICON_BUTTON_CLASS}><CloseIcon className="h-4 w-4"/></button></div>}
+        </div>}
         <div className="flex min-w-0 items-center gap-2">
           <input
             type="text"

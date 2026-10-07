@@ -34,7 +34,7 @@ export default function CustomManagePage() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  // /custom/category는 카테고리 화면이고, /custom/stock은 종목 화면이다.
+  // /custom/industry는 업종 화면이고, /custom/stock은 종목 화면이다.
   const mode = pathname === '/custom/stock' || searchParams.get('mode') === 'stock' ? 'stock' : 'sector'
   // 히트맵 시트 — 기본은 편집 가능한 MARKETRY 시트이고, ?sheet=krx면 읽기 전용 KRX 시트다.
   // 예전 주소(?sheet=nxt)는 KRX 시트에서 "NXT 종목만 보기"를 켠 상태로 연다.
@@ -261,7 +261,10 @@ export default function CustomManagePage() {
                     toolbarContainer={toolbarContainer}
                   />
                 ) : (
-                  <AdminSectorTable sectors={sectors ?? []} settingsActionsTarget={sectorSettingsActionsTarget} />
+                  <AdminSectorTable
+                    sectors={sectors ?? []}
+                    settingsActionsTarget={sectorSettingsActionsTarget}
+                  />
                 )}
               </div>
             </div>
@@ -276,7 +279,11 @@ export default function CustomManagePage() {
               isOnLeft={isSettingsOnLeft}
               onToggleSide={toggleSettingsSide}
               onRequestLogin={() => requireLogin(pathname)}
-              plainContent={mode === 'sector' && !isReadOnlySheet ? <div ref={setSectorSettingsActionsTarget} /> : null}
+              plainContent={mode === 'sector' && !isReadOnlySheet ? (
+                <div>
+                  <div ref={setSectorSettingsActionsTarget} />
+                </div>
+              ) : null}
               classificationAtBottom
               snapshotTime={classificationMap?.classificationUpdatedAt}
               heatmap={sheet}
