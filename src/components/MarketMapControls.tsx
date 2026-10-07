@@ -169,12 +169,12 @@ export function MarketPhaseIndicator() {
   )
 }
 
-// 등락률 기준 토글 — 누적(전일 종가 대비) / 따로(당일 종가 대비). 항상 보이지만 따로 등락률은 15:40 이후 오늘 스냅샷에서만 있어서
-// 그 밖에는 따로가 잠겨 있고 누적으로 보인다. 글자는 옆의 시각과 같은 크기·굵기(FONT_BAR_TIME)이고 버튼 높이는 그 글자에 맞췄다.
-// 바탕은 위 드롭박스와 같은 회색(#3b3b3b)이고, 선택된 쪽은 브랜드색 글자에 옅은 브랜드색 배경으로 칠한다.
+// 등락률 기준 토글 — 누적(전일 종가 대비) / 따로(당일 종가 대비). 애프터 마켓 시작부터 다음 프리 마켓 개장 전까지만 보인다.
+// 시간외 스냅샷이 아직 없으면 따로는 잠긴다. 시장 시간대 말머리는 버튼의 표시 여부와 무관하게 유지한다.
 // 버튼을 누르면 그 버튼 아래에 설명 팝업이 뜬다(새로고침 버튼의 설명창과 같은 모양). 잠긴 따로도 눌러서 설명을 볼 수 있다.
-export function ChangeRateBasisToggle({ basis, selectable, onChange }: {
+export function ChangeRateBasisToggle({ basis, visible, selectable, onChange }: {
   basis: 'daily' | 'afterHours'
+  visible: boolean
   selectable: boolean
   onChange: (basis: 'daily' | 'afterHours') => void
 }) {
@@ -237,7 +237,11 @@ export function ChangeRateBasisToggle({ basis, selectable, onChange }: {
   return (
     <div className="-mr-[5px] flex shrink-0 items-center gap-2 whitespace-nowrap" data-basis-toggle>
       <MarketPhaseIndicator />
-      <div role="radiogroup" aria-label="등락률 기준" className="inline-flex h-6 shrink-0 items-center rounded-md bg-[#3b3b3b] p-0.5">
+      {visible && <div
+        role="radiogroup"
+        aria-label="등락률 기준"
+        className="inline-flex h-6 w-16 shrink-0 items-center overflow-visible rounded-none bg-[#202020] p-0.5"
+      >
         {options.map(option => (
           // disabled를 쓰지 않는다 — 비활성 버튼은 클릭 이벤트가 없어서 잠긴 따로의 설명을 볼 수 없다. 잠긴 동안은 값만 안 바꾼다.
           <button
@@ -246,23 +250,34 @@ export function ChangeRateBasisToggle({ basis, selectable, onChange }: {
             role="radio"
             aria-checked={basis === option.value}
             aria-disabled={option.locked}
+            style={basis === option.value
+              ? {
+                  color: '#111827',
+                  backgroundColor: PHASE_DOT_COLOR['애프터 마켓'],
+                  borderRadius: 0,
+                  boxShadow: 'inset 0 1px 1px rgb(255 255 255 / 45%), inset 0 -1px 1px rgb(0 0 0 / 18%)',
+                }
+              : {
+                  color: option.locked ? '#737373' : '#d1d5db',
+                  backgroundColor: 'transparent',
+                  borderRadius: 0,
+                  outline: `1px solid ${PHASE_DOT_COLOR['애프터 마켓']}`,
+                  outlineOffset: '-1px',
+                  boxShadow: 'inset 0 1px 2px rgb(0 0 0 / 48%), inset 0 -1px 1px rgb(255 255 255 / 12%)',
+                }}
             onClick={event => {
               if (!option.locked && basis !== option.value) onChange(option.value)
               setPopup({ text: option.help, anchor: event.currentTarget.getBoundingClientRect() })
             }}
-            className={`h-5 rounded-sm px-1.5 text-sm font-bold transition-colors ${
-              basis === option.value
-                ? 'border-0 bg-[#484848] text-[var(--accent)]'
-                : option.locked
-                  ? 'cursor-not-allowed border-0 bg-transparent text-gray-500'
-                  : 'border-0 bg-transparent text-white hover:bg-[#484848]'
+            className={`h-5 min-w-0 flex-1 rounded-none border-0 px-0 text-sm font-bold leading-none transition-all ${
+              basis !== option.value && option.locked ? 'cursor-not-allowed' : ''
             }`}
           >
             {option.label}
           </button>
         ))}
-      </div>
-      {popup && (
+      </div>}
+      {visible && popup && (
         <span
           ref={popupRef}
           role="tooltip"

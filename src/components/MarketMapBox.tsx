@@ -120,7 +120,7 @@ export default function MarketMapBox({
             </span>
           )}
           {showRate && (
-            <span className="text-center leading-tight" style={{ fontSize: fontSize * RATE_FONT_SCALE }}>
+            <span className="tabular-nums text-center leading-tight" style={{ fontSize: fontSize * RATE_FONT_SCALE }}>
               {toPctSigned(item.changeRate, decimalPlaces)}
             </span>
           )}

@@ -197,7 +197,7 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
             </button>
           )}
         </div>
-        <div className="pl-1">
+        <div className="pl-1 tabular-nums">
           {popup.rows.map((row, index) => (
             <div key={index}>{row}</div>
           ))}

@@ -133,7 +133,11 @@ export const handlers = [
     const tree = isCustom ? data.marketMapTree : data.toDefaultModeTree(data.marketMapTree)
 
     if (!snapshotTime) {
-      return HttpResponse.json({ ...snapshot(tree), marketOverview, classificationUpdatedAt: '2026-10-01T09:00:00' })
+      return HttpResponse.json({
+        ...snapshot(tree),
+        marketOverview,
+        classificationUpdatedAt: isCustom ? '2026-10-01T09:00:00' : '2026-10-02T07:00:00',
+      })
     }
     // snapshotTime이 있으면 그 값을 응답에 그대로 싣고(결정 4의 "요청 시각과 같아야 before로 인정" 조건을
     // 목업에서도 통과시키기 위함), 종목 changeRate를 낮춘 트리를 준다.

@@ -2,8 +2,11 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
-import { MarketMapMarketCombobox, MarketMapPeriodCombobox, MarketPhaseIndicator } from '@/components/MarketMapControls'
-import SettingsSidebar, { SettingsAverageModeSection, SettingsBeforeMinutesSection } from '@/components/SettingsSidebar'
+import { ChangeRateBasisToggle, MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/MarketMapControls'
+import SettingsSidebar, {
+  SettingsAverageModeSection,
+  SettingsBeforeMinutesSection,
+} from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Spinner from '@/components/Spinner'
 import { REFRESH_FEEDBACK_MIN_DURATION_MS } from '@/utils/uiFeedback'
@@ -20,7 +23,7 @@ import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload, downloadDataUrl } from '@/utils/captureToDownload'
-import { toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel, avgChangeRateLabel } from '@/utils/format'
+import { toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { marketRoute } from '@/utils/marketRoute'
 import {
   resolveMarketMapColor,
@@ -159,6 +162,10 @@ export default function SectorChangeRatePage() {
     market,
     isCustom,
     nxtOnly,
+    changeRateBasis,
+    isAfterHoursControlsVisible,
+    isAfterHoursSelectable,
+    onChangeChangeRateBasis,
     data,
     isLoading,
     isError,
@@ -170,13 +177,13 @@ export default function SectorChangeRatePage() {
     excludedMarketValueTiers,
     excludedSectorIds,
     colorScale,
-  } = useGlobalSettings()
+  } = useGlobalSettings({ allowChangeRateBasis: true })
 
   // now는 여기서 따로 조회하지 않는다 — useGlobalSettings()가 이미 부르는 useMarketMap(market, isCustom)
   // 결과(data)를 그대로 쓴다. before는 그 now.snapshotTime에서 계산한 시각을 쌍으로 묶어 조회한다
   // (marketry-backend 지시서 결정 4) — 이렇게 해야 재조회로 now가 새 tick으로 바뀌는 순간에도
   // 화면이 새 now·옛 before를 잠깐이라도 섞어 그리지 않는다.
-  const pairQuery = useSectorMarketMapPair(market, isCustom, nxtOnly, beforeMinutes, data)
+  const pairQuery = useSectorMarketMapPair(market, isCustom, nxtOnly, beforeMinutes, data, changeRateBasis)
   // 쌍 쿼리가 에러(재시도 1회 뒤)면 "before 없음"으로 보고 now 쿼리의 현재 data로 그린다. 그 외에는
   // 화면에 그리는 now가 항상 "쌍 안의 now"다 — placeholder 기간에도 그 쌍이 만들어질 때의 now·before가
   // 함께 유지되어, 상단 바 시각과 그래프가 서로 어긋나지 않는다.
@@ -317,9 +324,9 @@ export default function SectorChangeRatePage() {
     }
 
     // marketOverview는 단일 마켓 조회에만 온다(ALL_STOCK이면 단일 지수값이 없어 null) — 지도 페이지와
-    // 동일하게 ALL_STOCK이면 지수 막대를 아예 안 보여준다.
+    // 동일하게 ALL_STOCK이면 지수 막대를 아예 안 보여준다. 지수 참조 값은 누적 등락률이므로 따로에서는 표시하지 않는다.
     const nowOverview = displayNow.marketOverview
-    if (nowOverview) {
+    if (nowOverview && changeRateBasis === 'daily') {
       currentEntries.push({
         key: MARKET_INDEX_KEY,
         sectorName: MARKET_INDEX_LABEL_KO[nowOverview.market],
@@ -338,7 +345,7 @@ export default function SectorChangeRatePage() {
     }
 
     return { current: buildRankChart(currentEntries), delta: buildRankChart(deltaEntries) }
-  }, [displayNow, displayBefore, excludedSectorIds, excludedMarketValueTiers, avgChangeRateUseSimple])
+  }, [displayNow, displayBefore, excludedSectorIds, excludedMarketValueTiers, avgChangeRateUseSimple, changeRateBasis])
 
   // 본문에 로딩 원이 보이는 상태 — 아래 본문 분기(isLoading, 쌍 데이터를 기다리는 중)와 같은 조건이다.
   const isSpinnerShown = isLoading || (!isError && data?.snapshotTime != null && !displayNow)
@@ -393,7 +400,7 @@ export default function SectorChangeRatePage() {
                   </PageRefreshButton>
                 </span>
                 <span className="ml-2 flex shrink-0">
-                  <MarketPhaseIndicator />
+                  <ChangeRateBasisToggle basis={changeRateBasis} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateBasis} />
                 </span>
               </div>
               {/* 지도 페이지와 동일하게 맨 오른쪽 끝에 프로필(사진이 끝, 글자는 그 왼쪽)을 둔다. */}
@@ -435,12 +442,32 @@ export default function SectorChangeRatePage() {
                   {/* 헤더는 그래프가 아니라 본문 전체 폭을 2:1로 나눈 구간의 가운데에 놓는다(좌 2/3, 우 1/3).
                       오른쪽은 설정창 슬라이더로 고른 비교 시점 하나만 보여준다. */}
                   <div
-                    className="mb-2 flex w-full shrink-0 items-center font-bold whitespace-nowrap"
+                    className="mb-5 flex w-full shrink-0 items-center font-bold whitespace-nowrap"
                     style={{ fontSize: 20, color: strongIndustryColor }}
                   >
-                    <div className="flex flex-[2] justify-center">{avgChangeRateLabel(avgChangeRateUseSimple)}</div>
-                    <div className="flex flex-[1] justify-center">
-                      <span>{beforeMinutes}분 전 대비</span>
+                    <div className="flex flex-[2] items-center justify-center">
+                      <span
+                        className="rounded-sm px-2 py-1 leading-none"
+                        style={{
+                          backgroundColor: strongIndustryColor,
+                          color: '#202124',
+                          boxShadow: 'inset 0 1px 2px rgb(0 0 0 / 30%), inset 0 -1px 1px rgb(255 255 255 / 35%)',
+                        }}
+                      >
+                        {avgChangeRateUseSimple ? '동일 가중' : '시총 가중'}
+                      </span>
+                    </div>
+                    <div className="flex flex-[1] items-center justify-center">
+                      <span
+                        className="rounded-sm px-2 py-1 leading-none"
+                        style={{
+                          backgroundColor: strongIndustryColor,
+                          color: '#202124',
+                          boxShadow: 'inset 0 1px 2px rgb(0 0 0 / 30%), inset 0 -1px 1px rgb(255 255 255 / 35%)',
+                        }}
+                      >
+                        {beforeMinutes}분 전 대비
+                      </span>
                     </div>
                   </div>
                   <div className="flex min-h-0 flex-1 gap-x-8 px-[10%]">
@@ -480,6 +507,7 @@ export default function SectorChangeRatePage() {
               onToggleSide={toggleSettingsSide}
               pageLabel="GROUP"
               classificationAtBottom
+              classificationNotice="맵 페이지와 중복되는 설정은 맵 페이지 설정값과 동일하게 적용됩니다."
               snapshotTime={data?.classificationUpdatedAt}
               plainContent={
                 <>

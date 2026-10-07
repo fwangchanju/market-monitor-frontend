@@ -237,7 +237,7 @@ export default function MarketMapSectorSection({
             className={`market-map-sector-header ${isTopPick ? 'market-map-top-pick-header' : ''} absolute top-0 z-[2] flex items-center overflow-hidden truncate px-1 text-left font-bold leading-none ${headerStyle.border} ${headerStyle.text ?? ''} ${headerStyle.background}`}
           >
             {displaySectorName}
-            {headerSuffix && <span className="font-normal">{headerSuffix}</span>}
+            {headerSuffix && <span className="font-normal tabular-nums">{headerSuffix}</span>}
           </button>
         </>
       )}
