@@ -23,6 +23,7 @@ import MarketMapLegendBar from '@/components/MarketMapLegendBar'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
 import { HINT_BUBBLE_COLOR_CLASS } from '@/components/hintBubbleStyle'
 import Spinner from '@/components/Spinner'
+import { REFRESH_FEEDBACK_MIN_DURATION_MS } from '@/utils/uiFeedback'
 import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/components/NavBarPageActions'
 import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useMarketMapDrilldown } from '@/hooks/useMarketMapDrilldown'
@@ -241,7 +242,8 @@ export default function MarketMapCustomPage() {
   // 상단 바는 현재 히트맵을 점등 표시로 보여준다. 종목 수는 설정 사이드바에 표시한다.
   const modeStatusText = (
     <span className="flex min-w-0 items-center">
-      <span className="min-w-0 truncate text-gray-400">분류: {HEATMAP_NAMES[heatmap].title}</span>
+      <span aria-hidden="true" className="mr-[6px] inline-block h-5 w-1 shrink-0 rounded-sm bg-[var(--brand)]" />
+      <span className="min-w-0 truncate text-gray-400">{HEATMAP_NAMES[heatmap].title}</span>
       {/* 거래소·MARKETRY 모두 점 대신 프로필 사진을 둔다(시험). 24px 모서리가 둥근 사각형이다. 바 높이(28px)보다 조금 작다. 맨 오른쪽 끝에 두고 글자는 그 왼쪽에 오른쪽 정렬로 붙는다. */}
       <ProfileAvatar className="ml-[7px] size-6 shrink-0 object-cover" />
     </span>
@@ -455,13 +457,18 @@ export default function MarketMapCustomPage() {
                   }}
                 />
                 <MarketMapPeriodCombobox />
-                {data?.snapshotTime && (
-                  <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
-                    <span>{toMarketMapSnapshotDateLabel(data.snapshotTime)}</span>
-                    <span>{toMarketMapSnapshotTimeOnlyLabel(data.snapshotTime)}</span>
-                  </span>
-                )}
-                <PageRefreshButton onRefresh={refetchMarketMap} isRefreshing={isRefetchingMarketMap} className="-ml-[10px]" helpText={SNAPSHOT_REFRESH_HELP} />
+                <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
+                  {data?.snapshotTime && <span>{toMarketMapSnapshotDateLabel(data.snapshotTime)}</span>}
+                  <PageRefreshButton
+                    onRefresh={refetchMarketMap}
+                    isRefreshing={isRefetchingMarketMap}
+                    className={FONT_BAR_TIME}
+                    helpText={SNAPSHOT_REFRESH_HELP}
+                    minSpinDurationMs={REFRESH_FEEDBACK_MIN_DURATION_MS}
+                  >
+                    {data?.snapshotTime && toMarketMapSnapshotTimeOnlyLabel(data.snapshotTime)}
+                  </PageRefreshButton>
+                </span>
                 {/* 시장 시간대 말머리와 누적/따로 — 시간과 관련된 표시라 시계 옆에 붙인다. */}
                 <span className="ml-2 flex shrink-0">
                   <ChangeRateBasisToggle basis={changeRateBasis} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateBasis} />

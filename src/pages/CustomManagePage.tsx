@@ -7,10 +7,14 @@ import AdminSectorTable from '@/components/AdminSectorTable'
 import AdminStockTable from '@/components/AdminStockTable'
 import Spinner from '@/components/Spinner'
 import NavBarPageActions from '@/components/NavBarPageActions'
+import SettingsSidebar from '@/components/SettingsSidebar'
+import ProfileAvatar from '@/components/ProfileAvatar'
+import { FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
 import CustomManageModeCombobox from '@/components/CustomManageModeCombobox'
-import CustomHeatmapSheetCombobox, { type CustomHeatmapSheet } from '@/components/CustomHeatmapSheetCombobox'
 import ReadOnlyHeatmapSheet from '@/components/ReadOnlyHeatmapSheet'
 import { usePersistedState } from '@/hooks/usePersistedState'
+import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
+import { useHeatmapSelection, type HeatmapSelection } from '@/hooks/useHeatmapSelection'
 import { useCustomSectors, useStockSectors } from '@/hooks/useMarketMapCustom'
 import { useMarketMap } from '@/hooks/useMarketMap'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
@@ -18,6 +22,7 @@ import { useSession, useIsLoggedIn } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
 import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload, downloadDataUrl } from '@/utils/captureToDownload'
+import { HEATMAP_NAMES } from '@/utils/heatmapNames'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
@@ -35,11 +40,32 @@ export default function CustomManagePage() {
   // 히트맵 시트 — 기본은 편집 가능한 MARKETRY 시트이고, ?sheet=krx면 읽기 전용 KRX 시트다.
   // 예전 주소(?sheet=nxt)는 KRX 시트에서 "NXT 종목만 보기"를 켠 상태로 연다.
   const sheetParam = searchParams.get('sheet')
-  const sheet: CustomHeatmapSheet = sheetParam === 'krx' || sheetParam === 'nxt' ? 'krx' : 'marketry'
+  const [selectedHeatmap, setSelectedHeatmap] = useHeatmapSelection()
+  const explicitSheet = sheetParam === 'krx' || sheetParam === 'nxt' ? 'krx' : sheetParam === 'marketry' ? 'marketry' : null
+  const sheet = explicitSheet ?? selectedHeatmap
   const isReadOnlySheet = sheet !== 'marketry'
+  const handleSelectSheet = (next: HeatmapSelection) => {
+    setSelectedHeatmap(next)
+    setSearchParams(previous => {
+      const params = new URLSearchParams(previous)
+      params.delete('sheet')
+      return params
+    })
+  }
   // KRX 시트에서 NXT 거래 종목만 남기는 보기 옵션 — 새로고침해도 유지된다.
   const [isNxtOnlyView, setIsNxtOnlyView] = usePersistedState('customPage.krxNxtOnly', false)
   const nxtOnly = isReadOnlySheet && (isNxtOnlyView || sheetParam === 'nxt')
+  // 기존 시트 링크는 처음부터 적용하고 브라우저 공통 선택으로 옮겨 URL이 이후 선택을 덮지 않게 한다.
+  useEffect(() => {
+    if (!explicitSheet) return
+    setSelectedHeatmap(explicitSheet)
+    if (sheetParam === 'nxt') setIsNxtOnlyView(true)
+    setSearchParams(previous => {
+      const params = new URLSearchParams(previous)
+      params.delete('sheet')
+      return params
+    }, { replace: true })
+  }, [explicitSheet, sheetParam, setSelectedHeatmap, setIsNxtOnlyView, setSearchParams])
   // AdminStockTable의 툴바(종목수/실행취소·다시실행/필터/엑셀 등)를 이 DOM 노드로 포털링해서 세
   // 번째 바 안에 그린다 — useRef 대신 useState인 이유는, ref 콜백이 커밋 단계에서 실행되므로
   // useState로 받아야 그 노드가 준비된 뒤 리렌더가 한 번 더 일어나 AdminStockTable에 null이 아닌
@@ -63,19 +89,26 @@ export default function CustomManagePage() {
     isRefetching: isRefetchingStockSectors,
   } = useStockSectors({ enabled: isLoggedIn })
 
+  // 읽기 전용 시트 데이터와 지도·그룹에 공통으로 표시하는 분류 최종 변경 시각을 함께 가져온다.
   const {
     data: krxMap,
     isLoading: isKrxLoading,
     refetch: refetchKrx,
     isRefetching: isRefetchingKrx,
-  } = useMarketMap('ALL_STOCK', false, false, { enabled: isReadOnlySheet })
+  } = useMarketMap('ALL_STOCK', false, false, { enabled: isLoggedIn })
 
   const nxtStockCodes = useMemo(
     () => new Set((stockSectors?.items ?? []).filter(item => item.nxtEnabled).map(item => item.stockCode)),
     [stockSectors],
   )
+  const stockMarkets = useMemo(
+    () => new Map((stockSectors?.items ?? []).map(item => [item.stockCode, item.market])),
+    [stockSectors],
+  )
 
   const [isShareOpen, setIsShareOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(true)
+  const { isOnLeft: isSettingsOnLeft, toggleSide: toggleSettingsSide } = useSettingsSidebarSide()
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
   const { isNativeFullscreen, handleToggleNativeFullscreen } = useNativeFullscreen()
@@ -140,6 +173,8 @@ export default function CustomManagePage() {
             : isRefetchingSectors
       }
       onOpenShare={() => setIsShareOpen(true)}
+      onToggleSettings={() => setIsSettingsOpen(previous => !previous)}
+      isSettingsOpen={isSettingsOpen}
       isNativeFullscreen={isNativeFullscreen}
       onToggleFullscreen={handleToggleNativeFullscreen}
     />
@@ -187,30 +222,29 @@ export default function CustomManagePage() {
           위치 재검토가 더 필요해서 일단 뺐다 — 다시 넣을 땐 이 컴포넌트를 재사용하면 된다. */}
       <div className="flex min-h-0 flex-1">
         {/* 공유 캡처(captureRef)는 [세 번째 바+본문] 열만 찍는다 — 설정 사이드바는 캡처에 넣지 않는다. */}
-        <div className="relative z-10 -mt-[10.5px] flex min-h-0 flex-1 overflow-hidden bg-black text-white">
+        <div className="relative z-10 -mt-[10.5px] flex min-h-0 min-w-0 flex-1 overflow-hidden bg-black text-white">
           {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서 창을 좁혀도 사이드바(w-80)가 항상 같은
               폭을 유지하게 한다(지도/섹터/요약 페이지와 동일). */}
           <div ref={captureRef} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black text-white">
             <div className="mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-3 text-sm font-bold text-white">
-              <div className="flex h-full items-center gap-2">
+              <div className="flex h-full shrink-0 items-center gap-2">
                 <CustomManageModeCombobox
                   mode={mode === 'stock' ? 'stock' : 'category'}
-                  onSelect={path => navigate({ pathname: path, search: isReadOnlySheet ? `?sheet=${sheet}` : '' })}
-                />
-                <CustomHeatmapSheetCombobox
-                  sheet={sheet}
-                  onSelect={next => setSearchParams(next === 'marketry' ? {} : { sheet: next })}
+                  onSelect={path => navigate(path)}
                 />
                 {isReadOnlySheet && (
-                  <span className="flex items-center gap-2 text-sm font-normal text-gray-400">
-                    <span>읽기 전용</span>
-                    <span aria-hidden="true">·</span>
-                    <span>키움 REST API</span>
-                  </span>
+                  <span className="whitespace-nowrap text-sm font-normal text-gray-400">키움 REST API</span>
                 )}
               </div>
               {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다. */}
-              {!isReadOnlySheet && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 flex-1 items-center" />}
+              {!isReadOnlySheet && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 min-w-0 flex-1 items-center" />}
+              <div className={`${FONT_BAR_MODE_STATUS} ml-2 flex min-w-0 items-center justify-end text-gray-400`}>
+                <span className="flex min-w-0 items-center">
+                  <span aria-hidden="true" className="mr-[6px] inline-block h-5 w-1 shrink-0 rounded-sm bg-[var(--brand)]" />
+                  <span className="min-w-0 truncate text-gray-400">{HEATMAP_NAMES[sheet].title}</span>
+                  <ProfileAvatar className="ml-[7px] size-6 shrink-0 object-cover" />
+                </span>
+              </div>
             </div>
             <div className="flex min-h-0 flex-1">
               <div
@@ -222,12 +256,9 @@ export default function CustomManagePage() {
                     data={krxMap}
                     isLoading={isKrxLoading}
                     nxtOnly={nxtOnly}
-                    onNxtOnlyChange={checked => {
-                      // 예전 ?sheet=nxt 주소로 들어온 경우엔 주소의 값이 우선이라, 끄려면 주소부터 KRX로 바꾼다.
-                      if (sheetParam === 'nxt') setSearchParams({ sheet: 'krx' })
-                      setIsNxtOnlyView(checked)
-                    }}
+                    onNxtOnlyChange={setIsNxtOnlyView}
                     nxtStockCodes={nxtStockCodes}
+                    stockMarkets={stockMarkets}
                     isNxtLoading={isStockSectorsLoading}
                   />
                 ) : mode === 'stock' ? (
@@ -242,6 +273,22 @@ export default function CustomManagePage() {
                 )}
               </div>
             </div>
+          </div>
+          <div className={`flex shrink-0 pt-[7px] ${isSettingsOnLeft ? 'order-first' : ''}`}>
+            <SettingsSidebar
+              pageLabel="CUSTOM"
+              // 저장·초기화는 기능 검토 전 임시 숨김. 재요청 시 새 버튼을 만들지 말고 이 옵션을 true로 바꿔 기존 버튼을 복원한다.
+              showPreferenceActions={false}
+              isOpen={isSettingsOpen}
+              onOpenChange={setIsSettingsOpen}
+              isOnLeft={isSettingsOnLeft}
+              onToggleSide={toggleSettingsSide}
+              onRequestLogin={() => requireLogin(pathname)}
+              classificationAtBottom
+              snapshotTime={krxMap?.classificationUpdatedAt}
+              heatmap={sheet}
+              onSelectHeatmap={next => handleSelectSheet(next === 'marketry' ? 'marketry' : 'krx')}
+            />
           </div>
         </div>
       </div>

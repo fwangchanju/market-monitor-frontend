@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { usePersistedState } from './usePersistedState'
+import { useHeatmapSelection } from './useHeatmapSelection'
 import { MEMBER_DEFAULTS, settingDefaultsFor } from '@/utils/settingDefaults'
 import type { HeatmapKey } from '@/utils/heatmapNames'
 import { useNxtOnlyWindow } from '@/hooks/useNxtOnlyWindow'
@@ -115,10 +116,11 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   // 우선순위(쿼리 > 경로 > 저장값 > 기본값)를 적용하면, 이 훅을 그대로 쓰는 지도 페이지는 물론
   // 트리 조회만 공유하는 섹터 페이지도 같은 마켓으로 트리를 받는다(docs/instructions-route-market-first-render.md 결정 2).
   const [market] = useRouteAwareMarket('marketMap.market', 'ALL_STOCK')
-  // 저장값은 로그인 사용자에 한해 서버(user_preference)에 남는다. 이 값은 분류 체계를 고르며,
-  // 비로그인은 저장값이 true여도 거래소 분류(false)로 고정한다 — MARKETRY 분류는 로그인이 필요하다.
-  const [storedIsCustom, setStoredIsCustom] = usePageSetting('marketMap.isCustom', defaults.isCustom)
-  const isCustom = isLoggedIn ? storedIsCustom : false
+  // 기존 계정 설정은 브라우저 선택이 없을 때만 기본값으로 사용한다. 새 선택은 세 페이지가 localStorage로 공유한다.
+  const [savedIsCustom] = usePageSetting('marketMap.isCustom', defaults.isCustom)
+  const [selectedHeatmap, setSelectedHeatmap] = useHeatmapSelection(savedIsCustom ? 'marketry' : 'krx')
+  // MARKETRY 분류는 로그인이 필요하다. 로그아웃해도 브라우저에 저장한 선택 자체는 보존한다.
+  const isCustom = isLoggedIn && selectedHeatmap === 'marketry'
   // NXT 종목만 보기 — 어느 히트맵(거래소/MARKETRY)이든 시간대가 정한다. NXT 단독 시간대(08:00~08:50, 15:40~16:00)에만
   // 분류는 그대로 두고 NXT 거래 종목만 남기고, 그 밖의 시간에는 전체 종목을 보여준다. 사용자가 직접 켜고 끄지 않는다.
   const nxtOnlyWindow = useNxtOnlyWindow()
@@ -572,25 +574,15 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     setColorCustomOn(on)
   }
 
-  // 비로그인이 MARKETRY 분류를 선택하려 하면 로그인 팝업을 띄운다 — 로그인 성공 후 지금 페이지로
-  // 돌아온다(가입/로그인 전환 지시서 4). 이미 로그인 상태면 저장한 분류 선택을 토글한다.
-  const handleToggleCustom = () => {
-    if (!isLoggedIn) {
-      requireLogin(pathname)
-      return
-    }
-    setStoredIsCustom(prev => !prev)
-  }
-
   // 히트맵 선택(거래소 / MARKETRY). MARKETRY는 로그인이 필요하다. 거래소는 KRX·NXT를 합친 한 칸이고, 시간대에 따라
   // NXT 거래 종목만 남길지 자동으로 정한다(heatmap 값은 그 결과로 'krx' 또는 'nxt'가 된다).
   const handleSelectHeatmap = (next: HeatmapKey) => {
+    setSelectedHeatmap(next === 'marketry' ? 'marketry' : 'krx')
     if (next === 'marketry' && !isLoggedIn) {
       requireLogin(pathname)
-      return
     }
-    setStoredIsCustom(next === 'marketry')
   }
+  const handleToggleCustom = () => handleSelectHeatmap(isCustom ? 'krx' : 'marketry')
 
   const handleChangeActiveDepthMetric = (metric: DepthMetric) => setStoredDepthMetric(metric)
 

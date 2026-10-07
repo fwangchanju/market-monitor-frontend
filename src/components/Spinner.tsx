@@ -6,9 +6,11 @@ interface Props {
   // true면 아주 큰 원 안에 로고와 경과 시간(초)을, 아래에 안내 문구를 보여준다 — 오래 걸려도 "진행 중"임을 알 수 있게 한다.
   // 시간은 1초가 지난 뒤부터 보인다.
   showElapsed?: boolean
+  // 설정창처럼 좁은 영역에서는 문구 없이 원과 로고만 표시한다.
+  showLogo?: boolean
 }
 
-export default function Spinner({ className, showElapsed = false }: Props) {
+export default function Spinner({ className, showElapsed = false, showLogo = false }: Props) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
 
   useEffect(() => {
@@ -18,8 +20,19 @@ export default function Spinner({ className, showElapsed = false }: Props) {
     return () => window.clearInterval(timer)
   }, [showElapsed])
 
-  if (!showElapsed) {
+  if (!showElapsed && !showLogo) {
     return <div className={`animate-spin rounded-full border-2 border-gray-600 border-t-[var(--accent)] ${className ?? 'h-8 w-8'}`} />
+  }
+
+  if (!showElapsed) {
+    return (
+      <div role="status" aria-label="설정 처리 중" className={`relative ${className ?? 'h-24 w-24'}`}>
+        <div aria-hidden="true" className="absolute inset-0 animate-spin rounded-full border-[3px] border-gray-600 border-t-[var(--accent)]" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <img src={marketryLogo} alt="" className="w-[72%] object-contain" />
+        </div>
+      </div>
+    )
   }
 
   // 시간을 보여주는 로딩은 화면 한가운데에서 오래 보게 되므로 원을 아주 크게(작은 화면에서는 화면 짧은 변의 60%까지) 그린다.

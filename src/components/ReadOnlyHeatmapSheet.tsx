@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import Spinner from '@/components/Spinner'
-import type { MarketMapResponse } from '@/types/api'
+import type { Market, MarketMapResponse } from '@/types/api'
 import { toCount } from '@/utils/format'
 import { charTier } from '@/utils/koreanSort'
 import { SortIcon } from '@/components/icons/MarketMapIcons'
 
 const KOREAN_COLLATOR = new Intl.Collator('ko')
+const MARKET_LABEL: Record<Market, string> = { KOSPI: '코스피', KOSDAQ: '코스닥' }
 
 function compareName(a: string, b: string): number {
   const tierA = charTier(a[0] ?? '')
@@ -107,6 +108,8 @@ interface Props {
   onNxtOnlyChange: (nxtOnly: boolean) => void
   // NXT 거래 가능 종목코드 — 지도 응답에는 이 정보가 없어서 커스텀 종목 목록(/custom/stock-sectors)에서 받아온다.
   nxtStockCodes: ReadonlySet<string>
+  // 지도 응답에는 마켓 정보가 없어 MARKETRY 표와 같은 커스텀 종목 목록에서 가져온다.
+  stockMarkets: ReadonlyMap<string, Market>
   // nxtStockCodes를 아직 받아오는 중인지 — 받기 전에는 "종목이 없다"고 잘못 보이지 않게 스피너를 보여준다.
   isNxtLoading: boolean
 }
@@ -118,7 +121,7 @@ interface SectorRow {
 
 // KRX/NXT 시트 — 업종 분류를 읽기만 하는 화면이다. 편집 기능(추가·이동·배정)은 없고, 지도의 KRX 히트맵이 보여주는
 // 분류(/map?isCustom=false)를 그대로 표로 보여준다. 시세가 있는 종목만 내려오므로 거래정지 종목 등은 빠질 수 있다.
-export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, nxtOnly, onNxtOnlyChange, nxtStockCodes, isNxtLoading }: Props) {
+export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, nxtOnly, onNxtOnlyChange, nxtStockCodes, stockMarkets, isNxtLoading }: Props) {
   const sectors = useMemo<SectorRow[]>(() => {
     if (!data) return []
     return data.items
@@ -151,7 +154,7 @@ export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, nxtOnly, o
     </label>
   )
   return mode === 'stock' ? (
-    <StockTable sectors={sectors} emptyMessage={emptyMessage} nxtStockCodes={nxtStockCodes} extra={nxtOnlyToggle} />
+    <StockTable sectors={sectors} emptyMessage={emptyMessage} nxtStockCodes={nxtStockCodes} stockMarkets={stockMarkets} extra={nxtOnlyToggle} />
   ) : (
     <CategoryTable sectors={sectors} emptyMessage={emptyMessage} extra={nxtOnlyToggle} />
   )
@@ -262,25 +265,25 @@ function CategoryTable({ sectors, emptyMessage, extra }: { sectors: SectorRow[];
   )
 }
 
-type StockSortKey = 'stockCode' | 'stockName' | 'sectorName' | 'totalMarketValue'
+type StockSortKey = 'stockCode' | 'stockName' | 'sectorName' | 'totalMarketValue' | 'market'
 
-function StockTable({ sectors, emptyMessage, nxtStockCodes, extra }: { sectors: SectorRow[]; emptyMessage: string; nxtStockCodes: ReadonlySet<string>; extra: ReactNode }) {
+function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra }: { sectors: SectorRow[]; emptyMessage: string; nxtStockCodes: ReadonlySet<string>; stockMarkets: ReadonlyMap<string, Market>; extra: ReactNode }) {
   const [query, setQuery] = useState('')
   const { sortKey, direction, toggle } = useSort<StockSortKey>('totalMarketValue', 'desc')
   const rows = useMemo(() => {
     const sign = direction === 'asc' ? 1 : -1
     return sectors
-      .flatMap(sector => sector.stocks.map(stock => ({ ...stock, sectorName: sector.sectorName })))
+      .flatMap(sector => sector.stocks.map(stock => ({ ...stock, sectorName: sector.sectorName, market: stockMarkets.get(stock.stockCode) })))
       .sort((a, b) => {
         const diff =
           sortKey === 'totalMarketValue'
             ? a.totalMarketValue - b.totalMarketValue
-            : sortKey === 'stockCode'
-              ? a.stockCode.localeCompare(b.stockCode)
+            : sortKey === 'market'
+              ? compareName(a.market ? MARKET_LABEL[a.market] : '-', b.market ? MARKET_LABEL[b.market] : '-')
               : compareName(a[sortKey], b[sortKey])
         return diff === 0 ? a.stockCode.localeCompare(b.stockCode) : sign * diff
       })
-  }, [sectors, sortKey, direction])
+  }, [sectors, stockMarkets, sortKey, direction])
   const header = (key: StockSortKey, label: string) => (
     <SortableHeader label={label} active={sortKey === key} direction={direction} onClick={() => toggle(key)} />
   )
@@ -321,33 +324,38 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, extra }: { sectors: 
             <tr>
               {header('stockCode', '종목코드')}
               {header('stockName', '종목명')}
-              {header('sectorName', '업종')}
               {header('totalMarketValue', '시가총액')}
+              {header('market', '마켓')}
+              {header('sectorName', '업종')}
               <th className={HEADER_CELL}>NXT</th>
             </tr>
           </thead>
           <tbody>
-            {visibleRows.length === 0 && <EmptyRow colSpan={5} message={rows.length === 0 ? emptyMessage : '검색 결과가 없습니다.'} />}
+            {visibleRows.length === 0 && <EmptyRow colSpan={6} message={rows.length === 0 ? emptyMessage : '검색 결과가 없습니다.'} />}
             {paddingTop > 0 && (
               <tr>
-                <td colSpan={5} style={{ height: paddingTop, padding: 0, border: 'none' }} />
+                <td colSpan={6} style={{ height: paddingTop, padding: 0, border: 'none' }} />
               </tr>
             )}
             {virtualRows.map(virtualRow => {
               const row = visibleRows[virtualRow.index]
+              const isKosdaq = row.market === 'KOSDAQ'
               return (
-                <tr key={row.stockCode} ref={rowVirtualizer.measureElement} data-index={virtualRow.index}>
-                  <td className={`${BODY_CELL} text-center text-gray-400`}>{row.stockCode}</td>
+                <tr key={row.stockCode} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} className={isKosdaq ? 'text-[var(--brand)]' : 'text-white'}>
+                  <td className={`${BODY_CELL} text-center`}>{row.stockCode}</td>
                   <td className={BODY_CELL}>
                     <CenteredLeft>{row.stockName}</CenteredLeft>
-                  </td>
-                  <td className={BODY_CELL}>
-                    <CenteredLeft>{row.sectorName}</CenteredLeft>
                   </td>
                   <td className={`${BODY_CELL} text-center`}>
                     <MarketValueCell won={row.totalMarketValue} />
                   </td>
-                  <td className={`${BODY_CELL} text-center ${nxtStockCodes.has(row.stockCode) ? 'text-[var(--brand)]' : 'text-gray-500'}`}>
+                  <td className={`${BODY_CELL} text-center`}>
+                    {row.market ? MARKET_LABEL[row.market] : '-'}
+                  </td>
+                  <td className={BODY_CELL}>
+                    <CenteredLeft>{row.sectorName}</CenteredLeft>
+                  </td>
+                  <td className={`${BODY_CELL} text-center ${!isKosdaq && !nxtStockCodes.has(row.stockCode) ? 'text-gray-500' : ''}`}>
                     {nxtStockCodes.has(row.stockCode) ? 'O' : '-'}
                   </td>
                 </tr>
@@ -355,7 +363,7 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, extra }: { sectors: 
             })}
             {paddingBottom > 0 && (
               <tr>
-                <td colSpan={5} style={{ height: paddingBottom, padding: 0, border: 'none' }} />
+                <td colSpan={6} style={{ height: paddingBottom, padding: 0, border: 'none' }} />
               </tr>
             )}
           </tbody>

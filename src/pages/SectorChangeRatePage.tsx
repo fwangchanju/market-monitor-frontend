@@ -2,10 +2,11 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
-import { MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/MarketMapControls'
+import { MarketMapMarketCombobox, MarketMapPeriodCombobox, MarketPhaseIndicator } from '@/components/MarketMapControls'
 import SettingsSidebar, { SettingsAverageModeSection, SettingsBeforeMinutesSection } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Spinner from '@/components/Spinner'
+import { REFRESH_FEEDBACK_MIN_DURATION_MS } from '@/utils/uiFeedback'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
 import ProfileAvatar from '@/components/ProfileAvatar'
 import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
@@ -234,7 +235,8 @@ export default function SectorChangeRatePage() {
   // 지도 페이지 상단 바와 동일하게 점 대신 프로필 사진을 둔다. 24px 모서리가 둥근 사각형이다.
   const modeStatusText = (
     <span className="flex min-w-0 items-center">
-      <span className="min-w-0 truncate text-gray-400">분류: {settingsModalProps.isCustom ? 'MARKETRY' : '한국거래소'}</span>
+      <span aria-hidden="true" className="mr-[6px] inline-block h-5 w-1 shrink-0 rounded-sm bg-[var(--brand)]" />
+      <span className="min-w-0 truncate text-gray-400">{settingsModalProps.isCustom ? 'MARKETRY' : '한국거래소'}</span>
       <ProfileAvatar className="ml-[7px] size-6 shrink-0 object-cover" />
     </span>
   )
@@ -381,13 +383,21 @@ export default function SectorChangeRatePage() {
                   }}
                 />
                 <MarketMapPeriodCombobox />
-                {displayNow?.snapshotTime && (
-                  <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
-                    <span>{toMarketMapSnapshotDateLabel(displayNow.snapshotTime)}</span>
-                    <span>{toMarketMapSnapshotTimeOnlyLabel(displayNow.snapshotTime)}</span>
-                  </span>
-                )}
-                <PageRefreshButton onRefresh={refetchMarketMap} isRefreshing={isRefreshing} className="-ml-[10px]" helpText={SNAPSHOT_REFRESH_HELP} />
+                <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
+                  {displayNow?.snapshotTime && <span>{toMarketMapSnapshotDateLabel(displayNow.snapshotTime)}</span>}
+                  <PageRefreshButton
+                    onRefresh={refetchMarketMap}
+                    isRefreshing={isRefreshing}
+                    className={FONT_BAR_TIME}
+                    helpText={SNAPSHOT_REFRESH_HELP}
+                    minSpinDurationMs={REFRESH_FEEDBACK_MIN_DURATION_MS}
+                  >
+                    {displayNow?.snapshotTime && toMarketMapSnapshotTimeOnlyLabel(displayNow.snapshotTime)}
+                  </PageRefreshButton>
+                </span>
+                <span className="ml-2 flex shrink-0">
+                  <MarketPhaseIndicator />
+                </span>
               </div>
               {/* 지도 페이지와 동일하게 맨 오른쪽 끝에 프로필(사진이 끝, 글자는 그 왼쪽)을 둔다. */}
               <div className={`${FONT_BAR_MODE_STATUS} flex min-w-0 items-center justify-end text-gray-400`}>{modeStatusText}</div>
@@ -472,6 +482,8 @@ export default function SectorChangeRatePage() {
               isOnLeft={isSettingsOnLeft}
               onToggleSide={toggleSettingsSide}
               pageLabel="GROUP"
+              classificationAtBottom
+              snapshotTime={data?.classificationUpdatedAt}
               plainContent={
                 <>
                   <SettingsAverageModeSection

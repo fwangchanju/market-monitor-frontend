@@ -115,7 +115,7 @@ export default function MarketMapBox({
       {showLabel && (
         <>
           {showName && (
-            <span className="w-full truncate px-1 text-center leading-tight" style={{ fontSize }}>
+            <span className="w-full overflow-hidden text-clip whitespace-nowrap px-1 text-center leading-tight" style={{ fontSize }}>
               {item.alias ?? item.stockName}
             </span>
           )}
