@@ -511,7 +511,7 @@ export default function SectorChangeRatePage() {
               onToggleSide={toggleSettingsSide}
               pageLabel="GROUP"
               classificationAtBottom
-              classificationNotice="맵 페이지와 중복되는 설정은 맵 페이지 설정값과 동일하게 적용됩니다."
+              classificationNotice="MAP 설정과 중복되는 사항은 동일하게 적용됩니다."
               snapshotTime={data?.classificationUpdatedAt}
               plainContent={
                 <>

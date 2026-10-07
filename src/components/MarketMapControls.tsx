@@ -187,7 +187,7 @@ export function ChangeRateBasisToggle({ basis, visible, selectable, onChange }: 
         <>
           <b className="text-red-600">당일</b> 종가 대비
           <br />
-          15:40 부터 가능
+          15:40 부터
         </>
       ),
       locked: !selectable,

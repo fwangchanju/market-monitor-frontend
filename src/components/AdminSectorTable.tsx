@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useReportCountLabel } from '@/hooks/useReportCountLabel'
 import { createPortal } from 'react-dom'
 import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import type { SectorItem } from '@/types/api'
@@ -13,6 +14,8 @@ import { CheckIcon, CloseIcon, EditIcon, PlusIcon, TrashIcon } from '@/component
 interface Props {
   sectors: SectorItem[]
   settingsActionsTarget?: HTMLElement | null
+  // 검색창 옆에 두던 개수를 받아 갈 곳 — 페이지가 설정창 머리글에 그려 준다.
+  onCountLabelChange?: (label: string | undefined) => void
 }
 
 // 섹터 깊이 상한(최상위=0) — 4단계(0~3)까지만 허용하고 5단계 섹터는 만들지 못하게 한다. 나중에 한 단계 더
@@ -78,7 +81,7 @@ function DroppableSectorRow({
   )
 }
 
-export default function AdminSectorTable({ sectors, settingsActionsTarget }: Props) {
+export default function AdminSectorTable({ sectors, settingsActionsTarget, onCountLabelChange }: Props) {
   const [query, setQuery] = useState('')
   const [sectorOrder, setSectorOrder] = useState<SectorOrder>(() => {
     try { return JSON.parse(localStorage.getItem('marketry:custom-sector-order') ?? '{}') as SectorOrder } catch { return {} }
@@ -209,12 +212,16 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
     }
     return sectors.filter(c => keep.has(c.id))
   }, [sectors, trimmedQuery])
-  const sectorCounts = useMemo(() => ({
-    major: viewSectors.filter(sector => sector.depth === 0).length,
-    middle: viewSectors.filter(sector => sector.depth === 1).length,
+  // 대·중·소분류별 개수 — 각 열 머리글에 따로 적는다(검색 중에는 맞는 업종과 그 상위 업종만 센다).
+  const sectorCounts = [
+    viewSectors.filter(sector => sector.depth === 0).length,
+    viewSectors.filter(sector => sector.depth === 1).length,
     // 3단계 이하의 세부 업종도 소분류에 포함해 전체 개수가 항상 합산되게 한다.
-    small: viewSectors.filter(sector => sector.depth >= 2).length,
-  }), [viewSectors])
+    viewSectors.filter(sector => sector.depth >= 2).length,
+  ]
+  // 가장 깊이 선택된 열 — 이 열의 머리글만 강조색으로 칠하고 화살표를 붙인다.
+  const activeColumn = selectedMiddleId !== null ? 2 : selectedMajorId !== null ? 1 : 0
+  useReportCountLabel(`${toCount(viewSectors.length)}/${toCount(sectors.length)}업종`, onCountLabelChange)
   const rootSectors = orderSectors(viewSectors.filter(c => c.parentId === null), null, sectorOrder)
   const middleSectors = selectedMajorId === null ? [] : orderSectors(viewSectors.filter(c => c.parentId === selectedMajorId), selectedMajorId, sectorOrder)
   const smallSectors = selectedMiddleId === null ? [] : orderSectors(viewSectors.filter(c => c.parentId === selectedMiddleId), selectedMiddleId, sectorOrder)
@@ -280,13 +287,15 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
         ? `(${row.siblingIndex})`
         : `${row.siblingIndex})`
     const isRenaming = renamingId === sector.id
+    // 선택한 경로(대·중·소분류에서 고른 업종)의 줄은 종목 표의 선택된 줄과 같은 청록 배경으로 칠한다.
+    const isOnSelectedPath = selectedSectorId === sector.id || selectedMajorId === sector.id || selectedMiddleId === sector.id
     return (
       <DroppableSectorRow
         key={sector.id}
         sectorId={sector.id}
         className={`group ${highlightedId === sector.id ? 'animate-row-blink' : ''}`}
       >
-        <td className="relative py-0.5 text-left" style={{ paddingLeft: `${sector.depth * 20 + 8}px` }}>
+        <td className={`relative py-0.5 text-left ${isOnSelectedPath ? 'bg-[var(--brand)]/35' : ''}`} style={{ paddingLeft: `${sector.depth * 20 + 8}px` }}>
           {dropIndicator?.sectorId === sector.id && (
             <span
               aria-hidden="true"
@@ -311,7 +320,7 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
                 />
               ) : (
                 <>
-                  <span aria-hidden="true" className="mr-2 inline-flex h-5 w-7 shrink-0 items-center justify-center rounded-sm border border-gray-400 bg-white text-[16px] leading-none font-bold text-gray-500 tabular-nums">
+                  <span aria-hidden="true" className="mr-2 inline-flex h-5 w-7 shrink-0 items-center justify-center rounded-sm border border-gray-400 bg-white text-sm leading-none font-bold text-gray-500 tabular-nums">
                     {itemNumber}
                   </span>
                   <button
@@ -322,7 +331,7 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
                       if (sector.depth === 1) setSelectedMiddleId(current => current === sector.id ? null : sector.id)
                     }}
                     aria-expanded={expandable ? (sector.depth === 0 ? selectedMajorId === sector.id : selectedMiddleId === sector.id) : undefined}
-                    className={`truncate border-0 bg-transparent p-0 text-left text-[16px] hover:text-[var(--brand)] ${selectedSectorId === sector.id ? 'text-[var(--brand)]' : 'text-white'}`}
+                    className="truncate border-0 bg-transparent p-0 text-left text-sm text-white hover:text-[var(--brand)]"
                   >
                     {sector.name}
                   </button>
@@ -390,17 +399,16 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
           onChange={setQuery}
           placeholder="업종 검색"
           ariaLabel="업종 검색"
-          countLabel={`대분류 ${toCount(sectorCounts.major)} · 중분류 ${toCount(sectorCounts.middle)} · 소분류 ${toCount(sectorCounts.small)}`}
         />
-        <div className="grid min-h-0 flex-1 grid-cols-3 overflow-hidden border-t border-white/10">
+        <div className="grid min-h-0 flex-1 grid-cols-3 overflow-hidden">
           {(['대분류', '중분류', '소분류'] as const).map((label, index) => (
-            <div key={label} className={`flex min-h-0 min-w-0 flex-col ${index < 2 ? 'border-r border-white/15' : ''}`}>
-              <div className={`flex h-10 shrink-0 items-center justify-center gap-2 border-b border-white/10 bg-[#2b3a4f] text-sm font-bold ${index === (selectedMiddleId !== null ? 2 : selectedMajorId !== null ? 1 : 0) ? 'text-[var(--brand)]' : 'text-slate-100'}`}>
-                {label}
-                {index === (selectedMiddleId !== null ? 2 : selectedMajorId !== null ? 1 : 0) && <span aria-hidden="true" className="text-[var(--brand)]">⌃</span>}
+            <div key={label} className="flex min-h-0 min-w-0 flex-col">
+              <div className={`flex h-7 shrink-0 items-center justify-center gap-2 bg-[#2b3a4f] text-sm font-bold ${index < 2 ? 'border-r border-white/15' : ''} ${index === activeColumn ? 'text-[var(--brand)]' : 'text-slate-100'}`}>
+                {label} {toCount(sectorCounts[index])}
+                {index === activeColumn && <span aria-hidden="true" className="text-[var(--brand)]">⌃</span>}
               </div>
-              <div className="min-h-0 flex-1 overflow-auto scrollbar-hide">
-                <table className="nes-table is-dark custom-page-table custom-sector-table w-full text-sm [&_td]:border-white/10"><tbody>{columnRows[index].map(renderRow)}</tbody></table>
+              <div className={`min-h-0 flex-1 overflow-auto scrollbar-hide ${index < 2 ? 'border-r border-slate-700' : ''}`}>
+                <table className="nes-table is-dark custom-page-table custom-sector-table w-full text-sm [border-collapse:separate] [border-spacing:0] [&_td]:border-slate-700 [&_td]:border-r-0"><tbody>{columnRows[index].map(renderRow)}</tbody></table>
               </div>
             </div>
           ))}
@@ -409,7 +417,7 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget }: Pro
       {/* 커서를 따라다니는 드래그 미리보기 — 손잡이만 흐려지는 것만으론 뭔가 잡혔다는 느낌이 안 나서 추가. */}
       <DragOverlay>
         {draggedSector && (
-          <div className="w-max bg-transparent px-2 py-1.5 text-[16px] whitespace-nowrap text-white">
+          <div className="w-max rounded border border-[var(--brand)] bg-[#2b3a4f] px-3 py-1.5 text-sm whitespace-nowrap text-white shadow-lg">
             ⠿ {draggedSector.name}
           </div>
         )}

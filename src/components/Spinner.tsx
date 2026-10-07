@@ -64,7 +64,7 @@ export default function Spinner({ className, showElapsed = false, showLogo = fal
         <MarketryLogo className="h-auto w-[72%]" />
         <div className="flex flex-col items-center gap-1 pt-4">
           <span className="text-base text-gray-300">데이터를 불러오는 중입니다.</span>
-          <span className="h-7 text-xl tabular-nums text-gray-300">{elapsedSeconds >= 1 ? `${elapsedSeconds}초` : ''}</span>
+          <span className="h-7 text-base tabular-nums text-gray-300">{elapsedSeconds >= 1 ? `${elapsedSeconds}초` : ''}</span>
         </div>
       </div>
     </div>

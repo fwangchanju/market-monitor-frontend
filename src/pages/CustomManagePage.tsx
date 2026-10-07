@@ -71,6 +71,8 @@ export default function CustomManagePage() {
   // useState로 받아야 그 노드가 준비된 뒤 리렌더가 한 번 더 일어나 AdminStockTable에 null이 아닌
   // 실제 노드가 확실히 전달된다.
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
+  // 표 위 검색창 옆에 두던 "27/27업종" 개수 — 표가 올려 보내면 설정창 머리글 오른쪽에 보여준다.
+  const [countLabel, setCountLabel] = useState<string | undefined>()
 
   const { data: session, isLoading: isSessionLoading } = useSession()
   const isLoggedIn = useIsLoggedIn()
@@ -252,6 +254,7 @@ export default function CustomManagePage() {
                     nxtStockCodes={nxtStockCodes}
                     stockMarkets={stockMarkets}
                     isNxtLoading={isStockSectorsLoading}
+                    onCountLabelChange={setCountLabel}
                   />
                 ) : mode === 'stock' ? (
                   <AdminStockTable
@@ -259,11 +262,13 @@ export default function CustomManagePage() {
                     sectors={sectors ?? []}
                     snapshotTime={stockSectors?.snapshotTime ?? null}
                     toolbarContainer={toolbarContainer}
+                    onCountLabelChange={setCountLabel}
                   />
                 ) : (
                   <AdminSectorTable
                     sectors={sectors ?? []}
                     settingsActionsTarget={sectorSettingsActionsTarget}
+                    onCountLabelChange={setCountLabel}
                   />
                 )}
               </div>
@@ -272,6 +277,7 @@ export default function CustomManagePage() {
           <div className={`flex shrink-0 pt-[7px] ${isSettingsOnLeft ? 'order-first' : ''}`}>
             <SettingsSidebar
               pageLabel="CUSTOM"
+              stockCountLabel={countLabel}
               // 저장·초기화는 기능 검토 전 임시 숨김. 재요청 시 새 버튼을 만들지 말고 이 옵션을 true로 바꿔 기존 버튼을 복원한다.
               showPreferenceActions={false}
               isOpen={isSettingsOpen}

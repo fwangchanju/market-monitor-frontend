@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useReportCountLabel } from '@/hooks/useReportCountLabel'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import Spinner from '@/components/Spinner'
 import type { Market, MarketMapResponse } from '@/types/api'
@@ -47,7 +48,7 @@ function MarketValueCell({ won }: { won: number }) {
 const COLOR = {
   headerBg: 'bg-[#2b3a4f]',
   headerText: 'text-slate-100',
-  rowDivider: 'border-slate-800',
+  rowDivider: 'border-slate-700',
   sortActive: 'text-[var(--brand)]',
   sortInactive: 'text-slate-500',
   sortHover: 'hover:text-slate-300',
@@ -112,6 +113,8 @@ interface Props {
   stockMarkets: ReadonlyMap<string, Market>
   // nxtStockCodes를 아직 받아오는 중인지 — 받기 전에는 "종목이 없다"고 잘못 보이지 않게 스피너를 보여준다.
   isNxtLoading: boolean
+  // 검색창 옆에 두던 "27/27업종" 개수를 받아 갈 곳 — 페이지가 설정창 머리글에 그려 준다.
+  onCountLabelChange?: (label: string | undefined) => void
 }
 
 interface SectorRow {
@@ -121,7 +124,7 @@ interface SectorRow {
 
 // KRX/NXT 시트 — 업종 분류를 읽기만 하는 화면이다. 편집 기능(추가·이동·배정)은 없고, 지도의 KRX 히트맵이 보여주는
 // 분류(/map?isCustom=false)를 그대로 표로 보여준다. 시세가 있는 종목만 내려오므로 거래정지 종목 등은 빠질 수 있다.
-export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, nxtOnly, onNxtOnlyChange, nxtStockCodes, stockMarkets, isNxtLoading }: Props) {
+export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, nxtOnly, onNxtOnlyChange, nxtStockCodes, stockMarkets, isNxtLoading, onCountLabelChange }: Props) {
   const sectors = useMemo<SectorRow[]>(() => {
     if (!data) return []
     return data.items
@@ -154,9 +157,9 @@ export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, nxtOnly, o
     </label>
   )
   return mode === 'stock' ? (
-    <StockTable sectors={sectors} emptyMessage={emptyMessage} nxtStockCodes={nxtStockCodes} stockMarkets={stockMarkets} extra={nxtOnlyToggle} />
+    <StockTable sectors={sectors} emptyMessage={emptyMessage} nxtStockCodes={nxtStockCodes} stockMarkets={stockMarkets} extra={nxtOnlyToggle} onCountLabelChange={onCountLabelChange} />
   ) : (
-    <CategoryTable sectors={sectors} emptyMessage={emptyMessage} extra={nxtOnlyToggle} />
+    <CategoryTable sectors={sectors} emptyMessage={emptyMessage} extra={nxtOnlyToggle} onCountLabelChange={onCountLabelChange} />
   )
 }
 
@@ -166,7 +169,7 @@ export function SearchBar({ query, onChange, placeholder, ariaLabel, countLabel,
   onChange: (query: string) => void
   placeholder: string
   ariaLabel: string
-  countLabel: string
+  countLabel?: string
   settingsLayout?: boolean
   // 개수 오른쪽 끝에 붙는 추가 조작(예: "NXT만 보기" 체크박스).
   extra?: ReactNode
@@ -186,7 +189,7 @@ export function SearchBar({ query, onChange, placeholder, ariaLabel, countLabel,
       />
       {/* 개수는 위 헤더의 "읽기 전용"과 같은 위치에서 시작한다: 드롭박스 둘(15.5rem) + 간격(0.5rem) + "읽기 전용"의 왼쪽 여백(0.75rem)
           = 16.75rem이고, 검색창이 15.5rem이므로 사이에 1.25rem을 둔다. */}
-      <span className={settingsLayout ? 'text-xs text-gray-400' : 'ml-5 text-sm text-gray-400'}>{countLabel}</span>
+      {countLabel && <span className={settingsLayout ? 'text-xs text-gray-400' : 'ml-5 text-sm text-gray-400'}>{countLabel}</span>}
       {extra && <div className="ml-auto flex items-center">{extra}</div>}
     </div>
   )
@@ -204,7 +207,7 @@ function EmptyRow({ colSpan, message }: { colSpan: number; message: string }) {
 
 type CategorySortKey = 'name' | 'stockCount' | 'marketValue'
 
-function CategoryTable({ sectors, emptyMessage, extra }: { sectors: SectorRow[]; emptyMessage: string; extra: ReactNode }) {
+function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { sectors: SectorRow[]; emptyMessage: string; extra: ReactNode; onCountLabelChange?: (label: string | undefined) => void }) {
   const [query, setQuery] = useState('')
   const { sortKey, direction, toggle } = useSort<CategorySortKey>('name', 'asc')
   const rows = useMemo(() => {
@@ -225,6 +228,7 @@ function CategoryTable({ sectors, emptyMessage, extra }: { sectors: SectorRow[];
   )
   const trimmed = query.trim()
   const visibleRows = trimmed ? rows.filter(row => row.name.includes(trimmed)) : rows
+  useReportCountLabel(`${toCount(visibleRows.length)}/${toCount(rows.length)}업종`, onCountLabelChange)
   return (
     <div className="flex min-h-0 flex-1 flex-col text-white">
       <SearchBar
@@ -233,7 +237,6 @@ function CategoryTable({ sectors, emptyMessage, extra }: { sectors: SectorRow[];
         placeholder="업종 검색"
         ariaLabel="업종 검색"
         extra={extra}
-        countLabel={`${toCount(visibleRows.length)}/${toCount(rows.length)}업종`}
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <table className={TABLE_CLASS}>
@@ -268,7 +271,7 @@ function CategoryTable({ sectors, emptyMessage, extra }: { sectors: SectorRow[];
 
 type StockSortKey = 'stockCode' | 'stockName' | 'sectorName' | 'totalMarketValue' | 'market'
 
-function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra }: { sectors: SectorRow[]; emptyMessage: string; nxtStockCodes: ReadonlySet<string>; stockMarkets: ReadonlyMap<string, Market>; extra: ReactNode }) {
+function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra, onCountLabelChange }: { sectors: SectorRow[]; emptyMessage: string; nxtStockCodes: ReadonlySet<string>; stockMarkets: ReadonlyMap<string, Market>; extra: ReactNode; onCountLabelChange?: (label: string | undefined) => void }) {
   const [query, setQuery] = useState('')
   const { sortKey, direction, toggle } = useSort<StockSortKey>('totalMarketValue', 'desc')
   const rows = useMemo(() => {
@@ -292,6 +295,7 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra 
   const visibleRows = trimmed
     ? rows.filter(row => row.stockName.includes(trimmed) || row.stockCode.includes(trimmed) || row.sectorName.includes(trimmed))
     : rows
+  useReportCountLabel(`${toCount(visibleRows.length)}/${toCount(rows.length)}종목`, onCountLabelChange)
   // 종목이 수천 개라 전부 그려 두면 검색할 때마다 화면 갱신이 느리고, 공유 캡처도 안 보이는 행까지 전부 복제한다 —
   // 화면에 보이는 행(+위아래 여유)만 그리고, 나머지 높이는 앞뒤 스페이서 <tr>로 채운다(AdminStockTable과 같은 방식).
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -317,7 +321,6 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra 
         placeholder="종목명·코드·업종 검색"
         ariaLabel="종목 검색"
         extra={extra}
-        countLabel={`${toCount(visibleRows.length)}/${toCount(rows.length)}종목`}
       />
       <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto">
         <table className={TABLE_CLASS}>

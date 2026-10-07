@@ -1,3 +1,4 @@
+import { useReportCountLabel } from '@/hooks/useReportCountLabel'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useVirtualizer } from '@tanstack/react-virtual'
@@ -23,6 +24,8 @@ interface Props {
   // 안에 그려야 해서, 이 컴포넌트 안에서 직접 렌더링하지 않고 부모(MarketMapAdminPage)가 그 바 안에
   // 마련해준 DOM 노드로 옮겨 그린다. 상태/핸들러는 전부 이 컴포넌트에 그대로 남아있다.
   toolbarContainer: HTMLElement | null
+  // 검색창 옆에 두던 "N/N종목" 개수를 받아 갈 곳 — 페이지가 설정창 머리글에 그려 준다.
+  onCountLabelChange?: (label: string | undefined) => void
 }
 
 type SortKey =
@@ -51,7 +54,7 @@ const COLUMNS: { key: SortKey; header: string; width: string; align: 'center' | 
   { key: 'alias', header: '약칭', width: '13%', align: 'left' },
   { key: 'totalMarketValue', header: '시가총액', width: '10%', align: 'right' },
   { key: 'market', header: '마켓', width: '7%', align: 'center' },
-  { key: 'originCategoryName', header: '거래소 분류', width: '11%', align: 'left' },
+  { key: 'originCategoryName', header: '업종', width: '11%', align: 'left' },
   { key: 'parentSectorName', header: '대분류', width: '11%', align: 'right' },
   { key: 'midSectorName', header: '중분류', width: '11%', align: 'right' },
   { key: 'subSectorName', header: '소분류', width: '11%', align: 'right' },
@@ -1334,6 +1337,7 @@ export default function AdminStockTable({
   sectors,
   snapshotTime,
   toolbarContainer,
+  onCountLabelChange,
 }: Props) {
   const [sortKey, setSortKey] = usePersistedState<SortKey | null>('adminStockTable.sortKey', DEFAULT_SORT_KEY)
   const [sortDirection, setSortDirection] = usePersistedState<SortDirection>('adminStockTable.sortDirection', 'desc')
@@ -1962,7 +1966,7 @@ export default function AdminStockTable({
         '약칭': item.alias ?? '',
         시가총액: item.totalMarketValue ?? '',
         마켓: display.market,
-        '거래소 분류': display.originCategoryName,
+        '업종': display.originCategoryName,
         '대분류': display.parentSectorName,
         '중분류': display.midSectorName,
         '소분류': display.subSectorName,
@@ -1993,7 +1997,7 @@ export default function AdminStockTable({
   const rowVirtualizer = useVirtualizer({
     count: sorted.length,
     getScrollElement: () => scrollContainerRef.current,
-    estimateSize: () => 26,
+    estimateSize: () => 29,
     overscan: 15,
   })
   const virtualRows = rowVirtualizer.getVirtualItems()
@@ -2138,6 +2142,7 @@ export default function AdminStockTable({
     </div>
   )
 
+  useReportCountLabel(`${toCount(sorted.length)}/${toCount(items.length)}종목`, onCountLabelChange)
   return (
     <div className="flex h-full min-h-0 flex-col">
       {toolbarContainer && createPortal(toolbar, toolbarContainer)}
@@ -2146,7 +2151,6 @@ export default function AdminStockTable({
         onChange={setSearchQuery}
         placeholder="종목명·코드·업종 검색"
         ariaLabel="종목 검색"
-        countLabel={`${toCount(sorted.length)}/${toCount(items.length)}종목`}
       />
       {/* 바깥 테두리(외곽선)는 두지 않는다 — KRX·NXT 시트와 같은 모양이다. */}
       <div className="relative min-h-0 flex-1">
@@ -2170,7 +2174,7 @@ export default function AdminStockTable({
         )}
         <div ref={scrollContainerRef} className="h-full overflow-auto scrollbar-thin">
           {/* 표 글자는 드래그해도 파랗게 선택되지 않게 한다(줄 드래그 선택과 겹치기 때문). 입력창 안의 글자는 그대로 선택할 수 있다. */}
-          <table className="nes-table is-dark custom-page-table w-full select-none text-sm [&_input]:select-text [&_td]:border-white/10 [&_td]:py-0.5 [&_th]:border-white/10 [&_th]:py-1">
+          <table className="nes-table is-dark custom-page-table w-full select-none text-sm [&_input]:select-text [border-collapse:separate] [border-spacing:0] [&_td]:border-slate-700 [&_td]:py-1 [&_th]:border-white/15 [&_th]:border-b-0 [&_th]:py-1">
           <thead className="sticky top-0 z-10">
             <tr>
               <th
