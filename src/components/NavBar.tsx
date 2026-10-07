@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useSession, useLogout, useSessionKeepAlive, useLocalDevLogin } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
 import ProfileAvatar from '@/components/ProfileAvatar'
-import marketryLogo from '@/assets/marketry-logo.png'
+import MarketryLogo from '@/components/MarketryLogo'
 
 // 모든 페이지에서 항상 똑같이 고정되는 최상단 바 — 홈 이동과 로그인 상태/프로필 메뉴를 담당한다.
 // 로그인 버튼은 SubNavBar 우측 "일괄변경"류 accent 버튼(nes-btn + var(--accent))과 같은 톤을 쓰고,
@@ -53,7 +53,7 @@ export default function NavBar({ hideAccount = false }: { hideAccount?: boolean 
         aria-label="홈으로 이동: 지도 전체 종목"
         className="flex h-[60px] shrink-0 items-center"
       >
-        <img src={marketryLogo} alt="" className="h-[40.9px] w-auto max-w-[18rem] object-contain" />
+        <MarketryLogo className="h-[40.9px] w-auto max-w-[18rem]" />
       </Link>
       {hideAccount ? null : isLoggedOut ? (
         // 비로그인은 프로필 아이콘 대신 "로그인" 버튼을 바로 보여줘서 로그인/비로그인 상태가 한눈에 구분된다.
@@ -72,7 +72,7 @@ export default function NavBar({ hideAccount = false }: { hideAccount?: boolean 
           aria-label={isProfileMenuOpen ? '계정 메뉴 닫기' : '계정 메뉴 열기'}
           aria-expanded={isProfileMenuOpen}
           onClick={() => setIsProfileMenuOpen(open => !open)}
-          className="relative -top-[2.5px] mr-[9px] size-[38px] overflow-hidden rounded-[12%] ring-2 ring-transparent hover:ring-zinc-400 focus-visible:outline-none focus-visible:ring-[var(--accent)]"
+          className="relative -top-[2.5px] mr-0.5 size-[38px] overflow-hidden rounded-[12%] ring-2 ring-transparent hover:ring-zinc-400 focus-visible:outline-none focus-visible:ring-[var(--accent)]"
         >
           <ProfileAvatar className="size-full object-cover" />
         </button>

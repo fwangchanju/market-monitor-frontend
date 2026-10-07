@@ -66,6 +66,8 @@ function alignSideTab(outerElement: HTMLElement | null, tab: HTMLElement | null)
 // 도움말 말풍선이 설정창 가장자리에서 띄우는 최소 간격.
 const HELP_TOOLTIP_MARGIN = 6
 const SETTINGS_LOAD_WAIT_MS = 4000
+// 하단 업종 분류·좌우 이동 버튼·분류 선택 버튼 영역은 앞으로도 항상 같은 배경색을 사용한다.
+const CLASSIFICATION_BACKGROUND_COLOR = '#363639'
 
 // 말풍선 폭은 가장 긴 줄에 맞춘다(w-max whitespace-pre) — 줄바꿈은 문구마다 \n(문자열) 또는 <br />(JSX)로 직접 정한다. 줄 하나가 설정창(18rem)
 // 안에 들어와야 하니 한 줄을 23글자 안쪽으로 쓴다.
@@ -365,7 +367,7 @@ function CursorHintBubble({ hint, children }: { hint: CursorHint; children: Reac
     el.style.top = `${top}px`
   })
   // 설정창 안에 그리면 위치 지정(relative)된 아래 항목의 제목·버튼이 말풍선 위로 올라오므로, 화면 맨 바깥(body)에 고정 위치로 그린다.
-  // 줄바꿈은 문구마다 <br />로 직접 정하고(w-max whitespace-nowrap), 한글이 중간에서 끊기지 않게 "선택이 가능합니다." 같은 끝 문구는
+  // 줄바꿈은 문구마다 <br />로 직접 정하고(w-max whitespace-nowrap), 한글이 중간에서 끊기지 않게 "활성화됩니다." 같은 끝 문구는
   // 공백을 &nbsp;로 묶어 둔다.
   return createPortal(
     <div
@@ -443,9 +445,9 @@ function DepthTextSelect({
       {hint && !disabled && (
         <CursorHintBubble hint={hint}>
           {noDataLimited ? (
-            <>현재 {blockedLabel} 데이터가 없어<br />선택이&nbsp;불가합니다.</>
+            <>현재 {blockedLabel} 데이터가 없어<br />비활성화되어 있습니다.</>
           ) : (
-            <><span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 슬라이더를 더 깊게<br />설정해야 선택이&nbsp;가능합니다.</>
+            <><span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span>에서<br />더 깊은 업종 단계를 선택하면<br />활성화됩니다.</>
           )}
         </CursorHintBubble>
       )}
@@ -931,13 +933,13 @@ function SettingsClassificationSelector({
   const isSelected = (key: HeatmapKey | null) => key !== null && (key === 'krx' ? isExchange : heatmap === key)
 
   return (
-    <div data-map-select-top-line={atBottom || undefined} className={`${atBottom ? 'shrink-0 border-t border-gray-500 px-4 py-3' : 'mb-6 pt-5 pb-6'} text-white`}>
+    <div data-map-select-top-line={atBottom || undefined} style={atBottom ? { backgroundColor: CLASSIFICATION_BACKGROUND_COLOR } : undefined} className={`${atBottom ? 'shrink-0 border-t border-gray-500 px-4 py-3' : 'mb-6 pt-5 pb-6'} text-white`}>
       <p data-map-select-title className="flex items-center text-base">
         {/* 발표 자료의 제목 강조처럼 앞에 세로 막대를 하나 둔다. 색은 홈페이지 메인색(청록)이다. */}
         <span aria-hidden="true" className="mr-[6px] inline-block h-5 w-1 shrink-0 rounded-sm bg-[var(--brand)]" />
         업종 분류
       </p>
-      <div role="radiogroup" aria-label="업종 분류" className="mt-2 grid grid-cols-3 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
+      <div role="radiogroup" aria-label="업종 분류" style={{ backgroundColor: CLASSIFICATION_BACKGROUND_COLOR }} className="mt-2 grid grid-cols-3 rounded-md border border-gray-600 p-0.5">
         {options.map(option => (
           <button
             key={option.label}
@@ -966,8 +968,8 @@ function SettingsClassificationSelector({
       {atBottom && snapshotTime && (
         <p className={`${FONT_BAR_TIME} mt-2 flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400`}>
           <span className="flex items-center">
-            마지막 업데이트
-            <SettingHelpIcon label="마지막 업데이트" description="종목의 그룹을 마지막으로 변경한 시각입니다." />
+            업데이트
+            <SettingHelpIcon label="업데이트" description="커스텀 페이지를 업데이트한 시간입니다." />
           </span>
           <span>{toMarketMapSnapshotDateLabel(snapshotTime)}</span>
           <span>{toMarketMapSnapshotTimeOnlyLabel(snapshotTime)}</span>
@@ -1132,7 +1134,7 @@ export function SettingsSectorLevelSection({
   // 등락률(%) 표시 소수점 자릿수(0=정수, 1=소수 1자리, 2=소수 2자리).
   decimalPlacesIndex: number
   onChangeDecimalPlacesIndex: (index: number) => void
-  // 종목 정보 팝업을 우클릭(false)으로 띄울지, 커서를 박스 위로 옮길 때(true) 띄울지.
+  // 종목 정보 팝업을 우클릭(false)으로 띄울지, 마우스를 올릴 때(true) 띄울지. 업종 정보는 항상 우클릭.
   stockPopupOnHover: boolean
   onChangeStockPopupOnHover: (onHover: boolean) => void
   // true면 지도 페이지에만 선호 업종 설정을 추가한다.
@@ -1161,9 +1163,11 @@ export function SettingsSectorLevelSection({
   const depthMetricSliderMinIndex = Math.min(depthMetricMinIndex, depthMetricMaxSelectableIndex)
   const depthMetricSliderMaxIndex = Math.min(depthMetricMaxIndex, depthMetricMaxSelectableIndex)
   const isDepthMetricRangeDisabled = isDepthMetricDisabled || !depthMetricEnabled
+  const isDecimalPlacesDisabled = !stockLabelEnabled || stockLabelModeIndex === 1
   const [depthMetricSectionHint, setDepthMetricSectionHint] = useState<CursorHint | null>(null)
   const [topPickSectionHint, setTopPickSectionHint] = useState<CursorHint | null>(null)
   const [textThresholdHint, setTextThresholdHint] = useState<CursorHint | null>(null)
+  const [decimalPlacesHint, setDecimalPlacesHint] = useState<CursorHint | null>(null)
   const bookmark = useContext(SettingsBookmarkContext)
   const inBookmarkTab = bookmark.mode === 'bookmark'
   const hideItem = (id: SettingsBookmarkId) => inBookmarkTab && !bookmark.ids.includes(id)
@@ -1176,9 +1180,9 @@ export function SettingsSectorLevelSection({
   ]
   if (inBookmarkTab && bookmarkableIds.every(hideItem)) return null
   const depthMetricRangeDisabledReason = !sectorLevelEnabled
-    ? <><span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 토글을 켜야<br />선택이&nbsp;가능합니다.</>
+    ? <><span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 토글을 켜면<br />활성화됩니다.</>
     : !depthMetricEnabled
-      ? <><span className="inline-block whitespace-nowrap font-bold">2-2) 표시 지표</span> 토글을 켜야<br />선택이&nbsp;가능합니다.</>
+      ? <><span className="inline-block whitespace-nowrap font-bold">2-2) 표시 지표</span> 토글을 켜면<br />활성화됩니다.</>
       : null
 
   return (
@@ -1207,7 +1211,7 @@ export function SettingsSectorLevelSection({
                 onChange={index => onChangeMaxDepth(index + 1)}
                 disabled={!sectorLevelEnabled}
                 maxSelectableIndex={selectableDepth - 1}
-                blockedReason={label => <>현재 {label} 데이터가 없어<br />선택이&nbsp;불가합니다.</>}
+                blockedReason={label => <>현재 {label} 데이터가 없어<br />비활성화되어 있습니다.</>}
               />
             </div>
           </div>
@@ -1267,7 +1271,7 @@ export function SettingsSectorLevelSection({
             )}
             {isDepthMetricDisabled && depthMetricSectionHint && (
               <CursorHintBubble hint={depthMetricSectionHint}>
-                <span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 토글을 켜야<br />선택이&nbsp;가능합니다.
+                <span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 토글을 켜면<br />활성화됩니다.
               </CursorHintBubble>
             )}
           </div>
@@ -1290,7 +1294,7 @@ export function SettingsSectorLevelSection({
                 minAriaLabel="최소 표시 뎁스"
                 maxAriaLabel="최대 표시 뎁스"
                 maxSelectableIndex={depthMetricMaxSelectableIndex}
-                limitReason={<><span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 슬라이더를 더 깊게<br />설정해야 선택이&nbsp;가능합니다.</>}
+                limitReason={<><span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span>에서<br />더 깊은 업종 단계를 선택하면<br />활성화됩니다.</>}
                 disabledReason={depthMetricRangeDisabledReason}
                 onChange={onChangeDepthMetricRange}
                 disabled={isDepthMetricRangeDisabled}
@@ -1348,7 +1352,7 @@ export function SettingsSectorLevelSection({
               )}
               {isTopPickDisabled && topPickSectionHint && (
                 <CursorHintBubble hint={topPickSectionHint}>
-                  <span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 토글을 켜야<br />선택이&nbsp;가능합니다.
+                  <span className="inline-block whitespace-nowrap font-bold">2-1) 업종 표시 단계</span> 토글을 켜면<br />활성화됩니다.
                 </CursorHintBubble>
               )}
             </div>
@@ -1361,7 +1365,7 @@ export function SettingsSectorLevelSection({
         <div>
           <div className={`settings-second-stock-label text-sm ${inBookmarkTab ? '' : 'mt-2'} ${itemClass('boxLabel')}`}>
             <div className="flex max-w-[16rem] items-center justify-between">
-              <span className="flex items-center text-left text-white">
+              <span className={`flex items-center text-left text-white ${stockLabelEnabled ? '' : 'opacity-40'}`}>
                 <SettingTitle bookmarkId="boxLabel" className="text-[15px]">박스 내 표기</SettingTitle>
               </span>
               <ToggleSwitch
@@ -1372,7 +1376,9 @@ export function SettingsSectorLevelSection({
                 compact
               />
             </div>
-            <SettingDescription>박스 안에 표시할 내용</SettingDescription>
+            <div className={stockLabelEnabled ? '' : 'opacity-40'}>
+              <SettingDescription>박스 안에 표시할 내용</SettingDescription>
+            </div>
             <div
               role="radiogroup"
               aria-label="박스 내 표기"
@@ -1407,6 +1413,7 @@ export function SettingsSectorLevelSection({
             </div>
           </div>
           <div
+            aria-disabled={!stockLabelEnabled || undefined}
             className={`settings-third-text-threshold relative text-sm ${inBookmarkTab ? '' : 'mt-6'} ${itemClass('textThreshold')} ${stockLabelEnabled ? '' : 'cursor-not-allowed'}`}
             onPointerEnter={!stockLabelEnabled ? e => setTextThresholdHint(cursorHintFrom(e)) : undefined}
             onPointerMove={!stockLabelEnabled ? e => setTextThresholdHint(cursorHintFrom(e)) : undefined}
@@ -1416,6 +1423,7 @@ export function SettingsSectorLevelSection({
               setTextThresholdHint(cursorHintFrom(e))
             } : undefined}
           >
+            <div className={stockLabelEnabled ? '' : 'opacity-40'}>
             {/* 퍼센티지 값은 우측 끝에 옅은 회색으로 — 그 값이 없다고 치면 라벨만 가운데 정렬된 것처럼
                 보이도록, 라벨을 flex-1로 남는 공간에서 가운데 정렬한다("업종 단계" + N/M 배지와
                 동일한 패턴). 값 변경은 아래 슬라이더로만 한다. */}
@@ -1431,7 +1439,7 @@ export function SettingsSectorLevelSection({
               <span className="text-gray-400">{boxLabelMinAreaPercent.toFixed(2)}%</span>
             </div>
             <SettingDescription>작은 박스의 글자를 숨기는 기준</SettingDescription>
-            <div className={`mt-[18px] max-w-[16rem] settings-control-inset ${stockLabelEnabled ? '' : 'opacity-40'}`}>
+            <div className="mt-[18px] max-w-[16rem] settings-control-inset">
               <input
                 type="range"
                 min={0.01}
@@ -1443,14 +1451,26 @@ export function SettingsSectorLevelSection({
                 className="block w-full accent-[var(--accent)] disabled:cursor-not-allowed"
               />
             </div>
+            </div>
             {!stockLabelEnabled && textThresholdHint && (
               <CursorHintBubble hint={textThresholdHint}>
-                <span className="inline-block whitespace-nowrap font-bold">3-2) 박스 내 표기</span> 토글을 켜야<br />선택이&nbsp;가능합니다.
+                <span className="inline-block whitespace-nowrap font-bold">3-2) 박스 내 표기</span> 토글을 켜면<br />활성화됩니다.
               </CursorHintBubble>
             )}
           </div>
           {showDecimalPlaces && (
-            <div className={`settings-fourth-decimal-places text-sm ${inBookmarkTab ? '' : 'mt-6'} ${itemClass('decimalPlaces')}`}>
+            <div
+              aria-disabled={isDecimalPlacesDisabled || undefined}
+              className={`settings-fourth-decimal-places relative text-sm ${inBookmarkTab ? '' : 'mt-6'} ${itemClass('decimalPlaces')} ${isDecimalPlacesDisabled ? 'cursor-not-allowed' : ''}`}
+              onPointerEnter={isDecimalPlacesDisabled ? e => setDecimalPlacesHint(cursorHintFrom(e)) : undefined}
+              onPointerMove={isDecimalPlacesDisabled ? e => setDecimalPlacesHint(cursorHintFrom(e)) : undefined}
+              onPointerLeave={() => setDecimalPlacesHint(null)}
+              onPointerDown={isDecimalPlacesDisabled ? e => {
+                e.preventDefault()
+                setDecimalPlacesHint(cursorHintFrom(e))
+              } : undefined}
+            >
+              <div className={isDecimalPlacesDisabled ? 'opacity-40' : ''}>
               <span className="flex max-w-[16rem] items-center text-left text-[15px] text-white">
                 <SettingTitle bookmarkId="decimalPlaces">등락률 소수점</SettingTitle>
               </span>
@@ -1461,14 +1481,26 @@ export function SettingsSectorLevelSection({
                   labels={DECIMAL_PLACES_LABELS}
                   ariaLabel="등락률 소수점 자릿수"
                   onChange={onChangeDecimalPlacesIndex}
+                  disabled={isDecimalPlacesDisabled}
                 />
               </div>
+              </div>
+              {isDecimalPlacesDisabled && decimalPlacesHint && (
+                <CursorHintBubble hint={decimalPlacesHint}>
+                  {!stockLabelEnabled ? (
+                    <><span className="inline-block whitespace-nowrap font-bold">3-2) 박스 내 표기</span> 토글을 켜면<br />활성화됩니다.</>
+                  ) : (
+                    <><span className="inline-block whitespace-nowrap font-bold">3-2) 박스 내 표기</span>에서<br />등락률 또는 종목명+등락률을 선택하면<br />활성화됩니다.</>
+                  )}
+                </CursorHintBubble>
+              )}
             </div>
           )}
           {showDecimalPlaces && !inBookmarkTab && (
             <div className="settings-fifth-stock-popup mt-6 text-sm">
               <span className="flex max-w-[16rem] items-center text-left text-[15px] text-white">
                 <span className="settings-section-num">종목 정보</span>
+                <SettingHelpIcon label="종목 정보" description={"업종 정보는 우클릭으로만\n열 수 있습니다."} />
               </span>
               <SettingDescription>종목 정보를 여는 방식</SettingDescription>
               <div
@@ -1478,7 +1510,7 @@ export function SettingsSectorLevelSection({
               >
                 {[
                   { label: '우클릭', onHover: false },
-                  { label: '커서 이동', onHover: true },
+                  { label: '마우스 올리기', onHover: true },
                 ].map(option => {
                   const selected = stockPopupOnHover === option.onHover
                   return (
@@ -2048,7 +2080,7 @@ export default function SettingsSidebar({
 
   return (
     // 바깥 감싸개: 지도 쪽 가장자리 가운데에 튀어나오는 좌우 이동 탭을 패널(overflow-hidden) 밖에 그리려고 둔다. 슬라이드 애니메이션도 여기에 붙는다.
-    <div ref={outerRef} className={`relative z-20 flex shrink-0 ${animationClass}`}>
+    <div ref={outerRef} data-settings-sidebar-shell className={`relative z-20 flex shrink-0 ${animationClass}`}>
     {onToggleSide && (
       <button
         type="button"
@@ -2056,7 +2088,8 @@ export default function SettingsSidebar({
         aria-label={isOnLeft ? '설정창을 오른쪽으로 이동' : '설정창을 왼쪽으로 이동'}
         title={isOnLeft ? '설정창을 오른쪽으로 이동' : '설정창을 왼쪽으로 이동'}
         ref={sideTabRef}
-        className={`absolute top-1/2 z-10 flex h-8 w-[17px] -translate-y-1/2 items-center justify-center border border-gray-500 bg-[#363639] p-0 text-gray-400 hover:text-white ${
+        style={{ backgroundColor: CLASSIFICATION_BACKGROUND_COLOR }}
+        className={`absolute top-1/2 z-10 flex h-8 w-[17px] -translate-y-1/2 items-center justify-center border border-gray-500 p-0 text-gray-400 hover:text-white ${
           isOnLeft ? '-right-4 rounded-r-lg border-l-0' : '-left-4 rounded-l-lg border-r-0'
         }`}
       >

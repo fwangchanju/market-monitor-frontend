@@ -143,27 +143,17 @@ export function ChevronDownIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
-export function CalendarIcon(props: SVGProps<SVGSVGElement>) {
+// 화면 캡처 — 카메라 모양.
+export function CaptureIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-      <line x1="16" y1="2" x2="16" y2="6" />
-      <line x1="8" y1="2" x2="8" y2="6" />
-      <line x1="3" y1="10" x2="21" y2="10" />
+      <path d="M14.5 4h-5L7.5 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.5z" />
+      <circle cx="12" cy="13" r="4" />
     </svg>
   )
 }
 
-export function ClockIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <circle cx="12" cy="12" r="9" />
-      <polyline points="12 7 12 12 16 14" />
-    </svg>
-  )
-}
-
-// 공유 — 상자에서 위로 나오는 화살표. (겹친 사각형은 "복사"라서 CopyIcon으로 따로 둔다.)
+// 공유 — 세 점을 연결한 모양. (겹친 사각형은 "복사"라서 CopyIcon으로 따로 둔다.)
 export function ShareIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>

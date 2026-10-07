@@ -354,26 +354,23 @@ export default function SectorChangeRatePage() {
             onToggleSettings={() => settingsModalProps.onOpenChange(!settingsModalProps.isOpen)}
             isSettingsOpen={settingsModalProps.isOpen}
             onOpenShare={() => setIsShareOpen(true)}
+            isCaptureOpen={isShareOpen}
             isNativeFullscreen={isNativeFullscreen}
             onToggleFullscreen={handleToggleNativeFullscreen}
-            showSnapshotControls={Boolean(displayNow?.snapshotTime)}
             showRefresh={false}
           />
         }
       />
       <div className="flex min-h-0 flex-1">
-        {/* 공유 캡처(captureRef)는 [세 번째 바+본문] 열만 찍는다 — 설정 사이드바는 캡처에 넣지 않는다.
-            data-captureid는 백엔드 렌더러가 잡는 셀렉터라 바깥 wrapper에 그대로 둔다. */}
+        {/* 공유·텔레그램 모두 [세 번째 바+본문] 열만 캡처해 설정창을 제외한다. */}
         <div
-          data-captureid={CAPTURE_ID.SECTOR}
-          data-capture-ready={isDataCaptureReady}
           className="relative z-10 -mt-[10.5px] flex min-h-0 flex-1 overflow-hidden bg-black text-white"
         >
           {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서(overflow: visible이면 내부 콘텐츠의
               min-content 폭을 그대로 강제해서 사이드바 쪽을 밀어냄) 창을 좁혀도 사이드바(w-80)가
               항상 같은 폭을 유지하게 한다(지도 페이지와 동일) — 내부 그래프가 넘치면 이 컬럼
               안에서만 처리된다. */}
-          <div ref={captureRef} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black text-white">
+          <div ref={captureRef} data-captureid={CAPTURE_ID.SECTOR} data-capture-ready={isDataCaptureReady} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black text-white">
             <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-3 text-sm font-bold text-white">
               <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
                 <MarketMapMarketCombobox
