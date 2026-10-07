@@ -345,7 +345,7 @@ export default function SectorChangeRatePage() {
   }, [displayNow, displayBefore, excludedSectorIds, excludedMarketValueTiers, avgChangeRateUseSimple, changeRateBasis])
 
   // 본문에 로딩 원이 보이는 상태 — 아래 본문 분기(isLoading, 쌍 데이터를 기다리는 중)와 같은 조건이다.
-  const isSpinnerShown = isLoading || (!isError && data?.snapshotTime != null && !displayNow)
+  const isSpinnerShown = isLoading || isError || (!isError && data?.snapshotTime != null && !displayNow)
 
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden bg-black">
@@ -384,6 +384,9 @@ export default function SectorChangeRatePage() {
                   }}
                 />
                 <MarketMapPeriodCombobox />
+                {/* 로딩 원이나 오류 문구가 보이는 동안은 마켓·기간 드롭박스만 남기고 시계·시간대·누적/따로·분류명은 숨긴다. */}
+                {!isSpinnerShown && (
+                  <>
                 <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
                   {displayNow?.snapshotTime && <span>{toMarketMapSnapshotDateLabel(displayNow.snapshotTime)}</span>}
                   <PageRefreshButton
@@ -399,9 +402,11 @@ export default function SectorChangeRatePage() {
                 <span className="ml-2 flex shrink-0">
                   <ChangeRateBasisToggle basis={changeRateBasis} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateBasis} />
                 </span>
+                  </>
+                )}
               </div>
               {/* 지도 페이지와 동일하게 맨 오른쪽 끝에 프로필(사진이 끝, 글자는 그 왼쪽)을 둔다. */}
-              <div className={`${FONT_BAR_MODE_STATUS} flex min-w-0 items-center justify-end text-gray-400`}>{modeStatusText}</div>
+              {!isSpinnerShown && <div className={`${FONT_BAR_MODE_STATUS} flex min-w-0 items-center justify-end text-gray-400`}>{modeStatusText}</div>}
             </div>
             {/* 지도/어드민 페이지와 동일하게 본문이 화면을 꽉 채우는 형태 — 가운데 정렬/폭 제한을 없애서
                 설정 사이드바가 열려도 본문이 밀리는 게 자연스럽게 느껴지도록 한다(밀림 자체는 다른
@@ -413,7 +418,9 @@ export default function SectorChangeRatePage() {
                   <Spinner showElapsed />
                 </div>
               ) : isError ? (
-                <div className="p-8 text-center text-xs text-gray-500">데이터를 불러오지 못했습니다</div>
+                <div className="flex flex-1 items-center justify-center">
+                  <Spinner errorMessage="데이터를 불러오지 못했습니다." />
+                </div>
               ) : data?.snapshotTime == null ? (
                 // now가 성공했지만 그 시각 데이터 자체가 없다 — 쌍 쿼리가 비활성이라(결정 4)
                 // displayNow도 계속 undefined이므로, 아래 !displayNow 분기보다 먼저 걸러야
@@ -504,7 +511,7 @@ export default function SectorChangeRatePage() {
               onToggleSide={toggleSettingsSide}
               pageLabel="GROUP"
               classificationAtBottom
-              classificationNotice="맵 페이지와 중복되는 설정은 맵 페이지 설정값과 동일하게 적용됩니다."
+              classificationNotice="MAP 설정과 중복되는 사항은 동일하게 적용됩니다."
               snapshotTime={data?.classificationUpdatedAt}
               plainContent={
                 <>

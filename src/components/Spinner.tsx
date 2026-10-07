@@ -8,9 +8,11 @@ interface Props {
   showElapsed?: boolean
   // 설정창처럼 좁은 영역에서는 문구 없이 원과 로고만 표시한다.
   showLogo?: boolean
+  // 데이터를 불러오지 못했을 때 — 로딩 화면과 같은 자리·크기로 로고 아래에 이 문구를 보여준다(원은 돌지 않고 시간도 없다).
+  errorMessage?: string
 }
 
-export default function Spinner({ className, showElapsed = false, showLogo = false }: Props) {
+export default function Spinner({ className, showElapsed = false, showLogo = false, errorMessage }: Props) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
 
   useEffect(() => {
@@ -19,6 +21,21 @@ export default function Spinner({ className, showElapsed = false, showLogo = fal
     const timer = window.setInterval(() => setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000)), 1000)
     return () => window.clearInterval(timer)
   }, [showElapsed])
+
+  if (errorMessage) {
+    return (
+      <div role="alert" className={`relative ${className ?? 'h-[min(20rem,60vmin)] w-[min(20rem,60vmin)]'}`}>
+        <div className="absolute inset-0 rounded-full border-[6px] border-gray-600" />
+        <div className="absolute inset-0 grid grid-rows-[1fr_auto_1fr] justify-items-center">
+          <div />
+          <MarketryLogo className="h-auto w-[72%]" />
+          <div className="flex flex-col items-center gap-1 pt-4">
+            <span className="text-base text-gray-300">{errorMessage}</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (!showElapsed && !showLogo) {
     return <div className={`animate-spin rounded-full border-2 border-gray-600 border-t-[var(--accent)] ${className ?? 'h-8 w-8'}`} />
@@ -47,7 +64,7 @@ export default function Spinner({ className, showElapsed = false, showLogo = fal
         <MarketryLogo className="h-auto w-[72%]" />
         <div className="flex flex-col items-center gap-1 pt-4">
           <span className="text-base text-gray-300">데이터를 불러오는 중입니다.</span>
-          <span className="h-7 text-xl tabular-nums text-gray-300">{elapsedSeconds >= 1 ? `${elapsedSeconds}초` : ''}</span>
+          <span className="h-7 text-base tabular-nums text-gray-300">{elapsedSeconds >= 1 ? `${elapsedSeconds}초` : ''}</span>
         </div>
       </div>
     </div>
