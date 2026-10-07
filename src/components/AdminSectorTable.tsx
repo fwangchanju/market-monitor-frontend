@@ -198,7 +198,7 @@ export default function AdminSectorTable({ sectors }: Props) {
   const toggleAddChild = (id: number) => {
     const parent = sectors.find(c => c.id === id)
     if (parent && parent.depth >= MAX_SECTOR_DEPTH) {
-      window.alert(`섹터는 ${MAX_SECTOR_LEVELS}단계까지만 만들 수 있습니다.`)
+      window.alert(`업종은 ${MAX_SECTOR_LEVELS}단계까지만 만들 수 있습니다.`)
       return
     }
     setAddingChildFor(prev => (prev === id ? null : id))
@@ -290,9 +290,9 @@ export default function AdminSectorTable({ sectors }: Props) {
                   if (e.key === 'Escape') setAddingChildFor(null)
                 }}
                 placeholder="추가"
-                title={`${quotedChain} 섹터 내 세부항목 추가`}
-                aria-label={`${quotedChain} 섹터 내 세부항목 이름`}
-                className="h-7 w-40 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-medium text-white outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-[var(--brand)]"
+                title={`${quotedChain} 업종 내 세부항목 추가`}
+                aria-label={`${quotedChain} 업종 내 세부항목 이름`}
+                className="h-7 w-40 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-medium text-white outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-[var(--brand)]"
               />
               <button
                 type="button"
@@ -377,7 +377,7 @@ export default function AdminSectorTable({ sectors }: Props) {
               ) : (
                 <>
                   {sector.depth < MAX_SECTOR_DEPTH ? (
-                    <button type="button" aria-label="세부 섹터 추가" title="추가" onClick={() => toggleAddChild(sector.id)} className={ICON_BUTTON_CLASS}>
+                    <button type="button" aria-label="세부 업종 추가" title="추가" onClick={() => toggleAddChild(sector.id)} className={ICON_BUTTON_CLASS}>
                       <PlusIcon className="h-4 w-4" />
                     </button>
                   ) : (
@@ -417,7 +417,7 @@ export default function AdminSectorTable({ sectors }: Props) {
         setIsDraggingSector(false)
         setDraggedSector(null)
         if (exceedsMaxDepth(event)) {
-          window.alert(`섹터는 ${MAX_SECTOR_LEVELS}단계까지만 만들 수 있습니다.`)
+          window.alert(`업종은 ${MAX_SECTOR_LEVELS}단계까지만 만들 수 있습니다.`)
           return
         }
         handleSectorDragEnd(event)
@@ -431,9 +431,9 @@ export default function AdminSectorTable({ sectors }: Props) {
         <SearchBar
           query={query}
           onChange={setQuery}
-          placeholder="섹터 검색"
-          ariaLabel="섹터 검색"
-          countLabel={`${toCount(viewSectors.length)}/${toCount(sectors.length)}섹터`}
+          placeholder="업종 검색"
+          ariaLabel="업종 검색"
+          countLabel={`${toCount(viewSectors.length)}/${toCount(sectors.length)}업종`}
           extra={
             <div className="flex items-center gap-2">
               <button type="button" aria-label="전체 펼치기" title="전체 펼치기" onClick={handleExpandAll} className={ICON_BUTTON_CLASS}>
@@ -449,18 +449,18 @@ export default function AdminSectorTable({ sectors }: Props) {
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleCreate()}
-                placeholder="섹터 추가"
-                aria-label="최상위 섹터 이름"
-                className="ml-2 h-7 w-40 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-medium text-white outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-[var(--brand)]"
+                placeholder="업종 추가"
+                aria-label="최상위 업종 이름"
+                className="ml-2 h-7 w-40 rounded-md border-0 bg-[#3b3b3b] px-2 text-sm font-medium text-white outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-[var(--brand)]"
               />
-              <button type="button" aria-label="섹터 추가" title="추가" onClick={handleCreate} className={ICON_BUTTON_CLASS}>
+              <button type="button" aria-label="업종 추가" title="추가" onClick={handleCreate} className={ICON_BUTTON_CLASS}>
                 <PlusIcon className="h-4 w-4" />
               </button>
             </div>
           }
         />
         {isDraggingSector && (
-          <p className="px-2 py-2 text-sm text-[var(--brand)]">다른 섹터 위에 놓으면 그 밑으로, 빈 곳에 놓으면 최상위로 이동합니다</p>
+          <p className="px-2 py-2 text-sm text-[var(--brand)]">다른 업종 위에 놓으면 그 밑으로, 빈 곳에 놓으면 최상위로 이동합니다</p>
         )}
         <div className="grid min-h-0 flex-1 grid-cols-1">
           {columnRows.map((rows, columnIndex) => (

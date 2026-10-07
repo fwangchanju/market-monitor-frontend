@@ -1,0 +1,57 @@
+import { useSyncExternalStore } from 'react'
+
+export type HeatmapSelection = 'marketry' | 'krx'
+
+const STORAGE_KEY = 'marketMap.heatmapSelection'
+const CHANGE_EVENT = 'marketry:heatmap-selection'
+let memorySelection: HeatmapSelection | null = null
+let useMemoryStorage = false
+
+function getSelection(): HeatmapSelection | null {
+  if (useMemoryStorage) return memorySelection
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    if (raw === null) return null
+    let value: unknown
+    try {
+      value = JSON.parse(raw)
+    } catch {
+      return null
+    }
+    return value === 'marketry' || value === 'krx' ? value : null
+  } catch {
+    useMemoryStorage = true
+    return memorySelection
+  }
+}
+
+function subscribe(onChange: () => void) {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === STORAGE_KEY || event.key === null) onChange()
+  }
+  window.addEventListener(CHANGE_EVENT, onChange)
+  window.addEventListener('storage', onStorage)
+  return () => {
+    window.removeEventListener(CHANGE_EVENT, onChange)
+    window.removeEventListener('storage', onStorage)
+  }
+}
+
+function setSelection(next: HeatmapSelection) {
+  memorySelection = next
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    useMemoryStorage = false
+  } catch {
+    useMemoryStorage = true
+  }
+  window.dispatchEvent(new Event(CHANGE_EVENT))
+}
+
+const getServerSelection = () => null
+
+// 지도·그룹·커스텀이 공유하며, 탭을 닫은 뒤에도 이 브라우저에 선택을 저장한다.
+export function useHeatmapSelection(defaultSelection: HeatmapSelection = 'marketry'): [HeatmapSelection, (next: HeatmapSelection) => void] {
+  const selection = useSyncExternalStore(subscribe, getSelection, getServerSelection)
+  return [selection ?? defaultSelection, setSelection]
+}

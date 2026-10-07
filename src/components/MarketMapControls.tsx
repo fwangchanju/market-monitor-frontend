@@ -145,13 +145,28 @@ export function MarketMapPeriodCombobox() {
   )
 }
 
-// 시간대 말머리 앞 점의 색 — 모두 설정창 색상 탭 4-1(강조 색상)의 색이다. 프리 마켓은 노랑, 애프터 마켓은 보라, 정규 시장은 청록(홈페이지 메인색과
-// 같은 색), 시장 마감은 연회색이다.
+// 시간대 말머리 앞 점의 색 — 설정창 4-1) 강조 색상 기준으로 프리 마켓은 연노랑,
+// 정규 시장은 형광, 애프터 마켓은 주황, 시장 마감은 연회색이다.
 const PHASE_DOT_COLOR: Record<MarketPhase, string> = {
   '프리 마켓': accentColor('연노랑'),
-  '정규 시장': accentColor('청록'),
-  '애프터 마켓': accentColor('보라'),
+  '정규 시장': accentColor('형광'),
+  '애프터 마켓': accentColor('주황'),
   '시장 마감': accentColor('연회색'),
+}
+
+// 지도·그룹 페이지가 같은 시간대 문구와 강조 색상을 사용한다.
+export function MarketPhaseIndicator() {
+  const phase = useMarketPhase()
+  return (
+    <span className={`${FONT_BAR_TIME} flex items-center text-gray-400`}>
+      <span aria-hidden="true" className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: PHASE_DOT_COLOR[phase] }} />
+      {/* 가장 긴 이름으로 너비를 유지해 시간대가 바뀌어도 옆 항목이 움직이지 않게 한다. */}
+      <span className="grid">
+        <span aria-hidden="true" className="invisible col-start-1 row-start-1">{LONGEST_MARKET_PHASE}</span>
+        <span className="col-start-1 row-start-1">{phase}</span>
+      </span>
+    </span>
+  )
 }
 
 // 등락률 기준 토글 — 누적(전일 종가 대비) / 따로(당일 종가 대비). 항상 보이지만 따로 등락률은 15:40 이후 오늘 스냅샷에서만 있어서
@@ -178,8 +193,6 @@ export function ChangeRateBasisToggle({ basis, selectable, onChange }: {
       locked: !selectable,
     },
   ]
-  // 말머리는 지금 시간대 이름이다 — 08:00~09:00 프리 마켓, 09:00~15:30 정규 시장, 15:40~20:00 애프터 마켓(그 밖에는 시장 마감).
-  const phase = useMarketPhase()
   const [popup, setPopup] = useState<{ text: ReactNode; anchor: DOMRect } | null>(null)
   const popupRef = useRef<HTMLSpanElement>(null)
   // 버튼 아래(4px)에 붙이고, 화면 밖으로 나가면 안쪽으로 밀거나 위로 뒤집는다 — 새로고침 버튼의 설명창과 같은 배치.
@@ -223,16 +236,7 @@ export function ChangeRateBasisToggle({ basis, selectable, onChange }: {
 
   return (
     <div className="-mr-[5px] flex shrink-0 items-center gap-2 whitespace-nowrap" data-basis-toggle>
-      {/* 지금 시장 시간대를 알려주는 말머리 — 시계와 같은 글자 크기·색이다. */}
-      <span className={`${FONT_BAR_TIME} flex items-center text-gray-400`}>
-        {/* 상단바의 "● KRX·NXT"와 같은 점 모양이고, 색은 시간대마다 설정창 4-1(강조 색상)의 색이다. */}
-        <span aria-hidden="true" className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: PHASE_DOT_COLOR[phase] }} />
-        {/* 가장 긴 이름(애프터 마켓)을 보이지 않게 같은 자리에 겹쳐서 너비를 잡는다 — 시간대가 바뀌어도 점과 글자의 시작 위치가 같고, 짧은 이름은 왼쪽부터 쓴다. */}
-        <span className="grid">
-          <span aria-hidden="true" className="invisible col-start-1 row-start-1">{LONGEST_MARKET_PHASE}</span>
-          <span className="col-start-1 row-start-1">{phase}</span>
-        </span>
-      </span>
+      <MarketPhaseIndicator />
       <div role="radiogroup" aria-label="등락률 기준" className="inline-flex h-6 shrink-0 items-center rounded-md bg-[#3b3b3b] p-0.5">
         {options.map(option => (
           // disabled를 쓰지 않는다 — 비활성 버튼은 클릭 이벤트가 없어서 잠긴 따로의 설명을 볼 수 없다. 잠긴 동안은 값만 안 바꾼다.

@@ -16,6 +16,8 @@ import { useIsLoggedIn } from '@/hooks/useSession'
 import { useCustomPreferences } from '@/hooks/useCustomPreferences'
 import { commitDrafts, discardDrafts, useHasDrafts } from '@/utils/settingsDraft'
 import { BOOKMARK_ORDER, type SettingsBookmarkId } from '@/utils/settingsBookmarks'
+import Spinner from '@/components/Spinner'
+import { REFRESH_FEEDBACK_MIN_DURATION_MS } from '@/utils/uiFeedback'
 
 export type { SettingsBookmarkId }
 export type SettingsSidebarSectionId = 'favorites' | 'composition' | 'industry' | 'stockDisplay' | 'colors'
@@ -921,9 +923,9 @@ function SettingsClassificationSelector({
 }) {
   // key가 null인 항목(내 히트맵)은 아직 고를 수 없다. KRX와 NXT는 "거래소" 한 칸으로 합쳤고, 지금 어느 쪽 종목을 보여줄지는 시간대가 정한다.
   const options: { key: HeatmapKey | null; label: string }[] = [
-    { key: null, label: HEATMAP_NAMES.mine.tab },
-    { key: 'krx', label: '한국거래소' },
     { key: 'marketry', label: HEATMAP_NAMES.marketry.tab },
+    { key: 'krx', label: '한국거래소' },
+    { key: null, label: HEATMAP_NAMES.mine.tab },
   ]
   const isExchange = heatmap === 'krx' || heatmap === 'nxt'
   const isSelected = (key: HeatmapKey | null) => key !== null && (key === 'krx' ? isExchange : heatmap === key)
@@ -932,10 +934,10 @@ function SettingsClassificationSelector({
     <div data-map-select-top-line={atBottom || undefined} className={`${atBottom ? 'shrink-0 border-t border-gray-500 px-4 py-3' : 'mb-6 pt-5 pb-6'} text-white`}>
       <p data-map-select-title className="flex items-center text-base">
         {/* 발표 자료의 제목 강조처럼 앞에 세로 막대를 하나 둔다. 색은 홈페이지 메인색(청록)이다. */}
-        <span aria-hidden="true" className="mr-2 inline-block h-5 w-1 shrink-0 rounded-sm bg-[var(--brand)]" />
-        MAP 선택
+        <span aria-hidden="true" className="mr-[6px] inline-block h-5 w-1 shrink-0 rounded-sm bg-[var(--brand)]" />
+        업종 분류
       </p>
-      <div role="radiogroup" aria-label="MAP 선택" className="mt-2 grid grid-cols-3 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
+      <div role="radiogroup" aria-label="업종 분류" className="mt-2 grid grid-cols-3 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
         {options.map(option => (
           <button
             key={option.label}
@@ -1842,6 +1844,8 @@ interface Props {
   // 헤더에 그대로 표시 — SubNavBar 탭 이름과 동일한 문구(MAP, GROUP 등)를 각 페이지가 그대로 넘겨준다. 안 넘기면 "설정".
   // 생략하면 페이지 이름 없이 "설정"만 표시한다(페이지 이름을 반복하는 동어 반복을 피하고 싶은 페이지용).
   pageLabel?: string
+  // 설정 저장·초기화 기능을 제공하는 페이지에서만 헤더 버튼을 표시한다.
+  showPreferenceActions?: boolean
   // 탭 없이 패널 본문에 바로 그리는 내용 — 설정 항목이 한두 개뿐인 페이지(그룹)용. 탭 분류(children의
   // SettingsSidebarGroup)와 같이 쓰지 않는다.
   plainContent?: ReactNode
@@ -1890,6 +1894,7 @@ function isSettingsSidebarGroup(node: ReactNode): node is ReactElement<SettingsS
 
 export default function SettingsSidebar({
   pageLabel,
+  showPreferenceActions = true,
   sectionOrder,
   classificationAtBottom = false,
   snapshotTime,
@@ -1917,6 +1922,21 @@ export default function SettingsSidebar({
   const isLoggedIn = useIsLoggedIn()
   const { setPreference, isLoaded: preferencesLoaded } = useCustomPreferences()
   const hasDrafts = useHasDrafts()
+  const [isPreferenceFeedbackActive, setIsPreferenceFeedbackActive] = useState(false)
+  const preferenceFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (preferenceFeedbackTimerRef.current !== null) clearTimeout(preferenceFeedbackTimerRef.current)
+  }, [])
+  const runPreferenceAction = (action: () => void) => {
+    if (preferenceFeedbackTimerRef.current !== null) return
+    // 설정 반영은 즉시 실행하고, 로딩 화면만 공통 시간 동안 유지한다.
+    setIsPreferenceFeedbackActive(true)
+    preferenceFeedbackTimerRef.current = setTimeout(() => {
+      preferenceFeedbackTimerRef.current = null
+      setIsPreferenceFeedbackActive(false)
+    }, REFRESH_FEEDBACK_MIN_DURATION_MS)
+    action()
+  }
   // 로그인 사용자는 서버 저장값이 오기 전까지 설정창 값을 흐리게 두고 조작을 막는다(기본값이 저장값처럼 보이는 것을 막기 위해).
   // 서버가 끝내 응답하지 않으면 SETTINGS_LOAD_WAIT_MS 뒤에는 풀어 준다.
   const [loadWaitExpired, setLoadWaitExpired] = useState(false)
@@ -1983,7 +2003,7 @@ export default function SettingsSidebar({
     addSectionContent('favorites', <SettingsFavoritesPlaceholder />)
   }
 
-  const hasClassificationSelector = typeof isCustom === 'boolean' && Boolean(onToggleCustom)
+  const hasClassificationSelector = Boolean(heatmap && onSelectHeatmap) || (typeof isCustom === 'boolean' && Boolean(onToggleCustom))
   const selectedHeatmap: HeatmapKey = heatmap ?? (isCustom ? 'marketry' : 'krx')
   const handleSelectHeatmap = onSelectHeatmap ?? (() => onToggleCustom?.())
   const hasStockSizeSelector = typeof avgChangeRateUseSimple === 'boolean' && Boolean(onToggleAvgChangeRateUseSimple)
@@ -2054,7 +2074,7 @@ export default function SettingsSidebar({
     )}
     <div
       data-settings-sidebar
-      className="tabular-nums flex w-72 shrink-0 flex-col overflow-hidden rounded-md border border-gray-500 bg-[#363639]"
+      className="relative tabular-nums flex w-72 shrink-0 flex-col overflow-hidden rounded-md border border-gray-500 bg-[#363639]"
       style={{ '--accent': '#d1d5db', '--accent-hover': '#f3f4f6', '--accent-light': '#d1d5db' } as CSSProperties}
     >
       <div className="flex shrink-0 items-center border-b border-gray-500 px-4 pt-3 pb-2">
@@ -2067,11 +2087,11 @@ export default function SettingsSidebar({
           )}
         </div>
         {/* 바꾼 값은 임시값이라 저장을 눌러야 서버에 올라간다. 초기화는 임시값을 버리고 저장값으로 돌아간다. 비로그인은 저장할 곳이 없어 로그인 창을 띄운다. */}
-        <div className="ml-auto mr-2 flex shrink-0 items-center gap-3">
-          <button type="button" aria-label="초기화" onClick={() => {
-              if (hasDrafts && window.confirm('저장값으로 되돌릴까요?')) discardDrafts()
+        {showPreferenceActions && <div className="ml-auto mr-2 flex shrink-0 items-center gap-3">
+          <button type="button" aria-label="초기화" disabled={isPreferenceFeedbackActive} onClick={() => {
+              if (hasDrafts && window.confirm('기존 저장값으로 되돌릴까요?')) runPreferenceAction(discardDrafts)
             }} className="group relative flex border-0 bg-transparent p-0 text-gray-400 hover:text-white">
-            <HeaderButtonHint>{'저장값으로 되돌리기'}</HeaderButtonHint>
+            <HeaderButtonHint>{'기존 저장값으로 되돌리기'}</HeaderButtonHint>
             <svg viewBox="0 0 16 16" className="h-[18px] w-[18px]" aria-hidden="true">
               <path d="M2.5 8a5.5 5.5 0 1 0 1.8-4.07M2.5 2.5v3h3" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -2079,9 +2099,10 @@ export default function SettingsSidebar({
           <button
             type="button"
             aria-label="저장"
+            disabled={isPreferenceFeedbackActive}
             onClick={() => {
               if (!isLoggedIn) onRequestLogin?.()
-              else if (preferencesLoaded && hasDrafts && window.confirm('변경사항을 저장할까요?')) commitDrafts(setPreference)
+              else if (preferencesLoaded && hasDrafts && window.confirm('변경사항을 저장할까요?')) runPreferenceAction(() => commitDrafts(setPreference))
             }}
             className="group relative flex border-0 bg-transparent p-0 text-gray-400 hover:text-white"
           >
@@ -2093,13 +2114,8 @@ export default function SettingsSidebar({
               <path d="M2.5 2.5h8l3 3v8h-11zM5 2.5v3.5h5V2.5M5 13.5V9h6v4.5" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-        </div>
+        </div>}
       </div>
-      {plainContent && (
-        <div className="settings-section-list settings-sidebar-tab-content min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-8 text-sm">
-          {plainContent}
-        </div>
-      )}
       {availableSections.length > 0 && (
       <nav role="tablist" aria-label={pageLabel ? `${pageLabel} 설정 분류` : '설정 분류'} className="flex h-[68px] shrink-0 items-stretch border-b border-gray-500 bg-[#363639] px-1">
           {availableSections.map(section => {
@@ -2132,6 +2148,15 @@ export default function SettingsSidebar({
           })}
         </nav>
       )}
+      {/* 로딩은 헤더·탭과 하단 업종 분류 사이의 설정 본문 영역만 덮는다. */}
+      <div aria-busy={isPreferenceFeedbackActive || undefined} className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="contents" inert={isPreferenceFeedbackActive || undefined}>
+      {plainContent && (
+        <div className="settings-section-list settings-sidebar-tab-content min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-8 text-sm">
+          {plainContent}
+        </div>
+      )}
+      {!plainContent && availableSections.length === 0 && <div className="min-h-0 flex-1" />}
       <SettingsBookmarkContext.Provider value={bookmarkContext}>
       {selectedSection && (
         <div
@@ -2168,7 +2193,14 @@ export default function SettingsSidebar({
         </div>
       )}
       </SettingsBookmarkContext.Provider>
-      {classificationAtBottom && hasClassificationSelector && availableSections.length > 0 && (
+      </div>
+      {isPreferenceFeedbackActive && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#363639]">
+          <Spinner showLogo className="aspect-square w-4/5 shrink-0" />
+        </div>
+      )}
+      </div>
+      {classificationAtBottom && hasClassificationSelector && (
         <SettingsClassificationSelector heatmap={selectedHeatmap} onSelectHeatmap={handleSelectHeatmap} nxtOnly={nxtOnly} atBottom snapshotTime={snapshotTime} />
       )}
     </div>

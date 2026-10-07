@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { CalendarIcon, ClockIcon, MaximizeIcon, MinimizeIcon, RefreshIcon, SettingsIcon, ShareIcon } from '@/components/icons/MarketMapIcons'
 import { HINT_BUBBLE_CLASS } from '@/components/hintBubbleStyle'
 
@@ -16,31 +16,57 @@ interface Props {
   showRefresh?: boolean
 }
 
-const BUTTON_CLASS =
-  'flex h-7 w-7 items-center justify-center border-0 bg-transparent outline-none hover:text-[var(--accent)]'
+const BUTTON_BASE_CLASS =
+  'flex h-7 items-center justify-center border-0 bg-transparent outline-none hover:text-[var(--accent)] focus-visible:text-[var(--accent)]'
+const BUTTON_CLASS = `${BUTTON_BASE_CLASS} w-7`
 const INACTIVE_BUTTON_CLASS = `${BUTTON_CLASS} text-gray-400`
 
-// 스냅샷 수집 주기 안내 — 시계 옆 새로고침 버튼을 누르면 설명창으로 보여준다.
+// 스냅샷 수집 주기 안내 — 새로고침 버튼에 커서를 올리거나 포커스하면 보여준다.
 export const SNAPSHOT_REFRESH_HELP = '5분 간격으로 데이터를 수집합니다.\n수집 후 배포까지 1분 가량 지연이 있을 수 있습니다.'
 
 // 스냅샷 새로고침 아이콘 버튼 — 상단바 우측 묶음(NavBarPageActions)과 콘솔 줄(시계 옆) 어디에 두든 같은 모양이다.
 // helpText를 주면 커서를 올리거나 포커스하면 설명창(지도 설정의 도움말 팝업과 같은 모양·글자 크기/굵기)을 버튼 아래에 띄운다.
 // 누르면 새로고침만 실행한다.
+// children을 주면 평소에는 텍스트를 보여주고, 호버·키보드 포커스 시 아이콘으로 대체하며 갱신 중에는 회전한다.
 export function PageRefreshButton({
   onRefresh,
   isRefreshing,
   className = '',
   helpText,
+  children,
+  minSpinDurationMs = 0,
 }: {
   onRefresh: () => void | Promise<unknown>
   isRefreshing: boolean
   className?: string
   helpText?: ReactNode
+  children?: ReactNode
+  minSpinDurationMs?: number
 }) {
   const [isHelpOpen, setIsHelpOpen] = useState(false)
+  const [isSpinFeedbackActive, setIsSpinFeedbackActive] = useState(false)
+  const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const showRefreshing = isRefreshing || isSpinFeedbackActive
   const buttonRef = useRef<HTMLButtonElement>(null)
   const tooltipRef = useRef<HTMLSpanElement>(null)
   const [tooltipPosition, setTooltipPosition] = useState({ left: 8, top: 8 })
+
+  useEffect(() => () => {
+    if (spinTimerRef.current !== null) clearTimeout(spinTimerRef.current)
+  }, [])
+
+  const handleRefresh = () => {
+    if (showRefreshing) return
+    // 데이터 요청은 즉시 실행하고, 회전 피드백만 최소 시간 동안 유지한다.
+    if (minSpinDurationMs > 0) {
+      setIsSpinFeedbackActive(true)
+      spinTimerRef.current = setTimeout(() => {
+        spinTimerRef.current = null
+        setIsSpinFeedbackActive(false)
+      }, minSpinDurationMs)
+    }
+    void onRefresh()
+  }
 
   // 설정창 도움말 팝업과 같은 배치 — 버튼 아래(4px)에 붙이고, 화면 밖으로 나가면 안쪽으로 밀거나 위로 뒤집는다.
   useLayoutEffect(() => {
@@ -84,17 +110,23 @@ export function PageRefreshButton({
         ref={buttonRef}
         type="button"
         aria-label="스냅샷 새로고침"
-        aria-busy={isRefreshing}
+        aria-busy={showRefreshing}
         aria-describedby={helpText && isHelpOpen ? 'snapshot-refresh-help' : undefined}
-        className={`${BUTTON_CLASS} nav-refresh-button shrink-0 ${isRefreshing ? 'cursor-default text-[var(--accent)]' : 'text-gray-400'} ${className}`}
-        onClick={() => {
-          if (isRefreshing) return
-          void onRefresh()
-        }}
+        className={`${BUTTON_BASE_CLASS} ${children ? 'group/refresh gap-1.5 whitespace-nowrap' : 'w-7'} nav-refresh-button shrink-0 ${showRefreshing ? 'cursor-default text-[var(--accent)]' : 'text-gray-400'} ${className}`}
+        onClick={handleRefresh}
         onFocus={helpText ? () => setIsHelpOpen(true) : undefined}
         onBlur={helpText ? () => setIsHelpOpen(false) : undefined}
       >
-        <RefreshIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+        {children ? (
+          <span className="relative inline-flex items-center justify-center">
+            <span aria-hidden={showRefreshing || undefined} className={showRefreshing ? 'invisible' : 'group-hover/refresh:invisible group-focus-visible/refresh:invisible'}>{children}</span>
+            <span aria-hidden="true" className={`absolute inset-0 flex items-center justify-center ${showRefreshing ? '' : 'invisible group-hover/refresh:visible group-focus-visible/refresh:visible'}`}>
+              <RefreshIcon className={`h-4 w-4 shrink-0 ${showRefreshing ? 'animate-spin' : ''}`} />
+            </span>
+          </span>
+        ) : (
+          <RefreshIcon aria-hidden="true" className={`h-4 w-4 shrink-0 ${showRefreshing ? 'animate-spin' : ''}`} />
+        )}
       </button>
       {helpText && isHelpOpen && (
         <span
