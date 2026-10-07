@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { SectorItem, MarketValueTierItem, StockSectorListItem } from '@/types/api'
 import { toCount, toFullDateTimeLabel, toJoEokDecimal } from '@/utils/format'
+import { appAlert, appConfirm } from '@/utils/appDialogBus'
 import { exportRowsToExcel } from '@/utils/exportExcel'
 import { charTier } from '@/utils/koreanSort'
 import { useAssignStockSector, useBulkAssignStockSector, useUpdateStockAlias } from '@/hooks/useMarketMapCustom'
@@ -1032,7 +1033,9 @@ function AdminStockNameFilterButton({
 
   const handleClearAll = () => {
     if (selectedItems.length === 0) return
-    if (window.confirm(`선택된 ${selectedItems.length}개 종목의 필터를 모두 제거하시겠습니까?`)) onClear()
+    void appConfirm(`선택된 ${selectedItems.length}개 종목의 필터를 모두 제거하시겠습니까?`).then(confirmed => {
+      if (confirmed) onClear()
+    })
   }
 
   // Enter: 방향키로 고른 종목 하나만 추가. Ctrl+Enter: 검색어에 매칭된 종목 전부 한 번에 추가
@@ -1729,9 +1732,9 @@ export default function AdminStockTable({
             pushUndo({ type: 'bulkSector', sectorName, after: sectorId, entries })
           }
           if (result.failedStockCodes.length === 0) {
-            window.alert(`섹터: ${sectorName}\n일괄 적용 완료되었습니다.`)
+            appAlert(`섹터: ${sectorName}\n일괄 적용 완료되었습니다.`)
           } else {
-            window.alert(
+            appAlert(
               `섹터: ${sectorName}\n다음 종목은 반영되지 않았습니다:\n${result.failedStockCodes.join(', ')}`,
             )
           }

@@ -11,7 +11,7 @@ const BASE_LINKS = [
 ]
 // 비로그인에게도 항상 보인다 — 로그인 여부와 무관하게 메뉴는 노출하고, 클릭 시점에만 로그인 팝업으로
 // 막는다(가입/로그인 전환 지시서 결정).
-const CUSTOM_LINK = { to: '/custom/category', label: 'CUSTOM' }
+const CUSTOM_LINK = { to: '/custom/industry', label: 'CUSTOM' }
 
 interface Props {
   // 페이지별 옵션 버튼 — 재사용되지 않는 페이지 전용 UI라 각 페이지가 인라인으로 만들어 넘긴다.
@@ -28,7 +28,7 @@ export default function SubNavBar({ actions }: Props) {
   const isLinkActive = (to: string) => {
     if (to === '/map/allstock') return location.pathname.startsWith('/map/')
     if (to === '/group/allstock') return location.pathname.startsWith('/group/')
-    if (to === '/custom/category') return location.pathname.startsWith('/custom')
+    if (to === '/custom/industry') return location.pathname.startsWith('/custom')
     return location.pathname === to
   }
   const linkClassName = (to: string) =>
@@ -49,7 +49,7 @@ export default function SubNavBar({ actions }: Props) {
           <Link
             key={link.to}
             to={link.to}
-            onClick={link.to === '/custom/category' ? e => guardCustomNavigate(e, link.to) : undefined}
+            onClick={link.to === '/custom/industry' ? e => guardCustomNavigate(e, link.to) : undefined}
             className={linkClassName(link.to)}
           >
             {link.label}

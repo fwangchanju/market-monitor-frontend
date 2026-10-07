@@ -809,8 +809,7 @@ export function SettingsAverageModeSection({
   return (
     <div className="settings-first-depth-level text-sm">
       <span className="flex max-w-[16rem] items-center text-left text-[15px] text-white">
-        <span className="settings-section-num">등락률 기준</span>
-        <SettingHelpIcon label="등락률 기준" description={"업종 등락률 계산에 적용할\n기준을 선택합니다."} />
+        <span>등락률 기준</span>
       </span>
       <SettingDescription>업종 등락률 계산 기준</SettingDescription>
       <div role="radiogroup" aria-label="등락률 기준" className="mt-4 grid max-w-[16rem] settings-control-inset grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
@@ -855,8 +854,7 @@ export function SettingsBeforeMinutesSection({
   return (
     <div className="settings-second-depth-metric relative mt-6 text-sm">
       <span className="flex max-w-[16rem] items-center text-left text-[15px] text-white">
-        <span className="settings-section-num">비교 시점</span>
-        <SettingHelpIcon label="비교 시점" description={"현재 등락률을 몇 분 전과\n비교해 변화폭을 산출합니다."} />
+        <span>비교 시점</span>
       </span>
       <SettingDescription>현재 등락률과 비교할 시점</SettingDescription>
       <div className="settings-slider-control mt-[18px]">
@@ -991,7 +989,7 @@ function SettingsClassificationSelector({
         ))}
       </div>
       {atBottom && snapshotTime && (
-        <p className={`${FONT_BAR_TIME} mt-2 flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400`}>
+        <p className={`${FONT_BAR_TIME} mt-2 flex items-center justify-center gap-1.5 whitespace-nowrap text-xs text-gray-400`}>
           <span className="flex items-center">
             업데이트
             <SettingHelpIcon
