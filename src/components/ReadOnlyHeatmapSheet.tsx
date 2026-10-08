@@ -88,7 +88,7 @@ interface Props {
   mode: 'category' | 'stock'
   data: MarketMapResponse | undefined
   isLoading: boolean
-  // 어떤 분류를 읽기 전용으로 보여주는지 — krx는 거래소 분류, marketry는 운영자가 올린 분류다. "NXT만 보기"는 krx만 쓴다.
+  // 어떤 분류를 읽기 전용으로 보여주는지 — krx는 거래소 분류, marketry는 올린 분류다. "NXT만 보기"는 krx만 쓴다.
   source: 'krx' | 'marketry'
   // NXT 시트면 NXT 거래 가능 종목만 남긴다. 업종 분류는 KRX 것을 그대로 쓴다.
   nxtOnly: boolean

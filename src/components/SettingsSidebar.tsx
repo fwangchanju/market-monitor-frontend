@@ -998,7 +998,7 @@ function SettingsClassificationSelector({
                 ? "키움 REST API로 받은\n종목·업종 정보를 서버에\n마지막으로 동기화한 시각입니다.\n\n시세 갱신 시각이나 한국거래소의\n공식 분류 변경 시각과는 다릅니다."
                 : heatmap === 'mymap'
                   ? "내가 종목·업종 정보를\n마지막으로 수정한 시각입니다."
-                  : "MARKETRY 운영자가 종목·업종 정보를\n마지막으로 수정한 시각입니다."}
+                  : "MARKETRY가 종목·업종 정보를\n마지막으로 수정한 시각입니다."}
             />
           </span>
           <span>{toMarketMapSnapshotDateLabel(snapshotTime)}</span>
@@ -1912,7 +1912,7 @@ interface Props {
   sectionOrder?: readonly SettingsSidebarSectionId[]
   classificationAtBottom?: boolean
   classificationNotice?: string
-  // 하단 히트맵 선택 아래에 표시할 운영자 종목 분류 최종 변경 시각(지도 상단 표기와 같은 형식).
+  // 하단 히트맵 선택 아래에 표시할 종목 분류 최종 변경 시각(지도 상단 표기와 같은 형식).
   snapshotTime?: string | null
   // 사이드바 열림 상태는 페이지가 관리한다.
   isOpen: boolean
