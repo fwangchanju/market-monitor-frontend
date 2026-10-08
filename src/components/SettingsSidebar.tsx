@@ -839,8 +839,8 @@ export function SettingsAverageModeSection({
   )
 }
 
-// 그룹 페이지 "N분 전 대비"의 비교 시점 — 15/30/45/60분 중 하나를 슬라이더로 고른다.
-const BEFORE_MINUTES_OPTIONS = [15, 30, 45, 60]
+// 그룹 페이지 "N분 전 대비"의 비교 시점 — 15/30/60/120분 중 하나를 슬라이더로 고른다.
+const BEFORE_MINUTES_OPTIONS = [15, 30, 60, 120]
 
 export function SettingsBeforeMinutesSection({
   beforeMinutes,
