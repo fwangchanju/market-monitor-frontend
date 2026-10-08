@@ -1725,8 +1725,9 @@ export default function AdminStockTable({
             {isPending ? (
               <tr>
                 <td colSpan={columns.length + 1} className="p-8">
-                  <div className="flex justify-center">
-                    <Spinner />
+                  {/* 지도·그룹 페이지처럼 크게 가운데에 보여준다. */}
+                  <div className="flex h-[min(32rem,60vh)] items-center justify-center">
+                    <Spinner showElapsed />
                   </div>
                 </td>
               </tr>
