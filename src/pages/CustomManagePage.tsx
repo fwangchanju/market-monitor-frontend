@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { EmptyMessageAreaContext } from '@/utils/emptyMessageArea'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
@@ -122,6 +123,8 @@ export default function CustomManagePage() {
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
   const { isNativeFullscreen, handleToggleNativeFullscreen } = useNativeFullscreen()
   const captureRef = useRef<HTMLDivElement>(null)
+  // 안내 문구를 본문 영역 전체의 한가운데에 그리기 위한 기준 요소(EmptyMessageAreaContext).
+  const [emptyMessageArea, setEmptyMessageArea] = useState<HTMLDivElement | null>(null)
 
   // 세션 확인이 끝났는데 비로그인이면 곧바로 로그인 팝업을 띄운다 — 메뉴 클릭이 아니라 직접 URL
   // 진입/새로고침으로 들어온 경우도 동일하게 막는다. returnTo는 지금 이 경로 그대로.
@@ -228,7 +231,13 @@ export default function CustomManagePage() {
         <div className="relative z-10 -mt-[10.5px] flex min-h-0 min-w-0 flex-1 overflow-hidden bg-black text-white">
           {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서 창을 좁혀도 사이드바(w-80)가 항상 같은
               폭을 유지하게 한다(지도/섹터/요약 페이지와 동일). */}
-          <div ref={captureRef} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black text-white">
+          <div
+            ref={node => {
+              captureRef.current = node
+              setEmptyMessageArea(node)
+            }}
+            className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-black text-white"
+          >
             <div className="mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-[7px] text-sm font-bold text-white">
               <div className="flex h-full shrink-0 items-center gap-2">
                 <CustomManageModeCombobox
@@ -249,6 +258,7 @@ export default function CustomManagePage() {
                 </span>
               </div>
             </div>
+            <EmptyMessageAreaContext.Provider value={emptyMessageArea}>
             <div className="flex min-h-0 flex-1">
               <div
                 className={`flex min-h-0 flex-1 flex-col ${mode === 'sector' ? 'overflow-y-auto' : ''}`}
@@ -285,6 +295,7 @@ export default function CustomManagePage() {
                 )}
               </div>
             </div>
+            </EmptyMessageAreaContext.Provider>
           </div>
           <div className={`flex shrink-0 pt-[7px] ${isSettingsOnLeft ? 'order-first' : ''}`}>
             <SettingsSidebar

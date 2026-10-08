@@ -21,6 +21,7 @@ import { ChangeRateBasisToggle, MarketMapMarketCombobox, MarketMapPeriodCombobox
 import MarketMapLegendBar from '@/components/MarketMapLegendBar'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
 import { HINT_BUBBLE_COLOR_CLASS } from '@/components/hintBubbleStyle'
+import EmptyMessage, { EMPTY_DATA_MESSAGE } from '@/components/EmptyMessage'
 import Spinner from '@/components/Spinner'
 import { REFRESH_FEEDBACK_MIN_DURATION_MS } from '@/utils/uiFeedback'
 import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/components/NavBarPageActions'
@@ -548,8 +549,11 @@ export default function MarketMapCustomPage() {
                   <Spinner errorMessage="데이터를 불러오지 못했습니다." />
                 </div>
               ) : visibleItems.length === 0 ? (
-                <div className="flex flex-1 items-center justify-center p-8 text-center text-base text-gray-400">
-                  {stockChangeFilter === 'all' && sectorChangeFilter === 'all' ? '데이터가 없습니다' : '조건에 해당하는 종목이 없습니다'}
+                <div className="relative flex-1">
+                  <EmptyMessage
+                    message={stockChangeFilter === 'all' && sectorChangeFilter === 'all' ? EMPTY_DATA_MESSAGE : '조건에 해당하는 종목이 없습니다'}
+                    topClass="-top-1"
+                  />
                 </div>
               ) : (
                 <div className="flex min-h-0 flex-1 flex-col px-[7px]">
