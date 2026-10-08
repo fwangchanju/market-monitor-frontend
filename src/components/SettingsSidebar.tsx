@@ -11,7 +11,7 @@ import type { MarketValueTierItem } from '@/types/api'
 import { FONT_BAR_TIME } from '@/components/FontStyle'
 import { ACCENT_PALETTE } from '@/utils/accentPalette'
 import { HEATMAP_NAMES, type HeatmapKey } from '@/utils/heatmapNames'
-import { toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
+import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { useIsLoggedIn } from '@/hooks/useSession'
 import { useCustomPreferences } from '@/hooks/useCustomPreferences'
 import { commitDrafts, discardDrafts, useHasDrafts } from '@/utils/settingsDraft'
@@ -988,7 +988,8 @@ function SettingsClassificationSelector({
           </button>
         ))}
       </div>
-      {atBottom && snapshotTime && (
+      {/* 업데이트 시각이 없어도(올린 MARKETRY가 아직 없을 때 등) 줄은 그대로 둬서 다른 분류와 모양이 달라지지 않게 한다. 시각 글자만 같은 폭으로 자리를 잡고 숨긴다. */}
+      {atBottom && (
         <p className={`${FONT_BAR_TIME} mt-2 flex items-center justify-center gap-1.5 whitespace-nowrap text-xs text-gray-400`}>
           <span className="flex items-center">
             업데이트
@@ -1012,8 +1013,8 @@ function SettingsClassificationSelector({
               }
             />
           </span>
-          <span>{toMarketMapSnapshotDateLabel(snapshotTime)}</span>
-          <span>{toMarketMapSnapshotTimeOnlyLabel(snapshotTime)}</span>
+          <span className={snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotDateLabel(snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
+          <span className={snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotTimeOnlyLabel(snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
         </p>
       )}
     </div>
