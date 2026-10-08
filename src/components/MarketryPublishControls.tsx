@@ -7,6 +7,7 @@ import {
   type MarketryPublication,
 } from '@/api/marketryPublish'
 import { marketMapKeys } from '@/hooks/queryKeys'
+import Spinner from '@/components/Spinner'
 import { appAlert, appConfirm } from '@/utils/appDialogBus'
 
 const BUTTON_CLASS =
@@ -24,7 +25,9 @@ function createPublicationLabel(now: Date) {
 // 관리자 전용 — 내 히트맵을 MARKETRY로 올리고, 이전 버전으로 되돌린다. 다른 사용자의 데이터는 건드리지 않는다.
 export default function MarketryPublishControls() {
   const queryClient = useQueryClient()
-  const [isBusy, setIsBusy] = useState(false)
+  // 올리거나 되돌리는 중이면 그 안내 문구, 아니면 null.
+  const [busyMessage, setBusyMessage] = useState<string | null>(null)
+  const isBusy = busyMessage !== null
   const [isVersionsOpen, setIsVersionsOpen] = useState(false)
   const [versions, setVersions] = useState<MarketryPublication[] | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -46,16 +49,16 @@ export default function MarketryPublishControls() {
       { adminOnly: true },
     )
     if (!confirmed) return
-    setIsBusy(true)
+    setBusyMessage('업데이트 중입니다.')
     try {
       const published = await publishMarketry(createPublicationLabel(new Date()))
       setVersions(null)
       await refreshMaps()
-      appAlert(`MARKETRY에 올렸습니다. (${published.label})`)
+      appAlert(`MARKETRY에 올렸습니다.\n${published.label}`)
     } catch {
       appAlert('MARKETRY에 올리지 못했습니다.')
     } finally {
-      setIsBusy(false)
+      setBusyMessage(null)
     }
   }
 
@@ -77,7 +80,7 @@ export default function MarketryPublishControls() {
   const handleRestore = async (version: MarketryPublication) => {
     const confirmed = await appConfirm(`${version.label}\nMARKETRY를 이 버전으로 되돌리시겠습니까?\n모든 사용자에게 보이는 MARKETRY가 바뀝니다.`, { adminOnly: true })
     if (!confirmed) return
-    setIsBusy(true)
+    setBusyMessage('롤백 중입니다.')
     try {
       await restoreMarketryPublication(version.id)
       setIsVersionsOpen(false)
@@ -86,7 +89,7 @@ export default function MarketryPublishControls() {
     } catch {
       appAlert('MARKETRY를 되돌리지 못했습니다.')
     } finally {
-      setIsBusy(false)
+      setBusyMessage(null)
     }
   }
 
@@ -99,6 +102,12 @@ export default function MarketryPublishControls() {
       <button type="button" onClick={handleToggleVersions} disabled={isBusy} className={BUTTON_CLASS}>
         ROLLBACK
       </button>
+      {/* 올리거나 되돌리는 동안 화면 전체를 가리고 큰 로딩을 보여준다 — 오래 걸려도 "진행 중"임을 알 수 있고, 그 사이 다른 곳을 누르지 못한다. */}
+      {isBusy && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70">
+          <Spinner showElapsed message={busyMessage} />
+        </div>
+      )}
       {isVersionsOpen && (
         <div className="absolute right-0 top-full z-50 mt-1 max-h-72 w-72 overflow-y-auto border border-[#ff4d2e] bg-black p-1 text-sm font-normal">
           {versions === null ? (
