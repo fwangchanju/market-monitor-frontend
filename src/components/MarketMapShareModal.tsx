@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { captureElementToDataUrl } from '@/utils/captureToPreview'
 import { CheckIcon, CopyIcon, DownloadIcon, TelegramIcon } from '@/components/icons/MarketMapIcons'
 import Spinner from '@/components/Spinner'
@@ -15,7 +15,7 @@ interface Props {
   captureTarget: HTMLElement | null
 }
 
-// MARKETRY 텔레그램 방 초대 링크 — 이미지 파일 공유가 안 되는 PC에서 텔레그램 버튼이 연다.
+// MARKETRY 텔레그램 방 초대 링크 — 텔레그램 버튼이 연다.
 const TELEGRAM_ROOM_URL = 'https://t.me/+dqHQ460Ni5BmODdl'
 
 export default function MarketMapShareModal({
@@ -32,10 +32,6 @@ export default function MarketMapShareModal({
   // 미리보기 이미지의 가로/세로 비율 — 화면에 꽉 차는 폭을 이 비율로 계산한다. 캡처 전(스피너)에도 같은 크기로 자리를 잡도록 처음에는
   // 캡처할 영역의 비율로 어림잡고, 이미지가 로드되면 실제 비율로 바로잡는다.
   const [previewRatio, setPreviewRatio] = useState<number | null>(() => elementRatio(captureTarget))
-  // 공유용 이미지 파일 — 미리보기 캡처가 끝나는 즉시 만들어 둔다. 클릭 시점에 캡처/변환을 기다리면
-  // 브라우저가 "사용자 클릭 직후"로 인정해 주는 시간이 지나 공유 창이 안 열릴 수 있어서, 클릭 때는
-  // 이미 만들어 둔 파일로 바로 navigator.share를 부른다.
-  const shareFileRef = useRef<File | null>(null)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -70,29 +66,10 @@ export default function MarketMapShareModal({
     }
   }, [captureTarget])
 
-  useEffect(() => {
-    if (!previewSrc) return
-    shareFileRef.current = dataUrlToFile(previewSrc, 'marketry.png')
-  }, [previewSrc])
-
-  // 텔레그램 공유 — 모바일은 공유 창(navigator.share)에서 텔레그램을 고르면 이미지가 그대로 전달된다.
-  // PC는 윈도우 크롬처럼 파일 공유를 지원한다고 답해도 공유 창에 텔레그램이 제대로 뜨지 않으므로 항상
-  // MARKETRY 텔레그램 방 링크를 열고, 이미지는 클립보드에 복사해 둔다 — 열린 방의 대화창에 붙여넣으면 된다.
-  const handleTelegramShare = async () => {
-    const file = shareFileRef.current
-    if (isMobileDevice() && file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: 'MARKETRY' })
-      } catch (error) {
-        // 사용자가 공유 창을 그냥 닫은 경우는 오류가 아니다.
-        if (!(error instanceof DOMException && error.name === 'AbortError')) {
-          console.error('share failed', error)
-        }
-      }
-      return
-    }
+  // 텔레그램 — 모든 기기에서 MARKETRY 텔레그램 방 링크를 연다. 링크에는 이미지를 붙일 수 없으니, 이미지는 클립보드에 복사해 두어
+  // 열린 방의 대화창에 붙여넣게 한다.
+  const handleTelegramShare = () => {
     window.open(TELEGRAM_ROOM_URL, '_blank', 'noopener,noreferrer')
-    // 링크에는 이미지를 붙일 수 없으니, 클립보드에 이미지를 복사해 두어 텔레그램 대화창에 붙여넣게 한다.
     onCopy(previewSrc)
   }
 
@@ -153,7 +130,7 @@ export default function MarketMapShareModal({
             </button>
             <button
               type="button"
-              onClick={() => void handleTelegramShare()}
+              onClick={handleTelegramShare}
               disabled={!previewSrc}
               aria-label="텔레그램으로 공유"
               title="텔레그램으로 공유"
@@ -194,27 +171,9 @@ export default function MarketMapShareModal({
   )
 }
 
-// 휴대폰·태블릿인지 — 아이패드는 맥으로 보고하므로 터치 지점 수도 본다.
-function isMobileDevice(): boolean {
-  const userAgent = navigator.userAgent
-  if (/Android|iPhone|iPad|iPod/i.test(userAgent)) return true
-  return /Macintosh/i.test(userAgent) && navigator.maxTouchPoints > 1
-}
-
 // 캡처할 영역의 가로/세로 비율 — 아직 없거나 크기를 못 재면 null.
 function elementRatio(element: HTMLElement | null): number | null {
   if (!element) return null
   const { width, height } = element.getBoundingClientRect()
   return width > 0 && height > 0 ? width / height : null
-}
-
-// data URL(미리보기 캡처 결과)을 File로 바꾼다 — atob으로 동기 변환해서 클릭 시점 지연이 없다.
-function dataUrlToFile(dataUrl: string, fileName: string): File | null {
-  const match = /^data:([^;,]+)(;base64)?,(.*)$/.exec(dataUrl)
-  if (!match) return null
-  const [, mime, isBase64, payload] = match
-  const binary = isBase64 ? atob(payload) : decodeURIComponent(payload)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return new File([bytes], fileName, { type: mime })
 }
