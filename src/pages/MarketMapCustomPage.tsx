@@ -260,6 +260,22 @@ export default function MarketMapCustomPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- market이 바뀔 때만 반응하면 됨(reset은 매 렌더 새 함수)
   }, [market])
 
+  // 그룹 페이지에서 업종을 눌러 온 주소(?sector=이름) — 데이터가 준비되면 그 업종을 누른 상태로 열고 주소에서 지운다.
+  const sectorParam = searchParams.get('sector')
+  useEffect(() => {
+    if (!sectorParam || filteredRootNodes.length === 0) return
+    enterSector(sectorParam)
+    setSearchParams(
+      prev => {
+        const next = new URLSearchParams(prev)
+        next.delete('sector')
+        return next
+      },
+      { replace: true },
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 주소 값이 있고 트리가 준비됐을 때만 반응하면 된다(enterSector는 매 렌더 새 함수)
+  }, [sectorParam, filteredRootNodes])
+
   // 렌더러가 옛 캡처 URL(?market=...)로 요청할 때도 마켓 자체는 useGlobalSettings가 이미 우선 반영했으니,
   // 여기서는 avgMode/sectorFilter를 반영하고 소비한 쿼리 파라미터만 주소에서 지운다.
   useEffect(() => {
