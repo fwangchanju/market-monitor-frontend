@@ -100,7 +100,7 @@ function RankBars({
     // (flex 기본값)로 실제 높이는 부모 flex 행 높이를 그대로 받는다. content-between으로 헤더 행은
     // 맨 위에 붙이고 종목 행들 사이 간격만 넓혀서, 섹터 수가 적어도 컨테이너 높이를 채운다.
     <div
-      className="grid h-full min-h-0 w-full flex-1 content-between items-center gap-x-3 gap-y-2 text-[18px]"
+      className="grid h-full min-h-0 w-full flex-1 content-between items-center gap-x-3 gap-y-2 text-[16px]"
       style={{ gridTemplateColumns: 'auto 1fr' }}
     >
       {/* 데이터가 비어도 헤더(페이지의 별도 헤더 줄)는 그대로 보이므로, 막대 자리에만 안내 문구를 넣는다. */}
@@ -113,14 +113,14 @@ function RankBars({
       {chart.rankedItems.map(item => (
         <Fragment key={item.key}>
           <span
-            className="whitespace-nowrap text-right font-bold"
+            className="whitespace-nowrap text-right font-medium"
             style={item.isReference ? { color: highlightColor } : undefined}
           >
             {item.sectorName}
           </span>
           {/* 퍼센트 텍스트를 막대 트랙(flex-1) 안에 막대 끝 위치(left: pct%)로 떠 있게 배치한다 —
               막대가 길어질수록 텍스트도 같이 따라간다. 오른쪽 w-[84px]는 막대가 축 최대치까지 길어져도
-              텍스트가 열 밖으로 밀려나지 않도록 미리 비워두는 여백(18px 폰트 기준으로 폭을 넉넉히 잡음)
+              텍스트가 열 밖으로 밀려나지 않도록 미리 비워두는 여백(16px 폰트 기준으로 폭을 넉넉히 잡음)
               — 보이는 내용은 없고 폭만 차지한다. */}
           <div className="flex h-[25px] items-center gap-1.5">
             <div className="relative h-full flex-1">
@@ -242,7 +242,7 @@ export default function SectorChangeRatePage() {
   // 맵·커스텀 페이지와 같은 청록색 분류자명 버튼을 표시한다.
   const modeStatusText = (
     <span className="flex min-w-0 items-center justify-end">
-      <span className="min-w-0 truncate rounded bg-[var(--brand)] px-2 py-1 text-black">{settingsModalProps.isCustom ? 'MARKETRY' : '한국거래소'}</span>
+      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{settingsModalProps.isCustom ? 'MARKETRY' : '한국거래소'}</span>
     </span>
   )
 
@@ -373,7 +373,7 @@ export default function SectorChangeRatePage() {
               항상 같은 폭을 유지하게 한다(지도 페이지와 동일) — 내부 그래프가 넘치면 이 컬럼
               안에서만 처리된다. */}
           <div ref={captureRef} data-captureid={CAPTURE_ID.SECTOR} data-capture-ready={isDataCaptureReady} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black text-white">
-            <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-[18px] text-sm font-bold text-white">
+            <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-[7px] text-sm font-bold text-white">
               <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
                 <MarketMapMarketCombobox
                   market={market}
@@ -397,7 +397,7 @@ export default function SectorChangeRatePage() {
                     <span className={displayNow?.snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotTimeOnlyLabel(displayNow?.snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
                   </PageRefreshButton>
                 </span>
-                <span className="ml-2 flex shrink-0">
+                <span className="flex shrink-0">
                   <ChangeRateBasisToggle basis={changeRateBasis} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateBasis} />
                 </span>
                   </>
@@ -409,7 +409,7 @@ export default function SectorChangeRatePage() {
                 설정 사이드바가 열려도 본문이 밀리는 게 자연스럽게 느껴지도록 한다(밀림 자체는 다른
                 페이지와 동일한 flex 구조이고, 콘텐츠가 항상 남는 공간을 꽉 채우기만 하면 된다). */}
             <div className="flex min-h-0 flex-1">
-              <div className="flex min-h-0 w-full flex-1 flex-col px-[7px] py-4">
+              <div className="flex min-h-0 w-full flex-1 flex-col px-[7px] pt-4 pb-[19.5px]">
               {isLoading ? (
                 <div className="flex flex-1 items-center justify-center">
                   <Spinner showElapsed />
@@ -443,30 +443,17 @@ export default function SectorChangeRatePage() {
                   {/* 헤더는 그래프가 아니라 본문 전체 폭을 2:1로 나눈 구간의 가운데에 놓는다(좌 2/3, 우 1/3).
                       오른쪽은 설정창 슬라이더로 고른 비교 시점 하나만 보여준다. */}
                   <div
-                    className="mb-5 flex w-full shrink-0 items-center font-bold whitespace-nowrap"
+                    className="mb-[19.5px] flex w-full shrink-0 items-center font-bold whitespace-nowrap"
                     style={{ fontSize: 20, color: strongIndustryColor }}
                   >
                     <div className="flex flex-[2] items-center justify-center">
-                      <span
-                        className="rounded-sm px-2 py-1 leading-none"
-                        style={{
-                          backgroundColor: strongIndustryColor,
-                          color: '#202124',
-                          boxShadow: 'inset 0 1px 2px rgb(0 0 0 / 30%), inset 0 -1px 1px rgb(255 255 255 / 35%)',
-                        }}
-                      >
+                      {/* 헤더 상자는 지도 오른쪽 위 업종 분류 상자와 같은 모양(청록 바탕·검정 글자·그림자 없음)이고, 글자 크기만 막대 옆 항목명과 같은 16px이다. */}
+                      <span className="bg-[var(--brand)] px-2 py-1 text-[16px] leading-none font-medium text-black">
                         {avgChangeRateUseSimple ? '동일 가중' : '시총 가중'}
                       </span>
                     </div>
                     <div className="flex flex-[1] items-center justify-center">
-                      <span
-                        className="rounded-sm px-2 py-1 leading-none"
-                        style={{
-                          backgroundColor: strongIndustryColor,
-                          color: '#202124',
-                          boxShadow: 'inset 0 1px 2px rgb(0 0 0 / 30%), inset 0 -1px 1px rgb(255 255 255 / 35%)',
-                        }}
-                      >
+                      <span className="bg-[var(--brand)] px-2 py-1 text-[16px] leading-none font-medium text-black">
                         {beforeMinutes}분 전 대비
                       </span>
                     </div>
