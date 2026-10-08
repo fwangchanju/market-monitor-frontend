@@ -243,7 +243,7 @@ export default function SectorChangeRatePage() {
   // 맵·커스텀 페이지와 같은 청록색 분류자명 버튼을 표시한다.
   const modeStatusText = (
     <span className="flex min-w-0 items-center justify-end">
-      <span className="min-w-0 truncate rounded bg-[var(--brand)] px-2 py-1 text-black">{HEATMAP_NAMES[settingsModalProps.heatmap].title}</span>
+      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{HEATMAP_NAMES[settingsModalProps.heatmap].title}</span>
     </span>
   )
 
@@ -450,7 +450,7 @@ export default function SectorChangeRatePage() {
                     <div className="flex flex-[2] items-center justify-center">
                       {/* 헤더 상자는 각진 테두리 상자(테두리 2px·글자는 지도 설정창의 강조 색상, 배경은 검정, 그림자 없음)이고 글자는 20px 굵게(700)이다. */}
                       <span
-                        className="rounded border-2 bg-black px-[6px] py-[2px] text-[20px] leading-none font-bold"
+                        className="rounded-lg border-2 bg-black px-[6px] py-[2px] text-[20px] leading-none font-bold"
                         style={{ borderColor: strongIndustryColor, color: strongIndustryColor }}
                       >
                         {avgChangeRateUseSimple ? '동일 가중 등락률' : '시총 가중 등락률'}
@@ -458,7 +458,7 @@ export default function SectorChangeRatePage() {
                     </div>
                     <div className="flex flex-[1] items-center justify-center">
                       <span
-                        className="rounded border-2 bg-black px-[6px] py-[2px] text-[20px] leading-none font-bold"
+                        className="rounded-lg border-2 bg-black px-[6px] py-[2px] text-[20px] leading-none font-bold"
                         style={{ borderColor: strongIndustryColor, color: strongIndustryColor }}
                       >
                         {beforeMinutes}분 전 대비
