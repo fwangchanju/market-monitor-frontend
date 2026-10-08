@@ -11,6 +11,7 @@ import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Spinner from '@/components/Spinner'
 import { REFRESH_FEEDBACK_MIN_DURATION_MS } from '@/utils/uiFeedback'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
+import MarketMapLegendBar from '@/components/MarketMapLegendBar'
 import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
@@ -22,7 +23,7 @@ import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload, downloadDataUrl, captureFileName } from '@/utils/captureToDownload'
-import { toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
+import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { marketRoute } from '@/utils/marketRoute'
 import {
   resolveMarketMapColor,
@@ -344,9 +345,6 @@ export default function SectorChangeRatePage() {
     return { current: buildRankChart(currentEntries), delta: buildRankChart(deltaEntries) }
   }, [displayNow, displayBefore, excludedSectorIds, excludedMarketValueTiers, avgChangeRateUseSimple, changeRateBasis])
 
-  // 본문에 로딩 원이 보이는 상태 — 아래 본문 분기(isLoading, 쌍 데이터를 기다리는 중)와 같은 조건이다.
-  const isSpinnerShown = isLoading || isError || (!isError && data?.snapshotTime != null && !displayNow)
-
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden bg-black">
       <NavBar />
@@ -384,11 +382,11 @@ export default function SectorChangeRatePage() {
                   }}
                 />
                 <MarketMapPeriodCombobox />
-                {/* 로딩 원이나 오류 문구가 보이는 동안은 마켓·기간 드롭박스만 남기고 시계·시간대·누적/따로·분류명은 숨긴다. */}
-                {!isSpinnerShown && (
+                {/* 로딩 원이나 오류 문구가 보이는 동안에도 시계·시간대·누적/따로·분류명을 제자리에 둔다. 데이터가 없으면 시각 글자만 비어 있다. */}
                   <>
                 <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
-                  {displayNow?.snapshotTime && <span>{toMarketMapSnapshotDateLabel(displayNow.snapshotTime)}</span>}
+                  {/* 데이터가 없어도 날짜·시각 자리는 같은 폭으로 잡아 둬서 뒤의 시장 시간대 표시가 당겨지지 않게 한다. */}
+                  <span className={displayNow?.snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotDateLabel(displayNow?.snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
                   <PageRefreshButton
                     onRefresh={refetchMarketMap}
                     isRefreshing={isRefreshing}
@@ -396,17 +394,16 @@ export default function SectorChangeRatePage() {
                     helpText={SNAPSHOT_REFRESH_HELP}
                     minSpinDurationMs={REFRESH_FEEDBACK_MIN_DURATION_MS}
                   >
-                    {displayNow?.snapshotTime && toMarketMapSnapshotTimeOnlyLabel(displayNow.snapshotTime)}
+                    <span className={displayNow?.snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotTimeOnlyLabel(displayNow?.snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
                   </PageRefreshButton>
                 </span>
                 <span className="ml-2 flex shrink-0">
                   <ChangeRateBasisToggle basis={changeRateBasis} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateBasis} />
                 </span>
                   </>
-                )}
               </div>
               {/* 지도 페이지와 동일하게 맨 오른쪽 끝에 프로필(사진이 끝, 글자는 그 왼쪽)을 둔다. */}
-              {!isSpinnerShown && <div className={`${FONT_BAR_MODE_STATUS} flex min-w-0 items-center justify-end text-gray-400`}>{modeStatusText}</div>}
+              <div className={`${FONT_BAR_MODE_STATUS} flex min-w-0 items-center justify-end text-gray-400`}>{modeStatusText}</div>
             </div>
             {/* 지도/어드민 페이지와 동일하게 본문이 화면을 꽉 채우는 형태 — 가운데 정렬/폭 제한을 없애서
                 설정 사이드바가 열려도 본문이 밀리는 게 자연스럽게 느껴지도록 한다(밀림 자체는 다른
@@ -496,12 +493,13 @@ export default function SectorChangeRatePage() {
               )}
               </div>
             </div>
-            {/* 면책조항 줄 — 지도 페이지 색상 바 줄과 같은 높이(28px)로 왼쪽 아래에 둔다. 로딩 원이 보이는 동안은 뺀다. */}
-            {!isSpinnerShown && (
-              <div className="flex h-7 shrink-0 items-center px-[7px]">
+            {/* 아래 줄 — 지도 페이지와 같은 높이(28px)로 왼쪽에 면책조항, 오른쪽 끝에 등락률 색상 범례를 둔다. 로딩 중에도 제자리에 둔다. */}
+            <div className="flex h-7 shrink-0 items-end justify-between gap-3 px-[7px]">
+              <div className="flex h-7 min-w-0 items-center">
                 <DisclaimerNotice />
               </div>
-            )}
+              <MarketMapLegendBar swatches={settingsModalProps.legendSwatches} />
+            </div>
           </div>
           {/* 설정창 윗선을 지도 페이지와 같은 높이로 맞춘다 — 지도 페이지에서 실제로 맞춘 모양(설정창 윗선이 위쪽 바 윗선보다 3px 아래)을 따른다. 이 칸은 바보다 5.25px 위에서 시작하므로 5.25 + 3 - 1(눈으로 맞춘 보정) = 7.25px을 띄운다. 아래는 붙인다. */}
           <div className={`flex shrink-0 pt-[7.25px] ${isSettingsOnLeft ? 'order-first' : ''}`}>
