@@ -49,12 +49,12 @@ export default function MarketryPublishControls() {
       { adminOnly: true },
     )
     if (!confirmed) return
-    setBusyMessage('MARKETRY에 업데이트 중입니다.')
+    setBusyMessage('MARKETRY를 업데이트 중입니다.')
     try {
       const published = await publishMarketry(createPublicationLabel(new Date()))
       setVersions(null)
       await refreshMaps()
-      appAlert(`MARKETRY에 업데이트가 완료되었습니다.\n${published.label}`)
+      appAlert(`MARKETRY 업데이트가 완료되었습니다.\n${published.label}`)
     } catch {
       appAlert('MARKETRY에 올리지 못했습니다.')
     } finally {
