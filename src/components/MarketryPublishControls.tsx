@@ -49,12 +49,12 @@ export default function MarketryPublishControls() {
       { adminOnly: true },
     )
     if (!confirmed) return
-    setBusyMessage('업데이트 중입니다.')
+    setBusyMessage('MARKETRY에 업데이트 중입니다.')
     try {
       const published = await publishMarketry(createPublicationLabel(new Date()))
       setVersions(null)
       await refreshMaps()
-      appAlert(`MARKETRY에 올렸습니다.\n${published.label}`)
+      appAlert(`MARKETRY에 업데이트가 완료되었습니다.\n${published.label}`)
     } catch {
       appAlert('MARKETRY에 올리지 못했습니다.')
     } finally {
@@ -80,12 +80,12 @@ export default function MarketryPublishControls() {
   const handleRestore = async (version: MarketryPublication) => {
     const confirmed = await appConfirm(`${version.label}\nMARKETRY를 이 버전으로 되돌리시겠습니까?\n모든 사용자에게 보이는 MARKETRY가 바뀝니다.`, { adminOnly: true })
     if (!confirmed) return
-    setBusyMessage('롤백 중입니다.')
+    setBusyMessage('MARKETRY를 롤백 중입니다.')
     try {
       await restoreMarketryPublication(version.id)
       setIsVersionsOpen(false)
       await refreshMaps()
-      appAlert(`${version.label}\nMARKETRY를 이 버전으로 되돌렸습니다.`)
+      appAlert(`${version.label}\nMARKETRY 롤백이 완료되었습니다.`)
     } catch {
       appAlert('MARKETRY를 되돌리지 못했습니다.')
     } finally {
