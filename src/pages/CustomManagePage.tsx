@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { EmptyMessageAreaContext } from '@/utils/emptyMessageArea'
 import NavBar from '@/components/NavBar'
@@ -189,15 +189,14 @@ export default function CustomManagePage() {
     />
   )
 
-  // 비로그인이 내 히트맵에서 수정이 가능한 항목(버튼·입력칸 등)을 누르면 수정하는 대신 로그인 팝업을 띄운다.
-  // 캡처 단계에서 가로채므로 표 안쪽 컴포넌트는 비로그인을 따로 알 필요가 없다.
-  const guardGuestEdit = (event: SyntheticEvent) => {
-    if (isLoggedIn || isReadOnlySheet) return
-    if (!(event.target as HTMLElement).closest('button, input, textarea, select, [role="button"], [contenteditable="true"]')) return
-    event.preventDefault()
-    event.stopPropagation()
-    requireLogin(pathname)
-  }
+  // 내 히트맵은 로그인해야 쓴다 — 세션 확인이 끝났는데 비로그인이 내 히트맵을 열면(직접 주소 진입이나 설정창에서 고른 경우
+  // 모두) 곧바로 로그인 팝업을 띄우고, 표는 그리지 않는다. 마켓트리·한국거래소는 설정창에서 바로 고를 수 있다.
+  const isGuestOnMyMap = !isLoggedIn && !isReadOnlySheet
+  const isGuestConfirmed = !isSessionLoading && !!session && !session.authenticated
+  useEffect(() => {
+    if (isGuestConfirmed && sheet === 'mymap') requireLogin(pathname)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 인증 여부나 고른 시트가 바뀔 때만 반응하면 됨
+  }, [isGuestConfirmed, sheet])
 
   // 세션 확인 중이거나(로그인 여부를 아직 모름) 로그인 사용자의 섹터 목록을 받아오는 동안은 상단바+
   // 스피너만 보여준다 — 비로그인용 안내와 실제 테이블이 뒤섞여 잠깐 보였다 사라지는 걸 막는다.
@@ -243,14 +242,7 @@ export default function CustomManagePage() {
                 )}
               </div>
               {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다. */}
-              {!isReadOnlySheet && mode === 'stock' && (
-                <div
-                  ref={setToolbarContainer}
-                  onClickCapture={guardGuestEdit}
-                  onFocusCapture={guardGuestEdit}
-                  className="flex h-full min-h-0 min-w-0 flex-1 items-center"
-                />
-              )}
+              {!isReadOnlySheet && !isGuestOnMyMap && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 min-w-0 flex-1 items-center" />}
               {/* 관리자만 — 내 히트맵을 MARKETRY로 올리고 이전 버전으로 되돌린다. */}
               {session?.role === 'ADMIN' && !isReadOnlySheet && <MarketryPublishControls />}
               <div className={`${FONT_BAR_MODE_STATUS} ml-2 flex min-w-0 items-center justify-end text-gray-400`}>
@@ -262,11 +254,9 @@ export default function CustomManagePage() {
             <EmptyMessageAreaContext.Provider value={emptyMessageArea}>
             <div className="flex min-h-0 flex-1">
               <div
-                onClickCapture={guardGuestEdit}
-                onFocusCapture={guardGuestEdit}
                 className={`flex min-h-0 flex-1 flex-col ${mode === 'sector' ? 'overflow-y-auto' : ''}`}
               >
-                {isReadOnlySheet ? (
+                {isGuestOnMyMap ? null : isReadOnlySheet ? (
                   <ReadOnlyHeatmapSheet
                     mode={mode === 'stock' ? 'stock' : 'category'}
                     data={classificationMap}
@@ -312,11 +302,11 @@ export default function CustomManagePage() {
               isOnLeft={isSettingsOnLeft}
               onToggleSide={toggleSettingsSide}
               onRequestLogin={() => requireLogin(pathname)}
-              plainContent={mode === 'sector' && !isReadOnlySheet ? (
+              plainContent={mode === 'sector' && !isReadOnlySheet && !isGuestOnMyMap ? (
                 <div>
                   <div ref={setSectorSettingsActionsTarget} />
                 </div>
-              ) : mode === 'stock' && !isReadOnlySheet ? (
+              ) : mode === 'stock' && !isReadOnlySheet && !isGuestOnMyMap ? (
                 <div>
                   <div ref={setStockHistoryTarget} />
                 </div>
