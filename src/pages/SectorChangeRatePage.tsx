@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import SubNavBar from '@/components/SubNavBar'
@@ -117,17 +117,13 @@ function RankBars({
       style={{ gridTemplateColumns: 'auto 1fr' }}
     >
       {chart.rankedItems.map(item => (
-        // 한 줄이 한 덩어리로 반응하도록 두 칸을 이 줄(서브그리드)로 묶는다 — 눌러서 지도로 갈 수 있는 줄은 지도 설정창의 제외 업종
-        // 목록처럼 커서를 올리면 줄 전체가 연하게 밝아진다. 좌우 8px 여백은 음수 마진으로 상쇄해 칸 위치는 그대로 둔다.
-        <div
-          key={item.key}
-          className={`items-center ${onSelectSector && !item.isReference ? 'cursor-pointer transition-colors hover:bg-white/35' : ''}`}
-          style={{ display: 'grid', gridColumn: '1 / -1', gridTemplateColumns: 'subgrid', marginInline: -8, paddingInline: 8 }}
-          onClick={onSelectSector && !item.isReference ? () => onSelectSector(item.sectorName) : undefined}
-        >
+        <Fragment key={item.key}>
+          {/* 눌러서 지도로 갈 수 있는 업종은 이름에만 반응한다 — 커서를 올리면 지도 설정창의 제외 업종 목록처럼 이름 칸이 연하게 밝아진다.
+              칸 폭은 이름 글자에 맞춰 늘고 줄며(justify-self-end), 좌우 8px 여백은 음수 마진으로 상쇄해 칸 위치는 그대로 둔다. */}
           <span
-            className="whitespace-nowrap text-right font-medium"
+            className={`-mx-2 inline-flex h-[25px] items-center justify-self-end whitespace-nowrap px-2 text-right font-medium ${onSelectSector && !item.isReference ? 'cursor-pointer transition-colors hover:bg-white/35' : ''}`}
             style={item.isReference ? { color: highlightColor } : undefined}
+            onClick={onSelectSector && !item.isReference ? () => onSelectSector(item.sectorName) : undefined}
           >
             {item.sectorName}
           </span>
@@ -156,7 +152,7 @@ function RankBars({
             </div>
             <span className="w-[84px] shrink-0" />
           </div>
-        </div>
+        </Fragment>
       ))}
     </div>
   )
