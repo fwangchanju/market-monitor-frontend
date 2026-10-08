@@ -453,7 +453,7 @@ export default function SectorChangeRatePage() {
                     className="mb-[19.5px] flex w-full shrink-0 items-center font-bold whitespace-nowrap"
                     style={{ fontSize: 20, color: strongIndustryColor }}
                   >
-                    <div className="flex flex-[2] items-center justify-center">
+                    <div className="flex flex-[3] items-center justify-center">
                       {/* 헤더 상자는 각진 테두리 상자(테두리 2px·글자는 지도 설정창의 강조 색상, 배경은 검정, 그림자 없음)이고 글자는 20px 굵게(700)이다. */}
                       <span
                         className="rounded-lg border-2 bg-black px-[6px] py-[2px] text-[20px] leading-none font-bold"
@@ -472,8 +472,8 @@ export default function SectorChangeRatePage() {
                     </div>
                   </div>
                   <div className="flex min-h-0 flex-1 gap-x-8 px-[10%]">
-                    {/* 좌(현재) 2 : 우(변화율) 1 비율 — 변화율 쪽은 막대가 항상 더 짧아서 면적을 덜 준다. */}
-                    <div className="flex min-h-0 min-w-0 flex-[2]">
+                    {/* 좌(현재) 3 : 우(변화율) 1 비율 — 변화율 쪽은 막대가 항상 더 짧아서 면적을 덜 준다. */}
+                    <div className="flex min-h-0 min-w-0 flex-[3]">
                       <RankBars
                         chart={charts.current}
                         highlightColor={strongIndustryColor}
