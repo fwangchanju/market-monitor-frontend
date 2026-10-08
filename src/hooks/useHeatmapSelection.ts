@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-export type HeatmapSelection = 'marketry' | 'krx'
+export type HeatmapSelection = 'marketry' | 'krx' | 'mymap'
 
 const STORAGE_KEY = 'marketMap.heatmapSelection'
 const CHANGE_EVENT = 'marketry:heatmap-selection'
@@ -18,7 +18,7 @@ function getSelection(): HeatmapSelection | null {
     } catch {
       return null
     }
-    return value === 'marketry' || value === 'krx' ? value : null
+    return value === 'marketry' || value === 'krx' || value === 'mymap' ? value : null
   } catch {
     useMemoryStorage = true
     return memorySelection

@@ -954,14 +954,14 @@ function SettingsClassificationSelector({
   atBottom?: boolean
   snapshotTime?: string | null
 }) {
-  // key가 null인 항목(내 히트맵)은 아직 고를 수 없다. KRX와 NXT는 "거래소" 한 칸으로 합쳤고, 지금 어느 쪽 종목을 보여줄지는 시간대가 정한다.
-  const options: { key: HeatmapKey | null; label: string }[] = [
+  // KRX와 NXT는 "거래소" 한 칸으로 합쳤고, 지금 어느 쪽 종목을 보여줄지는 시간대가 정한다. 내 히트맵은 로그인이 필요하다(고르면 로그인 창이 뜬다).
+  const options: { key: HeatmapKey; label: string }[] = [
     { key: 'marketry', label: HEATMAP_NAMES.marketry.tab },
     { key: 'krx', label: '한국거래소' },
-    { key: null, label: HEATMAP_NAMES.mine.tab },
+    { key: 'mymap', label: HEATMAP_NAMES.mymap.tab },
   ]
   const isExchange = heatmap === 'krx' || heatmap === 'nxt'
-  const isSelected = (key: HeatmapKey | null) => key !== null && (key === 'krx' ? isExchange : heatmap === key)
+  const isSelected = (key: HeatmapKey) => (key === 'krx' ? isExchange : heatmap === key)
 
   return (
     <div data-map-select-top-line={atBottom || undefined} style={atBottom ? { backgroundColor: CLASSIFICATION_BACKGROUND_COLOR } : undefined} className={`${atBottom ? 'shrink-0 border-t border-gray-500 px-4 py-3' : 'mb-6 pt-5 pb-6'} text-white`}>
@@ -977,15 +977,11 @@ function SettingsClassificationSelector({
             type="button"
             role="radio"
             aria-checked={isSelected(option.key)}
-            onClick={() => option.key !== null && !isSelected(option.key) && onSelectHeatmap(option.key)}
-            disabled={option.key === null}
-            title={option.key === null ? '준비 중' : undefined}
+            onClick={() => !isSelected(option.key) && onSelectHeatmap(option.key)}
             className={`min-h-8 rounded px-0.5 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
-              option.key === null
-                ? 'cursor-not-allowed border-0 bg-transparent text-gray-500'
-                : isSelected(option.key)
-                  ? 'bg-[var(--brand)] text-black'
-                  : 'border-0 bg-transparent text-gray-300 hover:text-white'
+              isSelected(option.key)
+                ? 'bg-[var(--brand)] text-black'
+                : 'border-0 bg-transparent text-gray-300 hover:text-white'
             }`}
           >
             {option.label}
@@ -1000,7 +996,9 @@ function SettingsClassificationSelector({
               label="업데이트"
               description={isExchange
                 ? "키움 REST API로 받은\n종목·업종 정보를 서버에\n마지막으로 동기화한 시각입니다.\n\n시세 갱신 시각이나 한국거래소의\n공식 분류 변경 시각과는 다릅니다."
-                : "MARKETRY 운영자가 종목·업종 정보를\n마지막으로 수정한 시각입니다."}
+                : heatmap === 'mymap'
+                  ? "내가 종목·업종 정보를\n마지막으로 수정한 시각입니다."
+                  : "MARKETRY 운영자가 고정본을\n마지막으로 올린 시각입니다."}
             />
           </span>
           <span>{toMarketMapSnapshotDateLabel(snapshotTime)}</span>

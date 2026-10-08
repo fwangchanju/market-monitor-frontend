@@ -6,16 +6,16 @@ import type { HeatmapKey } from '@/utils/heatmapNames'
 // 이름: 모양 우선 = squarify(박스를 정사각형에 가깝게 놓는다), 순서 우선 = binary(시가총액 큰 순서가 배치에서도 이어진다).
 export type MapTileMethod = 'squarify' | 'binary'
 export const DEFAULT_MAP_TILE: MapTileMethod = 'squarify'
-// 히트맵마다 가로 늘리기 배율(1이면 그대로, 1~3). 내 히트맵은 아직 지도에서 고를 수 없다.
-const DEFAULT_STRETCH = { krx: 1, marketry: 1, mine: 1 } as const
+// 히트맵마다 가로 늘리기 배율(1이면 그대로, 1~3).
+const DEFAULT_STRETCH = { krx: 1, marketry: 1, mymap: 1 } as const
 
 // 비교용 주소 덮어쓰기(저장되지 않는다) — 주소 끝에 붙이면 기본값 대신 그 값으로 한 번 본다.
 //   ?tile=squarify          예전 방식(모양 우선)으로 보기
 //   ?tile=binary            순서 우선
 //   ?stretch=1              모든 히트맵의 가로 늘리기를 1(없음)로 보기, 값은 1~3
-//   ?stretchKrx=2.2         거래소만 덮어쓰기 (?stretchMarketry=, ?stretchMine= 도 같다)
+//   ?stretchKrx=2.2         거래소만 덮어쓰기 (?stretchMarketry=, ?stretchMymap= 도 같다)
 // 개별 값이 전체 값(?stretch=)보다 우선한다.
-const PARAM_BY_TARGET = { krx: 'stretchKrx', marketry: 'stretchMarketry', mine: 'stretchMine' } as const
+const PARAM_BY_TARGET = { krx: 'stretchKrx', marketry: 'stretchMarketry', mymap: 'stretchMymap' } as const
 
 function readStretch(params: URLSearchParams, name: string): number | null {
   const raw = params.get(name)
@@ -23,7 +23,7 @@ function readStretch(params: URLSearchParams, name: string): number | null {
   return raw !== null && Number.isFinite(value) && value >= 1 && value <= 3 ? value : null
 }
 
-export function mapStretchFor(heatmap: HeatmapKey | 'mine'): number {
+export function mapStretchFor(heatmap: HeatmapKey): number {
   const params = new URLSearchParams(window.location.search)
   // NXT 보기는 거래소 히트맵의 한 모습이라 거래소 값을 쓴다.
   const target = heatmap === 'nxt' ? 'krx' : heatmap

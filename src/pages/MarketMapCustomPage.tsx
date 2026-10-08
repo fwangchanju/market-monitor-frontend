@@ -155,6 +155,7 @@ export default function MarketMapCustomPage() {
     colorEditorPanelProps,
     market,
     isCustom,
+    isMarketry,
     heatmap,
     nxtOnly,
     nxtOnlyWindow,
@@ -566,7 +567,7 @@ export default function MarketMapCustomPage() {
                     boxSizeMarketCapRatio={boxSizeMarketCapRatio}
                     stretch={mapStretchFor(settingsModalProps.heatmap)}
                     tile={mapTileMethod()}
-                    canExclude={isCustom || !isLoggedIn}
+                    canExclude={isCustom || isMarketry || !isLoggedIn}
                     colorScale={colorScale}
                     labelMinAreaPercent={boxLabelMinAreaPercent}
                     stockLabelMode={stockLabelMode}

@@ -11,6 +11,7 @@ import SettingsSidebar from '@/components/SettingsSidebar'
 import { FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
 import CustomManageModeCombobox from '@/components/CustomManageModeCombobox'
 import ReadOnlyHeatmapSheet from '@/components/ReadOnlyHeatmapSheet'
+import MarketryPublishControls from '@/components/MarketryPublishControls'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
 import { useHeatmapSelection, type HeatmapSelection } from '@/hooks/useHeatmapSelection'
@@ -36,13 +37,15 @@ export default function CustomManagePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   // /custom/industry는 업종 화면이고, /custom/stock은 종목 화면이다.
   const mode = pathname === '/custom/stock' || searchParams.get('mode') === 'stock' ? 'stock' : 'sector'
-  // 히트맵 시트 — 기본은 편집 가능한 MARKETRY 시트이고, ?sheet=krx면 읽기 전용 KRX 시트다.
+  // 히트맵 시트 — 기본은 편집 가능한 내 히트맵(mymap) 시트이고, ?sheet=krx면 읽기 전용 KRX 시트다.
+  // 예전 주소(?sheet=marketry)는 내 히트맵 시트로 연다. MARKETRY 고정본은 이 화면에서 고치지 않는다.
   // 예전 주소(?sheet=nxt)는 KRX 시트에서 "NXT 종목만 보기"를 켠 상태로 연다.
   const sheetParam = searchParams.get('sheet')
   const [selectedHeatmap, setSelectedHeatmap] = useHeatmapSelection()
-  const explicitSheet = sheetParam === 'krx' || sheetParam === 'nxt' ? 'krx' : sheetParam === 'marketry' ? 'marketry' : null
-  const sheet = explicitSheet ?? selectedHeatmap
-  const isReadOnlySheet = sheet !== 'marketry'
+  const explicitSheet =
+    sheetParam === 'krx' || sheetParam === 'nxt' ? 'krx' : sheetParam === 'marketry' || sheetParam === 'mymap' ? 'mymap' : null
+  const sheet = explicitSheet ?? (selectedHeatmap === 'krx' ? 'krx' : 'mymap')
+  const isReadOnlySheet = sheet !== 'mymap'
   const [sectorSettingsActionsTarget, setSectorSettingsActionsTarget] = useState<HTMLDivElement | null>(null)
   // 종목 화면의 실행취소·다시실행 아이콘이 들어갈 설정창 안의 자리.
   const [stockHistoryTarget, setStockHistoryTarget] = useState<HTMLDivElement | null>(null)
@@ -99,7 +102,7 @@ export default function CustomManagePage() {
     isLoading: isClassificationLoading,
     refetch: refetchClassification,
     isRefetching: isRefetchingClassification,
-  } = useMarketMap('ALL_STOCK', !isReadOnlySheet, false, { enabled: isLoggedIn })
+  } = useMarketMap('ALL_STOCK', isReadOnlySheet ? 'krx' : 'mymap', false, { enabled: isLoggedIn })
 
   const nxtStockCodes = useMemo(
     () => new Set((stockSectors?.items ?? []).filter(item => item.nxtEnabled).map(item => item.stockCode)),
@@ -236,6 +239,8 @@ export default function CustomManagePage() {
               </div>
               {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다. */}
               {!isReadOnlySheet && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 min-w-0 flex-1 items-center" />}
+              {/* 관리자만 — 내 히트맵을 MARKETRY 고정본으로 올리고 이전 버전으로 되돌린다. */}
+              {session?.role === 'ADMIN' && !isReadOnlySheet && <MarketryPublishControls />}
               <div className={`${FONT_BAR_MODE_STATUS} ml-2 flex min-w-0 items-center justify-end text-gray-400`}>
                 <span className="flex min-w-0 items-center justify-end">
                   <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{HEATMAP_NAMES[sheet].title}</span>
@@ -300,7 +305,7 @@ export default function CustomManagePage() {
               classificationAtBottom
               snapshotTime={classificationMap?.classificationUpdatedAt}
               heatmap={sheet}
-              onSelectHeatmap={next => handleSelectSheet(next === 'marketry' ? 'marketry' : 'krx')}
+              onSelectHeatmap={next => handleSelectSheet(next === 'krx' || next === 'nxt' ? 'krx' : next)}
             />
           </div>
         </div>

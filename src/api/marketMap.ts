@@ -7,17 +7,18 @@ import {
   type MarketQuery,
 } from '@/types/api'
 import { z } from 'zod'
+import type { ClassificationSource } from '@/utils/heatmapNames'
 
 const excludedStockListResponseSchema = z.array(ExcludedStockItemSchema)
 
 // 등락률 기준 — daily는 전일 종가 대비 누적(기본), afterHours는 그날 정규장 종가 대비(15:40 이후 오늘 스냅샷에서만 적용된다).
 export type ChangeRateBasis = 'daily' | 'afterHours'
 
-// nxtOnly는 거래소 분류(isCustom=false)에서 NXT 거래 종목만 받는다. false일 때는 요청에 싣지 않아 기존 요청과 같다.
-// basis도 afterHours일 때만 요청에 싣는다.
+// source는 어떤 분류로 그릴지다 — krx(거래소), marketry(운영자가 올린 고정본, 로그인 없이 읽는다), mymap(내 히트맵, 로그인 필요).
+// nxtOnly는 NXT 거래 종목만 받는다. false일 때는 요청에 싣지 않는다. basis도 afterHours일 때만 요청에 싣는다.
 export const getMarketMap = (
   market: MarketQuery,
-  isCustom: boolean,
+  source: ClassificationSource,
   snapshotTime?: string,
   nxtOnly = false,
   basis: ChangeRateBasis = 'daily',
@@ -26,7 +27,7 @@ export const getMarketMap = (
     .get('/map', {
       params: {
         market,
-        isCustom,
+        source,
         ...(snapshotTime ? { snapshotTime } : {}),
         ...(nxtOnly ? { nxtOnly } : {}),
         ...(basis === 'afterHours' ? { basis } : {}),
