@@ -88,6 +88,8 @@ interface Props {
   mode: 'category' | 'stock'
   data: MarketMapResponse | undefined
   isLoading: boolean
+  // 어떤 분류를 읽기 전용으로 보여주는지 — krx는 거래소 분류, marketry는 운영자가 올린 고정본이다. "NXT만 보기"는 krx만 쓴다.
+  source: 'krx' | 'marketry'
   // NXT 시트면 NXT 거래 가능 종목만 남긴다. 업종 분류는 KRX 것을 그대로 쓴다.
   nxtOnly: boolean
   // 검색창 옆 "NXT만 보기" 체크박스를 눌렀을 때.
@@ -107,9 +109,9 @@ interface SectorRow {
   stocks: MarketMapResponse['items'][number]['items']
 }
 
-// KRX/NXT 시트 — 업종 분류를 읽기만 하는 화면이다. 편집 기능(추가·이동·배정)은 없고, 지도의 KRX 히트맵이 보여주는
-// 분류(/map?isCustom=false)를 그대로 표로 보여준다. 시세가 있는 종목만 내려오므로 거래정지 종목 등은 빠질 수 있다.
-export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, nxtOnly, onNxtOnlyChange, nxtStockCodes, stockMarkets, isNxtLoading, onCountLabelChange }: Props) {
+// KRX/NXT·MARKETRY 시트 — 업종 분류를 읽기만 하는 화면이다. 편집 기능(추가·이동·배정)은 없고, 지도의 해당 히트맵이 보여주는
+// 분류(/map?source=...)를 그대로 표로 보여준다. 시세가 있는 종목만 내려오므로 거래정지 종목 등은 빠질 수 있다.
+export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, source, nxtOnly, onNxtOnlyChange, nxtStockCodes, stockMarkets, isNxtLoading, onCountLabelChange }: Props) {
   const sectors = useMemo<SectorRow[]>(() => {
     if (!data) return []
     return data.items
@@ -129,8 +131,12 @@ export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, nxtOnly, o
     )
   }
   // 종목이 하나도 없어도 표 틀(검색창·머리글)은 그대로 보여준다 — 시트마다 화면 모양이 달라 보이지 않게 한다.
-  const emptyMessage = nxtOnly ? 'NXT 거래 종목이 아직 없습니다.\n평일 오전 7시 종목 정보 동기화 뒤에 표시됩니다.' : '표시할 KRX 분류가 없습니다.'
-  const nxtOnlyToggle = (
+  const emptyMessage = source === 'marketry'
+    ? '운영자가 올린 MARKETRY 고정본이 아직 없습니다.'
+    : nxtOnly
+      ? 'NXT 거래 종목이 아직 없습니다.\n평일 오전 7시 종목 정보 동기화 뒤에 표시됩니다.'
+      : '표시할 KRX 분류가 없습니다.'
+  const nxtOnlyToggle = source === 'krx' && (
     <label className="flex cursor-pointer items-center gap-1.5 text-sm text-white">
       <input
         type="checkbox"
