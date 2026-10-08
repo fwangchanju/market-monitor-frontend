@@ -243,7 +243,7 @@ export default function MarketMapCustomPage() {
   // 상단 오른쪽 분류자명은 설정창의 업종 분류 선택 버튼과 같은 청록색 버튼으로 표시한다.
   const modeStatusText = (
     <span className="flex min-w-0 items-center justify-end">
-      <span className="min-w-0 truncate rounded bg-[var(--brand)] px-2 py-1 text-black">{HEATMAP_NAMES[heatmap].title}</span>
+      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{HEATMAP_NAMES[heatmap].title}</span>
     </span>
   )
 
@@ -442,7 +442,7 @@ export default function MarketMapCustomPage() {
           <div ref={captureRef} data-captureid={CAPTURE_ID.MAP} data-capture-ready={!isLoading} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black">
             {/* 왼쪽은 마켓·기간·시계·시간대 묶음, 오른쪽 끝은 프로필(사진 + 거래소·MARKETRY). 두 묶음이 같은 줄에서 서로 밀어내므로
                 창이 좁아져도 겹치지 않고, 부족하면 오른쪽 글자가 먼저 줄어든다. */}
-            <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-[18px] text-sm font-bold text-white">
+            <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-[7px] text-sm font-bold text-white">
               <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
                 <MarketMapMarketCombobox
                   market={market}
@@ -468,7 +468,7 @@ export default function MarketMapCustomPage() {
                   </PageRefreshButton>
                 </span>
                 {/* 시장 시간대 말머리와 누적/따로 — 시간과 관련된 표시라 시계 옆에 붙인다. */}
-                <span className="ml-2 flex shrink-0">
+                <span className="flex shrink-0">
                   <ChangeRateBasisToggle basis={changeRateBasis} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateBasis} />
                 </span>
                 </>

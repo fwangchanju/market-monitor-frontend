@@ -24,8 +24,8 @@ export const FONT_BAR_TITLE = 'text-xl leading-none font-bold'
 export const FONT_BAR_MODE_STATUS = 'text-base leading-none font-medium'
 
 // 세 번째 바 — 날짜·시간(스냅샷 시각). 숫자 폭을 같게 맞춰 시각이 바뀌어도 뒤의 시장 아이콘이 움직이지 않게 한다.
-// 16px(FONT_BAR_MODE_STATUS와 동일), medium(500). 글자 사이 간격(자간)은 조금 좁힌다(tracking-tight, -0.025em).
-export const FONT_BAR_TIME = 'text-base leading-none font-medium tabular-nums tracking-tight'
+// 16px(FONT_BAR_MODE_STATUS와 동일), medium(500). 글자 사이 간격(자간)은 조금 좁힌다(-0.04em — tracking-tight의 -0.025em보다 한 걸음 더).
+export const FONT_BAR_TIME = 'text-base leading-none font-medium tabular-nums tracking-[-0.04em]'
 
 // 세 번째 바 — 범례. 12px, bold.
 export const FONT_BAR_LEGEND = 'text-xs font-bold'
