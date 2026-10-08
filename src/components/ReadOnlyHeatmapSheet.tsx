@@ -135,7 +135,7 @@ export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, source, nx
     ? 'MARKETRY 분류가 아직 없습니다.'
     : nxtOnly
       ? 'NXT 거래 종목이 아직 없습니다.\n평일 오전 7시 종목 정보 동기화 뒤에 표시됩니다.'
-      : '표시할 KRX 분류가 없습니다.'
+      : '표시할 한국거래소 분류가 없습니다.'
   const nxtOnlyToggle = source === 'krx' && (
     <label className="flex cursor-pointer items-center gap-1.5 text-sm text-white">
       <input
@@ -186,13 +186,12 @@ export function SearchBar({ query, onChange, placeholder, ariaLabel, countLabel,
   )
 }
 
-function EmptyRow({ colSpan, message }: { colSpan: number; message: string }) {
+// 표에 보여줄 줄이 없을 때의 안내 — 머리글 아래 빈 자리의 한가운데에 크게 보여준다(부모는 relative여야 한다).
+function EmptyMessage({ message }: { message: string }) {
   return (
-    <tr>
-      <td colSpan={colSpan} className="whitespace-pre-line px-3 py-8 text-center text-sm text-gray-400">
-        {message}
-      </td>
-    </tr>
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 top-8 flex items-center justify-center whitespace-pre-line px-6 text-center text-xl text-gray-300">
+      {message}
+    </div>
   )
 }
 
@@ -229,7 +228,7 @@ function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { s
         ariaLabel="업종 검색"
         extra={extra}
       />
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="relative min-h-0 flex-1 overflow-y-auto">
         {/* 업종·종목 수·시가총액 세 칸을 같은 폭(삼등분)으로 나눈다 — MARKETRY 업종 화면의 대·중·소분류 칸과 같은 모양이다. */}
         <table className={`${TABLE_CLASS} table-fixed select-none`}>
           <thead>
@@ -240,7 +239,6 @@ function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { s
             </tr>
           </thead>
           <tbody>
-            {visibleRows.length === 0 && <EmptyRow colSpan={3} message={rows.length === 0 ? emptyMessage : '검색 결과가 없습니다.'} />}
             {visibleRows.map(row => (
               <tr key={row.name} className="text-gray-400">
                 {/* 업종 이름 시작 위치를 MARKETRY 업종 화면의 대분류 이름과 같게 한다 — 칸 왼쪽에서 8px(여백) + 손잡이 24px + 4px + 번호 칸 28px + 8px = 72px. */}
@@ -254,6 +252,7 @@ function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { s
             ))}
           </tbody>
         </table>
+        {visibleRows.length === 0 && <EmptyMessage message={rows.length === 0 ? emptyMessage : '검색 결과가 없습니다.'} />}
       </div>
     </div>
   )
@@ -324,7 +323,7 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra,
         ariaLabel="종목 검색"
         extra={extra}
       />
-      <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} className="relative min-h-0 flex-1 overflow-y-auto">
         {/* 열 너비는 MARKETRY 종목 표와 같은 비율이다 — 종목명은 그쪽의 "종목명 + 약칭" 너비이고, 남는 폭은 NXT 칸이 받는다. */}
         {/* 열이 MARKETRY 표 폭으로 좁아져도 머리글·시가총액이 두 줄로 접히거나 옆 칸으로 넘치지 않게 좌우 여백을 줄이고 한 줄로 고정한다. */}
         <table className={`${TABLE_CLASS} table-fixed select-none [&_td]:whitespace-nowrap [&_td]:px-1 [&_th]:whitespace-nowrap [&_th]:px-1`}>
@@ -358,7 +357,6 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra,
             </tr>
           </thead>
           <tbody>
-            {visibleRows.length === 0 && <EmptyRow colSpan={7} message={rows.length === 0 ? emptyMessage : '검색 결과가 없습니다.'} />}
             {paddingTop > 0 && (
               <tr>
                 <td colSpan={7} style={{ height: paddingTop, padding: 0, border: 'none' }} />
@@ -400,6 +398,7 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra,
             )}
           </tbody>
         </table>
+        {visibleRows.length === 0 && <EmptyMessage message={rows.length === 0 ? emptyMessage : '검색 결과가 없습니다.'} />}
       </div>
     </div>
   )
