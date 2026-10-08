@@ -38,7 +38,7 @@ export default function CustomManagePage() {
   // /custom/industry는 업종 화면이고, /custom/stock은 종목 화면이다.
   const mode = pathname === '/custom/stock' || searchParams.get('mode') === 'stock' ? 'stock' : 'sector'
   // 히트맵 시트 — 내 히트맵(mymap)만 편집할 수 있다. ?sheet=krx는 읽기 전용 KRX 시트, ?sheet=marketry는 운영자가 올린
-  // MARKETRY 고정본을 읽기 전용으로 보여준다(고정본은 운영자가 내 히트맵에서 올려서 바꾼다).
+  // 운영자가 올린 MARKETRY를 읽기 전용으로 보여준다(MARKETRY는 운영자가 내 히트맵에서 올려서 바꾼다).
   // 예전 주소(?sheet=nxt)는 KRX 시트에서 "NXT 종목만 보기"를 켠 상태로 연다.
   const sheetParam = searchParams.get('sheet')
   const [selectedHeatmap, setSelectedHeatmap] = useHeatmapSelection()
@@ -239,7 +239,7 @@ export default function CustomManagePage() {
               </div>
               {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다. */}
               {!isReadOnlySheet && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 min-w-0 flex-1 items-center" />}
-              {/* 관리자만 — 내 히트맵을 MARKETRY 고정본으로 올리고 이전 버전으로 되돌린다. */}
+              {/* 관리자만 — 내 히트맵을 MARKETRY로 올리고 이전 버전으로 되돌린다. */}
               {session?.role === 'ADMIN' && !isReadOnlySheet && <MarketryPublishControls />}
               <div className={`${FONT_BAR_MODE_STATUS} ml-2 flex min-w-0 items-center justify-end text-gray-400`}>
                 <span className="flex min-w-0 items-center justify-end">

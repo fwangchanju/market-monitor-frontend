@@ -998,7 +998,7 @@ function SettingsClassificationSelector({
                 ? "키움 REST API로 받은\n종목·업종 정보를 서버에\n마지막으로 동기화한 시각입니다.\n\n시세 갱신 시각이나 한국거래소의\n공식 분류 변경 시각과는 다릅니다."
                 : heatmap === 'mymap'
                   ? "내가 종목·업종 정보를\n마지막으로 수정한 시각입니다."
-                  : "MARKETRY 운영자가 고정본을\n마지막으로 올린 시각입니다."}
+                  : "MARKETRY 운영자가 종목·업종 정보를\n마지막으로 수정한 시각입니다."}
             />
           </span>
           <span>{toMarketMapSnapshotDateLabel(snapshotTime)}</span>

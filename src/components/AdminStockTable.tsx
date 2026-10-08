@@ -962,7 +962,7 @@ export default function AdminStockTable({
   const assignStockSector = useAssignStockSector()
   const bulkAssignStockSector = useBulkAssignStockSector()
   const updateAlias = useUpdateStockAlias()
-  // 약칭 지정은 관리자 전용이다 — 관리자의 약칭은 MARKETRY 고정본으로 올릴 내용에만 쓰이고, 다른 사용자의 데이터는 건드리지 않는다.
+  // 약칭 지정은 관리자 전용이다 — 관리자의 약칭은 MARKETRY로 올릴 내용에만 쓰이고, 다른 사용자의 데이터는 건드리지 않는다.
   // 일반 사용자에게는 약칭 열 자체를 보여주지 않고(백엔드도 관리자만 허용한다), 그 너비는 종목명 열이 받는다.
   const isAdmin = useSession().data?.role === 'ADMIN'
   const columns = useMemo(

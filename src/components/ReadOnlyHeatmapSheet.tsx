@@ -88,7 +88,7 @@ interface Props {
   mode: 'category' | 'stock'
   data: MarketMapResponse | undefined
   isLoading: boolean
-  // 어떤 분류를 읽기 전용으로 보여주는지 — krx는 거래소 분류, marketry는 운영자가 올린 고정본이다. "NXT만 보기"는 krx만 쓴다.
+  // 어떤 분류를 읽기 전용으로 보여주는지 — krx는 거래소 분류, marketry는 운영자가 올린 분류다. "NXT만 보기"는 krx만 쓴다.
   source: 'krx' | 'marketry'
   // NXT 시트면 NXT 거래 가능 종목만 남긴다. 업종 분류는 KRX 것을 그대로 쓴다.
   nxtOnly: boolean
@@ -132,7 +132,7 @@ export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, source, nx
   }
   // 종목이 하나도 없어도 표 틀(검색창·머리글)은 그대로 보여준다 — 시트마다 화면 모양이 달라 보이지 않게 한다.
   const emptyMessage = source === 'marketry'
-    ? '운영자가 올린 MARKETRY 고정본이 아직 없습니다.'
+    ? 'MARKETRY 분류가 아직 없습니다.'
     : nxtOnly
       ? 'NXT 거래 종목이 아직 없습니다.\n평일 오전 7시 종목 정보 동기화 뒤에 표시됩니다.'
       : '표시할 KRX 분류가 없습니다.'

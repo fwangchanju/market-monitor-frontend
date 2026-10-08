@@ -121,9 +121,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   const [savedIsCustom] = usePageSetting('marketMap.isCustom', defaults.isCustom)
   const [selectedHeatmap, setSelectedHeatmap] = useHeatmapSelection(savedIsCustom ? 'marketry' : 'krx')
   // 내 히트맵(mymap)은 로그인이 필요하다 — 로그아웃 상태에서는 거래소로 보이고, 브라우저에 저장한 선택 자체는 보존한다.
-  // MARKETRY는 운영자가 올린 고정본이라 로그인 없이 읽는다(읽기 전용).
+  // MARKETRY는 운영자가 올린 분류라 로그인 없이 읽는다(읽기 전용).
   const source: ClassificationSource = selectedHeatmap === 'mymap' && !isLoggedIn ? 'krx' : selectedHeatmap
-  // isCustom: 본인 데이터로 만든 내 히트맵(편집·서버 저장이 되는 분류). isMarketry: 운영자 고정본. 둘 다 대·중·소분류 트리를 쓴다.
+  // isCustom: 본인 데이터로 만든 내 히트맵(편집·서버 저장이 되는 분류). isMarketry: 운영자가 올린 MARKETRY. 둘 다 대·중·소분류 트리를 쓴다.
   const isCustom = source === 'mymap'
   const isMarketry = source === 'marketry'
   const usesCustomTree = isCustom || isMarketry
@@ -249,7 +249,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   const changeRateBasis: ChangeRateBasis = isAfterHoursSelectable ? requestedBasis : 'daily'
   const rawRootNodes = data?.items
   // 비로그인의 거래소 분류는 업종 id가 모두 0이라, 제외 기능이 동작하도록 이름 기반 고유 id를 붙인다.
-  // MARKETRY 고정본은 비로그인도 진짜 업종 id를 받으므로 그대로 쓴다.
+  // MARKETRY는 비로그인도 진짜 업종 id를 받으므로 그대로 쓴다.
   const rootNodes = useMemo(
     () => (isLoggedIn || isMarketry ? (rawRootNodes ?? []) : withStableSectorIds(rawRootNodes ?? [])),
     [isLoggedIn, isMarketry, rawRootNodes],
