@@ -42,7 +42,7 @@ export default function MarketryPublishControls() {
 
   const handlePublish = async () => {
     const confirmed = await appConfirm(
-      '지금 내 히트맵을 MARKETRY로 올릴까요?\n모든 사용자에게 보이는 MARKETRY가 바뀝니다.\n이전 버전은 남아서 되돌릴 수 있습니다.',
+      '지금 내 히트맵을 MARKETRY로 올리시겠습니까?\n모든 사용자에게 보이는 MARKETRY가 바뀝니다.\n이전 버전은 남아서 되돌릴 수 있습니다.',
     )
     if (!confirmed) return
     setIsBusy(true)
@@ -74,14 +74,14 @@ export default function MarketryPublishControls() {
   }
 
   const handleRestore = async (version: MarketryPublication) => {
-    const confirmed = await appConfirm(`MARKETRY를 "${version.label}"로 되돌릴까요?\n모든 사용자에게 보이는 MARKETRY가 바뀝니다.`)
+    const confirmed = await appConfirm(`${version.label}\nMARKETRY를 이 버전으로 되돌리시겠습니까?\n모든 사용자에게 보이는 MARKETRY가 바뀝니다.`)
     if (!confirmed) return
     setIsBusy(true)
     try {
       await restoreMarketryPublication(version.id)
       setIsVersionsOpen(false)
       await refreshMaps()
-      appAlert(`MARKETRY를 "${version.label}"로 되돌렸습니다.`)
+      appAlert(`${version.label}\nMARKETRY를 이 버전으로 되돌렸습니다.`)
     } catch {
       appAlert('MARKETRY를 되돌리지 못했습니다.')
     } finally {
