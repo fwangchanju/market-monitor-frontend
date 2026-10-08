@@ -243,7 +243,7 @@ export default function CustomManagePage() {
               {session?.role === 'ADMIN' && !isReadOnlySheet && <MarketryPublishControls />}
               <div className={`${FONT_BAR_MODE_STATUS} ml-2 flex min-w-0 items-center justify-end text-gray-400`}>
                 <span className="flex min-w-0 items-center justify-end">
-                  <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{HEATMAP_NAMES[sheet].title}</span>
+                  <span className="w-[6.5rem] min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-center text-black">{HEATMAP_NAMES[sheet].title}</span>
                 </span>
               </div>
             </div>
