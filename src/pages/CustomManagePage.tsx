@@ -10,7 +10,6 @@ import NavBarPageActions from '@/components/NavBarPageActions'
 import SettingsSidebar from '@/components/SettingsSidebar'
 import { FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
 import CustomManageModeCombobox from '@/components/CustomManageModeCombobox'
-import CustomHeatmapSheetCombobox from '@/components/CustomHeatmapSheetCombobox'
 import ReadOnlyHeatmapSheet from '@/components/ReadOnlyHeatmapSheet'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
@@ -230,11 +229,6 @@ export default function CustomManagePage() {
                 <CustomManageModeCombobox
                   mode={mode === 'stock' ? 'stock' : 'category'}
                   onSelect={path => navigate(path)}
-                />
-                {/* 히트맵 시트 선택 — 설정창 하단의 "업종 분류" 선택과 같은 값을 함께 쓴다. */}
-                <CustomHeatmapSheetCombobox
-                  sheet={sheet === 'marketry' ? 'marketry' : 'krx'}
-                  onSelect={next => handleSelectSheet(next)}
                 />
                 {isReadOnlySheet && (
                   <span className="whitespace-nowrap text-sm font-normal text-gray-400">키움 REST API</span>

@@ -34,7 +34,7 @@ import { useIsLoggedIn } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
-import { toCount, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
+import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toCount, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { ReturnArrowIcon } from '@/components/icons/MarketMapIcons'
@@ -452,11 +452,11 @@ export default function MarketMapCustomPage() {
                   }}
                 />
                 <MarketMapPeriodCombobox />
-                {/* 데이터를 불러오는 중이거나 불러오지 못했을 때는 마켓·기간 드롭박스만 남기고 시계·시간대·누적/따로·분류명은 숨긴다. */}
-                {!isLoading && !isError && (
-                  <>
+                {/* 로딩·오류·빈 화면에서도 시계·시간대·누적/따로를 제자리에 둔다. 데이터가 없으면 시각 글자만 비어 있다. */}
+                <>
                     <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
-                  {data?.snapshotTime && <span>{toMarketMapSnapshotDateLabel(data.snapshotTime)}</span>}
+                  {/* 데이터가 없어도 날짜·시각 자리는 같은 폭으로 잡아 둬서 뒤의 시장 시간대 표시가 당겨지지 않게 한다. */}
+                  <span className={data?.snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotDateLabel(data?.snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
                   <PageRefreshButton
                     onRefresh={refetchMarketMap}
                     isRefreshing={isRefetchingMarketMap}
@@ -464,18 +464,17 @@ export default function MarketMapCustomPage() {
                     helpText={SNAPSHOT_REFRESH_HELP}
                     minSpinDurationMs={REFRESH_FEEDBACK_MIN_DURATION_MS}
                   >
-                    {data?.snapshotTime && toMarketMapSnapshotTimeOnlyLabel(data.snapshotTime)}
+                    <span className={data?.snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotTimeOnlyLabel(data?.snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
                   </PageRefreshButton>
                 </span>
                 {/* 시장 시간대 말머리와 누적/따로 — 시간과 관련된 표시라 시계 옆에 붙인다. */}
                 <span className="ml-2 flex shrink-0">
                   <ChangeRateBasisToggle basis={changeRateBasis} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateBasis} />
                 </span>
-                  </>
-                )}
+                </>
               </div>
-              {/* 맨 오른쪽 — 분류명을 설정창 업종 분류 선택 버튼 모양으로 표시하고, 좁아지면 이름을 줄인다. */}
-              {!isLoading && !isError && <div className={`${FONT_BAR_MODE_STATUS} flex min-w-0 items-center justify-end text-gray-400`}>{modeStatusText}</div>}
+              {/* 맨 오른쪽 — 분류명을 설정창 업종 분류 선택 버튼 모양으로 표시하고, 좁아지면 이름을 줄인다. 로딩·오류·빈 화면에서도 제자리에 둔다. */}
+              <div className={`${FONT_BAR_MODE_STATUS} flex min-w-0 items-center justify-end text-gray-400`}>{modeStatusText}</div>
             </div>
             <div className="flex min-h-0 flex-1">
               <div className="relative flex min-h-0 flex-1 flex-col bg-black">
@@ -547,8 +546,8 @@ export default function MarketMapCustomPage() {
                   <Spinner errorMessage="데이터를 불러오지 못했습니다." />
                 </div>
               ) : visibleItems.length === 0 ? (
-                <div className="p-8 text-center text-xs text-gray-500">
-                  {stockChangeFilter === 'all' && sectorChangeFilter === 'all' ? '데이터가 없습니다' : '선택한 방향 조건에 해당하는 종목이 없습니다'}
+                <div className="flex flex-1 items-center justify-center p-8 text-center text-base text-gray-400">
+                  {stockChangeFilter === 'all' && sectorChangeFilter === 'all' ? '데이터가 없습니다' : '조건에 해당하는 종목이 없습니다'}
                 </div>
               ) : (
                 <div className="flex min-h-0 flex-1 flex-col px-[7px]">
@@ -580,15 +579,13 @@ export default function MarketMapCustomPage() {
                   />
                 </div>
               )}
-              {/* 등락률 색상 범례 — 지도 우하단에 오른쪽 끝에 붙여 둔다. 이 줄만큼 지도 아래쪽이 올라온다. 로딩 원이나 오류 문구가 보이는 동안은 지도도 범례도 의미가 없어서 면책 문구와 함께 뺀다. */}
-              {!isLoading && !isError && (
-                <div className="flex h-7 shrink-0 items-end justify-between gap-3 pl-[7px] pr-[7px]">
-                  <div className="flex h-7 min-w-0 items-center">
-                    <DisclaimerNotice />
-                  </div>
-                  <MarketMapLegendBar swatches={settingsModalProps.legendSwatches} />
+              {/* 등락률 색상 범례 — 지도 우하단에 오른쪽 끝에 붙여 둔다. 이 줄만큼 지도 아래쪽이 올라온다. 로딩·오류·빈 화면에서도 면책 문구와 함께 맨 아래에 그대로 둔다. */}
+              <div className="flex h-7 shrink-0 items-end justify-between gap-3 pl-[7px] pr-[7px]">
+                <div className="flex h-7 min-w-0 items-center">
+                  <DisclaimerNotice />
                 </div>
-              )}
+                <MarketMapLegendBar swatches={settingsModalProps.legendSwatches} />
+              </div>
               </div>
             </div>
           </div>

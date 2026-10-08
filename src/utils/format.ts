@@ -73,6 +73,9 @@ export const toMarketMapSnapshotTimeOnlyLabel = (iso: string | null): string => 
   return iso.slice(11, 16)
 }
 
+/** 데이터를 못 받았을 때 상단 시각 자리를 같은 폭으로 잡아 두기 위한 견본 시각(화면에는 보이지 않게 숨겨서 쓴다). */
+export const MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO = '2026-10-05T12:00:00'
+
 /** LocalDateTime(ISO) → 'yyyy-MM-dd HH:00' (분 단위 절삭) */
 export const toHourLabel = (iso: string | null): string => {
   if (!iso) return '-'
