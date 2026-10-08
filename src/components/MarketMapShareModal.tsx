@@ -15,6 +15,9 @@ interface Props {
   captureTarget: HTMLElement | null
 }
 
+// MARKETRY 텔레그램 방 초대 링크 — 이미지 파일 공유가 안 되는 PC에서 텔레그램 버튼이 연다.
+const TELEGRAM_ROOM_URL = 'https://t.me/+dqHQ460Ni5BmODdl'
+
 export default function MarketMapShareModal({
   onClose,
   onCopy,
@@ -74,8 +77,8 @@ export default function MarketMapShareModal({
 
   // 텔레그램 공유 — 이미지 파일 공유(navigator.share)가 되는 환경(모바일, 맥 사파리 등)에서는 공유 창에서
   // 텔레그램을 고르면 이미지가 그대로 전달된다. 파일 공유가 안 되는 환경(윈도우 크롬 데스크톱 등)은
-  // 이미지를 못 붙이므로 텔레그램 공유 링크(t.me/share)로 대체하고, 이미지는 클립보드에 복사해 둔다 —
-  // 열린 텔레그램 대화창에 붙여넣으면 된다.
+  // 이미지를 못 붙이므로 MARKETRY 텔레그램 방 링크를 열고, 이미지는 클립보드에 복사해 둔다 —
+  // 열린 방의 대화창에 붙여넣으면 된다.
   const handleTelegramShare = async () => {
     const file = shareFileRef.current
     if (file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
@@ -89,8 +92,7 @@ export default function MarketMapShareModal({
       }
       return
     }
-    const url = `${window.location.origin}${window.location.pathname}`
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent('MARKETRY')}`, '_blank', 'noopener,noreferrer')
+    window.open(TELEGRAM_ROOM_URL, '_blank', 'noopener,noreferrer')
     // 링크에는 이미지를 붙일 수 없으니, 클립보드에 이미지를 복사해 두어 텔레그램 대화창에 붙여넣게 한다.
     onCopy(previewSrc)
   }
