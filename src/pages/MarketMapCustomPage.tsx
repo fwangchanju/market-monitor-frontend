@@ -244,7 +244,7 @@ export default function MarketMapCustomPage() {
   // 상단 오른쪽 분류자명은 설정창의 업종 분류 선택 버튼과 같은 청록색 버튼으로 표시한다.
   const modeStatusText = (
     <span className="flex min-w-0 items-center justify-end">
-      <span className="w-[6.5rem] min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-center text-black">{HEATMAP_NAMES[heatmap].title}</span>
+      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{HEATMAP_NAMES[heatmap].title}</span>
     </span>
   )
 

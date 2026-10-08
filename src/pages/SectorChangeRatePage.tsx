@@ -243,7 +243,7 @@ export default function SectorChangeRatePage() {
   // 맵·커스텀 페이지와 같은 청록색 분류자명 버튼을 표시한다.
   const modeStatusText = (
     <span className="flex min-w-0 items-center justify-end">
-      <span className="w-[6.5rem] min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-center text-black">{HEATMAP_NAMES[settingsModalProps.heatmap].title}</span>
+      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{HEATMAP_NAMES[settingsModalProps.heatmap].title}</span>
     </span>
   )
 
