@@ -10,7 +10,7 @@ import { isAfterHoursSelectable as isAfterHoursSelectableAt } from '@/utils/trad
 import type { ChangeRateBasis } from '@/api/marketMap'
 import { usePageSetting } from './usePageSetting'
 import { useRouteAwareMarket } from './useRouteAwareMarket'
-import { useIsLoggedIn } from './useSession'
+import { useIsLoggedIn, useSession } from './useSession'
 import { useLoginGate } from './useLoginGate'
 import { useMarketMap } from './useMarketMap'
 import { useMarketMapColorScale } from './useMarketMapColorScale'
@@ -110,6 +110,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   const allowChangeRateBasis = options?.allowChangeRateBasis ?? false
   const { pathname } = useLocation()
   const isLoggedIn = useIsLoggedIn()
+  const { isLoading: isSessionLoading } = useSession()
   // 설정 기본값은 utils/settingDefaults.ts에 모아 두었다(비로그인과 회원이 다르다). 사용자가 값을 바꾸면 저장값이 우선한다.
   const defaults = settingDefaultsFor(isLoggedIn)
   const { requireLogin } = useLoginGate()
@@ -123,6 +124,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   // 내 히트맵(mymap)은 로그인이 필요하다 — 로그아웃 상태에서는 거래소로 보이고, 브라우저에 저장한 선택 자체는 보존한다.
   // MARKETRY는 올린 분류라 로그인 없이 읽는다(읽기 전용).
   const source: ClassificationSource = selectedHeatmap === 'mymap' && !isLoggedIn ? 'krx' : selectedHeatmap
+  // 새로고침 직후에는 로그인 여부를 아직 모른다. 내 히트맵을 골라 둔 사람이 그 사이에 한국거래소 지도를 받았다가 바뀌지 않도록,
+  // 로그인 확인이 끝날 때까지는 지도를 요청하지 않고 로딩으로 둔다.
+  const isWaitingForSession = selectedHeatmap === 'mymap' && isSessionLoading
   // isCustom: 본인 데이터로 만든 내 히트맵(편집·서버 저장이 되는 분류). isMarketry: 올린 MARKETRY. 둘 다 대·중·소분류 트리를 쓴다.
   const isCustom = source === 'mymap'
   const isMarketry = source === 'marketry'
@@ -236,13 +240,13 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
 
   const {
     data,
-    isLoading,
+    isLoading: isMarketMapLoading,
     isError,
     isSuccess: isMarketMapSuccess,
     isRefetching: isRefetchingMarketMap,
     refetch: refetchMarketMap,
   } = useMarketMap(market, source, nxtOnly, {
-    enabled: needsTree,
+    enabled: needsTree && !isWaitingForSession,
     basis: requestedBasis,
   })
   const isAfterHoursSelectable = isAfterHoursControlsVisible && isAfterHoursSelectableAt(data?.snapshotTime)
@@ -723,7 +727,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     data,
     refetchMarketMap,
     isRefetchingMarketMap,
-    isLoading,
+    isLoading: isMarketMapLoading || isWaitingForSession,
     isError,
     isMarketMapSuccess,
     isMarketValueTierRangeReady,
