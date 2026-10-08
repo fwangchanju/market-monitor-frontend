@@ -55,7 +55,7 @@ const COLUMNS: { key: SortKey; header: string; width: string; align: 'center' | 
   { key: 'alias', header: '약칭', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.alias), align: 'left' },
   { key: 'totalMarketValue', header: '시가총액', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.totalMarketValue), align: 'right' },
   { key: 'market', header: '마켓', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.market), align: 'center' },
-  { key: 'originCategoryName', header: '업종', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.industry), align: 'left' },
+  { key: 'originCategoryName', header: '섹터', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.industry), align: 'left' },
   { key: 'parentSectorName', header: '대분류', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.parentSector), align: 'right' },
   { key: 'midSectorName', header: '중분류', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.midSector), align: 'right' },
   { key: 'subSectorName', header: '소분류', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.subSector), align: 'right' },
@@ -754,6 +754,7 @@ function AdminAliasCell({
         <input
           type="text"
           autoFocus
+          aria-label="운영자 전용 약칭"
           value={value}
           onChange={e => setValue(e.target.value)}
           onBlur={stopEdit}
@@ -1444,7 +1445,7 @@ export default function AdminStockTable({
       return {
         종목코드: item.stockCode,
         종목명: item.stockName,
-        '약칭': item.alias ?? '',
+        ...(isAdmin ? { 약칭: item.alias ?? '' } : {}),
         시가총액: item.totalMarketValue ?? '',
         마켓: display.market,
         '업종': display.originCategoryName,
@@ -1669,7 +1670,14 @@ export default function AdminStockTable({
               </th>
               {columns.map(col => {
                 const label = (
-                  <span className="cursor-pointer select-none text-slate-100 hover:text-slate-300" onClick={() => handleSort(col.key)}>
+                  <span
+                    className={`cursor-pointer select-none text-slate-100 hover:text-slate-300 ${col.key === 'alias' ? 'inline-flex items-center align-middle' : ''}`}
+                    title={col.key === 'alias' ? '운영자 권한이 있는 사용자만 약칭을 보고 수정할 수 있습니다.' : undefined}
+                    onClick={() => handleSort(col.key)}
+                  >
+                    {col.key === 'alias' && (
+                      <span className="mr-2 inline-flex h-4 items-center bg-[#ff4d2e] px-1 text-[10px] font-extrabold leading-none text-white">ADMIN</span>
+                    )}
                     {col.header}
                     <span className={`ml-1 inline-flex align-middle ${sortKey === col.key ? 'text-[var(--brand)]' : 'text-slate-500'}`}>
                       <SortIcon active={sortKey === col.key} direction={sortDirection} className="h-3.5 w-3.5" />

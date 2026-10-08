@@ -1,6 +1,6 @@
 // 커스텀 종목 표 열 너비(%) — MARKETRY 종목 표(AdminStockTable)와 한국거래소 종목 표(ReadOnlyHeatmapSheet)가 같은 너비를
 // 쓰도록 한곳에 둔다. 두 표는 맨 왼쪽 체크박스 칸(고정 px)을 뺀 나머지 폭을 이 비율로 나눈다(합계 기준은 약칭 열이 있는
-// 관리자 화면). 한국거래소 표의 "종목명"은 MARKETRY 표의 "종목명 + 약칭"과 같은 너비다.
+// 관리자 화면). MARKETRY·한국거래소 표는 약칭을 따로 표시하고, 일반 사용자의 내 히트맵만 약칭 너비를 종목명에 더한다.
 export const STOCK_COLUMN_PERCENT = {
   stockCode: 7,
   stockName: 13,

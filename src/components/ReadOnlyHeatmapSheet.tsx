@@ -8,6 +8,7 @@ import EmptyMessage, { EMPTY_DATA_MESSAGE, EMPTY_SEARCH_MESSAGE } from '@/compon
 import type { Market, MarketMapResponse } from '@/types/api'
 import { toCount, toJoEokDecimal } from '@/utils/format'
 import { charTier } from '@/utils/koreanSort'
+import { collectItems } from '@/utils/sectorAverage'
 import { SortIcon } from '@/components/icons/MarketMapIcons'
 
 const KOREAN_COLLATOR = new Intl.Collator('ko')
@@ -59,15 +60,18 @@ function useSort<K extends string>(initialKey: K, initialDirection: SortDirectio
   return { sortKey, direction, toggle }
 }
 
-function SortableHeader({ label, active, direction, onClick }: {
+function SortableHeader({ label, active, direction, onClick, className, width, inlineLabel }: {
   label: string
   active: boolean
   direction: SortDirection
   onClick: () => void
+  className?: string
+  width?: string
+  inlineLabel?: boolean
 }) {
   return (
-    <th className={HEADER_CELL}>
-      <span className={`cursor-pointer select-none ${COLOR.sortHover}`} onClick={onClick}>
+    <th className={className ?? HEADER_CELL} style={width ? { width } : undefined}>
+      <span className={`cursor-pointer select-none ${COLOR.sortHover}${inlineLabel ? ' inline-flex items-center align-middle' : ''}`} onClick={onClick}>
         {label}
         <span className={`ml-1 inline-flex align-middle ${active ? COLOR.sortActive : COLOR.sortInactive}`}>
           <SortIcon active={active} direction={direction} className="h-3.5 w-3.5" />
@@ -81,6 +85,8 @@ const HEADER_CELL = `sticky top-0 z-10 ${COLOR.headerBg} px-3 py-1 text-center t
 const BODY_CELL = `border-b ${COLOR.rowDivider} px-3 py-1 text-sm`
 // 종목 표 한 행의 예상 높이(글줄 20 + 위아래 여백 8 + 아래 선 1) — 실제 높이는 렌더 뒤에 다시 잰다.
 const STOCK_ROW_HEIGHT = 29
+const STOCK_HEADER_CELL = 'whitespace-nowrap bg-[#2b3a4f] text-center font-bold text-slate-100'
+const STOCK_BODY_CELL = 'text-sm'
 // 맨 왼쪽 체크박스 칸 — MARKETRY 종목 표(AdminStockTable)와 같은 폭(체크박스 20px + 좌우 4.5px씩)이다.
 const CHECKBOX_COLUMN_WIDTH = '29px'
 const CHECKBOX_CELL_STYLE = { width: CHECKBOX_COLUMN_WIDTH, minWidth: CHECKBOX_COLUMN_WIDTH, maxWidth: CHECKBOX_COLUMN_WIDTH, paddingLeft: 0, paddingRight: 0 } as const
@@ -101,6 +107,8 @@ interface Props {
   nxtStockCodes: ReadonlySet<string>
   // 지도 응답에는 마켓 정보가 없어 MARKETRY 표와 같은 커스텀 종목 목록에서 가져온다.
   stockMarkets: ReadonlyMap<string, Market>
+  // 거래소 업종명은 종목 메타데이터에서 읽고, MARKETRY 대·중·소분류와 별도로 표시한다.
+  stockIndustries: ReadonlyMap<string, string | null>
   // nxtStockCodes를 아직 받아오는 중인지 — 받기 전에는 "종목이 없다"고 잘못 보이지 않게 스피너를 보여준다.
   isNxtLoading: boolean
   // 검색창 옆에 두던 "27/27업종" 개수를 받아 갈 곳 — 페이지가 설정창 머리글에 그려 준다.
@@ -109,21 +117,37 @@ interface Props {
 
 interface SectorRow {
   sectorName: string
+  sectorPath?: string[]
   stocks: MarketMapResponse['items'][number]['items']
+}
+
+// 종목 표는 대·중·소분류에 직접 배정된 종목을 모두 읽되, 각 종목의 배정 업종 이름을 유지한다.
+function collectSectorRows(nodes: MarketMapResponse['items'], parentPath: string[] = []): SectorRow[] {
+  return nodes.flatMap(node => {
+    const sectorPath = [...parentPath, node.sectorName]
+    return [
+      { sectorName: node.sectorName, sectorPath, stocks: node.items },
+      ...collectSectorRows(node.children, sectorPath),
+    ]
+  })
 }
 
 // KRX/NXT·MARKETRY 시트 — 업종 분류를 읽기만 하는 화면이다. 편집 기능(추가·이동·배정)은 없고, 지도의 해당 히트맵이 보여주는
 // 분류(/map?source=...)를 그대로 표로 보여준다. 시세가 있는 종목만 내려오므로 거래정지 종목 등은 빠질 수 있다.
-export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, isError, source, nxtOnly, onNxtOnlyChange, nxtStockCodes, stockMarkets, isNxtLoading, onCountLabelChange }: Props) {
+export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, isError, source, nxtOnly, onNxtOnlyChange, nxtStockCodes, stockMarkets, stockIndustries, isNxtLoading, onCountLabelChange }: Props) {
   const sectors = useMemo<SectorRow[]>(() => {
     if (!data) return []
-    return data.items
-      .map(node => ({
-        sectorName: node.sectorName,
-        stocks: nxtOnly ? node.items.filter(item => nxtStockCodes.has(item.stockCode)) : node.items,
+    // 업종 표는 최상위 업종별로 하위 종목까지 집계하고, 종목 표는 실제 배정 업종별로 펼친다.
+    const rows = mode === 'stock'
+      ? collectSectorRows(data.items)
+      : data.items.map(node => ({ sectorName: node.sectorName, stocks: collectItems(node) }))
+    return rows
+      .map(row => ({
+        ...row,
+        stocks: nxtOnly ? row.stocks.filter(item => nxtStockCodes.has(item.stockCode)) : row.stocks,
       }))
       .filter(row => row.stocks.length > 0)
-  }, [data, nxtOnly, nxtStockCodes])
+  }, [data, mode, nxtOnly, nxtStockCodes])
 
   // 지도·그룹 페이지처럼 불러오지 못했을 때는 큰 원 안에 안내 글을 가운데에 보여준다.
   if (isError) {
@@ -158,7 +182,7 @@ export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, isError, s
     </label>
   )
   return mode === 'stock' ? (
-    <StockTable sectors={sectors} emptyMessage={emptyMessage} nxtStockCodes={nxtStockCodes} stockMarkets={stockMarkets} extra={nxtOnlyToggle} onCountLabelChange={onCountLabelChange} />
+    <StockTable showHierarchy={source === 'marketry'} sectors={sectors} emptyMessage={emptyMessage} nxtStockCodes={nxtStockCodes} stockMarkets={stockMarkets} stockIndustries={stockIndustries} extra={nxtOnlyToggle} onCountLabelChange={onCountLabelChange} />
   ) : (
     <CategoryTable sectors={sectors} emptyMessage={emptyMessage} extra={nxtOnlyToggle} onCountLabelChange={onCountLabelChange} />
   )
@@ -231,13 +255,13 @@ function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { s
         extra={extra}
       />
       <div className="relative min-h-0 flex-1 overflow-y-auto">
-        {/* 업종·종목 수·시가총액 세 칸을 같은 폭(삼등분)으로 나눈다 — MARKETRY 업종 화면의 대·중·소분류 칸과 같은 모양이다. */}
+        {/* 업종·업종 시가총액·종목 수 세 칸을 같은 폭(삼등분)으로 나눈다 — MARKETRY 업종 화면의 대·중·소분류 칸과 같은 모양이다. */}
         <table className={`${TABLE_CLASS} table-fixed select-none`}>
           <thead>
             <tr>
               {header('name', '업종')}
+              {header('marketValue', '시가총액 합')}
               {header('stockCount', '종목 수')}
-              {header('marketValue', '시가총액')}
             </tr>
           </thead>
           <tbody>
@@ -245,11 +269,12 @@ function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { s
               <tr key={row.name} className="text-gray-400">
                 {/* 업종 이름 시작 위치를 MARKETRY 업종 화면의 대분류 이름과 같게 한다 — 칸 왼쪽에서 8px(여백) + 손잡이 24px + 4px + 번호 칸 28px + 8px = 72px. */}
                 <td className={`${BODY_CELL} truncate text-left !pl-[72px]`}>{row.name}</td>
+                {/* 종목 표와 같은 시가총액 표기('137조 2,762억' 대신 '137.3조')와 오른쪽 정렬이다. */}
+                {/* 업종명 왼쪽 여백과 같은 72px를 시가총액 오른쪽에 둔다. */}
+                <td className={`${BODY_CELL} text-right !pr-[72px] text-gray-400`}>{toJoEokDecimal(row.marketValue / 100_000_000)}</td>
                 <td className={BODY_CELL}>
                   <CenteredRightNumber value={row.stockCount} />
                 </td>
-                {/* 종목 표와 같은 시가총액 표기('137조 2,762억' 대신 '137.3조')와 오른쪽 정렬이다. */}
-                <td className={`${BODY_CELL} text-right !pr-4 text-gray-400`}>{toJoEokDecimal(row.marketValue / 100_000_000)}</td>
               </tr>
             ))}
           </tbody>
@@ -260,31 +285,48 @@ function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { s
   )
 }
 
-type StockSortKey = 'stockCode' | 'stockName' | 'sectorName' | 'totalMarketValue' | 'market'
+type StockSortKey = 'stockCode' | 'stockName' | 'alias' | 'sectorName' | 'industryName' | 'parentSector' | 'midSector' | 'subSector' | 'totalMarketValue' | 'market'
 
-function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra, onCountLabelChange }: { sectors: SectorRow[]; emptyMessage: string; nxtStockCodes: ReadonlySet<string>; stockMarkets: ReadonlyMap<string, Market>; extra: ReactNode; onCountLabelChange?: (label: string | undefined) => void }) {
+function StockTable({ showHierarchy, sectors, emptyMessage, nxtStockCodes, stockMarkets, stockIndustries, extra, onCountLabelChange }: { showHierarchy: boolean; sectors: SectorRow[]; emptyMessage: string; nxtStockCodes: ReadonlySet<string>; stockMarkets: ReadonlyMap<string, Market>; stockIndustries: ReadonlyMap<string, string | null>; extra: ReactNode; onCountLabelChange?: (label: string | undefined) => void }) {
   const [query, setQuery] = useState('')
   const { sortKey, direction, toggle } = useSort<StockSortKey>('totalMarketValue', 'desc')
+  const activeSortKey = !showHierarchy && (sortKey === 'parentSector' || sortKey === 'midSector' || sortKey === 'subSector' || sortKey === 'industryName') ? 'sectorName' : sortKey
   const rows = useMemo(() => {
     const sign = direction === 'asc' ? 1 : -1
     return sectors
-      .flatMap(sector => sector.stocks.map(stock => ({ ...stock, sectorName: sector.sectorName, market: stockMarkets.get(stock.stockCode) })))
+      .flatMap(sector => sector.stocks.map(stock => ({
+        ...stock,
+        sectorName: sector.sectorName,
+        industryName: stockIndustries.get(stock.stockCode) ?? '-',
+        parentSector: sector.sectorPath?.[0] ?? '',
+        midSector: sector.sectorPath?.[1] ?? '',
+        subSector: sector.sectorPath?.[2] ?? '',
+        market: stockMarkets.get(stock.stockCode),
+      })))
       .sort((a, b) => {
         const diff =
-          sortKey === 'totalMarketValue'
+          activeSortKey === 'totalMarketValue'
             ? a.totalMarketValue - b.totalMarketValue
-            : sortKey === 'market'
+            : activeSortKey === 'market'
               ? compareName(a.market ? MARKET_LABEL[a.market] : '-', b.market ? MARKET_LABEL[b.market] : '-')
-              : compareName(a[sortKey], b[sortKey])
+              : compareName(a[activeSortKey] ?? '', b[activeSortKey] ?? '')
         return diff === 0 ? a.stockCode.localeCompare(b.stockCode) : sign * diff
       })
-  }, [sectors, stockMarkets, sortKey, direction])
-  const header = (key: StockSortKey, label: string) => (
-    <SortableHeader label={label} active={sortKey === key} direction={direction} onClick={() => toggle(key)} />
+  }, [sectors, stockMarkets, stockIndustries, activeSortKey, direction])
+  const header = (key: StockSortKey, label: string, width?: number) => (
+    <SortableHeader
+      label={label}
+      active={activeSortKey === key}
+      direction={direction}
+      onClick={() => toggle(key)}
+      className={STOCK_HEADER_CELL}
+      inlineLabel={key === 'alias'}
+      width={width === undefined ? undefined : stockColumnPercentWidth(width)}
+    />
   )
   const trimmed = query.trim()
   const visibleRows = trimmed
-    ? rows.filter(row => row.stockName.includes(trimmed) || row.stockCode.includes(trimmed) || row.sectorName.includes(trimmed))
+    ? rows.filter(row => row.stockName.includes(trimmed) || row.alias?.includes(trimmed) || row.stockCode.includes(trimmed) || (showHierarchy ? [row.industryName, row.parentSector, row.midSector, row.subSector].some(name => name.includes(trimmed)) : row.sectorName.includes(trimmed)))
     : rows
   useReportCountLabel(`${toCount(visibleRows.length)}/${toCount(rows.length)}종목`, onCountLabelChange)
   // 맨 왼쪽 체크박스 — MARKETRY 종목 표와 같은 모양이다. 읽기 전용 시트라 고른 종목으로 할 수 있는 작업은 아직 없고, 표시만 한다.
@@ -317,30 +359,21 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra,
     scrollContainerRef.current?.scrollTo({ top: 0 })
   }, [trimmed, sortKey, direction])
   return (
-    <div className="flex min-h-0 flex-1 flex-col text-white">
+    <div className="flex h-full min-h-0 flex-col">
       <SearchBar
         query={query}
         onChange={setQuery}
-        placeholder="종목명·코드·업종 검색"
+        placeholder="종목명·약칭·코드·업종 검색"
         ariaLabel="종목 검색"
         extra={extra}
       />
-      <div ref={scrollContainerRef} className="relative min-h-0 flex-1 overflow-y-auto">
-        {/* 열 너비는 MARKETRY 종목 표와 같은 비율이다 — 종목명은 그쪽의 "종목명 + 약칭" 너비이고, 남는 폭은 NXT 칸이 받는다. */}
-        {/* 열이 MARKETRY 표 폭으로 좁아져도 머리글·시가총액이 두 줄로 접히거나 옆 칸으로 넘치지 않게 좌우 여백을 줄이고 한 줄로 고정한다. */}
-        <table className={`${TABLE_CLASS} table-fixed select-none [&_td]:whitespace-nowrap [&_td]:px-1 [&_th]:whitespace-nowrap [&_th]:px-1`}>
-          <colgroup>
-            <col style={{ width: CHECKBOX_COLUMN_WIDTH }} />
-            <col style={{ width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.stockCode) }} />
-            <col style={{ width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.stockName + STOCK_COLUMN_PERCENT.alias) }} />
-            <col style={{ width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.totalMarketValue) }} />
-            <col style={{ width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.market) }} />
-            <col style={{ width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.industry) }} />
-            <col />
-          </colgroup>
-          <thead>
+      <div className="relative min-h-0 flex-1">
+      <div ref={scrollContainerRef} className="relative h-full overflow-auto scrollbar-thin">
+        {/* 내 히트맵과 같은 표·테두리·스크롤 규칙을 쓴다. 마지막 열은 남는 폭을 받아 KRX의 NXT가 대·중·소분류 합계 폭과 일치한다. */}
+        <table className="nes-table is-dark custom-page-table w-full select-none text-sm [border-collapse:separate] [border-spacing:0] [&_td]:border-slate-700 [&_td]:py-1 [&_th]:border-white/15 [&_th]:border-b-0 [&_th]:py-1">
+          <thead className="sticky top-0 z-10">
             <tr>
-              <th className={`${HEADER_CELL} cursor-pointer`} style={CHECKBOX_CELL_STYLE} onClick={toggleSelectAllVisible}>
+              <th className="cursor-pointer bg-[#2b3a4f] px-0 text-center font-bold text-slate-100" style={CHECKBOX_CELL_STYLE} onClick={toggleSelectAllVisible}>
                 <input
                   type="checkbox"
                   aria-label="보이는 종목 전체 선택"
@@ -350,18 +383,26 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra,
                   onClick={event => event.stopPropagation()}
                 />
               </th>
-              {header('stockCode', '종목코드')}
-              {header('stockName', '종목명')}
-              {header('totalMarketValue', '시가총액')}
-              {header('market', '마켓')}
-              {header('sectorName', '업종')}
-              <th className={HEADER_CELL}>NXT</th>
+              {header('stockCode', '종목코드', STOCK_COLUMN_PERCENT.stockCode)}
+              {header('stockName', '종목명', STOCK_COLUMN_PERCENT.stockName)}
+              {header('alias', '약칭', STOCK_COLUMN_PERCENT.alias)}
+              {header('totalMarketValue', '시가총액', STOCK_COLUMN_PERCENT.totalMarketValue)}
+              {header('market', '마켓', STOCK_COLUMN_PERCENT.market)}
+              {header(showHierarchy ? 'industryName' : 'sectorName', '섹터', STOCK_COLUMN_PERCENT.industry)}
+              {showHierarchy && (
+                <>
+                  {header('parentSector', '대분류', STOCK_COLUMN_PERCENT.parentSector)}
+                  {header('midSector', '중분류', STOCK_COLUMN_PERCENT.midSector)}
+                  {header('subSector', '소분류')}
+                </>
+              )}
+              {!showHierarchy && <th className={STOCK_HEADER_CELL}>NXT</th>}
             </tr>
           </thead>
           <tbody>
             {paddingTop > 0 && (
               <tr>
-                <td colSpan={7} style={{ height: paddingTop, padding: 0, border: 'none' }} />
+                <td colSpan={showHierarchy ? 10 : 8} style={{ height: paddingTop, padding: 0, border: 'none' }} />
               </tr>
             )}
             {virtualRows.map(virtualRow => {
@@ -369,7 +410,7 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra,
               const isKosdaq = row.market === 'KOSDAQ'
               return (
                 <tr key={row.stockCode} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} {...rowProps(virtualRow.index)} className={`cursor-pointer text-gray-400 ${selectedCodes.has(row.stockCode) ? '[&>td]:bg-[var(--brand)]/35' : '[&:hover>td]:bg-[var(--brand)]/10'}`}>
-                  <td className={`${BODY_CELL} text-center`} style={CHECKBOX_CELL_STYLE}>
+                  <td className={`${STOCK_BODY_CELL} text-center`} style={CHECKBOX_CELL_STYLE}>
                     <input
                       type="checkbox"
                       aria-label={`${row.stockName} 선택`}
@@ -378,29 +419,38 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra,
                       onChange={() => {}}
                     />
                   </td>
-                  <td className={`${BODY_CELL} text-center`}>{row.stockCode}</td>
-                  <td className={`${BODY_CELL} truncate text-left !pl-4 ${isKosdaq ? 'text-[var(--brand)]' : ''}`}>{row.stockName}</td>
+                  <td className={`${STOCK_BODY_CELL} text-center`}>{row.stockCode}</td>
+                  <td className={`${STOCK_BODY_CELL} truncate text-left !pl-4 ${isKosdaq ? 'text-[var(--brand)]' : ''}`}>{row.stockName}</td>
+                  <td className={`${STOCK_BODY_CELL} truncate text-left !pl-4`}>{row.alias ?? '-'}</td>
                   {/* MARKETRY 종목 표와 같은 표기('1,613.6조')와 오른쪽 정렬이다. */}
-                  <td className={`${BODY_CELL} text-right !pr-4 text-gray-400`}>{toJoEokDecimal(row.totalMarketValue / 100_000_000)}</td>
-                  <td className={`${BODY_CELL} text-center ${isKosdaq ? 'text-[var(--brand)]' : ''}`}>
+                  <td className={`${STOCK_BODY_CELL} text-right !pr-4 text-gray-400`}>{toJoEokDecimal(row.totalMarketValue / 100_000_000)}</td>
+                  <td className={`${STOCK_BODY_CELL} text-center ${isKosdaq ? 'text-[var(--brand)]' : ''}`}>
                     {row.market ? MARKET_LABEL[row.market] : '-'}
                   </td>
                   {/* 업종 글자 시작 위치(칸 왼쪽에서 16px)를 MARKETRY 종목 표의 업종 칸과 같게 한다. */}
-                  <td className={`${BODY_CELL} truncate text-left !pl-4`}>{row.sectorName}</td>
-                  <td className={`${BODY_CELL} text-center ${!nxtStockCodes.has(row.stockCode) ? 'text-gray-500' : ''}`}>
-                    {nxtStockCodes.has(row.stockCode) ? 'O' : '-'}
-                  </td>
+                  <td className={`${STOCK_BODY_CELL} truncate text-left !pl-4`}>{showHierarchy ? row.industryName : row.sectorName}</td>
+                  {showHierarchy && (
+                    [row.parentSector, row.midSector, row.subSector].map((name, index) => (
+                      <td key={index} className={`${STOCK_BODY_CELL} truncate text-left !pl-4`}>{name || '-'}</td>
+                    ))
+                  )}
+                  {!showHierarchy && (
+                    <td className={`${STOCK_BODY_CELL} text-center ${!nxtStockCodes.has(row.stockCode) ? 'text-gray-500' : ''}`}>
+                      {nxtStockCodes.has(row.stockCode) ? 'O' : '-'}
+                    </td>
+                  )}
                 </tr>
               )
             })}
             {paddingBottom > 0 && (
               <tr>
-                <td colSpan={7} style={{ height: paddingBottom, padding: 0, border: 'none' }} />
+                <td colSpan={showHierarchy ? 10 : 8} style={{ height: paddingBottom, padding: 0, border: 'none' }} />
               </tr>
             )}
           </tbody>
         </table>
         {visibleRows.length === 0 && <EmptyMessage message={rows.length === 0 ? emptyMessage : EMPTY_SEARCH_MESSAGE} />}
+      </div>
       </div>
     </div>
   )

@@ -115,6 +115,10 @@ export default function CustomManagePage() {
     () => new Map((stockSectors?.items ?? []).map(item => [item.stockCode, item.market])),
     [stockSectors],
   )
+  const stockIndustries = useMemo(
+    () => new Map((stockSectors?.items ?? []).map(item => [item.stockCode, item.industryName])),
+    [stockSectors],
+  )
 
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(true)
@@ -274,6 +278,7 @@ export default function CustomManagePage() {
                     onNxtOnlyChange={setIsNxtOnlyView}
                     nxtStockCodes={nxtStockCodes}
                     stockMarkets={stockMarkets}
+                    stockIndustries={stockIndustries}
                     isNxtLoading={isStockSectorsLoading}
                     onCountLabelChange={setCountLabel}
                   />

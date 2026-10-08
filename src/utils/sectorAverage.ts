@@ -6,7 +6,7 @@ export interface SectorAverage {
 }
 
 // node.items + 모든 하위 섹터의 items(재귀) — 하위 섹터가 isExcluded여도 포함한다.
-function collectItems(node: MarketMapSectorNode): MarketMapItem[] {
+export function collectItems(node: MarketMapSectorNode): MarketMapItem[] {
   const items = [...node.items]
   for (const child of node.children) items.push(...collectItems(child))
   return items
