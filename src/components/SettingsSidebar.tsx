@@ -994,11 +994,22 @@ function SettingsClassificationSelector({
             업데이트
             <SettingHelpIcon
               label="업데이트"
-              description={isExchange
-                ? "키움 REST API로 받은\n종목·업종 정보를 서버에\n마지막으로 동기화한 시각입니다.\n\n시세 갱신 시각이나 한국거래소의\n공식 분류 변경 시각과는 다릅니다."
-                : heatmap === 'mymap'
-                  ? "내가 종목·업종 정보를\n마지막으로 수정한 시각입니다."
-                  : "MARKETRY가 종목·업종 정보를\n마지막으로 수정한 시각입니다."}
+              // 말풍선마다 주어를 빨간 굵은 글씨로 강조한다(누적/따로 말풍선의 전일·당일과 같은 모양).
+              description={
+                isExchange ? (
+                  <>
+                    <b className="text-red-600">키움 REST API</b>로 받은{'\n'}종목·업종 정보를 서버에{'\n'}마지막으로 동기화한 시각입니다.{'\n\n'}시세 갱신 시각이나 한국거래소의{'\n'}공식 분류 변경 시각과는 다릅니다.
+                  </>
+                ) : heatmap === 'mymap' ? (
+                  <>
+                    <b className="text-red-600">내가</b> 종목·업종 정보를{'\n'}마지막으로 수정한 시각입니다.
+                  </>
+                ) : (
+                  <>
+                    <b className="text-red-600">MARKETRY</b> 종목·업종 정보를{'\n'}마지막으로 수정한 시각입니다.
+                  </>
+                )
+              }
             />
           </span>
           <span>{toMarketMapSnapshotDateLabel(snapshotTime)}</span>
