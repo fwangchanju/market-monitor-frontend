@@ -118,8 +118,10 @@ function RankBars({
     >
       {chart.rankedItems.map(item => (
         <Fragment key={item.key}>
+          {/* 눌러서 지도로 갈 수 있는 업종은 이름에만 반응한다 — 커서를 올리면 지도 설정창의 제외 업종 목록처럼 이름 칸이 연하게 밝아진다.
+              칸 폭은 이름 글자에 맞춰 늘고 줄며(justify-self-end), 좌우 8px 여백은 음수 마진으로 상쇄해 칸 위치는 그대로 둔다. */}
           <span
-            className={`whitespace-nowrap text-right font-medium ${onSelectSector && !item.isReference ? 'cursor-pointer hover:underline' : ''}`}
+            className={`-mx-2 inline-flex h-[25px] items-center justify-self-end whitespace-nowrap px-2 text-right font-medium ${onSelectSector && !item.isReference ? 'cursor-pointer transition-colors hover:bg-white/35' : ''}`}
             style={item.isReference ? { color: highlightColor } : undefined}
             onClick={onSelectSector && !item.isReference ? () => onSelectSector(item.sectorName) : undefined}
           >
@@ -129,10 +131,7 @@ function RankBars({
               막대가 길어질수록 텍스트도 같이 따라간다. 오른쪽 w-[84px]는 막대가 축 최대치까지 길어져도
               텍스트가 열 밖으로 밀려나지 않도록 미리 비워두는 여백(16px 폰트 기준으로 폭을 넉넉히 잡음)
               — 보이는 내용은 없고 폭만 차지한다. */}
-          <div
-            className={`flex h-[25px] items-center gap-1.5 ${onSelectSector && !item.isReference ? 'cursor-pointer' : ''}`}
-            onClick={onSelectSector && !item.isReference ? () => onSelectSector(item.sectorName) : undefined}
-          >
+          <div className="flex h-[25px] items-center gap-1.5">
             <div className="relative h-full flex-1">
               <div
                 className="h-full rounded-sm"
