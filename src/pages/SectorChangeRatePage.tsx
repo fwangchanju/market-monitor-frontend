@@ -12,6 +12,7 @@ import Spinner from '@/components/Spinner'
 import { REFRESH_FEEDBACK_MIN_DURATION_MS } from '@/utils/uiFeedback'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
 import MarketMapLegendBar from '@/components/MarketMapLegendBar'
+import { HEATMAP_NAMES } from '@/utils/heatmapNames'
 import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
@@ -160,7 +161,7 @@ export default function SectorChangeRatePage() {
     avgChangeRateUseSimple,
     onChangeAvgChangeRateUseSimple,
     market,
-    isCustom,
+    source,
     nxtOnly,
     changeRateBasis,
     isAfterHoursControlsVisible,
@@ -179,11 +180,11 @@ export default function SectorChangeRatePage() {
     colorScale,
   } = useGlobalSettings({ allowChangeRateBasis: true })
 
-  // now는 여기서 따로 조회하지 않는다 — useGlobalSettings()가 이미 부르는 useMarketMap(market, isCustom)
+  // now는 여기서 따로 조회하지 않는다 — useGlobalSettings()가 이미 부르는 useMarketMap(market, source)
   // 결과(data)를 그대로 쓴다. before는 그 now.snapshotTime에서 계산한 시각을 쌍으로 묶어 조회한다
   // (marketry-backend 지시서 결정 4) — 이렇게 해야 재조회로 now가 새 tick으로 바뀌는 순간에도
   // 화면이 새 now·옛 before를 잠깐이라도 섞어 그리지 않는다.
-  const pairQuery = useSectorMarketMapPair(market, isCustom, nxtOnly, beforeMinutes, data, changeRateBasis)
+  const pairQuery = useSectorMarketMapPair(market, source, nxtOnly, beforeMinutes, data, changeRateBasis)
   // 쌍 쿼리가 에러(재시도 1회 뒤)면 "before 없음"으로 보고 now 쿼리의 현재 data로 그린다. 그 외에는
   // 화면에 그리는 now가 항상 "쌍 안의 now"다 — placeholder 기간에도 그 쌍이 만들어질 때의 now·before가
   // 함께 유지되어, 상단 바 시각과 그래프가 서로 어긋나지 않는다.
@@ -242,7 +243,7 @@ export default function SectorChangeRatePage() {
   // 맵·커스텀 페이지와 같은 청록색 분류자명 버튼을 표시한다.
   const modeStatusText = (
     <span className="flex min-w-0 items-center justify-end">
-      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{settingsModalProps.isCustom ? 'MARKETRY' : '한국거래소'}</span>
+      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{HEATMAP_NAMES[settingsModalProps.heatmap].title}</span>
     </span>
   )
 
@@ -447,13 +448,19 @@ export default function SectorChangeRatePage() {
                     style={{ fontSize: 20, color: strongIndustryColor }}
                   >
                     <div className="flex flex-[2] items-center justify-center">
-                      {/* 헤더 상자는 지도 오른쪽 위 업종 분류 상자와 같은 모양(청록 바탕·검정 글자·그림자 없음)이고, 글자 크기만 막대 옆 항목명과 같은 16px이다. */}
-                      <span className="bg-[var(--brand)] px-2 py-1 text-[16px] leading-none font-medium text-black">
-                        {avgChangeRateUseSimple ? '동일 가중' : '시총 가중'}
+                      {/* 헤더 상자는 각진 테두리 상자(테두리 2px·글자는 지도 설정창의 강조 색상, 배경은 검정, 그림자 없음)이고 글자는 20px 굵게(700)이다. */}
+                      <span
+                        className="border-2 bg-black px-[6px] py-[2px] text-[20px] leading-none font-bold"
+                        style={{ borderColor: strongIndustryColor, color: strongIndustryColor }}
+                      >
+                        {avgChangeRateUseSimple ? '동일 가중 등락률' : '시총 가중 등락률'}
                       </span>
                     </div>
                     <div className="flex flex-[1] items-center justify-center">
-                      <span className="bg-[var(--brand)] px-2 py-1 text-[16px] leading-none font-medium text-black">
+                      <span
+                        className="border-2 bg-black px-[6px] py-[2px] text-[20px] leading-none font-bold"
+                        style={{ borderColor: strongIndustryColor, color: strongIndustryColor }}
+                      >
                         {beforeMinutes}분 전 대비
                       </span>
                     </div>

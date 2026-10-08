@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { usePersistedState } from './usePersistedState'
 import { useHeatmapSelection } from './useHeatmapSelection'
 import { MEMBER_DEFAULTS, settingDefaultsFor } from '@/utils/settingDefaults'
-import type { HeatmapKey } from '@/utils/heatmapNames'
+import type { ClassificationSource, HeatmapKey } from '@/utils/heatmapNames'
 import { useNxtOnlyWindow } from '@/hooks/useNxtOnlyWindow'
 import { useAfterHoursControlsVisible } from '@/hooks/useMarketPhase'
 import { isAfterHoursSelectable as isAfterHoursSelectableAt } from '@/utils/tradingWindow'
@@ -120,8 +120,13 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   // 기존 계정 설정은 브라우저 선택이 없을 때만 기본값으로 사용한다. 새 선택은 세 페이지가 localStorage로 공유한다.
   const [savedIsCustom] = usePageSetting('marketMap.isCustom', defaults.isCustom)
   const [selectedHeatmap, setSelectedHeatmap] = useHeatmapSelection(savedIsCustom ? 'marketry' : 'krx')
-  // MARKETRY 분류는 로그인이 필요하다. 로그아웃해도 브라우저에 저장한 선택 자체는 보존한다.
-  const isCustom = isLoggedIn && selectedHeatmap === 'marketry'
+  // 내 히트맵(mymap)은 로그인이 필요하다 — 로그아웃 상태에서는 거래소로 보이고, 브라우저에 저장한 선택 자체는 보존한다.
+  // MARKETRY는 운영자가 올린 고정본이라 로그인 없이 읽는다(읽기 전용).
+  const source: ClassificationSource = selectedHeatmap === 'mymap' && !isLoggedIn ? 'krx' : selectedHeatmap
+  // isCustom: 본인 데이터로 만든 내 히트맵(편집·서버 저장이 되는 분류). isMarketry: 운영자 고정본. 둘 다 대·중·소분류 트리를 쓴다.
+  const isCustom = source === 'mymap'
+  const isMarketry = source === 'marketry'
+  const usesCustomTree = isCustom || isMarketry
   // NXT 종목만 보기 — 어느 히트맵(거래소/MARKETRY)이든 시간대가 정한다. NXT 단독 시간대(08:00~08:50, 15:40~16:00)에만
   // 분류는 그대로 두고 NXT 거래 종목만 남기고, 그 밖의 시간에는 전체 종목을 보여준다. 사용자가 직접 켜고 끄지 않는다.
   const nxtOnlyWindow = useNxtOnlyWindow()
@@ -131,7 +136,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   const isAfterHoursControlsVisible = useAfterHoursControlsVisible()
   const [storedChangeRateBasis, setStoredChangeRateBasis] = usePersistedState<ChangeRateBasis>('marketMap.changeRateBasis', 'daily')
   const requestedBasis: ChangeRateBasis = allowChangeRateBasis && isAfterHoursControlsVisible ? storedChangeRateBasis : 'daily'
-  const heatmap: HeatmapKey = isCustom ? 'marketry' : nxtOnly ? 'nxt' : 'krx'
+  const heatmap: HeatmapKey = isMarketry ? 'marketry' : isCustom ? 'mymap' : nxtOnly ? 'nxt' : 'krx'
   // 섹터 랭킹/강세 업종 계산에 쓰는 평균 방식은 박스 크기 비율과 별도로 저장한다.
   const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', defaults.avgChangeRateUseSimple)
   // 0은 동일 크기, 100은 시가총액 비례이며 중간값은 시가총액 차이를 거듭제곱으로 압축한다.
@@ -224,7 +229,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     previousPathnameRef.current = pathname
     setIsSettingsOpen(true)
   }, [pathname])
-  // 새로 받아온 (market, isCustom) 조합의 데이터가 처음 도착했을 때만 서버 isExcluded로 시드하고,
+  // 새로 받아온 (market, source) 조합의 데이터가 처음 도착했을 때만 서버 isExcluded로 시드하고,
   // 그 뒤 60초 백그라운드 재조회가 로컬에서 방금 토글한 상태를 덮어쓰지 않게 한다(fire-and-forget 저장이라
   // 서버 반영 전에 재조회가 먼저 도착할 수 있음).
   const seededKeyRef = useRef<string | null>(null)
@@ -236,7 +241,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     isSuccess: isMarketMapSuccess,
     isRefetching: isRefetchingMarketMap,
     refetch: refetchMarketMap,
-  } = useMarketMap(market, isCustom, nxtOnly, {
+  } = useMarketMap(market, source, nxtOnly, {
     enabled: needsTree,
     basis: requestedBasis,
   })
@@ -244,30 +249,33 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   const changeRateBasis: ChangeRateBasis = isAfterHoursSelectable ? requestedBasis : 'daily'
   const rawRootNodes = data?.items
   // 비로그인의 거래소 분류는 업종 id가 모두 0이라, 제외 기능이 동작하도록 이름 기반 고유 id를 붙인다.
+  // MARKETRY 고정본은 비로그인도 진짜 업종 id를 받으므로 그대로 쓴다.
   const rootNodes = useMemo(
-    () => (isLoggedIn ? (rawRootNodes ?? []) : withStableSectorIds(rawRootNodes ?? [])),
-    [isLoggedIn, rawRootNodes],
+    () => (isLoggedIn || isMarketry ? (rawRootNodes ?? []) : withStableSectorIds(rawRootNodes ?? [])),
+    [isLoggedIn, isMarketry, rawRootNodes],
   )
 
   useEffect(() => {
     if (!data) return
-    // 비로그인의 제외 목록은 서버 값이 아니라 이 탭에서 직접 고른 것이라 서버 값으로 다시 채우지 않는다.
-    if (!isLoggedIn) return
-    const key = `${market}:${isCustom}:${nxtOnly}`
+    // 비로그인의 거래소 제외 목록은 서버 값이 아니라 이 탭에서 직접 고른 것이라 서버 값으로 다시 채우지 않는다.
+    // MARKETRY는 운영자가 정해 둔 제외 업종을 처음 값으로 받는다(그 뒤 바꾸는 건 이 탭에서만 유효하다).
+    if (!isLoggedIn && !isMarketry) return
+    const key = `${market}:${source}:${nxtOnly}`
     if (seededKeyRef.current === key) return
     seededKeyRef.current = key
     setExcludedSectorNames(seedExcludedSectorNames(data.items, []))
-  }, [data, market, isCustom, nxtOnly, isLoggedIn, setExcludedSectorNames])
+  }, [data, market, source, nxtOnly, isLoggedIn, isMarketry, setExcludedSectorNames])
 
   // 로그인 사용자의 거래소 분류 트리는 사용자 정의 섹터를 쓰지 않으므로 isExcluded와 제외 목록을 적용하지 않는다.
   // 비로그인은 거래소 분류만 쓰지만 직접 고른 제외 목록을 이 탭에서 적용한다(새로고침하면 초기화).
+  // MARKETRY는 읽기 전용이라 이 탭에서만 제외한다.
   const excludedSectorIds = useMemo(
-    () => (isCustom || !isLoggedIn) && sectorFilterEnabled ? new Set(excludedSectorNames.keys()) : new Set<number>(),
-    [isCustom, isLoggedIn, sectorFilterEnabled, excludedSectorNames],
+    () => (usesCustomTree || !isLoggedIn) && sectorFilterEnabled ? new Set(excludedSectorNames.keys()) : new Set<number>(),
+    [usesCustomTree, isLoggedIn, sectorFilterEnabled, excludedSectorNames],
   )
 
   // 거래소(KRX·NXT) 분류는 대분류(0)만 있다. 1-2 업종 등락 방향의 단계도 저장값은 두고 여기서만 따라간다.
-  const effectiveSectorChangeDepth = heatmap === 'marketry' ? sectorChangeDepth : Math.min(sectorChangeDepth, 0)
+  const effectiveSectorChangeDepth = usesCustomTree ? sectorChangeDepth : Math.min(sectorChangeDepth, 0)
   const directionFilters = useMemo(() => ({
     stockChangeFilter: pathname.startsWith('/map/') ? stockChangeFilter : 'all' as StockChangeFilter,
     sectorChangeFilter: pathname.startsWith('/map/') ? sectorChangeFilter : 'all' as SectorChangeFilter,
@@ -286,10 +294,10 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   // MARKETRY는 기존처럼 선택 범위의 끝이 트리보다 깊으면 지표를 표시하지 않는다.
   const depthMetricClampedMinIndex = Math.min(depthMetricMinIndex, depthMetricMaxIndex)
   const depthMetricClampedMaxIndex = depthMetricMaxIndex
-  const visibleDepthMetricMaxIndex = isCustom
+  const visibleDepthMetricMaxIndex = usesCustomTree
     ? depthMetricClampedMaxIndex
     : Math.min(depthMetricClampedMaxIndex, availableMaxDepth - 1)
-  const isDepthMetricRangeValid = isCustom
+  const isDepthMetricRangeValid = usesCustomTree
     ? depthMetricClampedMaxIndex < availableMaxDepth
     : depthMetricClampedMinIndex < availableMaxDepth
 
@@ -307,7 +315,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   // 미리 선택할 수 있게 두고, 현재 데이터에 해당 섹터가 없으면 강조 대상만 빈 Set으로 둔다.
   // 거래소(KRX·NXT) 분류는 대분류만 있어서, MARKETRY에서 중·소분류로 골라 둔 값은 저장은 그대로 두고
   // 여기서만 대분류로 따라간다(1-1 업종 표시 단계와 같은 한계). MARKETRY로 돌아오면 원래 값이 살아난다.
-  const classificationMaxDepth = heatmap === 'marketry' ? null : 1
+  const classificationMaxDepth = usesCustomTree ? null : 1
   const topPickMaxSelectableDepth = Math.min(
     maxDepth === null ? Math.max(3, availableMaxDepth) : maxDepth,
     classificationMaxDepth ?? Number.POSITIVE_INFINITY,
@@ -576,15 +584,15 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     setColorCustomOn(on)
   }
 
-  // 히트맵 선택(거래소 / MARKETRY). MARKETRY는 로그인이 필요하다. 거래소는 KRX·NXT를 합친 한 칸이고, 시간대에 따라
+  // 히트맵 선택(MARKETRY / 한국거래소 / 내 히트맵). 내 히트맵만 로그인이 필요하다. 거래소는 KRX·NXT를 합친 한 칸이고, 시간대에 따라
   // NXT 거래 종목만 남길지 자동으로 정한다(heatmap 값은 그 결과로 'krx' 또는 'nxt'가 된다).
   const handleSelectHeatmap = (next: HeatmapKey) => {
-    setSelectedHeatmap(next === 'marketry' ? 'marketry' : 'krx')
-    if (next === 'marketry' && !isLoggedIn) {
+    setSelectedHeatmap(next === 'marketry' || next === 'mymap' ? next : 'krx')
+    if (next === 'mymap' && !isLoggedIn) {
       requireLogin(pathname)
     }
   }
-  const handleToggleCustom = () => handleSelectHeatmap(isCustom ? 'krx' : 'marketry')
+  const handleToggleCustom = () => handleSelectHeatmap(isCustom ? 'krx' : 'mymap')
 
   const handleChangeActiveDepthMetric = (metric: DepthMetric) => setStoredDepthMetric(metric)
 
@@ -604,8 +612,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   const handleExcludeSector = (sectorId: number, sectorName: string) => {
     const path = findSectorPath(rootNodes, sectorId)
     setExcludedSectorNames(prev => new Map(prev).set(sectorId, path ? path.join(' > ') : sectorName))
-    // 서버에는 로그인 사용자만 저장한다. 비로그인은 이 탭에만 남는다.
-    if (isLoggedIn) registerExcludedSector(sectorId).catch(e => console.error('섹터 제외 실패', e))
+    // 서버에는 내 히트맵(본인 데이터)일 때만 저장한다. MARKETRY·비로그인은 이 탭에만 남는다.
+    if (isCustom) registerExcludedSector(sectorId).catch(e => console.error('섹터 제외 실패', e))
   }
 
   const handleRemoveExcludedSector = (sectorId: number) => {
@@ -614,7 +622,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
       next.delete(sectorId)
       return next
     })
-    if (isLoggedIn) unregisterExcludedSector(sectorId).catch(e => console.error('섹터 제외 해제 실패', e))
+    if (isCustom) unregisterExcludedSector(sectorId).catch(e => console.error('섹터 제외 해제 실패', e))
   }
 
   const settingsModalProps = {
@@ -698,7 +706,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     colorEditorPanelProps,
     // 지도 페이지가 트리맵을 실제로 그리는 데 직접 필요한 값들.
     market,
+    source,
     isCustom,
+    isMarketry,
     nxtOnly,
     nxtOnlyWindow,
     changeRateBasis,
