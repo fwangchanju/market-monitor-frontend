@@ -8,6 +8,7 @@ import SettingsSidebar, {
   SettingsBeforeMinutesSection,
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
+import EmptyMessage, { EMPTY_DATA_MESSAGE } from '@/components/EmptyMessage'
 import Spinner from '@/components/Spinner'
 import { REFRESH_FEEDBACK_MIN_DURATION_MS } from '@/utils/uiFeedback'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
@@ -95,6 +96,14 @@ function RankBars({
   // 고정된 상승/하락 2색 대신 이 스케일로 칠한다.
   colorScale: ColorScaleConfig
 }) {
+  // 데이터가 비어도 헤더(페이지의 별도 헤더 줄)는 그대로 보이므로, 그 아래 빈 자리의 한가운데에 안내 문구를 크게 보여준다.
+  if (chart.rankedItems.length === 0) {
+    return (
+      <div className="relative h-full min-h-0 w-full flex-1">
+        <EmptyMessage message={EMPTY_DATA_MESSAGE} topClass="top-0" />
+      </div>
+    )
+  }
   return (
     // min-h-0: flex 아이템 기본값(min-height:auto)을 눌러서 부모가 준 높이보다 작게도 줄어들 수 있게
     // 한다(콘텐츠가 더 크면 그만큼 넘쳐서 조상의 overflow-y-auto가 스크롤 처리) — align-self:stretch
@@ -104,13 +113,6 @@ function RankBars({
       className="grid h-full min-h-0 w-full flex-1 content-between items-center gap-x-3 gap-y-2 text-[16px]"
       style={{ gridTemplateColumns: 'auto 1fr' }}
     >
-      {/* 데이터가 비어도 헤더(페이지의 별도 헤더 줄)는 그대로 보이므로, 막대 자리에만 안내 문구를 넣는다. */}
-      {chart.rankedItems.length === 0 && (
-        <>
-          <span />
-          <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
-        </>
-      )}
       {chart.rankedItems.map(item => (
         <Fragment key={item.key}>
           <span
@@ -423,7 +425,9 @@ export default function SectorChangeRatePage() {
                 // now가 성공했지만 그 시각 데이터 자체가 없다 — 쌍 쿼리가 비활성이라(결정 4)
                 // displayNow도 계속 undefined이므로, 아래 !displayNow 분기보다 먼저 걸러야
                 // 스피너가 영원히 돌지 않는다.
-                <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
+                <div className="relative flex-1">
+                  <EmptyMessage message={EMPTY_DATA_MESSAGE} topClass="top-0" />
+                </div>
               ) : !displayNow ? (
                 // now는 성공했지만(비어 있지 않음) 쌍 쿼리가 아직 첫 결과를 내지 못한 순간 — 짝이 안
                 // 맞는 반쪽짜리 화면을 그리지 않고 기다린다(결정 4).
@@ -431,7 +435,9 @@ export default function SectorChangeRatePage() {
                   <Spinner showElapsed />
                 </div>
               ) : charts.current.rankedItems.length === 0 && charts.delta.rankedItems.length === 0 ? (
-                <div className="p-8 text-center text-xs text-gray-500">데이터가 없습니다</div>
+                <div className="relative flex-1">
+                  <EmptyMessage message={EMPTY_DATA_MESSAGE} topClass="top-0" />
+                </div>
               ) : (
                 <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
                   {/* 현재 그래프(왼쪽)/변화율 그래프(오른쪽)를 나란히 배치. "시가총액 가중/동일 가중 등락률"·
