@@ -135,7 +135,7 @@ export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, source, nx
     ? 'MARKETRY 분류가 아직 없습니다.'
     : nxtOnly
       ? 'NXT 거래 종목이 아직 없습니다.\n평일 오전 7시 종목 정보 동기화 뒤에 표시됩니다.'
-      : '표시할 한국거래소 분류가 없습니다.'
+      : '표시할 데이터가 없습니다.'
   const nxtOnlyToggle = source === 'krx' && (
     <label className="flex cursor-pointer items-center gap-1.5 text-sm text-white">
       <input
