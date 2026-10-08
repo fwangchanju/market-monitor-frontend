@@ -34,7 +34,7 @@ export default function PrivacyPolicyPage() {
             <h2 className="text-lg font-bold text-white">2. 수집하는 개인정보 항목</h2>
             <ul className="mt-2 list-inside list-disc space-y-1 text-sm leading-relaxed text-gray-400">
               <li>Google 로그인 시: Google 계정 식별자(sub), 발급자(issuer), 이메일 주소</li>
-              <li>로그인한 사용자가 저장한 화면 설정, 섹터 분류, 스냅샷</li>
+              <li>로그인한 사용자가 저장한 화면 설정, 업종 분류, 스냅샷</li>
             </ul>
           </section>
 

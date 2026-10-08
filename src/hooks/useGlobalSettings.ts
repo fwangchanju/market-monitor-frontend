@@ -121,10 +121,10 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   // 기존 계정 설정은 브라우저 선택이 없을 때만 기본값으로 사용한다. 새 선택은 세 페이지가 localStorage로 공유한다.
   const [savedIsCustom] = usePageSetting('marketMap.isCustom', defaults.isCustom)
   const [selectedHeatmap, setSelectedHeatmap] = useHeatmapSelection(savedIsCustom ? 'marketry' : 'krx')
-  // 내 히트맵(mymap)은 로그인이 필요하다 — 로그아웃 상태에서는 거래소로 보이고, 브라우저에 저장한 선택 자체는 보존한다.
+  // 내 히트맵(mymap)은 로그인이 필요하다 — 로그아웃 상태에서는 처음 화면인 MARKETRY로 보이고, 브라우저에 저장한 선택 자체는 보존한다.
   // MARKETRY는 올린 분류라 로그인 없이 읽는다(읽기 전용).
-  const source: ClassificationSource = selectedHeatmap === 'mymap' && !isLoggedIn ? 'krx' : selectedHeatmap
-  // 새로고침 직후에는 로그인 여부를 아직 모른다. 내 히트맵을 골라 둔 사람이 그 사이에 한국거래소 지도를 받았다가 바뀌지 않도록,
+  const source: ClassificationSource = selectedHeatmap === 'mymap' && !isLoggedIn ? 'marketry' : selectedHeatmap
+  // 새로고침 직후에는 로그인 여부를 아직 모른다. 내 히트맵을 골라 둔 사람이 그 사이에 다른 분류 지도를 받았다가 바뀌지 않도록,
   // 로그인 확인이 끝날 때까지는 지도를 요청하지 않고 로딩으로 둔다.
   const isWaitingForSession = selectedHeatmap === 'mymap' && isSessionLoading
   // isCustom: 본인 데이터로 만든 내 히트맵(편집·서버 저장이 되는 분류). isMarketry: 올린 MARKETRY. 둘 다 대·중·소분류 트리를 쓴다.
@@ -590,11 +590,14 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
 
   // 히트맵 선택(MARKETRY / 한국거래소 / 내 히트맵). 내 히트맵만 로그인이 필요하다. 거래소는 KRX·NXT를 합친 한 칸이고, 시간대에 따라
   // NXT 거래 종목만 남길지 자동으로 정한다(heatmap 값은 그 결과로 'krx' 또는 'nxt'가 된다).
+  // 비로그인이 내 히트맵을 누르면 로그인 안내만 띄우고, 보던 분류(MARKETRY 또는 한국거래소)에 그대로 머문다.
+  // 새로고침 직후처럼 로그인 여부를 아직 모르는 동안은 안내를 띄우지 않고 선택만 받는다.
   const handleSelectHeatmap = (next: HeatmapKey) => {
-    setSelectedHeatmap(next === 'marketry' || next === 'mymap' ? next : 'krx')
-    if (next === 'mymap' && !isLoggedIn) {
+    if (next === 'mymap' && !isLoggedIn && !isSessionLoading) {
       requireLogin(pathname)
+      return
     }
+    setSelectedHeatmap(next === 'marketry' || next === 'mymap' ? next : 'krx')
   }
   const handleToggleCustom = () => handleSelectHeatmap(isCustom ? 'krx' : 'mymap')
 

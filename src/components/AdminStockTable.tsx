@@ -458,7 +458,7 @@ function SectorSearchPopup({
         value={search.query}
         onChange={e => search.handleQueryChange(e.target.value)}
         onKeyDown={e => (e.key === 'Escape' ? onEscape() : search.handleArrowsAndEnter(e, onSelect))}
-        placeholder="섹터 검색"
+        placeholder="업종 검색"
         className="nes-input is-dark w-full py-2 text-sm"
       />
       {contextLabel && (

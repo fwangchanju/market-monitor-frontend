@@ -184,7 +184,7 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
             <button
               type="button"
               aria-label={`${excludeSector.name} 제외`}
-              title="섹터 제외"
+              title="업종 제외"
               className="flex h-5 w-5 items-center justify-center border-0 bg-transparent p-0 outline-none text-gray-700 hover:text-black"
               onClick={async () => {
                 // 확인 창이 뜨는 동안 우클릭 팝업은 먼저 닫는다(두 창이 겹쳐 보이지 않게).
