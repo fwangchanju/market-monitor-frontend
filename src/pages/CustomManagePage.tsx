@@ -41,16 +41,28 @@ export default function CustomManagePage() {
   // 히트맵 시트 — 내 히트맵(mymap)만 편집할 수 있다. ?sheet=krx는 읽기 전용 KRX 시트, ?sheet=marketry는 올린
   // MARKETRY를 읽기 전용으로 보여준다(MARKETRY는 내 히트맵에서 올려서 바꾼다).
   // 예전 주소(?sheet=nxt)는 KRX 시트에서 "NXT 종목만 보기"를 켠 상태로 연다.
+  const { data: session, isLoading: isSessionLoading } = useSession()
+  const isLoggedIn = useIsLoggedIn()
+  const { requireLogin } = useLoginGate()
+  // 로그인 여부가 확정된 비로그인 — 세션을 확인하는 동안은 아직 모르므로 내 히트맵 선택을 그대로 둔다.
+  const isGuestKnown = !isSessionLoading && !isLoggedIn
   const sheetParam = searchParams.get('sheet')
   const [selectedHeatmap, setSelectedHeatmap] = useHeatmapSelection()
   const explicitSheet =
     sheetParam === 'krx' || sheetParam === 'nxt' ? 'krx' : sheetParam === 'marketry' || sheetParam === 'mymap' ? sheetParam : null
-  const sheet = explicitSheet ?? selectedHeatmap
+  const chosenSheet = explicitSheet ?? selectedHeatmap
+  // 내 히트맵은 로그인이 필요하다 — 비로그인에게는 MARKETRY로 보이고, 브라우저에 저장한 선택 자체는 보존한다(지도·그룹 페이지와 같다).
+  const sheet = isGuestKnown && chosenSheet === 'mymap' ? 'marketry' : chosenSheet
   const isReadOnlySheet = sheet !== 'mymap'
   const [sectorSettingsActionsTarget, setSectorSettingsActionsTarget] = useState<HTMLDivElement | null>(null)
   // 종목 화면의 실행취소·다시실행 아이콘이 들어갈 설정창 안의 자리.
   const [stockHistoryTarget, setStockHistoryTarget] = useState<HTMLDivElement | null>(null)
+  // 비로그인이 내 히트맵을 누르면 로그인 안내만 띄우고, 보던 분류에 그대로 머문다.
   const handleSelectSheet = (next: HeatmapSelection) => {
+    if (next === 'mymap' && isGuestKnown) {
+      requireLogin(pathname)
+      return
+    }
     setSelectedHeatmap(next)
     setSearchParams(previous => {
       const params = new URLSearchParams(previous)
@@ -64,14 +76,17 @@ export default function CustomManagePage() {
   // 기존 시트 링크는 처음부터 적용하고 브라우저 공통 선택으로 옮겨 URL이 이후 선택을 덮지 않게 한다.
   useEffect(() => {
     if (!explicitSheet) return
-    setSelectedHeatmap(explicitSheet)
+    // 내 히트맵 주소는 로그인 여부가 확정된 뒤에 처리한다 — 비로그인이면 선택을 옮기지 않고 팝업만 띄운다.
+    if (explicitSheet === 'mymap' && isSessionLoading) return
+    if (explicitSheet === 'mymap' && isGuestKnown) requireLogin(pathname)
+    else setSelectedHeatmap(explicitSheet)
     if (sheetParam === 'nxt') setIsNxtOnlyView(true)
     setSearchParams(previous => {
       const params = new URLSearchParams(previous)
       params.delete('sheet')
       return params
     }, { replace: true })
-  }, [explicitSheet, sheetParam, setSelectedHeatmap, setIsNxtOnlyView, setSearchParams])
+  }, [explicitSheet, sheetParam, isSessionLoading, isGuestKnown, pathname, requireLogin, setSelectedHeatmap, setIsNxtOnlyView, setSearchParams])
   // AdminStockTable의 툴바(종목수/실행취소·다시실행/필터/엑셀 등)를 이 DOM 노드로 포털링해서 세
   // 번째 바 안에 그린다 — useRef 대신 useState인 이유는, ref 콜백이 커밋 단계에서 실행되므로
   // useState로 받아야 그 노드가 준비된 뒤 리렌더가 한 번 더 일어나 AdminStockTable에 null이 아닌
@@ -80,9 +95,6 @@ export default function CustomManagePage() {
   // 표 위 검색창 옆에 두던 "27/27업종" 개수 — 표가 올려 보내면 설정창 머리글 오른쪽에 보여준다.
   const [countLabel, setCountLabel] = useState<string | undefined>()
 
-  const { data: session, isLoading: isSessionLoading } = useSession()
-  const isLoggedIn = useIsLoggedIn()
-  const { requireLogin } = useLoginGate()
 
   const {
     data: sectors,
@@ -97,7 +109,7 @@ export default function CustomManagePage() {
   } = useStockSectors({ enabled: isLoggedIn })
 
   // 선택한 분류에 맞는 최종 갱신 시각을 가져오며 거래소 시트에서는 본문 데이터도 함께 쓴다.
-  // 마켓트리·한국거래소 시트는 읽기 전용이라 비로그인도 본다. 내 히트맵은 로그인해야 받을 수 있다.
+  // 비로그인에게는 시트가 마켓트리·한국거래소뿐이라 지도 조회는 항상 열려 있다. 내 히트맵은 로그인과 세션 확인을 마친 뒤에만 받는다.
   const canReadSheet = isLoggedIn || sheet !== 'mymap'
   const {
     data: classificationMap,
@@ -189,15 +201,6 @@ export default function CustomManagePage() {
     />
   )
 
-  // 내 히트맵은 로그인해야 쓴다 — 세션 확인이 끝났는데 비로그인이 내 히트맵을 열면(직접 주소 진입이나 설정창에서 고른 경우
-  // 모두) 곧바로 로그인 팝업을 띄우고, 표는 그리지 않는다. 마켓트리·한국거래소는 설정창에서 바로 고를 수 있다.
-  const isGuestOnMyMap = !isLoggedIn && !isReadOnlySheet
-  const isGuestConfirmed = !isSessionLoading && !!session && !session.authenticated
-  useEffect(() => {
-    if (isGuestConfirmed && sheet === 'mymap') requireLogin(pathname)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 인증 여부나 고른 시트가 바뀔 때만 반응하면 됨
-  }, [isGuestConfirmed, sheet])
-
   // 세션 확인 중이거나(로그인 여부를 아직 모름) 로그인 사용자의 섹터 목록을 받아오는 동안은 상단바+
   // 스피너만 보여준다 — 비로그인용 안내와 실제 테이블이 뒤섞여 잠깐 보였다 사라지는 걸 막는다.
   if (isSessionLoading || (isLoggedIn && isSectorsLoading)) {
@@ -242,7 +245,7 @@ export default function CustomManagePage() {
                 )}
               </div>
               {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다. */}
-              {!isReadOnlySheet && !isGuestOnMyMap && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 min-w-0 flex-1 items-center" />}
+              {!isReadOnlySheet && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 min-w-0 flex-1 items-center" />}
               {/* 관리자만 — 내 히트맵을 MARKETRY로 올리고 이전 버전으로 되돌린다. */}
               {session?.role === 'ADMIN' && !isReadOnlySheet && <MarketryPublishControls />}
               <div className={`${FONT_BAR_MODE_STATUS} ml-2 flex min-w-0 items-center justify-end text-gray-400`}>
@@ -256,7 +259,7 @@ export default function CustomManagePage() {
               <div
                 className={`flex min-h-0 flex-1 flex-col ${mode === 'sector' ? 'overflow-y-auto' : ''}`}
               >
-                {isGuestOnMyMap ? null : isReadOnlySheet ? (
+                {isReadOnlySheet ? (
                   <ReadOnlyHeatmapSheet
                     mode={mode === 'stock' ? 'stock' : 'category'}
                     data={classificationMap}
@@ -302,11 +305,11 @@ export default function CustomManagePage() {
               isOnLeft={isSettingsOnLeft}
               onToggleSide={toggleSettingsSide}
               onRequestLogin={() => requireLogin(pathname)}
-              plainContent={mode === 'sector' && !isReadOnlySheet && !isGuestOnMyMap ? (
+              plainContent={mode === 'sector' && !isReadOnlySheet ? (
                 <div>
                   <div ref={setSectorSettingsActionsTarget} />
                 </div>
-              ) : mode === 'stock' && !isReadOnlySheet && !isGuestOnMyMap ? (
+              ) : mode === 'stock' && !isReadOnlySheet ? (
                 <div>
                   <div ref={setStockHistoryTarget} />
                 </div>
