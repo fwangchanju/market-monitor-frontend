@@ -2174,9 +2174,8 @@ export default function SettingsSidebar({
             }}
             className="group relative flex border-0 bg-transparent p-0 text-gray-400 hover:text-white"
           >
-            <HeaderButtonHint>
-              {isLoggedIn ? '변경사항 저장하기' : '로그인하면 설정을 저장할 수 있습니다.'}
-            </HeaderButtonHint>
+            {/* 비로그인도 같은 말풍선이 뜨고, 누르면 로그인 창이 열린다. */}
+            <HeaderButtonHint>{'변경사항 저장하기'}</HeaderButtonHint>
             {hasDrafts && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[var(--brand)]" />}
             <svg viewBox="0 0 16 16" className="h-[18px] w-[18px]" aria-hidden="true">
               <path d="M2.5 2.5h8l3 3v8h-11zM5 2.5v3.5h5V2.5M5 13.5V9h6v4.5" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />

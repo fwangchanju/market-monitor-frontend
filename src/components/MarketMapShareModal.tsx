@@ -133,7 +133,6 @@ export default function MarketMapShareModal({
               onClick={handleTelegramShare}
               disabled={!previewSrc}
               aria-label="텔레그램으로 공유"
-              title="텔레그램으로 공유"
               className="nes-btn flex items-center gap-2 border-gray-600 bg-black px-3 py-1.5 text-sm text-white hover:bg-gray-800 disabled:opacity-50"
             >
               <TelegramIcon className="h-4 w-4" />
