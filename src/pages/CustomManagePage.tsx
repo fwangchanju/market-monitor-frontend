@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { EmptyMessageAreaContext } from '@/utils/emptyMessageArea'
 import NavBar from '@/components/NavBar'
@@ -17,7 +17,7 @@ import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
 import { useHeatmapSelection, type HeatmapSelection } from '@/hooks/useHeatmapSelection'
 import { useCustomSectors, useStockSectors } from '@/hooks/useMarketMapCustom'
-import { useMarketMap } from '@/hooks/useMarketMap'
+import { useMarketMap, useStockCatalog } from '@/hooks/useMarketMap'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { useSession, useIsLoggedIn } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
@@ -92,32 +92,38 @@ export default function CustomManagePage() {
   } = useCustomSectors({ enabled: isLoggedIn })
   const {
     data: stockSectors,
-    isLoading: isStockSectorsLoading,
-    isError: isStockSectorsError,
     refetch: refetchStockSectors,
     isRefetching: isRefetchingStockSectors,
   } = useStockSectors({ enabled: isLoggedIn })
 
   // 선택한 분류에 맞는 최종 갱신 시각을 가져오며 거래소 시트에서는 본문 데이터도 함께 쓴다.
+  // 마켓트리·한국거래소 시트는 읽기 전용이라 비로그인도 본다. 내 히트맵은 로그인해야 받을 수 있다.
+  const canReadSheet = isLoggedIn || sheet !== 'mymap'
   const {
     data: classificationMap,
     isLoading: isClassificationLoading,
     isError: isClassificationError,
     refetch: refetchClassification,
     isRefetching: isRefetchingClassification,
-  } = useMarketMap('ALL_STOCK', sheet, false, { enabled: isLoggedIn })
+  } = useMarketMap('ALL_STOCK', sheet, false, { enabled: canReadSheet })
 
+  // 읽기 전용 시트의 NXT 여부·시장·거래소 업종명은 회원 데이터가 아니라 공통 종목 정보에서 받는다.
+  const {
+    data: stockCatalog,
+    isLoading: isStockCatalogLoading,
+    isError: isStockCatalogError,
+  } = useStockCatalog({ enabled: isReadOnlySheet })
   const nxtStockCodes = useMemo(
-    () => new Set((stockSectors?.items ?? []).filter(item => item.nxtEnabled).map(item => item.stockCode)),
-    [stockSectors],
+    () => new Set((stockCatalog ?? []).filter(item => item.nxtEnabled).map(item => item.stockCode)),
+    [stockCatalog],
   )
   const stockMarkets = useMemo(
-    () => new Map((stockSectors?.items ?? []).map(item => [item.stockCode, item.market])),
-    [stockSectors],
+    () => new Map((stockCatalog ?? []).map(item => [item.stockCode, item.market])),
+    [stockCatalog],
   )
   const stockIndustries = useMemo(
-    () => new Map((stockSectors?.items ?? []).map(item => [item.stockCode, item.industryName])),
-    [stockSectors],
+    () => new Map((stockCatalog ?? []).map(item => [item.stockCode, item.industryName])),
+    [stockCatalog],
   )
 
   const [isShareOpen, setIsShareOpen] = useState(false)
@@ -129,13 +135,6 @@ export default function CustomManagePage() {
   const captureRef = useRef<HTMLDivElement>(null)
   // 안내 문구를 본문 영역 전체의 한가운데에 그리기 위한 기준 요소(EmptyMessageAreaContext).
   const [emptyMessageArea, setEmptyMessageArea] = useState<HTMLDivElement | null>(null)
-
-  // 세션 확인이 끝났는데 비로그인이면 곧바로 로그인 팝업을 띄운다 — 메뉴 클릭이 아니라 직접 URL
-  // 진입/새로고침으로 들어온 경우도 동일하게 막는다. returnTo는 지금 이 경로 그대로.
-  useEffect(() => {
-    if (!isSessionLoading && session && !session.authenticated) requireLogin(pathname)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 세션 로딩이 끝나 인증 여부가 바뀔 때만 반응하면 됨
-  }, [isSessionLoading, session])
 
   const handleCopy = async (previewSrc?: string | null) => {
     if (!previewSrc && !captureRef.current) return
@@ -190,6 +189,16 @@ export default function CustomManagePage() {
     />
   )
 
+  // 비로그인이 내 히트맵에서 수정이 가능한 항목(버튼·입력칸 등)을 누르면 수정하는 대신 로그인 팝업을 띄운다.
+  // 캡처 단계에서 가로채므로 표 안쪽 컴포넌트는 비로그인을 따로 알 필요가 없다.
+  const guardGuestEdit = (event: SyntheticEvent) => {
+    if (isLoggedIn || isReadOnlySheet) return
+    if (!(event.target as HTMLElement).closest('button, input, textarea, select, [role="button"], [contenteditable="true"]')) return
+    event.preventDefault()
+    event.stopPropagation()
+    requireLogin(pathname)
+  }
+
   // 세션 확인 중이거나(로그인 여부를 아직 모름) 로그인 사용자의 섹터 목록을 받아오는 동안은 상단바+
   // 스피너만 보여준다 — 비로그인용 안내와 실제 테이블이 뒤섞여 잠깐 보였다 사라지는 걸 막는다.
   if (isSessionLoading || (isLoggedIn && isSectorsLoading)) {
@@ -199,25 +208,6 @@ export default function CustomManagePage() {
         <SubNavBar />
         <div className="flex min-h-0 flex-1 items-center justify-center p-8">
           <Spinner showElapsed />
-        </div>
-      </div>
-    )
-  }
-
-  if (!isLoggedIn) {
-    return (
-      <div className="flex h-screen select-none flex-col overflow-hidden bg-black">
-        <NavBar />
-        <SubNavBar />
-        <div className="flex flex-1 flex-col items-center justify-center gap-4">
-          <p className="text-sm text-white">로그인 후 이용 가능합니다.</p>
-          <button
-            type="button"
-            onClick={() => requireLogin(pathname)}
-            className="nes-btn border-[var(--accent)] bg-[var(--accent)] px-4 py-2 text-sm font-bold text-black hover:bg-[var(--accent-hover)]"
-          >
-            로그인
-          </button>
         </div>
       </div>
     )
@@ -253,7 +243,14 @@ export default function CustomManagePage() {
                 )}
               </div>
               {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다. */}
-              {!isReadOnlySheet && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 min-w-0 flex-1 items-center" />}
+              {!isReadOnlySheet && mode === 'stock' && (
+                <div
+                  ref={setToolbarContainer}
+                  onClickCapture={guardGuestEdit}
+                  onFocusCapture={guardGuestEdit}
+                  className="flex h-full min-h-0 min-w-0 flex-1 items-center"
+                />
+              )}
               {/* 관리자만 — 내 히트맵을 MARKETRY로 올리고 이전 버전으로 되돌린다. */}
               {session?.role === 'ADMIN' && !isReadOnlySheet && <MarketryPublishControls />}
               <div className={`${FONT_BAR_MODE_STATUS} ml-2 flex min-w-0 items-center justify-end text-gray-400`}>
@@ -265,6 +262,8 @@ export default function CustomManagePage() {
             <EmptyMessageAreaContext.Provider value={emptyMessageArea}>
             <div className="flex min-h-0 flex-1">
               <div
+                onClickCapture={guardGuestEdit}
+                onFocusCapture={guardGuestEdit}
                 className={`flex min-h-0 flex-1 flex-col ${mode === 'sector' ? 'overflow-y-auto' : ''}`}
               >
                 {isReadOnlySheet ? (
@@ -272,14 +271,14 @@ export default function CustomManagePage() {
                     mode={mode === 'stock' ? 'stock' : 'category'}
                     data={classificationMap}
                     isLoading={isClassificationLoading}
-                    isError={isClassificationError || (mode === 'stock' && isStockSectorsError)}
+                    isError={isClassificationError || (mode === 'stock' && isStockCatalogError)}
                     source={sheet === 'marketry' ? 'marketry' : 'krx'}
                     nxtOnly={nxtOnly}
                     onNxtOnlyChange={setIsNxtOnlyView}
                     nxtStockCodes={nxtStockCodes}
                     stockMarkets={stockMarkets}
                     stockIndustries={stockIndustries}
-                    isNxtLoading={isStockSectorsLoading}
+                    isNxtLoading={isStockCatalogLoading}
                     onCountLabelChange={setCountLabel}
                   />
                 ) : mode === 'stock' ? (

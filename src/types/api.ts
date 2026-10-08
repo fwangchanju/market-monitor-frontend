@@ -283,6 +283,15 @@ export const StockSectorListItemSchema = z.object({
 })
 export type StockSectorListItem = z.infer<typeof StockSectorListItemSchema>
 
+// GET /map/stock-catalog 응답 (백엔드 StockCatalogItem) — 로그인 없이 읽는 종목 공통 정보. 회원별 분류·별칭은 없다.
+export const StockCatalogItemSchema = z.object({
+  stockCode: z.string(),
+  market: MarketSchema,
+  nxtEnabled: z.boolean(),
+  industryName: z.string().nullable(),
+})
+export type StockCatalogItem = z.infer<typeof StockCatalogItemSchema>
+
 // PATCH /custom/stock-sectors/bulk 응답. failedStockCodes가 비어있으면 전부 반영된 것.
 export const BulkAssignResponseSchema = z.object({
   failedStockCodes: z.array(z.string()),

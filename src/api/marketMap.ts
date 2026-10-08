@@ -4,6 +4,7 @@ import {
   MarketMapResponseSchema,
   MarketMapScaleResponseSchema,
   MarketValueTierListResponseSchema,
+  StockCatalogItemSchema,
   type MarketQuery,
 } from '@/types/api'
 import { z } from 'zod'
@@ -34,6 +35,10 @@ export const getMarketMap = (
       },
     })
     .then(r => MarketMapResponseSchema.parse(r.data))
+
+// 로그인 없이 읽는 종목 공통 정보(시장·NXT 거래 가능 여부·거래소 업종명) — 읽기 전용 시트가 쓴다.
+export const getStockCatalog = () =>
+  client.get('/map/stock-catalog').then(r => z.array(StockCatalogItemSchema).parse(r.data))
 
 export const getMarketValueTiers = () =>
   client.get('/map/value-tiers').then(r => MarketValueTierListResponseSchema.parse(r.data))
