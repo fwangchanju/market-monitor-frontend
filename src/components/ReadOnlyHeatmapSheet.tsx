@@ -122,11 +122,12 @@ export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, source, nx
       .filter(row => row.stocks.length > 0)
   }, [data, nxtOnly, nxtStockCodes])
 
-  // NXT 열(종목 화면)과 NXT만 보기는 NXT 종목 목록이 와야 맞게 보이므로 그동안 스피너를 보여준다.
+  // NXT 열(종목 화면)과 NXT만 보기는 NXT 종목 목록이 와야 맞게 보이므로 그동안 로딩 원을 보여준다.
+  // 지도·그룹 페이지처럼 화면 한가운데에 크게 보여준다.
   if (isLoading || ((nxtOnly || mode === 'stock') && isNxtLoading)) {
     return (
-      <div className="flex justify-center p-16">
-        <Spinner />
+      <div className="flex min-h-0 flex-1 items-center justify-center p-8">
+        <Spinner showElapsed />
       </div>
     )
   }
