@@ -345,3 +345,7 @@ MARKETRY 업데이트는 운영자 계정의 종목 배정 수정과 업종 정�
 비회원의 출발점이 한국거래소 분류였는데 MARKETRY로 바꿨고, 처음 방문자에게 더 화려하게 보이도록 회원 기본값(`MEMBER_DEFAULTS`)을 이렇게 바꿨다: 1-1 시가총액 범위 중형주까지(`topThreeTiers` 새로 추가), 2-1 중분류, 2-3 대분류~중분류, 2-4 중분류 3개, 3-1 박스 크기 45%, 3-4 소수점 1자리, 4-1 강조 색 형광(`#c6ff00`). 회원 기본값도 같은 값으로 맞춰 가입 직후 화면이 비회원과 같다(`GUEST_OVERRIDES`는 비움). 사용자가 값을 바꿔 저장값이 생기면 그 값이 우선하는 것도 그대로다.
 
 운영자 전용 작업(MARKETRY UPDATE/ROLLBACK)은 버튼과 확인창에 `ADMIN` 표시와 붉은색을 써서 조심해서 눌러야 한다는 느낌을 주도록 했다. `appConfirm/appAlert`의 `adminOnly` 옵션이 확인창을 붉은 테두리·ADMIN 전용 띠로 바꾼다.
+
+## 관리자 페이지로 옮길 준비 (2026-10-08)
+
+MARKETRY UPDATE/ROLLBACK은 지금 CUSTOM 페이지의 내 히트맵 시트 상단바에 있지만, 나중에 관리자 페이지를 따로 만들면 그리로 옮긴다(백엔드 `docs/backlog.md`의 관리자 페이지 구상). 옮기기 쉽게 `MarketryPublishControls`는 속성(props) 없이 API(`api/marketryPublish.ts`)와 알림창(`appConfirm/appAlert`)만 쓰도록 독립시켜 뒀다. 쓰는 곳은 `CustomManagePage.tsx` 한 줄뿐이라 옮길 때는 그 줄을 지우고 관리자 페이지에 같은 컴포넌트를 놓으면 된다. 서버 API(`/api/admin/marketry/publications`)는 이미 관리자 전용 경로다. 옮긴 뒤에도 조심해서 누르게 하는 ADMIN 표시와 붉은 확인창(`adminOnly`)은 그대로 쓴다.
