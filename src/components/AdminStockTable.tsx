@@ -11,6 +11,7 @@ import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSession } from '@/hooks/useSession'
 import Spinner from './Spinner'
 import { SearchBar } from './ReadOnlyHeatmapSheet'
+import EmptyMessage, { EMPTY_DATA_MESSAGE, EMPTY_SEARCH_MESSAGE } from './EmptyMessage'
 import { STOCK_COLUMN_PERCENT, stockColumnPercentWidth } from '@/utils/stockTableColumns'
 import { ChevronDownIcon, CloseIcon, ExcelIcon, RedoIcon, SortIcon, UndoIcon } from './icons/MarketMapIcons'
 
@@ -1650,7 +1651,7 @@ export default function AdminStockTable({
             </button>
           </div>
         )}
-        <div ref={scrollContainerRef} className="h-full overflow-auto scrollbar-thin">
+        <div ref={scrollContainerRef} className="relative h-full overflow-auto scrollbar-thin">
           {/* 표 글자는 드래그해도 파랗게 선택되지 않게 한다(줄 드래그 선택과 겹치기 때문). 입력창 안의 글자는 그대로 선택할 수 있다. */}
           <table className="nes-table is-dark custom-page-table w-full select-none text-sm [&_input]:select-text [border-collapse:separate] [border-spacing:0] [&_td]:border-slate-700 [&_td]:py-1 [&_th]:border-white/15 [&_th]:border-b-0 [&_th]:py-1">
           <thead className="sticky top-0 z-10">
@@ -1771,6 +1772,8 @@ export default function AdminStockTable({
             )}
           </tbody>
           </table>
+          {/* 보여줄 종목이 없으면 한국거래소·MARKETRY 표와 같은 안내 글을 가운데에 보여준다. */}
+          {!isPending && sorted.length === 0 && <EmptyMessage message={items.length === 0 ? EMPTY_DATA_MESSAGE : EMPTY_SEARCH_MESSAGE} />}
         </div>
       </div>
     </div>

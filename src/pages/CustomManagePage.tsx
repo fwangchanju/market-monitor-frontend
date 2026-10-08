@@ -92,6 +92,7 @@ export default function CustomManagePage() {
   const {
     data: stockSectors,
     isLoading: isStockSectorsLoading,
+    isError: isStockSectorsError,
     refetch: refetchStockSectors,
     isRefetching: isRefetchingStockSectors,
   } = useStockSectors({ enabled: isLoggedIn })
@@ -100,6 +101,7 @@ export default function CustomManagePage() {
   const {
     data: classificationMap,
     isLoading: isClassificationLoading,
+    isError: isClassificationError,
     refetch: refetchClassification,
     isRefetching: isRefetchingClassification,
   } = useMarketMap('ALL_STOCK', sheet, false, { enabled: isLoggedIn })
@@ -256,6 +258,7 @@ export default function CustomManagePage() {
                     mode={mode === 'stock' ? 'stock' : 'category'}
                     data={classificationMap}
                     isLoading={isClassificationLoading}
+                    isError={isClassificationError || (mode === 'stock' && isStockSectorsError)}
                     source={sheet === 'marketry' ? 'marketry' : 'krx'}
                     nxtOnly={nxtOnly}
                     onNxtOnlyChange={setIsNxtOnlyView}
