@@ -87,6 +87,7 @@ function RankBars({
   highlightColor,
   unit = '%',
   colorScale,
+  onSelectSector,
 }: {
   chart: RankChart
   // 헤더 글자/기준 업종 이름·막대에 쓰는 강조 색 — 지도 설정의 "강조 색상"(strongIndustryColor) 그대로.
@@ -95,6 +96,8 @@ function RankBars({
   // 지도 페이지 트리맵 박스와 동일한 등락률 컬러 스케일(설정 사이드바의 "색상 설정") — 막대 색도
   // 고정된 상승/하락 2색 대신 이 스케일로 칠한다.
   colorScale: ColorScaleConfig
+  // 업종 이름이나 막대를 누르면 그 업종을 눌러 둔 지도 페이지로 이동한다. 지수 참조 막대는 업종이 아니라 대상에서 뺀다.
+  onSelectSector?: (sectorName: string) => void
 }) {
   // 데이터가 비어도 헤더(페이지의 별도 헤더 줄)는 그대로 보이므로, 그 아래 빈 자리의 한가운데에 안내 문구를 크게 보여준다.
   if (chart.rankedItems.length === 0) {
@@ -116,8 +119,9 @@ function RankBars({
       {chart.rankedItems.map(item => (
         <Fragment key={item.key}>
           <span
-            className="whitespace-nowrap text-right font-medium"
+            className={`whitespace-nowrap text-right font-medium ${onSelectSector && !item.isReference ? 'cursor-pointer hover:underline' : ''}`}
             style={item.isReference ? { color: highlightColor } : undefined}
+            onClick={onSelectSector && !item.isReference ? () => onSelectSector(item.sectorName) : undefined}
           >
             {item.sectorName}
           </span>
@@ -125,7 +129,10 @@ function RankBars({
               막대가 길어질수록 텍스트도 같이 따라간다. 오른쪽 w-[84px]는 막대가 축 최대치까지 길어져도
               텍스트가 열 밖으로 밀려나지 않도록 미리 비워두는 여백(16px 폰트 기준으로 폭을 넉넉히 잡음)
               — 보이는 내용은 없고 폭만 차지한다. */}
-          <div className="flex h-[25px] items-center gap-1.5">
+          <div
+            className={`flex h-[25px] items-center gap-1.5 ${onSelectSector && !item.isReference ? 'cursor-pointer' : ''}`}
+            onClick={onSelectSector && !item.isReference ? () => onSelectSector(item.sectorName) : undefined}
+          >
             <div className="relative h-full flex-1">
               <div
                 className="h-full rounded-sm"
@@ -186,6 +193,8 @@ export default function SectorChangeRatePage() {
   // 결과(data)를 그대로 쓴다. before는 그 now.snapshotTime에서 계산한 시각을 쌍으로 묶어 조회한다
   // (marketry-backend 지시서 결정 4) — 이렇게 해야 재조회로 now가 새 tick으로 바뀌는 순간에도
   // 화면이 새 now·옛 before를 잠깐이라도 섞어 그리지 않는다.
+  // 업종을 누르면 지도 페이지로 가서 그 업종을 누른 상태로 연다(지도 페이지가 sector 주소 값을 읽어 한 번만 쓴다).
+  const handleSelectSector = (sectorName: string) => navigate(`${marketRoute('/map', market)}?sector=${encodeURIComponent(sectorName)}`)
   const pairQuery = useSectorMarketMapPair(market, source, nxtOnly, beforeMinutes, data, changeRateBasis)
   // 쌍 쿼리가 에러(재시도 1회 뒤)면 "before 없음"으로 보고 now 쿼리의 현재 data로 그린다. 그 외에는
   // 화면에 그리는 now가 항상 "쌍 안의 now"다 — placeholder 기간에도 그 쌍이 만들어질 때의 now·before가
@@ -478,6 +487,7 @@ export default function SectorChangeRatePage() {
                         chart={charts.current}
                         highlightColor={strongIndustryColor}
                         colorScale={colorScale}
+                        onSelectSector={handleSelectSector}
                       />
                     </div>
                     <div className="flex min-h-0 min-w-0 flex-[1]">
@@ -486,6 +496,7 @@ export default function SectorChangeRatePage() {
                         highlightColor={strongIndustryColor}
                         unit="%p"
                         colorScale={colorScale}
+                        onSelectSector={handleSelectSector}
                       />
                     </div>
                   </div>
