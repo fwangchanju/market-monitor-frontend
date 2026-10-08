@@ -13,6 +13,11 @@ import { appAlert, appConfirm } from '@/utils/appDialogBus'
 const BUTTON_CLASS =
   'h-6 whitespace-nowrap border border-[#ff4d2e] bg-transparent px-2 text-sm font-medium text-[#ff6a4d] hover:bg-[#ff4d2e]/15 disabled:cursor-not-allowed disabled:opacity-50'
 
+// "MARKETRY 2026-10-08 14:30"에서 앞의 이름을 뺀 날짜·시간만 — 안내 문구에서 이름이 겹쳐 보이지 않게 한다.
+function toDateTimeLabel(label: string) {
+  return label.replace(/^MARKETRY\s+/, '')
+}
+
 function pad(value: number) {
   return String(value).padStart(2, '0')
 }
@@ -54,7 +59,7 @@ export default function MarketryPublishControls() {
       const published = await publishMarketry(createPublicationLabel(new Date()))
       setVersions(null)
       await refreshMaps()
-      appAlert(`MARKETRY 업데이트가 완료되었습니다.\n${published.label}`)
+      appAlert(`MARKETRY 업데이트가 완료되었습니다.\n${toDateTimeLabel(published.label)}`)
     } catch {
       appAlert('MARKETRY에 올리지 못했습니다.')
     } finally {
@@ -85,7 +90,7 @@ export default function MarketryPublishControls() {
       await restoreMarketryPublication(version.id)
       setIsVersionsOpen(false)
       await refreshMaps()
-      appAlert(`${version.label}\nMARKETRY 롤백이 완료되었습니다.`)
+      appAlert(`MARKETRY 롤백이 완료되었습니다.\n${toDateTimeLabel(version.label)}`)
     } catch {
       appAlert('MARKETRY를 되돌리지 못했습니다.')
     } finally {
