@@ -75,13 +75,12 @@ export default function MarketMapShareModal({
     shareFileRef.current = dataUrlToFile(previewSrc, 'marketry.png')
   }, [previewSrc])
 
-  // 텔레그램 공유 — 이미지 파일 공유(navigator.share)가 되는 환경(모바일, 맥 사파리 등)에서는 공유 창에서
-  // 텔레그램을 고르면 이미지가 그대로 전달된다. 파일 공유가 안 되는 환경(윈도우 크롬 데스크톱 등)은
-  // 이미지를 못 붙이므로 MARKETRY 텔레그램 방 링크를 열고, 이미지는 클립보드에 복사해 둔다 —
-  // 열린 방의 대화창에 붙여넣으면 된다.
+  // 텔레그램 공유 — 모바일은 공유 창(navigator.share)에서 텔레그램을 고르면 이미지가 그대로 전달된다.
+  // PC는 윈도우 크롬처럼 파일 공유를 지원한다고 답해도 공유 창에 텔레그램이 제대로 뜨지 않으므로 항상
+  // MARKETRY 텔레그램 방 링크를 열고, 이미지는 클립보드에 복사해 둔다 — 열린 방의 대화창에 붙여넣으면 된다.
   const handleTelegramShare = async () => {
     const file = shareFileRef.current
-    if (file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+    if (isMobileDevice() && file && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({ files: [file], title: 'MARKETRY' })
       } catch (error) {
@@ -193,6 +192,13 @@ export default function MarketMapShareModal({
       </div>
     </div>
   )
+}
+
+// 휴대폰·태블릿인지 — 아이패드는 맥으로 보고하므로 터치 지점 수도 본다.
+function isMobileDevice(): boolean {
+  const userAgent = navigator.userAgent
+  if (/Android|iPhone|iPad|iPod/i.test(userAgent)) return true
+  return /Macintosh/i.test(userAgent) && navigator.maxTouchPoints > 1
 }
 
 // 캡처할 영역의 가로/세로 비율 — 아직 없거나 크기를 못 재면 null.
