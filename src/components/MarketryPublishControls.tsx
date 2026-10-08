@@ -10,7 +10,7 @@ import { marketMapKeys } from '@/hooks/queryKeys'
 import { appAlert, appConfirm } from '@/utils/appDialogBus'
 
 const BUTTON_CLASS =
-  'h-6 whitespace-nowrap border border-[var(--brand)] bg-transparent px-2 text-sm font-medium text-[var(--brand)] hover:bg-[var(--brand)]/15 disabled:cursor-not-allowed disabled:opacity-50'
+  'h-6 whitespace-nowrap border border-[#ff4d2e] bg-transparent px-2 text-sm font-medium text-[#ff6a4d] hover:bg-[#ff4d2e]/15 disabled:cursor-not-allowed disabled:opacity-50'
 
 function pad(value: number) {
   return String(value).padStart(2, '0')
@@ -43,6 +43,7 @@ export default function MarketryPublishControls() {
   const handlePublish = async () => {
     const confirmed = await appConfirm(
       '지금 내 히트맵을 MARKETRY로 올리시겠습니까?\n모든 사용자에게 보이는 MARKETRY가 바뀝니다.\n이전 버전은 남아서 되돌릴 수 있습니다.',
+      { adminOnly: true },
     )
     if (!confirmed) return
     setIsBusy(true)
@@ -74,7 +75,7 @@ export default function MarketryPublishControls() {
   }
 
   const handleRestore = async (version: MarketryPublication) => {
-    const confirmed = await appConfirm(`${version.label}\nMARKETRY를 이 버전으로 되돌리시겠습니까?\n모든 사용자에게 보이는 MARKETRY가 바뀝니다.`)
+    const confirmed = await appConfirm(`${version.label}\nMARKETRY를 이 버전으로 되돌리시겠습니까?\n모든 사용자에게 보이는 MARKETRY가 바뀝니다.`, { adminOnly: true })
     if (!confirmed) return
     setIsBusy(true)
     try {
@@ -91,14 +92,15 @@ export default function MarketryPublishControls() {
 
   return (
     <div ref={rootRef} className="relative ml-auto flex shrink-0 items-center gap-1 pr-2">
+      <span className="inline-flex h-6 items-center bg-[#ff4d2e] px-2 text-xs font-extrabold text-white">⚠ ADMIN</span>
       <button type="button" onClick={handlePublish} disabled={isBusy} className={BUTTON_CLASS}>
-        MARKETRY에 올리기
+        UPDATE
       </button>
       <button type="button" onClick={handleToggleVersions} disabled={isBusy} className={BUTTON_CLASS}>
-        이전 버전
+        ROLLBACK
       </button>
       {isVersionsOpen && (
-        <div className="absolute right-0 top-full z-50 mt-1 max-h-72 w-72 overflow-y-auto border border-[var(--brand)] bg-black p-1 text-sm font-normal">
+        <div className="absolute right-0 top-full z-50 mt-1 max-h-72 w-72 overflow-y-auto border border-[#ff4d2e] bg-black p-1 text-sm font-normal">
           {versions === null ? (
             <p className="px-2 py-1 text-gray-400">불러오는 중…</p>
           ) : versions.length === 0 ? (
@@ -113,7 +115,7 @@ export default function MarketryPublishControls() {
                 className="flex w-full items-center justify-between border-0 bg-transparent px-2 py-1 text-left text-white hover:bg-white/10 disabled:opacity-50"
               >
                 <span className="truncate">{version.label}</span>
-                <span className="ml-2 shrink-0 text-[var(--brand)]">되돌리기</span>
+                <span className="ml-2 shrink-0 text-[#ff6a4d]">ROLLBACK</span>
               </button>
             ))
           )}

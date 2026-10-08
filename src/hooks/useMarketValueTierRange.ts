@@ -33,6 +33,7 @@ export function useMarketValueTierRange(enabled: boolean) {
     // 그 밖에는 기본 제외 구간(소형주)만 뺀다.
     const tierRange = settingDefaultsFor(isLoggedIn).tierRange
     if (tierRange === 'all') return { min: 0, max: tiers.length - 1 }
+    if (tierRange === 'topThreeTiers') return { min: Math.max(0, tiers.length - 3), max: tiers.length - 1 }
     if (tierRange === 'topTwoTiers') return { min: Math.max(0, tiers.length - 2), max: tiers.length - 1 }
     const excludedLabels = defaultExcludedTierLabels(tiers)
     const first = tiers.findIndex(tier => !excludedLabels.has(tier.label))

@@ -3,15 +3,14 @@
 // (로그인 사용자는 서버 설정, 비로그인은 이 탭의 sessionStorage — usePageSetting 참고).
 //
 // 회원 기본값(MEMBER_DEFAULTS)이 기준이고, 비로그인 기본값(GUEST_DEFAULTS)은 그중 다른 항목만 GUEST_OVERRIDES에 적는다.
-// 가입 직후 사용자의 기본값은 비로그인과 같다 — 그래서 지금 GUEST_OVERRIDES는 비어 있다. 분류 체계(isCustom)만 다르다:
-// 비로그인은 항상 거래소 분류(KRX)이고, 회원은 MARKETRY 분류로 시작한다. 둘을 다르게 하고 싶은 항목이 생기면
-// GUEST_OVERRIDES에 그 항목만 적는다.
+// 가입 직후 사용자의 기본값은 비로그인과 같다 — 그래서 GUEST_OVERRIDES는 비어 있다. 처음 방문자에게 더 화려하게 보이도록
+// 중분류·강세 3개·형광색 등을 기본으로 한다. 둘을 다르게 하고 싶은 항목이 생기면 GUEST_OVERRIDES에 그 항목만 적는다.
 // 항목 이름 뒤의 번호는 지도 설정창의 항목 번호다.
 
 export type DepthMetricDefault = 'weightedAvgChangeRate' | 'simpleAvgChangeRate'
 
 export interface SettingDefaults {
-  // 분류 체계 — true는 MARKETRY 분류다. 비로그인은 이 값과 상관없이 항상 거래소 분류(KRX)로 고정된다(useGlobalSettings).
+  // 분류 체계 — true는 MARKETRY 분류다. 비로그인은 이 값과 상관없이 내 히트맵을 쓸 수 없다(useGlobalSettings).
   isCustom: boolean
   // 2-1 업종 표시 단계: 켜짐 여부와 단계(1=대분류, 2=중분류, 3=소분류)
   sectorLevelEnabled: boolean
@@ -25,8 +24,8 @@ export interface SettingDefaults {
   topPickDepth: number
   topPickCount: number
   // 1-1 시가총액 범위: 'all'은 모든 구간, 'excludeDefaultTiers'는 기본 제외 구간(소형주)을 뺀다,
-  // 'topTwoTiers'는 시가총액이 큰 두 구간(초대형주+대형주)만 보여준다
-  tierRange: 'all' | 'excludeDefaultTiers' | 'topTwoTiers'
+  // 'topTwoTiers'는 시가총액이 큰 두 구간(초대형주+대형주)만, 'topThreeTiers'는 큰 세 구간(중형주까지)을 보여준다
+  tierRange: 'all' | 'excludeDefaultTiers' | 'topTwoTiers' | 'topThreeTiers'
   // 1-2 / 1-3 등락 방향 필터('all' | 'rising' | 'falling')와 1-2의 업종 단계(0=대분류)
   sectorChangeFilter: 'all' | 'rising' | 'falling'
   sectorChangeDepth: number
@@ -56,23 +55,23 @@ export interface SettingDefaults {
 export const MEMBER_DEFAULTS: SettingDefaults = {
   isCustom: true,
   sectorLevelEnabled: true,
-  maxDepth: 1, // 2-1 대분류
+  maxDepth: 2, // 2-1 중분류까지
   depthMetric: 'weightedAvgChangeRate', // 2-2 시총 가중
   depthMetricMinIndex: 0,
-  depthMetricMaxIndex: 0, // 2-3 대분류만
-  topPickDepth: 0, // 2-4 대분류
-  topPickCount: 1, // 2-4 강세 표시 1개
-  tierRange: 'topTwoTiers', // 1-1 초대형주+대형주
+  depthMetricMaxIndex: 1, // 2-3 대분류~중분류
+  topPickDepth: 1, // 2-4 중분류
+  topPickCount: 3, // 2-4 강세 표시 3개
+  tierRange: 'topThreeTiers', // 1-1 중형주까지
   sectorChangeFilter: 'all',
   sectorChangeDepth: 0,
   stockChangeFilter: 'all',
   sectorFilterEnabled: true,
-  boxSizeMarketCapRatio: 100, // 3-1 100%
+  boxSizeMarketCapRatio: 45, // 3-1 45%
   stockLabelModeIndex: 3,
   boxLabelMinAreaPercent: 0.01, // 3-3 0.01%
-  decimalPlacesIndex: 2, // 3-4 2자리
+  decimalPlacesIndex: 1, // 3-4 1자리
   stockPopupOnHover: false,
-  strongIndustryColor: '#4dd0e1',
+  strongIndustryColor: '#c6ff00', // 4-1 형광
   colorCustomOn: true,
   avgChangeRateUseSimple: true,
   sidebarPinned: true,

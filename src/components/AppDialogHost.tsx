@@ -30,9 +30,15 @@ export default function AppDialogHost() {
         aria-labelledby="app-dialog-title"
         aria-describedby="app-dialog-message"
         // 색은 설정창 말풍선·NXT 안내창과 같은 크림색 계열이다.
-        className={`w-full max-w-sm p-5 ${HINT_BUBBLE_COLOR_CLASS}`}
+        className={`w-full max-w-sm p-5 ${HINT_BUBBLE_COLOR_CLASS} ${dialog.adminOnly ? 'border-[3px] border-[#ff4d2e]' : ''}`}
       >
-        <h2 id="app-dialog-title" className="text-base font-bold text-black">{dialog.kind === 'confirm' ? '확인' : '안내'}</h2>
+        <h2 id="app-dialog-title" className={`text-base font-bold ${dialog.adminOnly ? 'text-[#d92b0f]' : 'text-black'}`}>
+          {dialog.adminOnly && '⚠ '}
+          {dialog.kind === 'confirm' ? '확인' : '안내'}
+        </h2>
+        {dialog.adminOnly && (
+          <p className="mt-2 bg-[#ff4d2e] px-2 py-1 text-[13px] font-bold text-white">ADMIN 전용 · 모든 사용자 화면에 바로 반영됩니다</p>
+        )}
         <p id="app-dialog-message" className="mt-3 whitespace-pre-line break-keep text-sm leading-relaxed text-black">{dialog.message}</p>
         <div className="mt-6 flex justify-end gap-2">
           {dialog.kind === 'confirm' && (
@@ -44,7 +50,7 @@ export default function AppDialogHost() {
             type="button"
             autoFocus
             onClick={() => resolveCurrentAppDialog(true)}
-            className="nes-btn border-[var(--accent)] bg-[var(--accent)] px-4 py-2 text-sm font-bold text-black hover:bg-[var(--accent-hover)]"
+            className={`nes-btn px-4 py-2 text-sm font-bold ${dialog.adminOnly ? 'border-[#ff4d2e] bg-[#ff4d2e] text-white hover:bg-[#e03a1c]' : 'border-[var(--accent)] bg-[var(--accent)] text-black hover:bg-[var(--accent-hover)]'}`}
           >
             {dialog.kind === 'confirm' ? '확인' : '닫기'}
           </button>
