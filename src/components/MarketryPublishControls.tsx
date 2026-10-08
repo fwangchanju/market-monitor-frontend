@@ -7,10 +7,16 @@ import {
   type MarketryPublication,
 } from '@/api/marketryPublish'
 import { marketMapKeys } from '@/hooks/queryKeys'
+import Spinner from '@/components/Spinner'
 import { appAlert, appConfirm } from '@/utils/appDialogBus'
 
 const BUTTON_CLASS =
   'h-6 whitespace-nowrap border border-[#ff4d2e] bg-transparent px-2 text-sm font-medium text-[#ff6a4d] hover:bg-[#ff4d2e]/15 disabled:cursor-not-allowed disabled:opacity-50'
+
+// "MARKETRY 2026-10-08 14:30"에서 앞의 이름을 뺀 날짜·시간만 — 안내 문구에서 이름이 겹쳐 보이지 않게 한다.
+function toDateTimeLabel(label: string) {
+  return label.replace(/^MARKETRY\s+/, '')
+}
 
 function pad(value: number) {
   return String(value).padStart(2, '0')
@@ -24,7 +30,9 @@ function createPublicationLabel(now: Date) {
 // 관리자 전용 — 내 히트맵을 MARKETRY로 올리고, 이전 버전으로 되돌린다. 다른 사용자의 데이터는 건드리지 않는다.
 export default function MarketryPublishControls() {
   const queryClient = useQueryClient()
-  const [isBusy, setIsBusy] = useState(false)
+  // 올리거나 되돌리는 중이면 그 안내 문구, 아니면 null.
+  const [busyMessage, setBusyMessage] = useState<string | null>(null)
+  const isBusy = busyMessage !== null
   const [isVersionsOpen, setIsVersionsOpen] = useState(false)
   const [versions, setVersions] = useState<MarketryPublication[] | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -46,16 +54,16 @@ export default function MarketryPublishControls() {
       { adminOnly: true },
     )
     if (!confirmed) return
-    setIsBusy(true)
+    setBusyMessage('MARKETRY를 업데이트 중입니다.')
     try {
       const published = await publishMarketry(createPublicationLabel(new Date()))
       setVersions(null)
       await refreshMaps()
-      appAlert(`MARKETRY에 올렸습니다. (${published.label})`)
+      appAlert(`MARKETRY 업데이트가 완료되었습니다.\n${toDateTimeLabel(published.label)}`)
     } catch {
       appAlert('MARKETRY에 올리지 못했습니다.')
     } finally {
-      setIsBusy(false)
+      setBusyMessage(null)
     }
   }
 
@@ -77,16 +85,16 @@ export default function MarketryPublishControls() {
   const handleRestore = async (version: MarketryPublication) => {
     const confirmed = await appConfirm(`${version.label}\nMARKETRY를 이 버전으로 되돌리시겠습니까?\n모든 사용자에게 보이는 MARKETRY가 바뀝니다.`, { adminOnly: true })
     if (!confirmed) return
-    setIsBusy(true)
+    setBusyMessage('MARKETRY를 롤백 중입니다.')
     try {
       await restoreMarketryPublication(version.id)
       setIsVersionsOpen(false)
       await refreshMaps()
-      appAlert(`${version.label}\nMARKETRY를 이 버전으로 되돌렸습니다.`)
+      appAlert(`MARKETRY 롤백이 완료되었습니다.\n${toDateTimeLabel(version.label)}`)
     } catch {
       appAlert('MARKETRY를 되돌리지 못했습니다.')
     } finally {
-      setIsBusy(false)
+      setBusyMessage(null)
     }
   }
 
@@ -99,6 +107,12 @@ export default function MarketryPublishControls() {
       <button type="button" onClick={handleToggleVersions} disabled={isBusy} className={BUTTON_CLASS}>
         ROLLBACK
       </button>
+      {/* 올리거나 되돌리는 동안 화면 전체를 가리고 큰 로딩을 보여준다 — 오래 걸려도 "진행 중"임을 알 수 있고, 그 사이 다른 곳을 누르지 못한다. */}
+      {isBusy && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70">
+          <Spinner showElapsed message={busyMessage} />
+        </div>
+      )}
       {isVersionsOpen && (
         <div className="absolute right-0 top-full z-50 mt-1 max-h-72 w-72 overflow-y-auto border border-[#ff4d2e] bg-black p-1 text-sm font-normal">
           {versions === null ? (

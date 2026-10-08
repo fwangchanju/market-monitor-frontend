@@ -10,9 +10,11 @@ interface Props {
   showLogo?: boolean
   // 데이터를 불러오지 못했을 때 — 로딩 화면과 같은 자리·크기로 로고 아래에 이 문구를 보여준다(원은 돌지 않고 시간도 없다).
   errorMessage?: string
+  // showElapsed 로딩에서 원 안에 보이는 안내 문구 — 기본은 데이터 로딩 문구다.
+  message?: string
 }
 
-export default function Spinner({ className, showElapsed = false, showLogo = false, errorMessage }: Props) {
+export default function Spinner({ className, showElapsed = false, showLogo = false, errorMessage, message = '데이터를 불러오는 중입니다.' }: Props) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
 
   useEffect(() => {
@@ -63,7 +65,7 @@ export default function Spinner({ className, showElapsed = false, showLogo = fal
         <div />
         <MarketryLogo className="h-auto w-[72%]" />
         <div className="flex flex-col items-center gap-1 pt-4">
-          <span className="text-base text-gray-300">데이터를 불러오는 중입니다.</span>
+          <span className="text-base text-gray-300">{message}</span>
           <span className="h-7 text-base tabular-nums text-gray-300">{elapsedSeconds >= 1 ? `${elapsedSeconds}초` : ''}</span>
         </div>
       </div>
