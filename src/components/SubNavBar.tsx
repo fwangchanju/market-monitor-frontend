@@ -1,7 +1,5 @@
-import type { MouseEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { useIsLoggedIn } from '@/hooks/useSession'
-import { useLoginGate } from '@/hooks/useLoginGate'
 import { FONT_NAV_TAB } from '@/components/FontStyle'
 
 const BASE_LINKS = [
@@ -9,8 +7,7 @@ const BASE_LINKS = [
   { to: '/map/allstock', label: 'MAP' },
   { to: '/group/allstock', label: 'GROUP' },
 ]
-// 비로그인에게도 항상 보인다 — 로그인 여부와 무관하게 메뉴는 노출하고, 클릭 시점에만 로그인 팝업으로
-// 막는다(가입/로그인 전환 지시서 결정).
+// 비로그인에게도 열려 있다 — 마켓트리·한국거래소 시트는 읽고, 내 히트맵은 비어 있으며 수정하려 할 때 로그인 팝업이 뜬다.
 const CUSTOM_LINK = { to: '/custom/industry', label: 'CUSTOM' }
 
 interface Props {
@@ -21,8 +18,6 @@ interface Props {
 // 탭 메뉴(왼쪽) + 페이지별 옵션 버튼(오른쪽)을 한 줄에 같이 보여주는 바.
 export default function SubNavBar({ actions }: Props) {
   const location = useLocation()
-  const isLoggedIn = useIsLoggedIn()
-  const { requireLogin } = useLoginGate()
   const links = [...BASE_LINKS, CUSTOM_LINK]
 
   const isLinkActive = (to: string) => {
@@ -34,14 +29,6 @@ export default function SubNavBar({ actions }: Props) {
   const linkClassName = (to: string) =>
     `${FONT_NAV_TAB} whitespace-nowrap ${isLinkActive(to) ? 'text-[var(--accent)]' : 'text-gray-400 hover:text-white'}`
 
-  // 비로그인이 커스텀 메뉴(탭 자체 또는 섹터/종목 하위 목록)를 클릭하면 실제 이동 대신 로그인
-  // 팝업을 띄운다 — 목적지 경로를 returnTo로 넘겨서 로그인 성공 후 그 화면으로 바로 돌아온다.
-  const guardCustomNavigate = (e: MouseEvent<HTMLAnchorElement>, to: string) => {
-    if (isLoggedIn) return
-    e.preventDefault()
-    requireLogin(to)
-  }
-
   return (
     <div className="relative z-30 -top-[13px] flex h-8 after:absolute after:inset-x-0 after:top-full after:h-[2.5px] after:bg-zinc-900 shrink-0 items-center justify-between gap-3 bg-zinc-900 px-3 text-xs">
       <div className="flex h-8 items-center gap-3">
@@ -49,7 +36,6 @@ export default function SubNavBar({ actions }: Props) {
           <Link
             key={link.to}
             to={link.to}
-            onClick={link.to === '/custom/industry' ? e => guardCustomNavigate(e, link.to) : undefined}
             className={linkClassName(link.to)}
           >
             {link.label}

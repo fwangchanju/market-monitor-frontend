@@ -47,6 +47,7 @@ export const marketMapKeys = {
     [...marketMapKeys.all, 'map', market, source, nxtOnly, basis] as const,
   scale: () => [...marketMapKeys.all, 'scale'] as const,
   valueTiers: () => [...marketMapKeys.all, 'value-tiers'] as const,
+  stockCatalog: () => [...marketMapKeys.all, 'stock-catalog'] as const,
   // 섹터 페이지의 now·before 쌍 쿼리 키 — now.snapshotTime이 바뀌면(새 tick) 새 쌍을 받는다.
   // market·source·beforeMinutes가 바뀌면(사용자 조작) 직전 쌍을 placeholder로 쓰지 않는다.
   sectorPair: (

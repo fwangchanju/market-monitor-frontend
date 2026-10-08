@@ -153,6 +153,16 @@ export const handlers = [
   }),
   // 공개 기본값 — 로그인 사용자는 아래 /custom/value-tiers, /custom/scale로 각자 값을 받는다.
   http.get('/api/map/value-tiers', () => HttpResponse.json(data.marketValueTiers)),
+  http.get('/api/map/stock-catalog', () =>
+    HttpResponse.json(
+      data.customStockSectors.map(({ stockCode, market, nxtEnabled, industryName }) => ({
+        stockCode,
+        market,
+        nxtEnabled,
+        industryName,
+      })),
+    ),
+  ),
   http.get('/api/map/scale', () => HttpResponse.json(data.marketMapColorScale)),
   http.get('/api/map/excluded-stocks', () => HttpResponse.json(data.excludedStocks)),
   http.post('/api/map/excluded-stocks/:stockCode', ok),
