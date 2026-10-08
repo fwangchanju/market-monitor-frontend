@@ -9,6 +9,7 @@ import { halfOverlapCollisionDetection } from '@/utils/dndCollision'
 import { toCount } from '@/utils/format'
 import { appAlert, appConfirm } from '@/utils/appDialogBus'
 import { SearchBar } from '@/components/ReadOnlyHeatmapSheet'
+import EmptyMessage, { EMPTY_DATA_MESSAGE, EMPTY_SEARCH_MESSAGE } from '@/components/EmptyMessage'
 import { EditIcon, PlusIcon, TrashIcon } from '@/components/icons/MarketMapIcons'
 
 interface Props {
@@ -486,7 +487,7 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget, onCou
           placeholder="업종 검색"
           ariaLabel="업종 검색"
         />
-        <div className="grid min-h-0 flex-1 grid-cols-3 overflow-hidden select-none [&_input]:select-text">
+        <div className="relative grid min-h-0 flex-1 grid-cols-3 overflow-hidden select-none [&_input]:select-text">
           {(['대분류', '중분류', '소분류'] as const).map((label, index) => (
             <div key={label} className="flex min-h-0 min-w-0 flex-col">
               <div className={`flex h-7 shrink-0 items-center justify-center gap-2 bg-[#2b3a4f] text-sm font-bold ${index < 2 ? 'border-r border-white/15' : ''} ${index === activeColumn ? 'text-[var(--brand)]' : 'text-slate-100'}`}>
@@ -498,6 +499,8 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget, onCou
               </div>
             </div>
           ))}
+          {/* 업종이 하나도 없으면 한국거래소·MARKETRY 표와 같은 안내 글을 가운데에 보여준다. */}
+          {viewSectors.length === 0 && <EmptyMessage message={sectors.length === 0 ? EMPTY_DATA_MESSAGE : EMPTY_SEARCH_MESSAGE} topClass="top-7" />}
         </div>
       </div>
       {/* 커서를 따라다니는 드래그 미리보기 — 끌고 있는 줄을 원래 폭의 한 줄 그대로(손잡이·번호·이름) 청록 배경에 그림자를 줘서 들어 올린 것처럼 보여 준다. */}

@@ -4,6 +4,7 @@ import { useRowRangeSelection } from '@/hooks/useRowRangeSelection'
 import { STOCK_COLUMN_PERCENT, stockColumnPercentWidth } from '@/utils/stockTableColumns'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import Spinner from '@/components/Spinner'
+import EmptyMessage, { EMPTY_DATA_MESSAGE, EMPTY_SEARCH_MESSAGE } from '@/components/EmptyMessage'
 import type { Market, MarketMapResponse } from '@/types/api'
 import { toCount, toJoEokDecimal } from '@/utils/format'
 import { charTier } from '@/utils/koreanSort'
@@ -88,6 +89,8 @@ interface Props {
   mode: 'category' | 'stock'
   data: MarketMapResponse | undefined
   isLoading: boolean
+  // 데이터를 불러오지 못했는지 — 못 불러온 것을 "표시할 데이터가 없다"로 잘못 보여주지 않는다.
+  isError: boolean
   // 어떤 분류를 읽기 전용으로 보여주는지 — krx는 거래소 분류, marketry는 올린 분류다. "NXT만 보기"는 krx만 쓴다.
   source: 'krx' | 'marketry'
   // NXT 시트면 NXT 거래 가능 종목만 남긴다. 업종 분류는 KRX 것을 그대로 쓴다.
@@ -111,7 +114,7 @@ interface SectorRow {
 
 // KRX/NXT·MARKETRY 시트 — 업종 분류를 읽기만 하는 화면이다. 편집 기능(추가·이동·배정)은 없고, 지도의 해당 히트맵이 보여주는
 // 분류(/map?source=...)를 그대로 표로 보여준다. 시세가 있는 종목만 내려오므로 거래정지 종목 등은 빠질 수 있다.
-export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, source, nxtOnly, onNxtOnlyChange, nxtStockCodes, stockMarkets, isNxtLoading, onCountLabelChange }: Props) {
+export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, isError, source, nxtOnly, onNxtOnlyChange, nxtStockCodes, stockMarkets, isNxtLoading, onCountLabelChange }: Props) {
   const sectors = useMemo<SectorRow[]>(() => {
     if (!data) return []
     return data.items
@@ -122,20 +125,27 @@ export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, source, nx
       .filter(row => row.stocks.length > 0)
   }, [data, nxtOnly, nxtStockCodes])
 
-  // NXT 열(종목 화면)과 NXT만 보기는 NXT 종목 목록이 와야 맞게 보이므로 그동안 스피너를 보여준다.
+  // 지도·그룹 페이지처럼 불러오지 못했을 때는 큰 원 안에 안내 글을 가운데에 보여준다.
+  if (isError) {
+    return (
+      <div className="flex min-h-0 flex-1 items-center justify-center p-8">
+        <Spinner errorMessage="데이터를 불러오지 못했습니다." />
+      </div>
+    )
+  }
+  // NXT 열(종목 화면)과 NXT만 보기는 NXT 종목 목록이 와야 맞게 보이므로 그동안 로딩 원을 보여준다.
+  // 지도·그룹 페이지처럼 화면 한가운데에 크게 보여준다.
   if (isLoading || ((nxtOnly || mode === 'stock') && isNxtLoading)) {
     return (
-      <div className="flex justify-center p-16">
-        <Spinner />
+      <div className="flex min-h-0 flex-1 items-center justify-center p-8">
+        <Spinner showElapsed />
       </div>
     )
   }
   // 종목이 하나도 없어도 표 틀(검색창·머리글)은 그대로 보여준다 — 시트마다 화면 모양이 달라 보이지 않게 한다.
-  const emptyMessage = source === 'marketry'
-    ? 'MARKETRY 분류가 아직 없습니다.'
-    : nxtOnly
-      ? 'NXT 거래 종목이 아직 없습니다.\n평일 오전 7시 종목 정보 동기화 뒤에 표시됩니다.'
-      : '표시할 KRX 분류가 없습니다.'
+  const emptyMessage = nxtOnly
+    ? 'NXT 거래 종목이 아직 없습니다.\n평일 오전 7시 종목 정보 동기화 뒤에 표시됩니다.'
+    : EMPTY_DATA_MESSAGE
   const nxtOnlyToggle = source === 'krx' && (
     <label className="flex cursor-pointer items-center gap-1.5 text-sm text-white">
       <input
@@ -186,15 +196,6 @@ export function SearchBar({ query, onChange, placeholder, ariaLabel, countLabel,
   )
 }
 
-function EmptyRow({ colSpan, message }: { colSpan: number; message: string }) {
-  return (
-    <tr>
-      <td colSpan={colSpan} className="whitespace-pre-line px-3 py-8 text-center text-sm text-gray-400">
-        {message}
-      </td>
-    </tr>
-  )
-}
 
 type CategorySortKey = 'name' | 'stockCount' | 'marketValue'
 
@@ -229,7 +230,7 @@ function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { s
         ariaLabel="업종 검색"
         extra={extra}
       />
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="relative min-h-0 flex-1 overflow-y-auto">
         {/* 업종·종목 수·시가총액 세 칸을 같은 폭(삼등분)으로 나눈다 — MARKETRY 업종 화면의 대·중·소분류 칸과 같은 모양이다. */}
         <table className={`${TABLE_CLASS} table-fixed select-none`}>
           <thead>
@@ -240,7 +241,6 @@ function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { s
             </tr>
           </thead>
           <tbody>
-            {visibleRows.length === 0 && <EmptyRow colSpan={3} message={rows.length === 0 ? emptyMessage : '검색 결과가 없습니다.'} />}
             {visibleRows.map(row => (
               <tr key={row.name} className="text-gray-400">
                 {/* 업종 이름 시작 위치를 MARKETRY 업종 화면의 대분류 이름과 같게 한다 — 칸 왼쪽에서 8px(여백) + 손잡이 24px + 4px + 번호 칸 28px + 8px = 72px. */}
@@ -254,6 +254,7 @@ function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { s
             ))}
           </tbody>
         </table>
+        {visibleRows.length === 0 && <EmptyMessage message={rows.length === 0 ? emptyMessage : EMPTY_SEARCH_MESSAGE} />}
       </div>
     </div>
   )
@@ -324,7 +325,7 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra,
         ariaLabel="종목 검색"
         extra={extra}
       />
-      <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} className="relative min-h-0 flex-1 overflow-y-auto">
         {/* 열 너비는 MARKETRY 종목 표와 같은 비율이다 — 종목명은 그쪽의 "종목명 + 약칭" 너비이고, 남는 폭은 NXT 칸이 받는다. */}
         {/* 열이 MARKETRY 표 폭으로 좁아져도 머리글·시가총액이 두 줄로 접히거나 옆 칸으로 넘치지 않게 좌우 여백을 줄이고 한 줄로 고정한다. */}
         <table className={`${TABLE_CLASS} table-fixed select-none [&_td]:whitespace-nowrap [&_td]:px-1 [&_th]:whitespace-nowrap [&_th]:px-1`}>
@@ -358,7 +359,6 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra,
             </tr>
           </thead>
           <tbody>
-            {visibleRows.length === 0 && <EmptyRow colSpan={7} message={rows.length === 0 ? emptyMessage : '검색 결과가 없습니다.'} />}
             {paddingTop > 0 && (
               <tr>
                 <td colSpan={7} style={{ height: paddingTop, padding: 0, border: 'none' }} />
@@ -400,6 +400,7 @@ function StockTable({ sectors, emptyMessage, nxtStockCodes, stockMarkets, extra,
             )}
           </tbody>
         </table>
+        {visibleRows.length === 0 && <EmptyMessage message={rows.length === 0 ? emptyMessage : EMPTY_SEARCH_MESSAGE} />}
       </div>
     </div>
   )
