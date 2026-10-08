@@ -16,12 +16,12 @@ function pad(value: number) {
   return String(value).padStart(2, '0')
 }
 
-// 고정본 버전 이름 — 브라우저 시각(한국)으로 "고정본 2026-10-08 14:30"처럼 만든다.
+// 올린 버전 이름 — 브라우저 시각(한국)으로 "MARKETRY 2026-10-08 14:30"처럼 만든다.
 function createPublicationLabel(now: Date) {
-  return `고정본 ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
+  return `MARKETRY ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
 }
 
-// 관리자 전용 — 내 히트맵을 MARKETRY 고정본으로 올리고, 이전 버전으로 되돌린다. 다른 사용자의 데이터는 건드리지 않는다.
+// 관리자 전용 — 내 히트맵을 MARKETRY로 올리고, 이전 버전으로 되돌린다. 다른 사용자의 데이터는 건드리지 않는다.
 export default function MarketryPublishControls() {
   const queryClient = useQueryClient()
   const [isBusy, setIsBusy] = useState(false)
@@ -42,7 +42,7 @@ export default function MarketryPublishControls() {
 
   const handlePublish = async () => {
     const confirmed = await appConfirm(
-      '지금 내 히트맵을 MARKETRY로 올릴까요?\n모든 사용자에게 보이는 고정본이 바뀝니다. 이전 버전은 남아서 되돌릴 수 있습니다.',
+      '지금 내 히트맵을 MARKETRY로 올릴까요?\n모든 사용자에게 보이는 MARKETRY가 바뀝니다. 이전 버전은 남아서 되돌릴 수 있습니다.',
     )
     if (!confirmed) return
     setIsBusy(true)
@@ -74,7 +74,7 @@ export default function MarketryPublishControls() {
   }
 
   const handleRestore = async (version: MarketryPublication) => {
-    const confirmed = await appConfirm(`MARKETRY를 "${version.label}"로 되돌릴까요?\n모든 사용자에게 보이는 고정본이 바뀝니다.`)
+    const confirmed = await appConfirm(`MARKETRY를 "${version.label}"로 되돌릴까요?\n모든 사용자에게 보이는 MARKETRY가 바뀝니다.`)
     if (!confirmed) return
     setIsBusy(true)
     try {

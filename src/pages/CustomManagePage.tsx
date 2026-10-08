@@ -37,14 +37,14 @@ export default function CustomManagePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   // /custom/industry는 업종 화면이고, /custom/stock은 종목 화면이다.
   const mode = pathname === '/custom/stock' || searchParams.get('mode') === 'stock' ? 'stock' : 'sector'
-  // 히트맵 시트 — 기본은 편집 가능한 내 히트맵(mymap) 시트이고, ?sheet=krx면 읽기 전용 KRX 시트다.
-  // 예전 주소(?sheet=marketry)는 내 히트맵 시트로 연다. MARKETRY 고정본은 이 화면에서 고치지 않는다.
+  // 히트맵 시트 — 내 히트맵(mymap)만 편집할 수 있다. ?sheet=krx는 읽기 전용 KRX 시트, ?sheet=marketry는 올린
+  // MARKETRY를 읽기 전용으로 보여준다(MARKETRY는 내 히트맵에서 올려서 바꾼다).
   // 예전 주소(?sheet=nxt)는 KRX 시트에서 "NXT 종목만 보기"를 켠 상태로 연다.
   const sheetParam = searchParams.get('sheet')
   const [selectedHeatmap, setSelectedHeatmap] = useHeatmapSelection()
   const explicitSheet =
-    sheetParam === 'krx' || sheetParam === 'nxt' ? 'krx' : sheetParam === 'marketry' || sheetParam === 'mymap' ? 'mymap' : null
-  const sheet = explicitSheet ?? (selectedHeatmap === 'krx' ? 'krx' : 'mymap')
+    sheetParam === 'krx' || sheetParam === 'nxt' ? 'krx' : sheetParam === 'marketry' || sheetParam === 'mymap' ? sheetParam : null
+  const sheet = explicitSheet ?? selectedHeatmap
   const isReadOnlySheet = sheet !== 'mymap'
   const [sectorSettingsActionsTarget, setSectorSettingsActionsTarget] = useState<HTMLDivElement | null>(null)
   // 종목 화면의 실행취소·다시실행 아이콘이 들어갈 설정창 안의 자리.
@@ -59,7 +59,7 @@ export default function CustomManagePage() {
   }
   // KRX 시트에서 NXT 거래 종목만 남기는 보기 옵션 — 새로고침해도 유지된다.
   const [isNxtOnlyView, setIsNxtOnlyView] = usePersistedState('customPage.krxNxtOnly', false)
-  const nxtOnly = isReadOnlySheet && (isNxtOnlyView || sheetParam === 'nxt')
+  const nxtOnly = sheet === 'krx' && (isNxtOnlyView || sheetParam === 'nxt')
   // 기존 시트 링크는 처음부터 적용하고 브라우저 공통 선택으로 옮겨 URL이 이후 선택을 덮지 않게 한다.
   useEffect(() => {
     if (!explicitSheet) return
@@ -102,7 +102,7 @@ export default function CustomManagePage() {
     isLoading: isClassificationLoading,
     refetch: refetchClassification,
     isRefetching: isRefetchingClassification,
-  } = useMarketMap('ALL_STOCK', isReadOnlySheet ? 'krx' : 'mymap', false, { enabled: isLoggedIn })
+  } = useMarketMap('ALL_STOCK', sheet, false, { enabled: isLoggedIn })
 
   const nxtStockCodes = useMemo(
     () => new Set((stockSectors?.items ?? []).filter(item => item.nxtEnabled).map(item => item.stockCode)),
@@ -233,13 +233,13 @@ export default function CustomManagePage() {
                   mode={mode === 'stock' ? 'stock' : 'category'}
                   onSelect={path => navigate(path)}
                 />
-                {isReadOnlySheet && (
+                {sheet === 'krx' && (
                   <span className="whitespace-nowrap text-sm font-normal text-gray-400">키움 REST API</span>
                 )}
               </div>
               {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다. */}
               {!isReadOnlySheet && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 min-w-0 flex-1 items-center" />}
-              {/* 관리자만 — 내 히트맵을 MARKETRY 고정본으로 올리고 이전 버전으로 되돌린다. */}
+              {/* 관리자만 — 내 히트맵을 MARKETRY로 올리고 이전 버전으로 되돌린다. */}
               {session?.role === 'ADMIN' && !isReadOnlySheet && <MarketryPublishControls />}
               <div className={`${FONT_BAR_MODE_STATUS} ml-2 flex min-w-0 items-center justify-end text-gray-400`}>
                 <span className="flex min-w-0 items-center justify-end">
@@ -256,6 +256,7 @@ export default function CustomManagePage() {
                     mode={mode === 'stock' ? 'stock' : 'category'}
                     data={classificationMap}
                     isLoading={isClassificationLoading}
+                    source={sheet === 'marketry' ? 'marketry' : 'krx'}
                     nxtOnly={nxtOnly}
                     onNxtOnlyChange={setIsNxtOnlyView}
                     nxtStockCodes={nxtStockCodes}

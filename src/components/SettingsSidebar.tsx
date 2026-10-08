@@ -11,7 +11,7 @@ import type { MarketValueTierItem } from '@/types/api'
 import { FONT_BAR_TIME } from '@/components/FontStyle'
 import { ACCENT_PALETTE } from '@/utils/accentPalette'
 import { HEATMAP_NAMES, type HeatmapKey } from '@/utils/heatmapNames'
-import { toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
+import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { useIsLoggedIn } from '@/hooks/useSession'
 import { useCustomPreferences } from '@/hooks/useCustomPreferences'
 import { commitDrafts, discardDrafts, useHasDrafts } from '@/utils/settingsDraft'
@@ -988,21 +988,33 @@ function SettingsClassificationSelector({
           </button>
         ))}
       </div>
-      {atBottom && snapshotTime && (
+      {/* 업데이트 시각이 없어도(올린 MARKETRY가 아직 없을 때 등) 줄은 그대로 둬서 다른 분류와 모양이 달라지지 않게 한다. 시각 글자만 같은 폭으로 자리를 잡고 숨긴다. */}
+      {atBottom && (
         <p className={`${FONT_BAR_TIME} mt-2 flex items-center justify-center gap-1.5 whitespace-nowrap text-xs text-gray-400`}>
           <span className="flex items-center">
             업데이트
             <SettingHelpIcon
               label="업데이트"
-              description={isExchange
-                ? "키움 REST API로 받은\n종목·업종 정보를 서버에\n마지막으로 동기화한 시각입니다.\n\n시세 갱신 시각이나 한국거래소의\n공식 분류 변경 시각과는 다릅니다."
-                : heatmap === 'mymap'
-                  ? "내가 종목·업종 정보를\n마지막으로 수정한 시각입니다."
-                  : "MARKETRY 운영자가 고정본을\n마지막으로 올린 시각입니다."}
+              // 말풍선마다 주어를 빨간 굵은 글씨로 강조한다(누적/따로 말풍선의 전일·당일과 같은 모양). 조사(가)는 강조하지 않는다.
+              description={
+                isExchange ? (
+                  <>
+                    <b className="text-red-600">키움 REST API</b>로 받은{'\n'}종목·업종 정보를 서버에{'\n'}마지막으로 동기화한 시각입니다.{'\n\n'}시세 갱신 시각이나 한국거래소의{'\n'}공식 분류 변경 시각과는 다릅니다.
+                  </>
+                ) : heatmap === 'mymap' ? (
+                  <>
+                    <b className="text-red-600">내가</b> 종목·업종 정보를{'\n'}마지막으로 수정한 시각입니다.
+                  </>
+                ) : (
+                  <>
+                    <b className="text-red-600">MARKETRY</b>가 종목·업종 정보를{'\n'}마지막으로 수정한 시각입니다.
+                  </>
+                )
+              }
             />
           </span>
-          <span>{toMarketMapSnapshotDateLabel(snapshotTime)}</span>
-          <span>{toMarketMapSnapshotTimeOnlyLabel(snapshotTime)}</span>
+          <span className={snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotDateLabel(snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
+          <span className={snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotTimeOnlyLabel(snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
         </p>
       )}
     </div>
@@ -1912,7 +1924,7 @@ interface Props {
   sectionOrder?: readonly SettingsSidebarSectionId[]
   classificationAtBottom?: boolean
   classificationNotice?: string
-  // 하단 히트맵 선택 아래에 표시할 운영자 종목 분류 최종 변경 시각(지도 상단 표기와 같은 형식).
+  // 하단 히트맵 선택 아래에 표시할 종목 분류 최종 변경 시각(지도 상단 표기와 같은 형식).
   snapshotTime?: string | null
   // 사이드바 열림 상태는 페이지가 관리한다.
   isOpen: boolean
