@@ -42,7 +42,7 @@ export default function MarketryPublishControls() {
 
   const handlePublish = async () => {
     const confirmed = await appConfirm(
-      '지금 내 히트맵을 MARKETRY로 올릴까요?\n모든 사용자에게 보이는 MARKETRY가 바뀝니다. 이전 버전은 남아서 되돌릴 수 있습니다.',
+      '지금 내 히트맵을 MARKETRY로 올릴까요?\n모든 사용자에게 보이는 MARKETRY가 바뀝니다.\n이전 버전은 남아서 되돌릴 수 있습니다.',
     )
     if (!confirmed) return
     setIsBusy(true)
