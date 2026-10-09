@@ -2210,7 +2210,7 @@ export default function SettingsSidebar({
           </p>
           {stockCountLabel && (
             <span className="flex h-7 w-[7rem] shrink-0 items-center whitespace-nowrap text-sm leading-none text-gray-400">
-              <CountLabelWithBadge label={stockCountLabel} spread />
+              <CountLabelWithBadge label={stockCountLabel} alignEnd />
             </span>
           )}
         </div>

@@ -12,15 +12,16 @@ export default function KindBadge({ kind, onDark = false, className = '' }: { ki
   )
 }
 
-// "12/30종목" 같은 개수 글자를 "[종목] 12/30"(배지가 앞, 숫자가 바로 뒤)으로 그린다. 숫자의 천 단위 쉼표는 뺀다. 끝이 종목/업종이 아니면 글자 그대로 둔다.
-// spread면 배지는 칸의 왼쪽 끝에, 숫자는 오른쪽 끝에 붙인다(숫자 자릿수가 달라도 배지 자리는 그대로).
-export function CountLabelWithBadge({ label, spread = false }: { label: string; spread?: boolean }) {
+// "12/30종목" 같은 개수 글자를 "12/30 [종목]"(숫자가 앞, 배지가 바로 뒤)으로 그린다. 숫자의 천 단위 쉼표는 뺀다. 끝이 종목/업종이 아니면 글자 그대로 둔다.
+// "449/2741종목" → "449/2741 [종목]"(숫자가 앞, 배지가 바로 뒤). align이 end면 숫자와 배지를 칸의 오른쪽 끝에 붙인다.
+// 배지는 글자 수가 같은(2글자) 종목/업종이라 칸 오른쪽 끝에서 항상 같은 자리에 오고, 숫자만 자릿수만큼 왼쪽으로 늘어난다.
+export function CountLabelWithBadge({ label, alignEnd = false }: { label: string; alignEnd?: boolean }) {
   const match = /^(.*?)(종목|업종)$/.exec(label)
   if (!match) return <>{label}</>
   return (
-    <span className={spread ? 'flex w-full items-center justify-between gap-1.5' : 'inline-flex items-center gap-1.5'}>
-      <KindBadge kind={match[2] as Kind} onDark />
+    <span className={`items-center gap-1.5 ${alignEnd ? 'flex w-full justify-end' : 'inline-flex'}`}>
       <span>{match[1].replaceAll(',', '')}</span>
+      <KindBadge kind={match[2] as Kind} onDark />
     </span>
   )
 }
