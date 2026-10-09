@@ -803,7 +803,7 @@ function SingleValueSlider({
 export type SectorStockScope = 'MAP' | 'ALL'
 
 // 그룹 페이지 "집계 대상 종목" — 업종 평균과 종목 수에 어떤 종목을 넣을지 고른다.
-// 맵 페이지: 지도 설정창에서 제외한 업종·시가총액 구간을 그대로 따른다. 전체 포함: 제외 설정을 무시하고 전체 종목을 넣는다.
+// 맵 페이지 기준: 지도 설정창에서 제외한 업종·시가총액 구간을 그대로 따른다. 전체: 제외 설정을 무시하고 전체 종목을 넣는다.
 export function SettingsSectorStockScopeSection({
   scope,
   onChange,
@@ -812,8 +812,8 @@ export function SettingsSectorStockScopeSection({
   onChange: (scope: SectorStockScope) => void
 }) {
   const options: { value: SectorStockScope; label: string }[] = [
-    { value: 'MAP', label: '맵 페이지' },
-    { value: 'ALL', label: '전체 포함' },
+    { value: 'MAP', label: '맵 페이지 기준' },
+    { value: 'ALL', label: '전체' },
   ]
   return (
     <div className="settings-first-depth-level text-sm">
