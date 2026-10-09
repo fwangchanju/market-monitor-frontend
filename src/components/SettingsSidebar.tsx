@@ -345,7 +345,7 @@ const RANGE_HANDLE_CLASS =
 
 // 섹션 전체가 막혔을 때의 안내 말풍선은 섹션 아래 끝이 아니라 마우스 커서 바로 옆에 띄운다 —
 // 섹션이 높아도 안내가 컨트롤에서 멀어지지 않는다. x·y는 마우스의 화면 좌표이고, bounds는 말풍선이 나가면 안 되는 설정창의 화면 위치다.
-export interface CursorHint {
+interface CursorHint {
   x: number
   y: number
   bounds: { left: number; right: number; top: number; bottom: number }
@@ -359,7 +359,7 @@ const cursorHintFrom = (e: ReactPointerEvent<HTMLElement>): CursorHint => {
     : { left: 0, right: window.innerWidth, top: 0, bottom: window.innerHeight }
   return { x: e.clientX, y: e.clientY, bounds }
 }
-export function CursorHintBubble({ hint, children }: { hint: CursorHint; children: ReactNode }) {
+function CursorHintBubble({ hint, children }: { hint: CursorHint; children: ReactNode }) {
   const bubbleRef = useRef<HTMLDivElement>(null)
   // 마우스 오른쪽 아래에 띄우되 설정창 밖으로 나가지 않게 한다. 오른쪽에 자리가 모자라면 왼쪽으로 밀고, 아래에 모자라면 마우스 위로 뒤집는다.
   // 크기를 잰 뒤 DOM 위치만 직접 고치므로(상태를 다시 설정하지 않는다) 마우스가 움직여도 화면이 튀지 않는다.

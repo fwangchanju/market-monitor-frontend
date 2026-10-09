@@ -6,8 +6,6 @@ import { ChangeRateModeToggle, MarketDropdown, PeriodDropdown } from '@/componen
 import SettingsSidebar, {
   SettingsAverageModeSection,
   SettingsSectorStockScopeSection,
-  CursorHintBubble,
-  type CursorHint,
   type SectorStockScope,
   SettingsBeforeMinutesSection,
 } from '@/components/SettingsSidebar'
@@ -24,6 +22,7 @@ import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
 import { usePageSetting } from '@/hooks/usePageSetting'
+import { HINT_BUBBLE_COLOR_CLASS } from '@/components/hintBubbleStyle'
 import { collectItems, computeSectorAverage } from '@/utils/sectorAverage'
 import { collectAllItems, filterTreeByExclusions } from '@/hooks/useFilteredMarketMapTree'
 import { CAPTURE_ID } from '@/utils/captureIds'
@@ -206,26 +205,24 @@ export default function GroupPage() {
   // (marketry-backend 지시서 결정 4) — 이렇게 해야 재조회로 now가 새 tick으로 바뀌는 순간에도
   // 화면이 새 now·옛 before를 잠깐이라도 섞어 그리지 않는다.
   // 업종을 누르면 지도 페이지로 가서 그 업종을 누른 상태로 연다(지도 페이지가 sector 주소 값을 읽어 한 번만 쓴다).
-  // 전종목이면 그래프의 숫자가 지도와 다르게 집계되므로 지도로 이동하지 않고, 누른 자리 옆에 이유를 말풍선으로 알려 준다.
-  const lastPointerRef = useRef({ x: 0, y: 0 })
-  const [blockedHint, setBlockedHint] = useState<CursorHint | null>(null)
+  // 전종목이면 그래프의 숫자가 지도와 다르게 집계되므로 지도로 이동하지 않고, 그래프 가운데에 이유를 잠깐 보여 준다.
+  const [isBlockedNoticeOpen, setIsBlockedNoticeOpen] = useState(false)
   useEffect(() => {
-    if (!blockedHint) return
-    const timer = window.setTimeout(() => setBlockedHint(null), 2500)
-    const close = () => setBlockedHint(null)
+    if (!isBlockedNoticeOpen) return
+    const timer = window.setTimeout(() => setIsBlockedNoticeOpen(false), 3500)
+    const close = () => setIsBlockedNoticeOpen(false)
     window.addEventListener('pointerdown', close)
     return () => {
       window.clearTimeout(timer)
       window.removeEventListener('pointerdown', close)
     }
-  }, [blockedHint])
+  }, [isBlockedNoticeOpen])
   useEffect(() => {
-    if (!isAllStocks) setBlockedHint(null)
+    if (!isAllStocks) setIsBlockedNoticeOpen(false)
   }, [isAllStocks])
   const handleSelectSector = (sectorName: string) => {
     if (isAllStocks) {
-      const { x, y } = lastPointerRef.current
-      setBlockedHint({ x, y, bounds: { left: 0, right: window.innerWidth, top: 0, bottom: window.innerHeight } })
+      setIsBlockedNoticeOpen(true)
       return
     }
     navigate(`${marketRoute('/map', market)}?sector=${encodeURIComponent(sectorName)}`)
@@ -422,6 +419,7 @@ export default function GroupPage() {
               min-content 폭을 그대로 강제해서 사이드바 쪽을 밀어냄) 창을 좁혀도 사이드바(w-80)가
               항상 같은 폭을 유지하게 한다(지도 페이지와 동일) — 내부 그래프가 넘치면 이 컬럼
               안에서만 처리된다. */}
+          <div className="relative flex min-h-0 min-w-0 flex-1">
           <div ref={captureRef} data-captureid={CAPTURE_ID.SECTOR} data-capture-ready={isDataCaptureReady} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black text-white">
             <Toolbar>
               <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
@@ -518,10 +516,7 @@ export default function GroupPage() {
                       </span>
                     </div>
                   </div>
-                  <div
-                    onPointerDownCapture={e => { lastPointerRef.current = { x: e.clientX, y: e.clientY } }}
-                    className="flex min-h-0 flex-1 gap-x-8 px-[10%]"
-                  >
+                  <div className="flex min-h-0 flex-1 gap-x-8 px-[10%]">
                     {/* 좌(현재) 3 : 우(변화율) 1 비율 — 변화율 쪽은 막대가 항상 더 짧아서 면적을 덜 준다. */}
                     <div className="flex min-h-0 min-w-0 flex-[3]">
                       <RankBars
@@ -553,14 +548,19 @@ export default function GroupPage() {
               <ChangeRateBar swatches={settingsModalProps.legendSwatches} />
             </div>
           </div>
-          {/* 설정창 윗선을 지도 페이지와 같은 높이로 맞춘다 — 지도 페이지에서 실제로 맞춘 모양(설정창 윗선이 위쪽 바 윗선보다 3px 아래)을 따른다. 이 칸은 바보다 5.25px 위에서 시작하므로 5.25 + 3 - 1(눈으로 맞춘 보정) = 7.25px이지만, 지도 페이지의 설정창 칸이 7px이라 실제로는 같은 7px을 띄운다. 아래는 붙인다. */}
-          {blockedHint && (
-            <CursorHintBubble hint={blockedHint}>
+          {/* 전종목 선택 중 업종을 눌렀을 때 — 그래프 한가운데에 이유를 알려 준다(캡처 영역 밖이라 스크린샷에는 들어가지 않는다). */}
+          {isBlockedNoticeOpen && (
+            <div
+              role="status"
+              className={`${HINT_BUBBLE_COLOR_CLASS} pointer-events-none absolute left-1/2 top-1/2 z-30 max-w-[calc(100%-1rem)] -translate-x-1/2 -translate-y-1/2 px-5 py-3 text-lg leading-snug`}
+            >
               집계 대상 종목을 전종목으로 선택하는 경우<br />
               지도 페이지에서의 등락률과 달라 오판의 여지가<br />
               있으므로, 이동을 제한합니다.
-            </CursorHintBubble>
+            </div>
           )}
+          </div>
+          {/* 설정창 윗선을 지도 페이지와 같은 높이로 맞춘다 — 지도 페이지에서 실제로 맞춘 모양(설정창 윗선이 위쪽 바 윗선보다 3px 아래)을 따른다. 이 칸은 바보다 5.25px 위에서 시작하므로 5.25 + 3 - 1(눈으로 맞춘 보정) = 7.25px이지만, 지도 페이지의 설정창 칸이 7px이라 실제로는 같은 7px을 띄운다. 아래는 붙인다. */}
           <div className={`flex shrink-0 pt-[7px] ${isSettingsOnLeft ? 'order-first' : ''}`}>
             <SettingsSidebar
               {...settingsModalProps}
