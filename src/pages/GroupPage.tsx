@@ -556,8 +556,9 @@ export default function GroupPage() {
           {/* 설정창 윗선을 지도 페이지와 같은 높이로 맞춘다 — 지도 페이지에서 실제로 맞춘 모양(설정창 윗선이 위쪽 바 윗선보다 3px 아래)을 따른다. 이 칸은 바보다 5.25px 위에서 시작하므로 5.25 + 3 - 1(눈으로 맞춘 보정) = 7.25px이지만, 지도 페이지의 설정창 칸이 7px이라 실제로는 같은 7px을 띄운다. 아래는 붙인다. */}
           {blockedHint && (
             <CursorHintBubble hint={blockedHint}>
-              전종목 선택 중에는<br />
-              지도 페이지로 이동할 수 없습니다.
+              집계 대상 종목을 전종목으로 선택하는 경우<br />
+              지도 페이지에서의 등락률과 달라 오판의 여지가<br />
+              있으므로, 이동을 제한합니다.
             </CursorHintBubble>
           )}
           <div className={`flex shrink-0 pt-[7px] ${isSettingsOnLeft ? 'order-first' : ''}`}>
