@@ -35,7 +35,7 @@ import {
   type ColorScaleThreshold,
 } from '@/utils/marketMapColorScale'
 import { withStableSectorIds } from '@/utils/guestSectorIds'
-import type { MarketMapSectorNode } from '@/types/api'
+import type { MarketMapSectorNode, MarketQuery } from '@/types/api'
 
 // 조회 실패/로딩 중이거나 "색상 커스텀 사용"이 꺼져있을 때 쓰는 폴백 — thresholds가 비어있으면 어차피
 // 기본 프리셋으로 귀결된다(resolveMarketMapColor/resolveLegendSwatches 참고).
@@ -238,6 +238,14 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   // 서버 반영 전에 재조회가 먼저 도착할 수 있음).
   const seededKeyRef = useRef<string | null>(null)
 
+  // 달력에서 지난 날짜를 골랐을 때의 종가 스냅샷 시각 — 없으면 실시간(최신). 마켓을 바꾸면 그 마켓에 같은 시각이 있다고 보장할 수 없어 풀린다.
+  const [pinnedSnapshot, setPinnedSnapshot] = useState<{ market: MarketQuery; snapshotTime: string } | null>(null)
+  const pinnedSnapshotTime = pinnedSnapshot?.market === market ? pinnedSnapshot.snapshotTime : undefined
+  const onChangePinnedSnapshotTime = (snapshotTime: string | null) =>
+    setPinnedSnapshot(snapshotTime === null ? null : { market, snapshotTime })
+  // 달력이 "오늘(실시간)"을 알아보려면 지난 날짜를 보는 동안에도 최신 스냅샷 시각을 기억해야 한다.
+  const [liveSnapshotTime, setLiveSnapshotTime] = useState<string | null>(null)
+
   const {
     data,
     isLoading: isMarketMapLoading,
@@ -248,7 +256,12 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   } = useMarketMap(market, source, nxtOnly, {
     enabled: needsTree && !isWaitingForSession,
     basis: requestedBasis,
+    snapshotTime: pinnedSnapshotTime,
   })
+  const dataSnapshotTime = data?.snapshotTime
+  useEffect(() => {
+    if (pinnedSnapshotTime === undefined && dataSnapshotTime) setLiveSnapshotTime(dataSnapshotTime)
+  }, [pinnedSnapshotTime, dataSnapshotTime])
   const isAfterHoursSelectable = isAfterHoursControlsVisible && isAfterHoursSelectableAt(data?.snapshotTime)
   const changeRateMode: ChangeRateMode = isAfterHoursSelectable ? requestedBasis : 'daily'
   const rawRootNodes = data?.items
@@ -728,6 +741,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     onChangeChangeRateMode: setStoredChangeRateMode,
     taxonomy,
     data,
+    pinnedSnapshotTime,
+    liveSnapshotTime,
+    onChangePinnedSnapshotTime,
     refetchMarketMap,
     isRefetchingMarketMap,
     isLoading: isMarketMapLoading || isWaitingForSession,

@@ -93,7 +93,7 @@ export default function MarketMapShareModal({
             type="button"
             onClick={onClose}
             aria-label="닫기"
-            className="ml-auto shrink-0 border-0 bg-transparent text-xl text-gray-400 hover:text-white"
+            className="ml-auto shrink-0 border-0 bg-transparent text-xl text-gray-400 hover:text-[var(--brand)] focus-visible:text-[var(--brand)]"
           >
             ✕
           </button>

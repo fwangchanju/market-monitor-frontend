@@ -19,6 +19,8 @@ interface Props {
 const BUTTON_BASE_CLASS =
   'flex h-7 items-center justify-center border-0 bg-transparent outline-none hover:text-[var(--accent)] focus-visible:text-[var(--accent)]'
 const BUTTON_CLASS = `${BUTTON_BASE_CLASS} w-7`
+// 켜진 상태의 아이콘은 선 색(청록)을 35% 투명하게 안쪽에 채운다 — 북마크가 켜진 모양.
+export const FILLED_ICON_CLASS = 'fill-current/35'
 
 // 스냅샷 수집 주기 안내 — 새로고침 버튼에 커서를 올리거나 포커스하면 보여준다.
 export const SNAPSHOT_REFRESH_HELP = '5분 간격으로 데이터를 수집합니다.\n수집 후 배포까지 1분 가량 지연이 있을 수 있습니다.'
@@ -120,7 +122,7 @@ export function PageRefreshButton({
           <span className="relative inline-flex items-center justify-center">
             <span aria-hidden={showRefreshing || undefined} className={showRefreshing ? 'invisible' : 'group-hover/refresh:invisible group-focus-visible/refresh:invisible'}>{children}</span>
             <span aria-hidden="true" className={`absolute inset-0 flex items-center justify-center ${showRefreshing ? '' : 'invisible group-hover/refresh:visible group-focus-visible/refresh:visible'}`}>
-              <RefreshIcon className={`h-4 w-4 shrink-0 ${showRefreshing ? 'animate-spin' : ''}`} />
+              <RefreshIcon className={`h-[15px] w-[15px] shrink-0 ${showRefreshing ? 'animate-spin' : ''}`} />
             </span>
           </span>
         ) : (
@@ -163,10 +165,10 @@ export default function NavBarPageActions({
         aria-label="캡처"
         aria-haspopup="dialog"
         aria-expanded={isCaptureOpen}
-        className={`flex h-7 w-7 items-center justify-center border-0 bg-transparent outline-none ${isCaptureOpen ? 'text-[var(--brand)]' : 'text-gray-400 hover:text-white focus-visible:text-white'}`}
+        className={`flex h-7 w-7 items-center justify-center border-0 bg-transparent outline-none hover:text-[var(--brand)] focus-visible:text-[var(--brand)] ${isCaptureOpen ? 'text-[var(--brand)]' : 'text-gray-400'}`}
         onClick={onOpenShare}
       >
-        <CaptureIcon className="h-4 w-4" />
+        <CaptureIcon className={`h-4 w-4 ${isCaptureOpen ? FILLED_ICON_CLASS : ''}`} />
       </button>
       <button
         type="button"
@@ -186,7 +188,7 @@ export default function NavBarPageActions({
           className={`${BUTTON_CLASS} ${isSettingsOpen ? 'text-[var(--accent)]' : 'text-gray-400'}`}
           onClick={onToggleSettings}
         >
-          <SettingsIcon className="h-4 w-4" />
+          <SettingsIcon className={`h-4 w-4 ${isSettingsOpen ? FILLED_ICON_CLASS : ''}`} />
         </button>
       )}
     </>

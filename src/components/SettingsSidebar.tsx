@@ -121,7 +121,7 @@ function SettingHelpBubble({ label, description, bookmarkId }: { label: string; 
         onBlur={event => {
           if (!event.currentTarget.parentElement?.contains(event.relatedTarget as Node | null)) setIsOpen(false)
         }}
-        className="inline-flex h-4 w-4 items-center justify-center border-0 bg-transparent p-0 text-gray-400 hover:text-gray-200 focus-visible:outline focus-visible:outline-1"
+        className="inline-flex h-4 w-4 items-center justify-center border-0 bg-transparent p-0 text-gray-400 hover:text-[var(--brand)] focus-visible:text-[var(--brand)] focus-visible:outline focus-visible:outline-1"
       >
         <svg aria-hidden="true" viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="8" cy="8" r="6.35" />
@@ -187,7 +187,7 @@ function BookmarkButton({ id, label }: { id: SettingsBookmarkId; label: string }
       aria-pressed={active}
       title={active ? '북마크 해제' : '북마크에 추가'}
       onClick={() => onToggle(id)}
-      className={`ml-1 inline-flex h-4 w-4 shrink-0 items-center justify-center border-0 bg-transparent p-0 ${active ? 'text-[var(--brand)]' : 'text-gray-400 hover:text-gray-200'}`}
+      className={`ml-1 inline-flex h-4 w-4 shrink-0 items-center justify-center border-0 bg-transparent p-0 ${active ? 'text-[var(--brand)]' : 'text-gray-400 hover:text-[var(--brand)] focus-visible:text-[var(--brand)]'}`}
     >
       <svg aria-hidden="true" viewBox="0 0 16 16" className="h-3.5 w-3.5" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.35" strokeLinejoin="round">
         <path d="M4 2.2h8a.8.8 0 0 1 .8.8v10.8L8 10.6 3.2 13.8V3a.8.8 0 0 1 .8-.8Z" />
@@ -2179,7 +2179,7 @@ export default function SettingsSidebar({
         title={isOnLeft ? '설정창을 오른쪽으로 이동' : '설정창을 왼쪽으로 이동'}
         ref={sideTabRef}
         style={{ backgroundColor: TAXONOMY_BACKGROUND_COLOR }}
-        className={`absolute top-1/2 z-10 flex h-8 w-[17px] -translate-y-1/2 items-center justify-center border border-gray-500 p-0 text-gray-400 hover:text-white ${
+        className={`absolute top-1/2 z-10 flex h-8 w-[17px] -translate-y-1/2 items-center justify-center border border-gray-500 p-0 text-gray-400 hover:text-[var(--brand)] focus-visible:text-[var(--brand)] ${
           isOnLeft ? '-right-4 rounded-r-lg border-l-0' : '-left-4 rounded-l-lg border-r-0'
         }`}
       >
@@ -2218,7 +2218,7 @@ export default function SettingsSidebar({
         {showPreferenceActions && <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <button type="button" aria-label="초기화" disabled={isPreferenceFeedbackActive} onClick={async () => {
               if (hasDrafts && await appConfirm('기존 저장값으로 되돌리시겠습니까?')) runPreferenceAction(discardDrafts)
-            }} className="group relative flex border-0 bg-transparent p-0 text-gray-400 hover:text-white">
+            }} className="group relative flex border-0 bg-transparent p-0 text-gray-400 hover:text-[var(--brand)] focus-visible:text-[var(--brand)]">
             <HeaderButtonHint>{'기존 저장값으로 되돌리기'}</HeaderButtonHint>
             <svg viewBox="0 0 16 16" className="h-[18px] w-[18px]" aria-hidden="true">
               <path d="M2.5 8a5.5 5.5 0 1 0 1.8-4.07M2.5 2.5v3h3" fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" />
@@ -2232,7 +2232,7 @@ export default function SettingsSidebar({
               if (!isLoggedIn) onRequestLogin?.()
               else if (preferencesLoaded && hasDrafts && await appConfirm('변경사항을 저장하시겠습니까?')) runPreferenceAction(() => commitDrafts(setPreference))
             }}
-            className="group relative flex border-0 bg-transparent p-0 text-gray-400 hover:text-white"
+            className="group relative flex border-0 bg-transparent p-0 text-gray-400 hover:text-[var(--brand)] focus-visible:text-[var(--brand)]"
           >
             {/* 비로그인도 같은 말풍선이 뜨고, 누르면 로그인 창이 열린다. */}
             <HeaderButtonHint>{'변경사항 저장하기'}</HeaderButtonHint>
@@ -2261,7 +2261,7 @@ export default function SettingsSidebar({
                   else setActiveSection(section.id)
                 }}
                 className={`group relative box-border flex h-full min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-1 border-0 bg-transparent px-1 pt-2 pb-3 text-[12px] leading-tight transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--accent)] ${
-                  selected ? 'text-[var(--accent)]' : 'text-gray-400 hover:text-white'
+                  selected ? 'text-[var(--brand)]' : 'text-gray-400 hover:text-[var(--brand)]'
                 }`}
               >
                 <SettingsSectionIcon icon={section.icon} />
