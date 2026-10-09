@@ -10,7 +10,7 @@ import { ReturnArrowIcon } from '@/components/icons/MarketMapIcons'
 import type { MarketValueTierItem } from '@/types/api'
 import { FONT_BAR_TIME } from '@/components/FontStyle'
 import { ACCENT_PALETTE } from '@/utils/accentPalette'
-import { CLASSIFICATION_SELECT_TITLE, TAXONOMY_NAMES, type TaxonomyKey } from '@/utils/taxonomyNames'
+import { TAXONOMY_SELECT_TITLE, TAXONOMY_NAMES, type TaxonomyKey } from '@/utils/taxonomyNames'
 import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { useIsLoggedIn } from '@/hooks/useSession'
 import { useCustomPreferences } from '@/hooks/useCustomPreferences'
@@ -68,7 +68,7 @@ function alignSideTab(outerElement: HTMLElement | null, tab: HTMLElement | null)
 const HELP_TOOLTIP_MARGIN = 6
 const SETTINGS_LOAD_WAIT_MS = 4000
 // 하단 업종 분류·좌우 이동 버튼·분류 선택 버튼 영역은 앞으로도 항상 같은 배경색을 사용한다.
-const CLASSIFICATION_BACKGROUND_COLOR = '#363639'
+const TAXONOMY_BACKGROUND_COLOR = '#363639'
 
 // 말풍선 폭은 가장 긴 줄에 맞춘다(w-max whitespace-pre) — 줄바꿈은 문구마다 \n(문자열) 또는 <br />(JSX)로 직접 정한다. 줄 하나가 설정창(18rem)
 // 안에 들어와야 하니 한 줄을 23글자 안쪽으로 쓴다.
@@ -943,7 +943,7 @@ function EqualWeightToggleSwitch({
   )
 }
 
-function SettingsClassificationSelector({
+function SettingsTaxonomySelector({
   taxonomy,
   onSelectTaxonomy,
   atBottom = false,
@@ -964,13 +964,13 @@ function SettingsClassificationSelector({
   const isSelected = (key: TaxonomyKey) => (key === 'KRX' ? isExchange : taxonomy === key)
 
   return (
-    <div data-map-select-top-line={atBottom || undefined} style={atBottom ? { backgroundColor: CLASSIFICATION_BACKGROUND_COLOR } : undefined} className={`${atBottom ? 'shrink-0 border-t border-gray-500 px-4 py-3' : 'mb-6 pt-5 pb-6'} text-white`}>
+    <div data-map-select-top-line={atBottom || undefined} style={atBottom ? { backgroundColor: TAXONOMY_BACKGROUND_COLOR } : undefined} className={`${atBottom ? 'shrink-0 border-t border-gray-500 px-4 py-3' : 'mb-6 pt-5 pb-6'} text-white`}>
       <p data-map-select-title className="font-roboto-latin flex h-6 items-center whitespace-nowrap text-lg font-bold leading-none">
         {/* 발표 자료의 제목 강조처럼 앞에 세로 막대를 하나 둔다. 색은 홈페이지 메인색(청록)이다. */}
         <span aria-hidden="true" className="mr-[6px] inline-block h-5 w-1 shrink-0 rounded-sm bg-[var(--brand)]" />
-        {CLASSIFICATION_SELECT_TITLE}
+        {TAXONOMY_SELECT_TITLE}
       </p>
-      <div role="radiogroup" aria-label={CLASSIFICATION_SELECT_TITLE} style={{ backgroundColor: CLASSIFICATION_BACKGROUND_COLOR }} className="mt-2 grid grid-cols-3 rounded-md border border-gray-600 p-0.5">
+      <div role="radiogroup" aria-label={TAXONOMY_SELECT_TITLE} style={{ backgroundColor: TAXONOMY_BACKGROUND_COLOR }} className="mt-2 grid grid-cols-3 rounded-md border border-gray-600 p-0.5">
         {options.map(option => (
           <button
             key={option.label}
@@ -1130,7 +1130,7 @@ export function SettingsSectorLevelSection({
   showTopPick = false,
   showDecimalPlaces = false,
   showDivider = false,
-  showClassification = true,
+  showTaxonomy = true,
   showStockDisplay = true,
 }: {
   // "업종 표시 탭" 위에 구분선(border-t)을 그릴지 — 스티키 커스텀모드 블록(또는 동일 가중) 바로 다음에
@@ -1184,7 +1184,7 @@ export function SettingsSectorLevelSection({
   // 쓰므로 기본 false로 숨긴다).
   showDecimalPlaces?: boolean
   // 업종 설정과 종목 박스 표기를 서로 다른 사이드바 탭에서 보여줄 수 있다.
-  showClassification?: boolean
+  showTaxonomy?: boolean
   showStockDisplay?: boolean
 }) {
   // 설정에서 선택할 수 있는 최소 단계는 대/중/소분류까지 보장한다. 실제 데이터가 얕으면 해당 단계의
@@ -1213,8 +1213,8 @@ export function SettingsSectorLevelSection({
   const hideItem = (id: SettingsBookmarkId) => inBookmarkTab && !bookmark.ids.includes(id)
   const itemClass = (id: SettingsBookmarkId) => bookmarkItemClass(bookmark, id)
   const bookmarkableIds: SettingsBookmarkId[] = [
-    ...(showClassification ? (['depthLevel', 'depthMetric', 'depthRange'] as const) : []),
-    ...(showClassification && showTopPick ? (['topPick'] as const) : []),
+    ...(showTaxonomy ? (['depthLevel', 'depthMetric', 'depthRange'] as const) : []),
+    ...(showTaxonomy && showTopPick ? (['topPick'] as const) : []),
     ...(showStockDisplay ? (['boxLabel', 'textThreshold'] as const) : []),
     ...(showStockDisplay && showDecimalPlaces ? (['decimalPlaces'] as const) : []),
   ]
@@ -1227,7 +1227,7 @@ export function SettingsSectorLevelSection({
 
   return (
     <div className="text-white">
-      {showClassification && <div className={showDivider ? 'mt-6 pt-8' : inBookmarkTab ? '' : 'pt-5'}>
+      {showTaxonomy && <div className={showDivider ? 'mt-6 pt-8' : inBookmarkTab ? '' : 'pt-5'}>
         <div>
           <div className={`settings-first-depth-level text-sm ${itemClass('depthLevel')}`}>
             <div className="flex max-w-[16rem] items-center justify-between">
@@ -1401,7 +1401,7 @@ export function SettingsSectorLevelSection({
       </div>}
       {/* 종목 박스 탭의 박스 크기 다음에 종목 표기, 텍스트 표시 기준, 등락률 소수점을
           같은 번호 위계로 이어서 표시한다. */}
-      {showStockDisplay && <div className={showClassification ? 'mt-6 pt-8' : 'pt-0'}>
+      {showStockDisplay && <div className={showTaxonomy ? 'mt-6 pt-8' : 'pt-0'}>
         <div>
           <div className={`settings-second-stock-label text-sm ${inBookmarkTab ? '' : 'mt-2'} ${itemClass('boxLabel')}`}>
             <div className="flex max-w-[16rem] items-center justify-between">
@@ -1922,15 +1922,15 @@ interface Props {
   // SettingsSidebarGroup)와 같이 쓰지 않는다.
   plainContent?: ReactNode
   sectionOrder?: readonly SettingsSidebarSectionId[]
-  classificationAtBottom?: boolean
-  classificationNotice?: string
+  taxonomyAtBottom?: boolean
+  taxonomyNotice?: string
   // 하단 Basis 선택 아래에 표시할 종목 분류 최종 변경 시각(지도 상단 표기와 같은 형식).
   snapshotTime?: string | null
   // 사이드바 열림 상태는 페이지가 관리한다.
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   // 분류 체계 선택의 탭은 페이지가 정하고, 박스 크기 선택은 종목 박스 탭에 배치한다.
-  classificationSection?: 'favorites' | 'industry'
+  taxonomySection?: 'favorites' | 'industry'
   isCustom?: boolean
   onToggleCustom?: () => void
   // 지도의 Basis 선택(KRX / NXT / MARKETRY) — 주면 선택 탭이 이 값을 쓰고, 안 주면 isCustom으로 KRX/MARKETRY만 고른다.
@@ -1967,10 +1967,10 @@ export default function SettingsSidebar({
   pageLabel,
   showPreferenceActions = true,
   sectionOrder,
-  classificationAtBottom = false,
-  classificationNotice,
+  taxonomyAtBottom = false,
+  taxonomyNotice,
   snapshotTime,
-  classificationSection = 'industry',
+  taxonomySection = 'industry',
   isOpen,
   isCustom,
   onToggleCustom,
@@ -2070,7 +2070,7 @@ export default function SettingsSidebar({
   // 계속 표시한다. 각 페이지 통합이 끝나면 모든 설정이 명시적인 group 아래에 놓인다.
   const ungroupedNodes = childNodes.filter(node => !isSettingsSidebarGroup(node))
   if (ungroupedNodes.length > 0) addSectionContent('composition', ungroupedNodes)
-  const hasClassificationSelector = Boolean(taxonomy && onSelectTaxonomy) || (typeof isCustom === 'boolean' && Boolean(onToggleCustom))
+  const hasTaxonomySelector = Boolean(taxonomy && onSelectTaxonomy) || (typeof isCustom === 'boolean' && Boolean(onToggleCustom))
   const selectedTaxonomy: TaxonomyKey = taxonomy ?? (isCustom ? 'MARKETRY' : 'KRX')
   const handleSelectTaxonomy = onSelectTaxonomy ?? (() => onToggleCustom?.())
   const hasStockSizeSelector = typeof avgChangeRateUseSimple === 'boolean' && Boolean(onToggleAvgChangeRateUseSimple)
@@ -2081,7 +2081,7 @@ export default function SettingsSidebar({
     availableSections.sort((a, b) => sectionOrder.indexOf(a.id) - sectionOrder.indexOf(b.id))
   }
   const selectedSection = availableSections.find(section => section.id === activeSection) ?? availableSections[0]
-  const isNonScrollingSection = !classificationAtBottom && (selectedSection?.id === 'industry' || selectedSection?.id === 'colors')
+  const isNonScrollingSection = !taxonomyAtBottom && (selectedSection?.id === 'industry' || selectedSection?.id === 'colors')
 
   // 북마크 탭에는 원래 위치 번호(탭 번호-항목 번호)를 보여준다. 항목 번호는 각 탭에서 항상 고정된 자리다.
   const sourceTabNumber = (id: SettingsSidebarSectionId) => SETTINGS_SECTION_NUMBERS[id]
@@ -2123,7 +2123,7 @@ export default function SettingsSidebar({
         aria-label={isOnLeft ? '설정창을 오른쪽으로 이동' : '설정창을 왼쪽으로 이동'}
         title={isOnLeft ? '설정창을 오른쪽으로 이동' : '설정창을 왼쪽으로 이동'}
         ref={sideTabRef}
-        style={{ backgroundColor: CLASSIFICATION_BACKGROUND_COLOR }}
+        style={{ backgroundColor: TAXONOMY_BACKGROUND_COLOR }}
         className={`absolute top-1/2 z-10 flex h-8 w-[17px] -translate-y-1/2 items-center justify-center border border-gray-500 p-0 text-gray-400 hover:text-white ${
           isOnLeft ? '-right-4 rounded-r-lg border-l-0' : '-left-4 rounded-l-lg border-r-0'
         }`}
@@ -2235,15 +2235,15 @@ export default function SettingsSidebar({
           role="tabpanel"
           id={`settings-panel-${selectedSection.id}`}
           aria-labelledby={`settings-tab-${selectedSection.id}`}
-          data-align-second-heading={(classificationAtBottom && selectedSection.id !== 'favorites') || undefined}
+          data-align-second-heading={(taxonomyAtBottom && selectedSection.id !== 'favorites') || undefined}
           aria-busy={waitingForPreferences || undefined}
           inert={waitingForPreferences || undefined}
           className={`${waitingForPreferences ? 'opacity-40 transition-opacity' : ''} settings-section-list settings-sidebar-tab-content min-h-0 flex-1 px-4 text-sm ${selectedSection.id === 'favorites' ? 'settings-bookmark-tab' : ''} ${
             isNonScrollingSection ? 'overflow-y-clip pb-2' : 'overflow-y-auto pb-8'
           }`}
         >
-          {!classificationAtBottom && selectedSection.id === classificationSection && hasClassificationSelector && (
-            <SettingsClassificationSelector taxonomy={selectedTaxonomy} onSelectTaxonomy={handleSelectTaxonomy} />
+          {!taxonomyAtBottom && selectedSection.id === taxonomySection && hasTaxonomySelector && (
+            <SettingsTaxonomySelector taxonomy={selectedTaxonomy} onSelectTaxonomy={handleSelectTaxonomy} />
           )}
           {selectedSection.id === 'stockDisplay' && hasBoxSizeRatioSlider ? (
             <SettingsStockSizeSelector
@@ -2273,14 +2273,14 @@ export default function SettingsSidebar({
         </div>
       )}
       </div>
-      {classificationAtBottom && hasClassificationSelector && (
+      {taxonomyAtBottom && hasTaxonomySelector && (
         <>
-          {classificationNotice && (
-            <p style={{ backgroundColor: CLASSIFICATION_BACKGROUND_COLOR }} className="shrink-0 px-4 pb-2 text-xs leading-relaxed text-gray-400">
-              {classificationNotice}
+          {taxonomyNotice && (
+            <p style={{ backgroundColor: TAXONOMY_BACKGROUND_COLOR }} className="shrink-0 px-4 pb-2 text-xs leading-relaxed text-gray-400">
+              {taxonomyNotice}
             </p>
           )}
-          <SettingsClassificationSelector taxonomy={selectedTaxonomy} onSelectTaxonomy={handleSelectTaxonomy} atBottom snapshotTime={snapshotTime} />
+          <SettingsTaxonomySelector taxonomy={selectedTaxonomy} onSelectTaxonomy={handleSelectTaxonomy} atBottom snapshotTime={snapshotTime} />
         </>
       )}
     </div>

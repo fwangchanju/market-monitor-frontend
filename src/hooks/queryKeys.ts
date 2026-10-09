@@ -1,5 +1,5 @@
 import type { ChangeRateBasis } from '@/api/marketMap'
-import type { ClassificationSource } from '@/utils/taxonomyNames'
+import type { TaxonomySource } from '@/utils/taxonomyNames'
 import type {
   AmtQty,
   MarketQuery,
@@ -43,7 +43,7 @@ export const watchStockKeys = {
 export const marketMapKeys = {
   all: ['map'] as const,
   // exclude 필터링이 프론트로 옮겨오면서 백엔드는 항상 전체 트리를 내려주므로, isExclude는 쿼리에서 뺐다.
-  map: (market: MarketQuery, source: ClassificationSource, nxtOnly: boolean, basis: ChangeRateBasis = 'daily') =>
+  map: (market: MarketQuery, source: TaxonomySource, nxtOnly: boolean, basis: ChangeRateBasis = 'daily') =>
     [...marketMapKeys.all, 'map', market, source, nxtOnly, basis] as const,
   scale: () => [...marketMapKeys.all, 'scale'] as const,
   valueTiers: () => [...marketMapKeys.all, 'value-tiers'] as const,
@@ -52,7 +52,7 @@ export const marketMapKeys = {
   // market·source·beforeMinutes가 바뀌면(사용자 조작) 직전 쌍을 placeholder로 쓰지 않는다.
   sectorPair: (
     market: MarketQuery,
-    source: ClassificationSource,
+    source: TaxonomySource,
     nxtOnly: boolean,
     beforeMinutes: number,
     nowSnapshotTime: string | null,

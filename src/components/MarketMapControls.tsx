@@ -15,7 +15,7 @@ const MARKET_OPTIONS: { market: MarketQuery; label: string }[] = [
 ]
 const TIME_PERIODS = ['1 DAY', '1 WEEK', '1 MONTH', '3 MONTH', '6 MONTH', '1 YEAR', 'WTD', 'MTD', 'YTD'] as const
 
-export function MarketMapMarketCombobox({
+export function MarketDropdown({
   market,
   onSelect,
 }: {
@@ -82,7 +82,7 @@ export function MarketMapMarketCombobox({
   )
 }
 
-export function MarketMapPeriodCombobox() {
+export function PeriodDropdown() {
   const [selectedPeriod, setSelectedPeriod] = useState<(typeof TIME_PERIODS)[number]>('1 DAY')
   const [isOpen, setIsOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)

@@ -10,7 +10,7 @@ import Spinner from '@/components/Spinner'
 import NavBarPageActions from '@/components/NavBarPageActions'
 import SettingsSidebar from '@/components/SettingsSidebar'
 import { FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
-import CustomManageModeCombobox from '@/components/CustomManageModeCombobox'
+import ModeDropdown from '@/components/ModeDropdown'
 import ReadOnlyTaxonomySheet from '@/components/ReadOnlyTaxonomySheet'
 import MarketryPublishControls from '@/components/MarketryPublishControls'
 import { usePersistedState } from '@/hooks/usePersistedState'
@@ -113,11 +113,11 @@ export default function CustomPage() {
   // 비로그인에게는 시트가 마켓트리·한국거래소뿐이라 지도 조회는 항상 열려 있다. 내 분류는 로그인과 세션 확인을 마친 뒤에만 받는다.
   const canReadSheet = isLoggedIn || sheet !== 'MINE'
   const {
-    data: classificationMap,
-    isLoading: isClassificationLoading,
-    isError: isClassificationError,
-    refetch: refetchClassification,
-    isRefetching: isRefetchingClassification,
+    data: taxonomyMap,
+    isLoading: isTaxonomyLoading,
+    isError: isTaxonomyError,
+    refetch: refetchTaxonomy,
+    isRefetching: isRefetchingTaxonomy,
   } = useMarketMap('ALL_STOCK', sheet, false, { enabled: canReadSheet })
 
   // 읽기 전용 시트의 NXT 여부·시장·거래소 업종명은 회원 데이터가 아니라 공통 종목 정보에서 받는다.
@@ -183,13 +183,13 @@ export default function CustomPage() {
   const actions = (
     <NavBarPageActions
       onRefresh={() => {
-        void refetchClassification()
+        void refetchTaxonomy()
         if (isReadOnlySheet) return
         void refetchSectors()
         if (mode === 'stock') void refetchStockSectors()
       }}
       isRefreshing={
-        isRefetchingClassification || (!isReadOnlySheet && (
+        isRefetchingTaxonomy || (!isReadOnlySheet && (
           isRefetchingSectors || (mode === 'stock' && isRefetchingStockSectors)
         ))
       }
@@ -237,7 +237,7 @@ export default function CustomPage() {
           >
             <div className="mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-[7px] text-sm font-bold text-white">
               <div className="flex h-full shrink-0 items-center gap-2">
-                <CustomManageModeCombobox
+                <ModeDropdown
                   mode={mode === 'stock' ? 'stock' : 'category'}
                   onSelect={path => navigate(path)}
                 />
@@ -263,9 +263,9 @@ export default function CustomPage() {
                 {isReadOnlySheet ? (
                   <ReadOnlyTaxonomySheet
                     mode={mode === 'stock' ? 'stock' : 'category'}
-                    data={classificationMap}
-                    isLoading={isClassificationLoading}
-                    isError={isClassificationError || (mode === 'stock' && isStockCatalogError)}
+                    data={taxonomyMap}
+                    isLoading={isTaxonomyLoading}
+                    isError={isTaxonomyError || (mode === 'stock' && isStockCatalogError)}
                     source={sheet === 'MARKETRY' ? 'MARKETRY' : 'KRX'}
                     nxtOnly={nxtOnly}
                     onNxtOnlyChange={setIsNxtOnlyView}
@@ -315,8 +315,8 @@ export default function CustomPage() {
                   <div ref={setStockHistoryTarget} />
                 </div>
               ) : null}
-              classificationAtBottom
-              snapshotTime={classificationMap?.classificationUpdatedAt}
+              taxonomyAtBottom
+              snapshotTime={taxonomyMap?.classificationUpdatedAt}
               taxonomy={sheet}
               onSelectTaxonomy={next => handleSelectSheet(next === 'KRX' || next === 'NXT' ? 'KRX' : next)}
             />

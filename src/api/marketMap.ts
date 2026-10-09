@@ -8,7 +8,7 @@ import {
   type MarketQuery,
 } from '@/types/api'
 import { z } from 'zod'
-import type { ClassificationSource } from '@/utils/taxonomyNames'
+import type { TaxonomySource } from '@/utils/taxonomyNames'
 
 const excludedStockListResponseSchema = z.array(ExcludedStockItemSchema)
 
@@ -19,7 +19,7 @@ export type ChangeRateBasis = 'daily' | 'afterHours'
 // nxtOnly는 NXT 거래 종목만 받는다. false일 때는 요청에 싣지 않는다. basis도 afterHours일 때만 요청에 싣는다.
 export const getMarketMap = (
   market: MarketQuery,
-  source: ClassificationSource,
+  source: TaxonomySource,
   snapshotTime?: string,
   nxtOnly = false,
   basis: ChangeRateBasis = 'daily',

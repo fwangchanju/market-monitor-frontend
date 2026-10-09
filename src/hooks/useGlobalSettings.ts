@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { usePersistedState } from './usePersistedState'
 import { useTaxonomySelection } from './useTaxonomySelection'
 import { MEMBER_DEFAULTS, settingDefaultsFor } from '@/utils/settingDefaults'
-import type { ClassificationSource, TaxonomyKey } from '@/utils/taxonomyNames'
+import type { TaxonomySource, TaxonomyKey } from '@/utils/taxonomyNames'
 import { useNxtOnlyWindow } from '@/hooks/useNxtOnlyWindow'
 import { useAfterHoursControlsVisible } from '@/hooks/useMarketPhase'
 import { isAfterHoursSelectable as isAfterHoursSelectableAt } from '@/utils/tradingWindow'
@@ -123,7 +123,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   const [selectedTaxonomy, setSelectedTaxonomy] = useTaxonomySelection(savedIsCustom ? 'MARKETRY' : 'KRX')
   // 내 분류(mine)는 로그인이 필요하다 — 로그아웃 상태에서는 처음 화면인 MARKETRY로 보이고, 브라우저에 저장한 선택 자체는 보존한다.
   // MARKETRY는 올린 분류라 로그인 없이 읽는다(읽기 전용).
-  const source: ClassificationSource = selectedTaxonomy === 'MINE' && !isLoggedIn ? 'MARKETRY' : selectedTaxonomy
+  const source: TaxonomySource = selectedTaxonomy === 'MINE' && !isLoggedIn ? 'MARKETRY' : selectedTaxonomy
   // 새로고침 직후에는 로그인 여부를 아직 모른다. 내 분류를 골라 둔 사람이 그 사이에 다른 분류 지도를 받았다가 바뀌지 않도록,
   // 로그인 확인이 끝날 때까지는 지도를 요청하지 않고 로딩으로 둔다.
   const isWaitingForSession = selectedTaxonomy === 'MINE' && isSessionLoading
@@ -319,12 +319,12 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   // 미리 선택할 수 있게 두고, 현재 데이터에 해당 섹터가 없으면 강조 대상만 빈 Set으로 둔다.
   // 거래소(KRX·NXT) 분류는 대분류만 있어서, MARKETRY에서 중·소분류로 골라 둔 값은 저장은 그대로 두고
   // 여기서만 대분류로 따라간다(1-1 업종 표시 단계와 같은 한계). MARKETRY로 돌아오면 원래 값이 살아난다.
-  const classificationMaxDepth = usesCustomTree ? null : 1
+  const taxonomyMaxDepth = usesCustomTree ? null : 1
   const topPickMaxSelectableDepth = Math.min(
     maxDepth === null ? Math.max(3, availableMaxDepth) : maxDepth,
-    classificationMaxDepth ?? Number.POSITIVE_INFINITY,
+    taxonomyMaxDepth ?? Number.POSITIVE_INFINITY,
   )
-  const effectiveTopPickDepth = classificationMaxDepth === null ? topPickDepth : Math.min(topPickDepth, classificationMaxDepth - 1)
+  const effectiveTopPickDepth = taxonomyMaxDepth === null ? topPickDepth : Math.min(topPickDepth, taxonomyMaxDepth - 1)
   const topPickSectorKeys = useMemo(() => {
     if (!topPickEnabled || effectiveTopPickDepth < 0 || effectiveTopPickDepth >= topPickMaxSelectableDepth) {
       return new Set<string>()
