@@ -4,7 +4,7 @@ export type Kind = '종목' | '업종'
 
 // onDark: 어두운 바탕(설정창)에서는 종목 배지를 밝은 회색으로 그려 또렷하게 보이게 한다. 팝업의 연한 바탕에서는 진한 회색이다.
 export default function KindBadge({ kind, onDark = false, className = '' }: { kind: Kind; onDark?: boolean; className?: string }) {
-  const tone = kind === '업종' ? 'text-[var(--brand)]' : onDark ? 'text-gray-300' : 'text-gray-500'
+  const tone = kind === '업종' ? 'text-[var(--brand)]' : onDark ? 'text-gray-400' : 'text-gray-500'
   return (
     <span className={`shrink-0 rounded-sm border border-current px-1 py-0.5 text-xs font-medium leading-none ${tone} ${className}`}>
       {kind}
