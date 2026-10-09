@@ -11,7 +11,7 @@
 //   text-xl   = 20px
 //   text-2xl  = 24px
 
-// 네비게이션 바(SubNavBar) 탭 글자. 영문은 Roboto, 한글은 Pretendard로 표시한다.
+// 네비게이션 바(NavSubBar) 탭 글자. 영문은 Roboto, 한글은 Pretendard로 표시한다.
 export const FONT_NAV_TAB = 'font-roboto-latin text-lg font-bold'
 
 // 세 번째 바(페이지별 상태/옵션 바) — 제목(마켓명, "Custom Sector" 등 페이지 대표 라벨). 20px, bold.

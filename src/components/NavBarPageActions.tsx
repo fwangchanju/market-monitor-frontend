@@ -142,7 +142,7 @@ export function PageRefreshButton({
   )
 }
 
-// SubNavBar 우측에 들어가는 공용 액션 버튼 — 지도/커스텀/요약/섹터 페이지가 전부 동일하게 쓴다.
+// NavSubBar 우측에 들어가는 공용 액션 버튼 — 지도/커스텀/요약/섹터 페이지가 전부 동일하게 쓴다.
 // 설정 토글/공유 열기/풀스크린 토글은 페이지마다 다른 상태에 붙어있어 콜백으로 받는다.
 export default function NavBarPageActions({
   onRefresh,

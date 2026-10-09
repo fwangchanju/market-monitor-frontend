@@ -21,7 +21,7 @@ interface Props {
   upDownCountDepthRange: [number, number] | null
   // 0이면 종목별 동일 크기, 100이면 시가총액 비례로 박스 크기를 계산한다.
   boxSizeMarketCapRatio: number
-  // 가로 늘리기 배율(1이면 그대로) — 히트맵마다 다르게 정한다(utils/mapStretch.ts).
+  // 가로 늘리기 배율(1이면 그대로) — 분류마다 다르게 정한다(utils/mapStretch.ts).
   stretch?: number
   // 박스를 놓는 방식(시험용) — utils/mapStretch.ts.
   tile?: 'squarify' | 'binary'
@@ -96,7 +96,7 @@ function toShrinkTransform(rect: RelativeRect, containerRect: DOMRect): string {
   return `translate(${left}px, ${top}px) scale(${rect.width}, ${rect.height})`
 }
 
-export default function MarketMapTreemap({
+export default function Treemap({
   groups,
   selfSectorName,
   depth,

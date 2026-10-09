@@ -16,7 +16,7 @@ interface Props {
   onClosePopup: (targetKey: string) => void
   // 하위 종목 박스에만 적용 — 업종 정보는 이 설정과 무관하게 항상 우클릭으로 연다.
   stockPopupOnHover: boolean
-  // 헤더를 좌클릭(주 버튼)으로 누르는 "순간"(pointerdown) 알림 — MarketMapTreemap이 이걸로
+  // 헤더를 좌클릭(주 버튼)으로 누르는 "순간"(pointerdown) 알림 — Treemap이 이걸로
   // suppressSectorHoverBorder를 곧장 켜서, 줌인 애니메이션 시작 전에 hover 테두리가 잠깐
   // 반짝였다가 사라지는 걸 막는다. 우클릭(팝업)은 이 콜백을 아예 안 부른다.
   onHeaderPressStart: () => void

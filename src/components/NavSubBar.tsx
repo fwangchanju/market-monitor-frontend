@@ -16,7 +16,7 @@ interface Props {
 }
 
 // 탭 메뉴(왼쪽) + 페이지별 옵션 버튼(오른쪽)을 한 줄에 같이 보여주는 바.
-export default function SubNavBar({ actions }: Props) {
+export default function NavSubBar({ actions }: Props) {
   const location = useLocation()
   const links = [...BASE_LINKS, CUSTOM_LINK]
 

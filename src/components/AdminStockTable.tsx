@@ -10,7 +10,7 @@ import { useAssignStockSector, useBulkAssignStockSector, useUpdateStockAlias } f
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSession } from '@/hooks/useSession'
 import Spinner from './Spinner'
-import { SearchBar } from './ReadOnlyHeatmapSheet'
+import { SearchBar } from './ReadOnlyTaxonomySheet'
 import EmptyMessage, { EMPTY_DATA_MESSAGE, EMPTY_SEARCH_MESSAGE } from './EmptyMessage'
 import { STOCK_COLUMN_PERCENT, stockColumnPercentWidth } from '@/utils/stockTableColumns'
 import { ChevronDownIcon, CloseIcon, ExcelIcon, RedoIcon, SortIcon, UndoIcon } from './icons/MarketMapIcons'

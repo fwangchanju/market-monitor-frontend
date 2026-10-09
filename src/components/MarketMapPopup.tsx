@@ -7,7 +7,7 @@ export interface MarketMapPopupContent {
   rows: string[]
   excludeSector?: { id: number; name: string }
   // 우클릭한 섹터/종목 박스를 식별하는 키('sector-<id>' | 'stock-<code>') — 팝업이 떠 있는 동안
-  // 해당 박스에만 초록 하이라이트를 붙이는 데 쓴다(MarketMapTreemap.highlightedKey).
+  // 해당 박스에만 초록 하이라이트를 붙이는 데 쓴다(Treemap.highlightedKey).
   targetKey: string
   // true면 커서 이동(hover)으로 뜬 임시 팝업 — 마우스 이벤트를 받지 않아서 커서가 팝업 위로 가도
   // 박스의 pointerleave가 튀지 않는다.
@@ -189,7 +189,7 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
               onClick={async () => {
                 // 확인 창이 뜨는 동안 우클릭 팝업은 먼저 닫는다(두 창이 겹쳐 보이지 않게).
                 onClose()
-                if (!await appConfirm(`${excludeSector.name}\n히트맵에서 제외하시겠습니까?`)) return
+                if (!await appConfirm(`${excludeSector.name}\n트리맵에서 제외하시겠습니까?`)) return
                 onExcludeSector(excludeSector.id, excludeSector.name)
               }}
             >

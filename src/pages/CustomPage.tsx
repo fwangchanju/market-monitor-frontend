@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { EmptyMessageAreaContext } from '@/utils/emptyMessageArea'
 import NavBar from '@/components/NavBar'
-import SubNavBar from '@/components/SubNavBar'
+import NavSubBar from '@/components/NavSubBar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import AdminSectorTable from '@/components/AdminSectorTable'
 import AdminStockTable from '@/components/AdminStockTable'
@@ -11,11 +11,11 @@ import NavBarPageActions from '@/components/NavBarPageActions'
 import SettingsSidebar from '@/components/SettingsSidebar'
 import { FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
 import CustomManageModeCombobox from '@/components/CustomManageModeCombobox'
-import ReadOnlyHeatmapSheet from '@/components/ReadOnlyHeatmapSheet'
+import ReadOnlyTaxonomySheet from '@/components/ReadOnlyTaxonomySheet'
 import MarketryPublishControls from '@/components/MarketryPublishControls'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
-import { useHeatmapSelection, type HeatmapSelection } from '@/hooks/useHeatmapSelection'
+import { useTaxonomySelection, type TaxonomySelection } from '@/hooks/useTaxonomySelection'
 import { useCustomSectors, useStockSectors } from '@/hooks/useMarketMapCustom'
 import { useMarketMap, useStockCatalog } from '@/hooks/useMarketMap'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
@@ -23,7 +23,7 @@ import { useSession, useIsLoggedIn } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
 import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload, downloadDataUrl, captureFileName } from '@/utils/captureToDownload'
-import { HEATMAP_NAMES } from '@/utils/heatmapNames'
+import { TAXONOMY_NAMES } from '@/utils/taxonomyNames'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
@@ -32,13 +32,13 @@ type DownloadStatus = 'idle' | 'downloading' | 'error'
 // 접근을 가른다(가입/로그인 전환 지시서 4) — 누구든
 // 로그인하면 자신의 커스텀 섹터를 관리할 수 있다. 비로그인으로 직접 URL 진입/새로고침해도 로그인
 // 팝업을 띄우고, 성공하면 이 경로로 돌아온다.
-export default function CustomManagePage() {
+export default function CustomPage() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   // /custom/industry는 업종 화면이고, /custom/stock은 종목 화면이다.
   const mode = pathname === '/custom/stock' || searchParams.get('mode') === 'stock' ? 'stock' : 'sector'
-  // 히트맵 시트 — 내 분류(mine)만 편집할 수 있다. ?sheet=krx는 읽기 전용 KRX 시트, ?sheet=marketry는 올린
+  // 분류 시트 — 내 분류(mine)만 편집할 수 있다. ?sheet=krx는 읽기 전용 KRX 시트, ?sheet=marketry는 올린
   // MARKETRY를 읽기 전용으로 보여준다(MARKETRY는 내 분류에서 올려서 바꾼다).
   // 예전 주소(?sheet=nxt)는 KRX 시트에서 "NXT 종목만 보기"를 켠 상태로 연다.
   const { data: session, isLoading: isSessionLoading } = useSession()
@@ -46,24 +46,25 @@ export default function CustomManagePage() {
   const { requireLogin } = useLoginGate()
   // 로그인 여부가 확정된 비로그인 — 세션을 확인하는 동안은 아직 모르므로 내 분류 선택을 그대로 둔다.
   const isGuestKnown = !isSessionLoading && !isLoggedIn
-  const sheetParam = searchParams.get('sheet')
-  const [selectedHeatmap, setSelectedHeatmap] = useHeatmapSelection()
+  // 주소의 sheet 값은 대소문자를 가리지 않는다(예전 소문자 주소도 열린다).
+  const sheetParam = searchParams.get('sheet')?.toUpperCase() ?? null
+  const [selectedTaxonomy, setSelectedTaxonomy] = useTaxonomySelection()
   const explicitSheet =
-    sheetParam === 'krx' || sheetParam === 'nxt' ? 'krx' : sheetParam === 'marketry' || sheetParam === 'mine' ? sheetParam : sheetParam === 'mymap' ? 'mine' : null
-  const chosenSheet = explicitSheet ?? selectedHeatmap
+    sheetParam === 'KRX' || sheetParam === 'NXT' ? 'KRX' : sheetParam === 'MARKETRY' || sheetParam === 'MINE' ? sheetParam : sheetParam === 'MYMAP' ? 'MINE' : null
+  const chosenSheet = explicitSheet ?? selectedTaxonomy
   // 내 분류는 로그인이 필요하다 — 비로그인에게는 MARKETRY로 보이고, 브라우저에 저장한 선택 자체는 보존한다(지도·그룹 페이지와 같다).
-  const sheet = isGuestKnown && chosenSheet === 'mine' ? 'marketry' : chosenSheet
-  const isReadOnlySheet = sheet !== 'mine'
+  const sheet = isGuestKnown && chosenSheet === 'MINE' ? 'MARKETRY' : chosenSheet
+  const isReadOnlySheet = sheet !== 'MINE'
   const [sectorSettingsActionsTarget, setSectorSettingsActionsTarget] = useState<HTMLDivElement | null>(null)
   // 종목 화면의 실행취소·다시실행 아이콘이 들어갈 설정창 안의 자리.
   const [stockHistoryTarget, setStockHistoryTarget] = useState<HTMLDivElement | null>(null)
   // 비로그인이 내 분류를 누르면 로그인 안내만 띄우고, 보던 분류에 그대로 머문다.
-  const handleSelectSheet = (next: HeatmapSelection) => {
-    if (next === 'mine' && isGuestKnown) {
+  const handleSelectSheet = (next: TaxonomySelection) => {
+    if (next === 'MINE' && isGuestKnown) {
       requireLogin(pathname)
       return
     }
-    setSelectedHeatmap(next)
+    setSelectedTaxonomy(next)
     setSearchParams(previous => {
       const params = new URLSearchParams(previous)
       params.delete('sheet')
@@ -72,21 +73,21 @@ export default function CustomManagePage() {
   }
   // KRX 시트에서 NXT 거래 종목만 남기는 보기 옵션 — 새로고침해도 유지된다.
   const [isNxtOnlyView, setIsNxtOnlyView] = usePersistedState('customPage.krxNxtOnly', false)
-  const nxtOnly = sheet === 'krx' && (isNxtOnlyView || sheetParam === 'nxt')
+  const nxtOnly = sheet === 'KRX' && (isNxtOnlyView || sheetParam === 'NXT')
   // 기존 시트 링크는 처음부터 적용하고 브라우저 공통 선택으로 옮겨 URL이 이후 선택을 덮지 않게 한다.
   useEffect(() => {
     if (!explicitSheet) return
     // 내 분류 주소는 로그인 여부가 확정된 뒤에 처리한다 — 비로그인이면 선택을 옮기지 않고 팝업만 띄운다.
-    if (explicitSheet === 'mine' && isSessionLoading) return
-    if (explicitSheet === 'mine' && isGuestKnown) requireLogin(pathname)
-    else setSelectedHeatmap(explicitSheet)
-    if (sheetParam === 'nxt') setIsNxtOnlyView(true)
+    if (explicitSheet === 'MINE' && isSessionLoading) return
+    if (explicitSheet === 'MINE' && isGuestKnown) requireLogin(pathname)
+    else setSelectedTaxonomy(explicitSheet)
+    if (sheetParam === 'NXT') setIsNxtOnlyView(true)
     setSearchParams(previous => {
       const params = new URLSearchParams(previous)
       params.delete('sheet')
       return params
     }, { replace: true })
-  }, [explicitSheet, sheetParam, isSessionLoading, isGuestKnown, pathname, requireLogin, setSelectedHeatmap, setIsNxtOnlyView, setSearchParams])
+  }, [explicitSheet, sheetParam, isSessionLoading, isGuestKnown, pathname, requireLogin, setSelectedTaxonomy, setIsNxtOnlyView, setSearchParams])
   // AdminStockTable의 툴바(종목수/실행취소·다시실행/필터/엑셀 등)를 이 DOM 노드로 포털링해서 세
   // 번째 바 안에 그린다 — useRef 대신 useState인 이유는, ref 콜백이 커밋 단계에서 실행되므로
   // useState로 받아야 그 노드가 준비된 뒤 리렌더가 한 번 더 일어나 AdminStockTable에 null이 아닌
@@ -110,7 +111,7 @@ export default function CustomManagePage() {
 
   // 선택한 분류에 맞는 최종 갱신 시각을 가져오며 거래소 시트에서는 본문 데이터도 함께 쓴다.
   // 비로그인에게는 시트가 마켓트리·한국거래소뿐이라 지도 조회는 항상 열려 있다. 내 분류는 로그인과 세션 확인을 마친 뒤에만 받는다.
-  const canReadSheet = isLoggedIn || sheet !== 'mine'
+  const canReadSheet = isLoggedIn || sheet !== 'MINE'
   const {
     data: classificationMap,
     isLoading: isClassificationLoading,
@@ -207,7 +208,7 @@ export default function CustomManagePage() {
     return (
       <div className="flex h-screen select-none flex-col overflow-hidden bg-black">
         <NavBar />
-        <SubNavBar />
+        <NavSubBar />
         <div className="flex min-h-0 flex-1 items-center justify-center p-8">
           <Spinner showElapsed />
         </div>
@@ -218,8 +219,8 @@ export default function CustomManagePage() {
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden bg-black">
       <NavBar />
-      <SubNavBar actions={actions} />
-      {/* 좌측 사이드바(종목/섹터 전환 + 버전관리 저장) 삭제 — 종목/섹터 전환은 SubNavBar의
+      <NavSubBar actions={actions} />
+      {/* 좌측 사이드바(종목/섹터 전환 + 버전관리 저장) 삭제 — 종목/섹터 전환은 NavSubBar의
           "커스텀" 탭 hover 목록으로 이동. 버전관리 저장(AdminVersionSaveSection)은 기능 검증과
           위치 재검토가 더 필요해서 일단 뺐다 — 다시 넣을 땐 이 컴포넌트를 재사용하면 된다. */}
       <div className="flex min-h-0 flex-1">
@@ -240,7 +241,7 @@ export default function CustomManagePage() {
                   mode={mode === 'stock' ? 'stock' : 'category'}
                   onSelect={path => navigate(path)}
                 />
-                {sheet === 'krx' && (
+                {sheet === 'KRX' && (
                   <span className="whitespace-nowrap text-sm font-normal text-gray-400">키움 REST API</span>
                 )}
               </div>
@@ -250,7 +251,7 @@ export default function CustomManagePage() {
               {session?.role === 'ADMIN' && !isReadOnlySheet && <MarketryPublishControls />}
               <div className={`${FONT_BAR_MODE_STATUS} ml-2 flex min-w-0 items-center justify-end text-gray-400`}>
                 <span className="flex min-w-0 items-center justify-end">
-                  <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{HEATMAP_NAMES[sheet].title}</span>
+                  <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{TAXONOMY_NAMES[sheet].title}</span>
                 </span>
               </div>
             </div>
@@ -260,12 +261,12 @@ export default function CustomManagePage() {
                 className={`flex min-h-0 flex-1 flex-col ${mode === 'sector' ? 'overflow-y-auto' : ''}`}
               >
                 {isReadOnlySheet ? (
-                  <ReadOnlyHeatmapSheet
+                  <ReadOnlyTaxonomySheet
                     mode={mode === 'stock' ? 'stock' : 'category'}
                     data={classificationMap}
                     isLoading={isClassificationLoading}
                     isError={isClassificationError || (mode === 'stock' && isStockCatalogError)}
-                    source={sheet === 'marketry' ? 'marketry' : 'krx'}
+                    source={sheet === 'MARKETRY' ? 'MARKETRY' : 'KRX'}
                     nxtOnly={nxtOnly}
                     onNxtOnlyChange={setIsNxtOnlyView}
                     nxtStockCodes={nxtStockCodes}
@@ -316,8 +317,8 @@ export default function CustomManagePage() {
               ) : null}
               classificationAtBottom
               snapshotTime={classificationMap?.classificationUpdatedAt}
-              heatmap={sheet}
-              onSelectHeatmap={next => handleSelectSheet(next === 'krx' || next === 'nxt' ? 'krx' : next)}
+              taxonomy={sheet}
+              onSelectTaxonomy={next => handleSelectSheet(next === 'KRX' || next === 'NXT' ? 'KRX' : next)}
             />
           </div>
         </div>

@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
-import SubNavBar from '@/components/SubNavBar'
+import NavSubBar from '@/components/NavSubBar'
 import { ChangeRateBasisToggle, MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/MarketMapControls'
 import SettingsSidebar, {
   SettingsAverageModeSection,
@@ -13,7 +13,7 @@ import Spinner from '@/components/Spinner'
 import { REFRESH_FEEDBACK_MIN_DURATION_MS } from '@/utils/uiFeedback'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
 import MarketMapLegendBar from '@/components/MarketMapLegendBar'
-import { HEATMAP_NAMES } from '@/utils/heatmapNames'
+import { TAXONOMY_NAMES } from '@/utils/taxonomyNames'
 import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
@@ -158,7 +158,7 @@ function RankBars({
   )
 }
 
-export default function SectorChangeRatePage() {
+export default function GroupPage() {
   const navigate = useNavigate()
   const [beforeMinutes, setBeforeMinutes] = usePersistedState('sectorChangeRate.beforeMinutes', 15)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -211,7 +211,7 @@ export default function SectorChangeRatePage() {
   const isRefreshing = isRefetchingMarketMap || pairQuery.isFetching
 
   // 렌더러가 /sector/kosdaq?beforeMinutes=15&avgMode=simple&sectorFilter=true로
-  // 캡처 요청할 때 쓰는 진입점 — MarketMapCustomPage와 동일한 패턴(초기 상태 반영 용도일 뿐 주소창엔
+  // 캡처 요청할 때 쓰는 진입점 — MapPage와 동일한 패턴(초기 상태 반영 용도일 뿐 주소창엔
   // 남길 필요 없어 반영 직후 지움). market은 useGlobalSettings()가 내부에서 이미 우선 반영했으므로
   // 여기서는 나머지 세 파라미터만 다룬다. 셋은 서로 독립적으로 판정한다 — 하나가 없거나 잘못됐다고
   // 다른 것까지 무시하면 안 된다. 실제로 소비한(유효했던) 파라미터만 주소에서 지운다.
@@ -253,7 +253,7 @@ export default function SectorChangeRatePage() {
   // 맵·커스텀 페이지와 같은 청록색 분류자명 버튼을 표시한다.
   const modeStatusText = (
     <span className="flex min-w-0 items-center justify-end">
-      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{HEATMAP_NAMES[settingsModalProps.heatmap].title}</span>
+      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{TAXONOMY_NAMES[settingsModalProps.taxonomy].title}</span>
     </span>
   )
 
@@ -359,7 +359,7 @@ export default function SectorChangeRatePage() {
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden bg-black">
       <NavBar />
-      <SubNavBar
+      <NavSubBar
         actions={
           <NavBarPageActions
             onRefresh={refetchMarketMap}

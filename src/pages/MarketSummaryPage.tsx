@@ -1,5 +1,5 @@
 import NavBar from '@/components/NavBar'
-import SubNavBar from '@/components/SubNavBar'
+import NavSubBar from '@/components/NavSubBar'
 
 // 가입/로그인 전환 지시서 4: 관심종목 폐지와 함께 /summary를 내비게이션만 있는 빈 껍데기로 바꾼다.
 // 아래 본문 섹션은 전부 JSX 주석으로 걷어냈고, 그에 딸려 있던 데이터 조회 훅(useMarketSummary)·
@@ -13,9 +13,9 @@ export default function MarketSummaryPage() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-black">
       <NavBar />
-      <SubNavBar />
+      <NavSubBar />
       {/* 지도/그룹/커스텀 페이지와 같은 본문 틀 — 나중에 내용을 채울 때 이 구조를 그대로 쓴다.
-          바깥 박스가 -mt-[10.5px]로 SubNavBar의 짙은 회색 하단에 맞춰 올라가 있으므로, 안쪽 콘솔 줄은
+          바깥 박스가 -mt-[10.5px]로 NavSubBar의 짙은 회색 하단에 맞춰 올라가 있으므로, 안쪽 콘솔 줄은
           mt/mb 5.25px로 위치를 맞추고(이 박스 안에 있어야 overflow에 잘리지 않는다), 설정창
           (SettingsSidebar)은 이 박스의 맨 오른쪽 자식으로 넣으면 같은 높이에 붙는다. */}
       <div className="relative z-10 -mt-[10.5px] flex min-h-0 flex-1 overflow-hidden bg-black text-white">

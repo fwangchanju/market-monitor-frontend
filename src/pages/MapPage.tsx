@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
-import SubNavBar from '@/components/SubNavBar'
+import NavSubBar from '@/components/NavSubBar'
 import SettingsSidebar, {
   SettingsSidebarGroup,
   SettingsMarketValueSection,
@@ -16,7 +16,7 @@ import SettingsSidebar, {
   type SettingsSidebarSectionId,
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
-import MarketMapTreemap from '@/components/MarketMapTreemap'
+import Treemap from '@/components/Treemap'
 import { ChangeRateBasisToggle, MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/MarketMapControls'
 import MarketMapLegendBar from '@/components/MarketMapLegendBar'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
@@ -39,7 +39,7 @@ import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toCount, toMarketMapSnapshotDateLa
 import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { ReturnArrowIcon } from '@/components/icons/MarketMapIcons'
-import { HEATMAP_NAMES } from '@/utils/heatmapNames'
+import { TAXONOMY_NAMES } from '@/utils/taxonomyNames'
 import { appAlert } from '@/utils/appDialogBus'
 import { mapStretchFor, mapTileMethod } from '@/utils/mapStretch'
 import { marketRoute } from '@/utils/marketRoute'
@@ -129,7 +129,7 @@ function findRawNodeByPath(nodes: MarketMapSectorNode[], path: string[]): Market
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
 
-export default function MarketMapCustomPage() {
+export default function MapPage() {
   const navigate = useNavigate()
   const { pathname, search, hash } = useLocation()
   const isLoggedIn = useIsLoggedIn()
@@ -157,7 +157,7 @@ export default function MarketMapCustomPage() {
     market,
     isCustom,
     isMarketry,
-    heatmap,
+    taxonomy,
     nxtOnly,
     nxtOnlyWindow,
     changeRateBasis,
@@ -202,13 +202,13 @@ export default function MarketMapCustomPage() {
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
-  // NXT 안내 알림을 닫았는지 — 다른 히트맵으로 바꾸면 초기화돼서, NXT를 다시 고를 때 또 보인다.
+  // NXT 안내 알림을 닫았는지 — 다른 분류으로 바꾸면 초기화돼서, NXT를 다시 고를 때 또 보인다.
   const [isNxtNoticeDismissed, setIsNxtNoticeDismissed] = useState(false)
   const { isOnLeft: isSettingsOnLeft, toggleSide: toggleSettingsSide } = useSettingsSidebarSide()
   useEffect(() => {
     if (!nxtOnly) setIsNxtNoticeDismissed(false)
   }, [nxtOnly])
-  // null이 아니면 MarketMapTreemap이 해당 뎁스로 줄어드는 줌아웃 애니메이션을 재생하고, 끝나면
+  // null이 아니면 Treemap이 해당 뎁스로 줄어드는 줌아웃 애니메이션을 재생하고, 끝나면
   // handleZoomOutComplete를 불러서 실제 이동을 한다 — 애니메이션 도중엔 path/groups를 먼저 바꾸지 않는다.
   const [zoomOutRequestDepth, setZoomOutRequestDepth] = useState<number | null>(null)
   const captureRef = useRef<HTMLDivElement>(null)
@@ -245,12 +245,12 @@ export default function MarketMapCustomPage() {
   // 상단 오른쪽 분류자명은 설정창의 업종 분류 선택 버튼과 같은 청록색 버튼으로 표시한다.
   const modeStatusText = (
     <span className="flex min-w-0 items-center justify-end">
-      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{HEATMAP_NAMES[heatmap].title}</span>
+      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{TAXONOMY_NAMES[taxonomy].title}</span>
     </span>
   )
 
   // market은 이제 useGlobalSettings(useRouteAwareMarket)가 경로/쿼리를 반영해서 매 렌더 계산해준다 —
-  // 여기서는 그 값이 바뀔 때(SubNavBar에서 마켓을 고르는 등) 드릴다운만 초기화한다. 첫 렌더는 초기화할
+  // 여기서는 그 값이 바뀔 때(NavSubBar에서 마켓을 고르는 등) 드릴다운만 초기화한다. 첫 렌더는 초기화할
   // 드릴다운이 없으므로 ref로 이전 값과 비교해서 실제로 바뀐 경우에만 반응한다.
   const previousMarketRef = useRef(market)
   useEffect(() => {
@@ -434,7 +434,7 @@ export default function MarketMapCustomPage() {
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden bg-black">
       <NavBar />
-      <SubNavBar
+      <NavSubBar
         actions={
           <NavBarPageActions
             onRefresh={refetchMarketMap}
@@ -575,7 +575,7 @@ export default function MarketMapCustomPage() {
               ) : (
                 <div className="flex min-h-0 flex-1 flex-col px-[7px]">
                   {/* 양옆 여백 7px. */}
-                  <MarketMapTreemap
+                  <Treemap
                     groups={groups}
                     selfSectorName={isFullyFlattened ? FLAT_GROUP_NAME : (currentNode?.sectorName ?? null)}
                     depth={path.length}
@@ -587,7 +587,7 @@ export default function MarketMapCustomPage() {
                     simpleAvgDepthRange={simpleAvgDepthRange}
                     upDownCountDepthRange={upDownCountDepthRange}
                     boxSizeMarketCapRatio={boxSizeMarketCapRatio}
-                    stretch={mapStretchFor(settingsModalProps.heatmap)}
+                    stretch={mapStretchFor(settingsModalProps.taxonomy)}
                     tile={mapTileMethod()}
                     canExclude={isCustom || isMarketry || !isLoggedIn}
                     colorScale={colorScale}
@@ -629,8 +629,8 @@ export default function MarketMapCustomPage() {
               onToggleBookmark={toggleSettingsBookmark}
               bookmarkLoginRequired={!isLoggedIn}
               onRequestLogin={() => requireLogin(`${pathname}${search}${hash}`)}
-              onSelectHeatmap={next => {
-                settingsModalProps.onSelectHeatmap(next)
+              onSelectTaxonomy={next => {
+                settingsModalProps.onSelectTaxonomy(next)
                 reset()
               }}
             >
@@ -648,7 +648,7 @@ export default function MarketMapCustomPage() {
                     reset()
                   }}
                   maxSelectableDepth={Math.max(1, settingsModalProps.topPickMaxSelectableDepth)}
-                  noDataLimited={settingsModalProps.heatmap !== 'marketry'}
+                  noDataLimited={settingsModalProps.taxonomy !== 'MARKETRY'}
                 />
                 <SettingsStockChangeSection
                   value={stockChangeFilter}
@@ -680,7 +680,7 @@ export default function MarketMapCustomPage() {
                     reset()
                   }}
                   maxSelectableDepth={Math.max(1, settingsModalProps.topPickMaxSelectableDepth)}
-                  noDataLimited={settingsModalProps.heatmap !== 'marketry'}
+                  noDataLimited={settingsModalProps.taxonomy !== 'MARKETRY'}
                 />
                 <SettingsStockChangeSection
                   value={stockChangeFilter}

@@ -4,7 +4,7 @@ import { marketMapKeys } from './queryKeys'
 import { subtractMinutesFromSnapshotTime } from '@/utils/snapshotTime'
 import { isAfterHoursSelectable } from '@/utils/tradingWindow'
 import type { MarketMapResponse, MarketQuery } from '@/types/api'
-import type { ClassificationSource } from '@/utils/heatmapNames'
+import type { ClassificationSource } from '@/utils/taxonomyNames'
 
 export interface SectorMarketMapPair {
   now: MarketMapResponse
