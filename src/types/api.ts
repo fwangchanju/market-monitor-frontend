@@ -224,7 +224,7 @@ export const MarketMapResponseSchema = z.object({
   items: z.array(MarketMapSectorNodeSchema),
   marketOverview: MarketOverviewItemSchema.nullable(),
   // 선택한 분류의 갱신 시각: MARKETRY는 올린 업종 정보·종목 배정 수정, 한국거래소는 종목 정보 동기화.
-  classificationUpdatedAt: z.string().nullish(),
+  taxonomyUpdatedAt: z.string().nullish(),
 })
 export type MarketMapResponse = z.infer<typeof MarketMapResponseSchema>
 
