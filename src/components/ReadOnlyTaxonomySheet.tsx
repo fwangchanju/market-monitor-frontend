@@ -389,7 +389,7 @@ function StockTable({ showHierarchy, sectors, emptyMessage, nxtStockCodes, stock
               {header('alias', '약칭', STOCK_COLUMN_PERCENT.alias)}
               {header('totalMarketValue', '시가총액', STOCK_COLUMN_PERCENT.totalMarketValue)}
               {header('market', '마켓', STOCK_COLUMN_PERCENT.market)}
-              {header(showHierarchy ? 'industryName' : 'sectorName', '섹터', STOCK_COLUMN_PERCENT.industry)}
+              {header(showHierarchy ? 'industryName' : 'sectorName', '거래소 업종', STOCK_COLUMN_PERCENT.industry)}
               {showHierarchy && (
                 <>
                   {header('parentSector', '대분류', STOCK_COLUMN_PERCENT.parentSector)}
