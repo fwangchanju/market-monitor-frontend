@@ -82,6 +82,21 @@ function filterNodes(
   return result
 }
 
+// 등락 방향 필터 없이 업종 제외·시가총액 구간 제외만 지도와 같은 규칙(하위 업종 제외 포함)으로 걸러낸 트리.
+// 그룹 페이지가 지도 설정창과 같은 기준으로 종목 수를 세는 데 쓴다.
+export function filterTreeByExclusions(
+  nodes: MarketMapSectorNode[],
+  excludedSectorIds: Set<number>,
+  excludedMarketValueTiers: Set<string>,
+): FilteredMarketMapSectorNode[] {
+  return filterNodes(nodes, excludedSectorIds, excludedMarketValueTiers, {
+    stockChangeFilter: 'all',
+    sectorChangeFilter: 'all',
+    sectorChangeDepth: 0,
+    sectorUseSimpleAverage: false,
+  })
+}
+
 // depth === maxDepth인 노드는 이 뎁스까지만 태그를 보여준다는 뜻 — 그 밑에 있던 하위 섹터들의
 // 태그(헤더)는 없애되, 안에 있던 종목은 사라지지 않고 전부 이 노드 박스 안으로 펼쳐서 보여준다.
 export function collectAllItems(node: FilteredMarketMapSectorNode): MarketMapItem[] {

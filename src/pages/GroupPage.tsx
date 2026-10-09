@@ -20,6 +20,7 @@ import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
 import { collectItems, computeSectorAverage } from '@/utils/sectorAverage'
+import { collectAllItems, filterTreeByExclusions } from '@/hooks/useFilteredMarketMapTree'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/components/NavBarPageActions'
 import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
@@ -292,21 +293,18 @@ export default function GroupPage() {
     copyStatus === 'copying' ? 'Copying' : copyStatus === 'copied' ? 'Copied' : copyStatus === 'error' ? 'Failed' : 'Copy'
   const downloadLabel = downloadStatus === 'error' ? '다운로드 실패' : '다운로드'
 
-  // 설정창 위쪽 "nn/nn종목" — 분母는 지금 시장의 모든 종목, 분자는 제외한 업종·시가총액 구간을 뺀 종목(평균에 들어가는 종목)이다.
+  // 설정창 위쪽 "nn/nn종목" — 분모는 지금 시장의 모든 종목, 분자는 지도 설정창과 같은 기준(제외한 업종은 하위 업종까지,
+  // 제외한 시가총액 구간)으로 걸러 남은 종목이다.
   const stockCountLabel = useMemo(() => {
     const nodes = displayNow?.items ?? []
     const total = nodes.reduce((sum, node) => sum + collectItems(node).length, 0)
-    const included = nodes
-      .filter(node => !excludedSectorIds.has(node.sectorId))
-      .reduce((sum, node) => sum + collectItems(node).filter(item => !excludedMarketValueTiers.has(item.marketValueTier)).length, 0)
+    const included = filterTreeByExclusions(nodes, excludedSectorIds, excludedMarketValueTiers).reduce(
+      (sum, node) => sum + collectAllItems(node).length,
+      0,
+    )
     return `${toCount(included)}/${toCount(total)}종목`
   }, [displayNow, excludedSectorIds, excludedMarketValueTiers])
 
-  // 대상 섹터는 트리의 최상위 노드(response.items)다. 설정 사이드바의 "제외 설정"(섹터 기준)에
-  // 걸린 섹터는 지도 페이지와 동일하게 여기서도 뺀다. now/before 짝은 sectorId가 아니라
-  // sectorName으로 맞춘다 — 기본 모드 노드는 sectorId가 전부 0(NO_SECTOR_ID)이라 id로는 짝을
-  // 맞출 수 없다(marketry-backend 지시서 결정 5). ALL_STOCK은 응답 하나가 이미 두 마켓을 합친
-  // 트리라 마켓별로 따로 합칠 필요가 없다.
   const charts = useMemo(() => {
     if (!displayNow) return { current: buildRankChart([]), delta: buildRankChart([]) }
 
