@@ -819,13 +819,9 @@ export function SettingsSectorStockScopeSection({
     <div className="settings-first-depth-level text-sm">
       <span className="flex max-w-[16rem] items-center text-left text-[15px] font-medium leading-[22px] text-white">
         <span>집계 대상 종목</span>
-        <SettingHelpBubble
-          label="집계 대상 종목"
-          description={<><b className="text-red-600">전종목</b>을 선택하면{'\n'}맵 페이지 등락률과{'\n'}<b className="text-red-600">다르게 집계</b>될 수 있습니다.</>}
-        />
       </span>
       <SettingDescription>업종 평균에 넣을 종목</SettingDescription>
-      <div role="radiogroup" aria-label="집계 대상 종목" className="mt-4 grid max-w-[16rem] settings-control-inset grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
+      <div role="radiogroup" aria-label="집계 대상 종목" className="relative mt-4 grid max-w-[16rem] settings-control-inset grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
         {options.map(option => {
           const selected = scope === option.value
           return (
@@ -843,6 +839,13 @@ export function SettingsSectorStockScopeSection({
             </button>
           )
         })}
+        {/* 전종목 버튼 안쪽 오른쪽 — 버튼 안에 버튼을 넣을 수 없어 같은 자리에 겹쳐 두고, 눌러도 선택이 바뀌지 않는다. 전종목이 선택되면 바탕이 밝아져 아이콘을 진하게 바꾼다. */}
+        <span className={`absolute right-2 top-1/2 flex -translate-y-1/2 items-center ${scope === 'ALL' ? '[&_button]:text-gray-700 [&_button:hover]:text-black' : ''}`}>
+          <SettingHelpBubble
+            label="집계 대상 종목"
+            description={<><b className="text-red-600">전종목</b>을 선택하면{'\n'}맵 페이지 등락률과{'\n'}<b className="text-red-600">다르게 집계</b>될 수 있습니다.</>}
+          />
+        </span>
       </div>
     </div>
   )
