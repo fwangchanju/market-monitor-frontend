@@ -800,6 +800,50 @@ function SingleValueSlider({
 // 자체는 안 건드려도 된다.
 
 // 그룹 페이지 등락률 평균 방식 — 시총 가중/동일 가중 중 하나를 고른다.
+export type SectorStockScope = 'MAP' | 'ALL'
+
+// 그룹 페이지 "업종 내 종목(임시)" — 업종 평균과 종목 수에 어떤 종목을 넣을지 고른다.
+// 맵 페이지: 지도 설정창에서 제외한 업종·시가총액 구간을 그대로 따른다. 전체 포함: 제외 설정을 무시하고 전체 종목을 넣는다.
+export function SettingsSectorStockScopeSection({
+  scope,
+  onChange,
+}: {
+  scope: SectorStockScope
+  onChange: (scope: SectorStockScope) => void
+}) {
+  const options: { value: SectorStockScope; label: string }[] = [
+    { value: 'MAP', label: '맵 페이지' },
+    { value: 'ALL', label: '전체 포함' },
+  ]
+  return (
+    <div className="settings-first-depth-level text-sm">
+      <span className="flex max-w-[16rem] items-center text-left text-[15px] font-medium leading-[22px] text-white">
+        <span>업종 내 종목(임시)</span>
+      </span>
+      <SettingDescription>업종 평균에 넣을 종목</SettingDescription>
+      <div role="radiogroup" aria-label="업종 내 종목" className="mt-4 grid max-w-[16rem] settings-control-inset grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
+        {options.map(option => {
+          const selected = scope === option.value
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(option.value)}
+              className={`min-h-9 rounded px-1 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
+                selected ? 'bg-[var(--accent)] text-black' : 'border-0 bg-transparent text-gray-300 hover:text-white'
+              }`}
+            >
+              {option.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function SettingsAverageModeSection({
   avgChangeRateUseSimple,
   onChange,

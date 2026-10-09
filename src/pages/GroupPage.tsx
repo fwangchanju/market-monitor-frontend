@@ -5,6 +5,8 @@ import NavSubBar from '@/components/NavSubBar'
 import { ChangeRateModeToggle, MarketDropdown, PeriodDropdown } from '@/components/MarketMapControls'
 import SettingsSidebar, {
   SettingsAverageModeSection,
+  SettingsSectorStockScopeSection,
+  type SectorStockScope,
   SettingsBeforeMinutesSection,
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
@@ -19,6 +21,7 @@ import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
+import { usePageSetting } from '@/hooks/usePageSetting'
 import { collectItems, computeSectorAverage } from '@/utils/sectorAverage'
 import { collectAllItems, filterTreeByExclusions } from '@/hooks/useFilteredMarketMapTree'
 import { CAPTURE_ID } from '@/utils/captureIds'
@@ -190,6 +193,12 @@ export default function GroupPage() {
     colorScale,
   } = useGlobalSettings({ allowChangeRateMode: true })
 
+  // 업종 내 종목(임시): 맵 페이지면 지도 설정창의 제외 기준을 따르고, 전체 포함이면 제외 설정 없이 전체 종목으로 계산한다.
+  const [sectorStockScope, setSectorStockScope] = usePageSetting<SectorStockScope>('groupPage.sectorStockScope', 'MAP')
+  const isAllStocks = sectorStockScope === 'ALL'
+  const scopedExcludedSectorIds = useMemo(() => (isAllStocks ? new Set<number>() : excludedSectorIds), [isAllStocks, excludedSectorIds])
+  const scopedExcludedTiers = useMemo(() => (isAllStocks ? new Set<string>() : excludedMarketValueTiers), [isAllStocks, excludedMarketValueTiers])
+
   // now는 여기서 따로 조회하지 않는다 — useGlobalSettings()가 이미 부르는 useMarketMap(market, source)
   // 결과(data)를 그대로 쓴다. before는 그 now.snapshotTime에서 계산한 시각을 쌍으로 묶어 조회한다
   // (marketry-backend 지시서 결정 4) — 이렇게 해야 재조회로 now가 새 tick으로 바뀌는 순간에도
@@ -298,12 +307,12 @@ export default function GroupPage() {
   const stockCountLabel = useMemo(() => {
     const nodes = displayNow?.items ?? []
     const total = nodes.reduce((sum, node) => sum + collectItems(node).length, 0)
-    const included = filterTreeByExclusions(nodes, excludedSectorIds, excludedMarketValueTiers).reduce(
+    const included = filterTreeByExclusions(nodes, scopedExcludedSectorIds, scopedExcludedTiers).reduce(
       (sum, node) => sum + collectAllItems(node).length,
       0,
     )
     return `${toCount(included)}/${toCount(total)}종목`
-  }, [displayNow, excludedSectorIds, excludedMarketValueTiers])
+  }, [displayNow, scopedExcludedSectorIds, scopedExcludedTiers])
 
   const charts = useMemo(() => {
     if (!displayNow) return { current: buildRankChart([]), delta: buildRankChart([]) }
@@ -316,9 +325,9 @@ export default function GroupPage() {
     const deltaEntries: RankedItem[] = []
 
     for (const node of displayNow.items) {
-      if (excludedSectorIds.has(node.sectorId)) continue
+      if (scopedExcludedSectorIds.has(node.sectorId)) continue
 
-      const nowAverage = computeSectorAverage(node, excludedMarketValueTiers)
+      const nowAverage = computeSectorAverage(node, scopedExcludedTiers)
       const nowValue = avgChangeRateUseSimple ? nowAverage.simpleAvg : nowAverage.weightedAvg
       // 새 트리는 종목이 하나도 없는 최상위 섹터도 노드로 준다 — 그런 섹터는 평균이 null이라
       // 두 그래프 모두에서 뺀다(옛 /api/sector는 애초에 그런 섹터를 안 내려줬다).
@@ -327,7 +336,7 @@ export default function GroupPage() {
 
       const beforeNode = beforeByName.get(node.sectorName)
       if (!beforeNode) continue
-      const beforeAverage = computeSectorAverage(beforeNode, excludedMarketValueTiers)
+      const beforeAverage = computeSectorAverage(beforeNode, scopedExcludedTiers)
       const beforeValue = avgChangeRateUseSimple ? beforeAverage.simpleAvg : beforeAverage.weightedAvg
       if (beforeValue === null) continue
       deltaEntries.push({
@@ -359,7 +368,7 @@ export default function GroupPage() {
     }
 
     return { current: buildRankChart(currentEntries), delta: buildRankChart(deltaEntries) }
-  }, [displayNow, displayBefore, excludedSectorIds, excludedMarketValueTiers, avgChangeRateUseSimple, changeRateMode])
+  }, [displayNow, displayBefore, scopedExcludedSectorIds, scopedExcludedTiers, avgChangeRateUseSimple, changeRateMode])
 
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden bg-black">
@@ -529,6 +538,7 @@ export default function GroupPage() {
               snapshotTime={data?.taxonomyUpdatedAt}
               plainContent={
                 <>
+                  <SettingsSectorStockScopeSection scope={sectorStockScope} onChange={setSectorStockScope} />
                   <SettingsAverageModeSection
                     avgChangeRateUseSimple={avgChangeRateUseSimple}
                     onChange={onChangeAvgChangeRateUseSimple}
