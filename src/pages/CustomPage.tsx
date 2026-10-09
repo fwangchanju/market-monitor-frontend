@@ -242,9 +242,6 @@ export default function CustomPage() {
                   mode={mode === 'stock' ? 'stock' : 'category'}
                   onSelect={path => navigate(path)}
                 />
-                {sheet === 'KRX' && (
-                  <span className="whitespace-nowrap text-sm font-normal text-gray-400">키움 REST API</span>
-                )}
               </div>
               {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다. */}
               {!isReadOnlySheet && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 min-w-0 flex-1 items-center" />}
