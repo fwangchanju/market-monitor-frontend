@@ -999,7 +999,7 @@ function SettingsTaxonomySelector({
               description={
                 isExchange ? (
                   <>
-                    <b className="text-red-600">키움증권</b>으로 받은{'\n'}종목·업종 정보를 서버에{'\n'}마지막으로 동기화한 시각입니다.{'\n\n'}시세 갱신 시각이나 거래소의{'\n'}공식 분류 변경 시각과는 다릅니다.
+                    <b className="text-red-600">키움증권</b>에서 받은{'\n'}종목·업종 정보를 서버에{'\n'}마지막으로 동기화한 시각입니다.{'\n\n'}시세 갱신 시각이나 거래소의{'\n'}공식 분류 변경 시각과는 다릅니다.
                   </>
                 ) : taxonomy === 'MINE' ? (
                   <>
