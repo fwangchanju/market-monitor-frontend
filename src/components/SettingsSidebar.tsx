@@ -73,7 +73,8 @@ const TAXONOMY_BACKGROUND_COLOR = '#363639'
 
 // 말풍선 폭은 가장 긴 줄에 맞춘다(w-max whitespace-pre) — 줄바꿈은 문구마다 \n(문자열) 또는 <br />(JSX)로 직접 정한다. 줄 하나가 설정창(18rem)
 // 안에 들어와야 하니 한 줄을 23글자 안쪽으로 쓴다.
-function SettingHelpBubble({ label, description, bookmarkId }: { label: string; description: ReactNode; bookmarkId?: SettingsBookmarkId }) {
+// warning이면 물음표 대신 느낌표 아이콘으로 그려, 설명이 아니라 주의 안내임을 알린다.
+function SettingHelpBubble({ label, description, bookmarkId, warning = false }: { label: string; description: ReactNode; bookmarkId?: SettingsBookmarkId; warning?: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const tooltipRef = useRef<HTMLSpanElement>(null)
@@ -121,12 +122,21 @@ function SettingHelpBubble({ label, description, bookmarkId }: { label: string; 
         onBlur={event => {
           if (!event.currentTarget.parentElement?.contains(event.relatedTarget as Node | null)) setIsOpen(false)
         }}
-        className="inline-flex h-4 w-4 items-center justify-center border-0 bg-transparent p-0 text-gray-400 hover:text-gray-200 focus-visible:outline focus-visible:outline-1"
+        className={`inline-flex h-4 w-4 items-center justify-center border-0 bg-transparent p-0 focus-visible:outline focus-visible:outline-1 ${warning ? 'text-red-500 hover:text-red-400' : 'text-gray-400 hover:text-gray-200'}`}
       >
         <svg aria-hidden="true" viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="8" cy="8" r="6.35" />
-          <path d="M6.25 6.05a1.85 1.85 0 1 1 3.55.78c-.48.86-1.8 1.06-1.8 2.52" />
-          <circle cx="8" cy="11.75" r="0.55" fill="currentColor" stroke="none" />
+          {warning ? (
+            <>
+              <path d="M8 4.2V9" strokeWidth="1.9" />
+              <circle cx="8" cy="11.6" r="0.95" fill="currentColor" stroke="none" />
+            </>
+          ) : (
+            <>
+              <path d="M6.25 6.05a1.85 1.85 0 1 1 3.55.78c-.48.86-1.8 1.06-1.8 2.52" />
+              <circle cx="8" cy="11.75" r="0.55" fill="currentColor" stroke="none" />
+            </>
+          )}
         </svg>
       </button>
       {isOpen && (
@@ -820,6 +830,7 @@ export function SettingsSectorStockScopeSection({
       <span className="flex max-w-[16rem] items-center text-left text-[15px] font-medium leading-[22px] text-white">
         <span>집계 대상 종목</span>
         <SettingHelpBubble
+          warning
           label="집계 대상 종목"
           description={<><b className="text-red-600">전종목</b>을 선택하면{'\n'}맵 페이지 등락률과{'\n'}<b className="text-red-600">다르게 집계</b>될 수 있습니다.</>}
         />
