@@ -958,7 +958,7 @@ export default function AdminStockTable({
   const [sortDirection, setSortDirection] = usePersistedState<SortDirection>('adminStockTable.sortDirection', 'desc')
   const [isPending, startTransition] = useTransition()
   // 헤더가 sticky + 스크롤 컨테이너(overflow-auto) 안에 있어서, 그 위로 뜨는 툴팁은 일반 absolute로는
-  // 부모의 overflow에 잘린다 — body에 포털로 그려서 잘리지 않게 한다(MarketMapBox 등과 동일한 패턴).
+  // 부모의 overflow에 잘린다 — body에 포털로 그려서 잘리지 않게 한다(StockBox 등과 동일한 패턴).
   const [snapshotTooltipPos, setSnapshotTooltipPos] = useState<{ left: number; top: number } | null>(null)
 
   const assignStockSector = useAssignStockSector()

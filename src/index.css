@@ -607,7 +607,7 @@ a { color: var(--accent-light); text-decoration: none; }
   /* :hover/:focus-visible는 원래 마우스가 실제로 올라가 있을 때만 켜지는 상태라, 우클릭 팝업이 뜬
      동안(마우스는 이미 팝업 쪽으로 옮겨갔을 수 있음)에도 같은 모양을 유지하려면 별도 트리거가
      필요하다 — .is-pinned를 같은 선택자 목록에 얹어서, hover든 팝업-고정이든 정의는 하나만 둔다
-     (MarketMapBox.tsx의 isPinned가 이 클래스를 붙인다). */
+     (StockBox.tsx의 isPinned가 이 클래스를 붙인다). */
   .market-map-stock:hover,
   .market-map-stock:focus-visible,
   .market-map-stock.is-pinned {
@@ -635,7 +635,7 @@ a { color: var(--accent-light); text-decoration: none; }
   }
 
   /* 섹터 헤더를 hover(또는 팝업이 뜬 채 고정)했을 때 섹터 박스 전체를 옅게 덮는 오버레이
-     (MarketMapSectorSection.tsx) — 기본은 투명(opacity 0), 아래 두 트리거 중 하나가 켜지면 opacity 1로
+     (SectorBox.tsx) — 기본은 투명(opacity 0), 아래 두 트리거 중 하나가 켜지면 opacity 1로
      바뀌어 보인다. 배경색 자체가 흰색 35% 알파(rgb(255 255 255 / 35%))라, 종목/섹터 헤더 hover의
      box-shadow와 같은 흰색 불투명도로 통일된다. */
   .market-map-sector-hover-overlay {
@@ -646,7 +646,7 @@ a { color: var(--accent-light); text-decoration: none; }
 
   /* 트리거 1: 이 섹터의 "직계" 헤더를 hover/포커스 — ':has(> ...)'의 '>'가 직계 자식만 보므로,
      하위 섹터 헤더를 hover해도 그 상위 섹터의 오버레이는 안 뜬다(하위 섹터 자신의 오버레이만 뜸).
-     트리거 2: 팝업이 이 섹터를 대상으로 뜬 채 고정(is-pinned, MarketMapSectorSection.tsx). */
+     트리거 2: 팝업이 이 섹터를 대상으로 뜬 채 고정(is-pinned, SectorBox.tsx). */
   .market-map-sector-box:has(> .market-map-sector-header:hover) > .market-map-sector-hover-overlay,
   .market-map-sector-box:has(> .market-map-sector-header:focus-visible) > .market-map-sector-hover-overlay,
   .market-map-sector-box.is-pinned > .market-map-sector-hover-overlay {

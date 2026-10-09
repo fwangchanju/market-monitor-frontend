@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useMarketMapLayout, type DisplayGroup, type LaidOutSector } from '@/hooks/useMarketMapLayout'
-import MarketMapSectorSection from './MarketMapSectorSection'
+import SectorBox from './SectorBox'
 import MarketMapPopup, { type MarketMapPopupContent, type MarketMapPopupState } from './MarketMapPopup'
 import type { ColorScaleConfig } from '@/utils/marketMapColorScale'
 import type { StockLabelMode } from '@/hooks/useGlobalSettings'
@@ -27,16 +27,16 @@ interface Props {
   tile?: 'squarify' | 'binary'
   // 커스텀 모드가 아닐 때는(기본 분류 트리) 섹터 제외 액션 자체를 제공하지 않는다.
   canExclude: boolean
-  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 박스 색칠 설정의 단일 출처(어드민 라이브 프리뷰에서는
+  // 하위 StockBox까지 그대로 관통해서 전달 — 박스 색칠 설정의 단일 출처(어드민 라이브 프리뷰에서는
   // 저장 전 draft config가 그대로 여기 들어와서 드래그 중에도 실시간으로 반영된다).
   colorScale: ColorScaleConfig
-  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명/등락률 표시 여부를 가르는 넓이 비중(%) 기준.
+  // 하위 StockBox까지 그대로 관통해서 전달 — 종목명/등락률 표시 여부를 가르는 넓이 비중(%) 기준.
   labelMinAreaPercent: number
-  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명만/등락률만/둘 다 보여줄지.
+  // 하위 StockBox까지 그대로 관통해서 전달 — 종목명만/등락률만/둘 다 보여줄지.
   stockLabelMode: StockLabelMode
   // 종목 정보 팝업을 우클릭(false)/마우스 올리기(true) 중 뭘로 띄울지 — 업종 팝업은 항상 우클릭.
   stockPopupOnHover: boolean
-  // 하위 MarketMapSectorSection/MarketMapBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
+  // 하위 SectorBox/StockBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
   decimalPlaces: number
   topPickSectorKeys: Set<string>
   strongIndustryColor: string
@@ -380,7 +380,7 @@ export default function Treemap({
           style={{ transformOrigin: '0 0', zIndex: ghost.direction === 'out' ? 10 : -1, ...ghost.style }}
         >
           {ghost.sectors.map(sector => (
-            <MarketMapSectorSection
+            <SectorBox
               key={sector.sectorName}
               sector={sector}
               depthOffset={ghost.depth}
@@ -415,7 +415,7 @@ export default function Treemap({
           />
         )}
         {sectors.map(sector => (
-          <MarketMapSectorSection
+          <SectorBox
             key={sector.sectorName}
             sector={sector}
             depthOffset={depth}

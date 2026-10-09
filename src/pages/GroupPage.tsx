@@ -10,9 +10,10 @@ import SettingsSidebar, {
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import EmptyMessage, { EMPTY_DATA_MESSAGE } from '@/components/EmptyMessage'
 import Spinner from '@/components/Spinner'
+import Toolbar from '@/components/Toolbar'
 import { REFRESH_FEEDBACK_MIN_DURATION_MS } from '@/utils/uiFeedback'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
-import MarketMapLegendBar from '@/components/MarketMapLegendBar'
+import ChangeRateBar from '@/components/ChangeRateBar'
 import { TAXONOMY_NAMES } from '@/utils/taxonomyNames'
 import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
@@ -384,7 +385,7 @@ export default function GroupPage() {
               항상 같은 폭을 유지하게 한다(지도 페이지와 동일) — 내부 그래프가 넘치면 이 컬럼
               안에서만 처리된다. */}
           <div ref={captureRef} data-captureid={CAPTURE_ID.SECTOR} data-capture-ready={isDataCaptureReady} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black text-white">
-            <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-[7px] text-sm font-bold text-white">
+            <Toolbar>
               <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
                 <MarketDropdown
                   market={market}
@@ -415,7 +416,7 @@ export default function GroupPage() {
               </div>
               {/* 지도 페이지와 동일하게 맨 오른쪽 끝에 프로필(사진이 끝, 글자는 그 왼쪽)을 둔다. */}
               <div className={`${FONT_BAR_MODE_STATUS} flex min-w-0 items-center justify-end text-gray-400`}>{modeStatusText}</div>
-            </div>
+            </Toolbar>
             {/* 지도/어드민 페이지와 동일하게 본문이 화면을 꽉 채우는 형태 — 가운데 정렬/폭 제한을 없애서
                 설정 사이드바가 열려도 본문이 밀리는 게 자연스럽게 느껴지도록 한다(밀림 자체는 다른
                 페이지와 동일한 flex 구조이고, 콘텐츠가 항상 남는 공간을 꽉 채우기만 하면 된다). */}
@@ -508,7 +509,7 @@ export default function GroupPage() {
               <div className="flex h-7 min-w-0 items-center">
                 <DisclaimerNotice />
               </div>
-              <MarketMapLegendBar swatches={settingsModalProps.legendSwatches} />
+              <ChangeRateBar swatches={settingsModalProps.legendSwatches} />
             </div>
           </div>
           {/* 설정창 윗선을 지도 페이지와 같은 높이로 맞춘다 — 지도 페이지에서 실제로 맞춘 모양(설정창 윗선이 위쪽 바 윗선보다 3px 아래)을 따른다. 이 칸은 바보다 5.25px 위에서 시작하므로 5.25 + 3 - 1(눈으로 맞춘 보정) = 7.25px이지만, 지도 페이지의 설정창 칸이 7px이라 실제로는 같은 7px을 띄운다. 아래는 붙인다. */}

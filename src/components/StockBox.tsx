@@ -31,7 +31,7 @@ interface Props {
   // 지금 팝업이 떠 있는 섹터/종목의 식별 키(sectorPath/stockPath 기반) — 이 종목의 키와 일치하면
   // 이 박스의 hover 모양(2px 테두리 + 흰 오버레이, index.css)을 "고정(pinned)"으로 계속 보여준다.
   highlightedKey: string | null
-  // 이 박스를 담고 있는 섹터의 전체 경로(MarketMapSectorSection.sectorPath) — stockCode만으로는
+  // 이 박스를 담고 있는 섹터의 전체 경로(SectorBox.sectorPath) — stockCode만으로는
   // 같은 종목이 트리 여러 자리에 나타날 가능성을 배제할 수 없어, 종목 키도 경로로 유일하게 만든다.
   ancestorPath: string
 }
@@ -44,7 +44,7 @@ function fontSizePx(width: number, height: number): number {
   return Math.max(12, Math.min(22, Math.min(width, height) / 5))
 }
 
-export default function MarketMapBox({
+export default function StockBox({
   item,
   x,
   y,

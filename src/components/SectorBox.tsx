@@ -1,5 +1,5 @@
 import { useRef, type CSSProperties } from 'react'
-import MarketMapBox from './MarketMapBox'
+import StockBox from './StockBox'
 import type { MarketMapPopupContent } from './MarketMapPopup'
 import { sectorHeaderFontSize, sectorHeaderHeight, PADDING, type LaidOutSector } from '@/hooks/useMarketMapLayout'
 import { TAB_GAP, toJoEokDecimal, toPctSigned } from '@/utils/format'
@@ -35,13 +35,13 @@ interface Props {
   upDownCountDepthRange: [number, number] | null
   // 커스텀 모드가 아닐 때는(기본 분류 트리) 섹터 제외 액션 자체를 제공하지 않는다.
   canExclude: boolean
-  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 박스 색칠 설정의 단일 출처.
+  // 하위 StockBox까지 그대로 관통해서 전달 — 박스 색칠 설정의 단일 출처.
   colorScale: ColorScaleConfig
-  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명/등락률 표시 여부를 가르는 넓이 비중(%) 기준.
+  // 하위 StockBox까지 그대로 관통해서 전달 — 종목명/등락률 표시 여부를 가르는 넓이 비중(%) 기준.
   labelMinAreaPercent: number
-  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명만/등락률만/둘 다 보여줄지.
+  // 하위 StockBox까지 그대로 관통해서 전달 — 종목명만/등락률만/둘 다 보여줄지.
   stockLabelMode: StockLabelMode
-  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
+  // 하위 StockBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
   decimalPlaces: number
   topPickSectorKeys: Set<string>
   strongIndustryColor: string
@@ -74,7 +74,7 @@ function sectorHeaderStyle(depth: number) {
   return SECTOR_HEADER_STYLES[Math.min(depth, SECTOR_HEADER_STYLES.length - 1)]
 }
 
-export default function MarketMapSectorSection({
+export default function SectorBox({
   sector,
   onSelectSector,
   onOpenPopup,
@@ -193,6 +193,7 @@ export default function MarketMapSectorSection({
               하위 헤더보다 높다. 선택한 섹터 자신의 헤더는 활성 상태에서 CSS가 31로 올려 기존
               헤더 hover 표기를 유지한다. */}
           <div className="market-map-sector-hover-overlay absolute inset-0 z-[30] pointer-events-none" aria-hidden="true" />
+          {/* 업종 헤더(SectorHeader) — 업종 박스 맨 위 제목. 업종 이름과 등락률 같은 수치를 한 줄로 보여 준다. */}
           <button
             type="button"
             onMouseDown={e => {
@@ -242,7 +243,7 @@ export default function MarketMapSectorSection({
         </>
       )}
       {sector.subSectors.map(sub => (
-        <MarketMapSectorSection
+        <SectorBox
           key={sub.sectorName}
           sector={sub}
           onSelectSector={onSelectSector}
@@ -268,7 +269,7 @@ export default function MarketMapSectorSection({
         />
       ))}
       {sector.boxes.map(box => (
-        <MarketMapBox
+        <StockBox
           key={box.item.stockCode}
           item={box.item}
           x={box.x}

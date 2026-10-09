@@ -48,17 +48,17 @@
 | 영역 | 화면 이름 | 코드 이름 |
 |---|---|---|
 | 상단 | 메뉴 줄 | `NavSubBar` |
-| 메인 | 툴바 (메인 영역 맨 윗줄) | 맵·그룹 페이지 안(`Toolbar`로 갈 예정) |
+| 메인 | 툴바 (메인 영역 맨 윗줄) | `Toolbar` (맵·그룹 페이지가 함께 씀) |
 | 메인 | 기준 날짜 | `MapPage` 안 |
 | 메인 | 기준 시각 | `PageRefreshButton` |
 | 메인 | 기준 시각 내 새로고침 버튼 ("시각고침") | `PageRefreshButton` |
 | 메인 | 거래 세션 | `TradingSessionIndicator` |
 | 메인 | 누적/따로 토글 | `ChangeRateModeToggle` |
 | 메인 | 분류 배지 (오른쪽 위 청록 글자) | `MapPage`의 `modeStatusText` |
-| 메인 | 업종 박스 (업종 하나를 감싼 큰 사각형) | `MarketMapSectorSection` (`SectorBox`로 갈 예정) |
-| 메인 | 업종 헤더 (업종 박스 맨 위 제목) | 같은 파일 안(`SectorHeader`로 갈 예정) |
-| 메인 | 종목 박스 | `MarketMapBox` |
-| 메인 | 범례 | `MarketMapLegendBar` |
+| 메인 | 업종 박스 (업종 하나를 감싼 큰 사각형) | `SectorBox` |
+| 메인 | 업종 헤더 (업종 박스 맨 위 제목) | `SectorBox` 안(주석에 `SectorHeader`로 표시) |
+| 메인 | 종목 박스 | `StockBox` |
+| 메인 | 등락률 바 (색 단계 -8% … +8%, 맵·그룹 페이지 아래쪽) | `ChangeRateBar` |
 | 메인 | 면책 문구 (+ 출처 말풍선) | `DisclaimerNotice` |
 | 사이드 | 설정창 헤더 | `SettingsSidebar` 안 맨 윗줄 |
 | 사이드 | Basis | `SettingsTaxonomySelector` |
