@@ -1,3 +1,4 @@
+import { CountLabelWithBadge } from '@/components/KindBadge'
 import { Children, Fragment, createContext, isValidElement, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { DepthMetric } from '@/hooks/useGlobalSettings'
@@ -901,7 +902,7 @@ export function SettingsCustomModeSection({
         labelSuffix={
           <>
             <SettingHelpBubble label="커스텀 모드" description="내 분류를 지도에 적용합니다." />
-            {stockCountLabel && <span className="text-sm text-gray-400">{stockCountLabel}</span>}
+            {stockCountLabel && <span className="text-sm text-gray-400"><CountLabelWithBadge label={stockCountLabel} /></span>}
           </>
         }
       />
@@ -2154,7 +2155,7 @@ export default function SettingsSidebar({
           </p>
           {stockCountLabel && (
             <span className="flex h-7 w-[7rem] shrink-0 items-center justify-end whitespace-nowrap text-right text-sm leading-none text-gray-400">
-              {stockCountLabel}
+              <CountLabelWithBadge label={stockCountLabel} />
             </span>
           )}
         </div>

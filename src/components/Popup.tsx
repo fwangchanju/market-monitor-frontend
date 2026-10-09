@@ -1,3 +1,4 @@
+import KindBadge from '@/components/KindBadge'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { appConfirm } from '@/utils/appDialogBus'
@@ -175,9 +176,7 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
       >
         <div className="flex items-center justify-between gap-3 font-bold">
           <div className="flex items-center gap-1.5">
-            <span className={`shrink-0 rounded-sm border border-current px-1 py-0.5 text-xs font-medium leading-none ${isSectorPopup ? 'text-[var(--brand)]' : 'text-gray-500'}`}>
-              {isSectorPopup ? '업종' : '종목'}
-            </span>
+            <KindBadge kind={isSectorPopup ? '업종' : '종목'} />
             <span className={isSectorPopup ? 'text-[var(--brand)]' : undefined}>{popup.title}</span>
           </div>
           {excludeSector && (
