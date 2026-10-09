@@ -121,13 +121,13 @@ export const handlers = [
   // ── 마켓맵(공개 기본 조회) ────────────────────────────────────────────
   // marketOverview는 market이 단일 마켓일 때만(ALL_STOCK이면 단일 지수값이 없어 null) — 실제 백엔드와 동일.
   // 지연을 둬서 섹터 페이지 쌍 쿼리의 placeholder·스피너를 dev:mock에서 눈으로 볼 수 있게 한다(결정 7).
-  // source=mymap은 비로그인이면 실제로는 401이지만(가입/로그인 전환 4), 프론트가 이미 비로그인에서
+  // source=mine은 비로그인이면 실제로는 401이지만(가입/로그인 전환 4), 프론트가 이미 비로그인에서
   // 거래소로 바꿔 요청하므로 목업에서 그 가드까지 재현할 필요는 없다.
   http.get('/api/map', async ({ request }) => {
     await delay(1200)
     const url = new URL(request.url)
     const market = url.searchParams.get('market')
-    // source가 krx가 아니면(marketry·mymap) 커스텀 트리를 준다. 옛 요청(source 없음)은 isCustom을 따른다.
+    // source가 krx가 아니면(marketry·mine) 커스텀 트리를 준다. 옛 요청(source 없음)은 isCustom을 따른다.
     const source = url.searchParams.get('source')
     const isCustom = source ? source !== 'krx' : url.searchParams.get('isCustom') === 'true'
     const snapshotTime = url.searchParams.get('snapshotTime')

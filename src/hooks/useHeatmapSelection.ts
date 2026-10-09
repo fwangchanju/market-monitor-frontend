@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-export type HeatmapSelection = 'marketry' | 'krx' | 'mymap'
+export type HeatmapSelection = 'marketry' | 'krx' | 'mine'
 
 const STORAGE_KEY = 'marketMap.heatmapSelection'
 const CHANGE_EVENT = 'marketry:heatmap-selection'
@@ -18,7 +18,9 @@ function getSelection(): HeatmapSelection | null {
     } catch {
       return null
     }
-    return value === 'marketry' || value === 'krx' || value === 'mymap' ? value : null
+    // 예전에 저장된 값도 새 이름으로 읽는다.
+    if (value === 'mymap') return 'mine'
+    return value === 'marketry' || value === 'krx' || value === 'mine' ? value : null
   } catch {
     useMemoryStorage = true
     return memorySelection

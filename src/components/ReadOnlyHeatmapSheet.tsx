@@ -225,7 +225,8 @@ type CategorySortKey = 'name' | 'stockCount' | 'marketValue'
 
 function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { sectors: SectorRow[]; emptyMessage: string; extra: ReactNode; onCountLabelChange?: (label: string | undefined) => void }) {
   const [query, setQuery] = useState('')
-  const { sortKey, direction, toggle } = useSort<CategorySortKey>('name', 'asc')
+  // 시가총액 합이 큰 업종부터 처음 보여준다.
+  const { sortKey, direction, toggle } = useSort<CategorySortKey>('marketValue', 'desc')
   const rows = useMemo(() => {
     const sign = direction === 'asc' ? 1 : -1
     return sectors
@@ -369,7 +370,7 @@ function StockTable({ showHierarchy, sectors, emptyMessage, nxtStockCodes, stock
       />
       <div className="relative min-h-0 flex-1">
       <div ref={scrollContainerRef} className="relative h-full overflow-auto scrollbar-thin">
-        {/* 내 히트맵과 같은 표·테두리·스크롤 규칙을 쓴다. 마지막 열은 남는 폭을 받아 KRX의 NXT가 대·중·소분류 합계 폭과 일치한다. */}
+        {/* 내 분류와 같은 표·테두리·스크롤 규칙을 쓴다. 마지막 열은 남는 폭을 받아 KRX의 NXT가 대·중·소분류 합계 폭과 일치한다. */}
         <table className="nes-table is-dark custom-page-table w-full select-none text-sm [border-collapse:separate] [border-spacing:0] [&_td]:border-slate-700 [&_td]:py-1 [&_th]:border-white/15 [&_th]:border-b-0 [&_th]:py-1">
           <thead className="sticky top-0 z-10">
             <tr>

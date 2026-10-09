@@ -404,7 +404,7 @@ a { color: var(--accent-light); text-decoration: none; }
   }
 }
 
-/* 설정 창 전체(스크롤 영역 밖인 하단 히트맵 선택 포함)의 선택 버튼(radiogroup)은 글자가 두 줄이 되어도(줄바꿈 또는 글자가 길어져 넘칠 때) 줄 간격이 같도록 한곳에서 정한다.
+/* 설정 창 전체(스크롤 영역 밖인 하단 Basis 선택 포함)의 선택 버튼(radiogroup)은 글자가 두 줄이 되어도(줄바꿈 또는 글자가 길어져 넘칠 때) 줄 간격이 같도록 한곳에서 정한다.
    새 선택 버튼도 이 값을 따르므로 버튼마다 leading을 따로 지정하지 않는다. */
 [data-settings-sidebar] [role="radiogroup"] button {
   line-height: 1.3;

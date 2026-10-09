@@ -12,7 +12,7 @@
 //   text-2xl  = 24px
 
 // 네비게이션 바(SubNavBar) 탭 글자. 영문은 Roboto, 한글은 Pretendard로 표시한다.
-export const FONT_NAV_TAB = 'font-roboto-latin text-lg font-medium tracking-[0.02em]'
+export const FONT_NAV_TAB = 'font-roboto-latin text-lg font-bold'
 
 // 세 번째 바(페이지별 상태/옵션 바) — 제목(마켓명, "Custom Sector" 등 페이지 대표 라벨). 20px, bold.
 // leading-none: 기본 line-height(1.5)를 쓰면 줄 높이가 폰트 크기보다 훨씬 커져서 items-center로

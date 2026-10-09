@@ -315,7 +315,7 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget, onCou
     const isRoot = sector.parentId === null
     const expandable = isRoot || hasChildren(sector.id)
     const itemNumber = isRoot
-      ? `${rootIndexById.get(sector.id) ?? row.siblingIndex}`
+      ? `${rootIndexById.get(sector.id) ?? row.siblingIndex}.`
       : sector.depth >= 2
         ? `(${row.siblingIndex})`
         : `${row.siblingIndex})`
@@ -363,7 +363,7 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget, onCou
                 />
               ) : (
                 <>
-                  <span aria-hidden="true" className="mr-2 inline-flex h-5 w-7 shrink-0 items-center justify-center rounded-sm border border-gray-400 bg-white text-sm leading-none font-bold text-gray-500 tabular-nums">
+                  <span aria-hidden="true" className="mr-2 inline-flex h-5 w-8 shrink-0 items-center justify-end pr-1 border border-gray-400 bg-white text-sm leading-none font-bold text-gray-500 tabular-nums">
                     {itemNumber}
                   </span>
                   <button
@@ -508,7 +508,7 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget, onCou
         {draggedSector && (() => {
           const siblings = orderSectors(sectors.filter(item => item.parentId === draggedSector.parentId), draggedSector.parentId, sectorOrder)
           const position = siblings.findIndex(item => item.id === draggedSector.id) + 1
-          const number = draggedSector.parentId === null ? `${position}` : draggedSector.depth >= 2 ? `(${position})` : `${position})`
+          const number = draggedSector.parentId === null ? `${position}.` : draggedSector.depth >= 2 ? `(${position})` : `${position})`
           const childCount = childCountByParent.get(draggedSector.id) ?? 0
           return (
             <div
@@ -516,7 +516,7 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget, onCou
               className="flex items-center border-y-2 border-[var(--brand)] bg-[#1d4a57] py-0.5 text-sm text-white shadow-xl"
             >
               <span aria-hidden="true" className="mr-1 flex h-6 w-6 shrink-0 items-center justify-center text-xl leading-none text-gray-300">⠿</span>
-              <span aria-hidden="true" className="mr-2 inline-flex h-5 w-7 shrink-0 items-center justify-center rounded-sm border border-gray-400 bg-white text-sm leading-none font-bold text-gray-500 tabular-nums">{number}</span>
+              <span aria-hidden="true" className="mr-2 inline-flex h-5 w-8 shrink-0 items-center justify-end pr-1 border border-gray-400 bg-white text-sm leading-none font-bold text-gray-500 tabular-nums">{number}</span>
               <span className="truncate">{draggedSector.name}</span>
               {childCount > 0 && <span className="ml-1 shrink-0 text-gray-300">({toCount(childCount)})</span>}
             </div>

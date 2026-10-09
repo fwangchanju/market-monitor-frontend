@@ -511,15 +511,15 @@ export default function SectorChangeRatePage() {
               <MarketMapLegendBar swatches={settingsModalProps.legendSwatches} />
             </div>
           </div>
-          {/* 설정창 윗선을 지도 페이지와 같은 높이로 맞춘다 — 지도 페이지에서 실제로 맞춘 모양(설정창 윗선이 위쪽 바 윗선보다 3px 아래)을 따른다. 이 칸은 바보다 5.25px 위에서 시작하므로 5.25 + 3 - 1(눈으로 맞춘 보정) = 7.25px을 띄운다. 아래는 붙인다. */}
-          <div className={`flex shrink-0 pt-[7.25px] ${isSettingsOnLeft ? 'order-first' : ''}`}>
+          {/* 설정창 윗선을 지도 페이지와 같은 높이로 맞춘다 — 지도 페이지에서 실제로 맞춘 모양(설정창 윗선이 위쪽 바 윗선보다 3px 아래)을 따른다. 이 칸은 바보다 5.25px 위에서 시작하므로 5.25 + 3 - 1(눈으로 맞춘 보정) = 7.25px이지만, 지도 페이지의 설정창 칸이 7px이라 실제로는 같은 7px을 띄운다. 아래는 붙인다. */}
+          <div className={`flex shrink-0 pt-[7px] ${isSettingsOnLeft ? 'order-first' : ''}`}>
             <SettingsSidebar
               {...settingsModalProps}
               isOnLeft={isSettingsOnLeft}
               onToggleSide={toggleSettingsSide}
-              pageLabel="GROUP"
+              pageLabel="Group"
               classificationAtBottom
-              classificationNotice="MAP 설정과 중복되는 사항은 동일하게 적용됩니다."
+              classificationNotice="Map 설정과 중복 사항은 동일 적용됩니다."
               snapshotTime={data?.classificationUpdatedAt}
               plainContent={
                 <>

@@ -10,7 +10,7 @@ import { ReturnArrowIcon } from '@/components/icons/MarketMapIcons'
 import type { MarketValueTierItem } from '@/types/api'
 import { FONT_BAR_TIME } from '@/components/FontStyle'
 import { ACCENT_PALETTE } from '@/utils/accentPalette'
-import { HEATMAP_NAMES, type HeatmapKey } from '@/utils/heatmapNames'
+import { CLASSIFICATION_SELECT_TITLE, HEATMAP_NAMES, type HeatmapKey } from '@/utils/heatmapNames'
 import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { useIsLoggedIn } from '@/hooks/useSession'
 import { useCustomPreferences } from '@/hooks/useCustomPreferences'
@@ -51,7 +51,7 @@ function HeaderButtonHint({ children }: { children: string }) {
   )
 }
 
-// 좌우 이동 탭을 "MAP 선택" 줄 높이로 옮기고, 그 줄 위에 구분선이 있으면(아래쪽 MAP 선택) 탭을 그 선까지 키운 뒤 아래도 같은 길이만큼 대칭으로
+// 좌우 이동 탭을 "Basis" 줄 높이로 옮기고, 그 줄 위에 구분선이 있으면(아래쪽 Basis) 탭을 그 선까지 키운 뒤 아래도 같은 길이만큼 대칭으로
 // 키운다. 그릴 때마다 재는 값이라 상태가 아니라 DOM에 바로 쓴다(상태로 두면 다시 그리기가 이어진다). 해당 줄이 없으면 가운데·기본 크기로 둔다.
 function alignSideTab(outerElement: HTMLElement | null, tab: HTMLElement | null) {
   if (!outerElement || !tab) return
@@ -954,23 +954,23 @@ function SettingsClassificationSelector({
   atBottom?: boolean
   snapshotTime?: string | null
 }) {
-  // KRX와 NXT는 "거래소" 한 칸으로 합쳤고, 지금 어느 쪽 종목을 보여줄지는 시간대가 정한다. 내 히트맵은 로그인이 필요하다(고르면 로그인 창이 뜬다).
+  // KRX와 NXT는 "거래소" 한 칸으로 합쳤고, 지금 어느 쪽 종목을 보여줄지는 시간대가 정한다. 내 분류는 로그인이 필요하다(고르면 로그인 창이 뜬다).
   const options: { key: HeatmapKey; label: string }[] = [
     { key: 'marketry', label: HEATMAP_NAMES.marketry.tab },
     { key: 'krx', label: '한국거래소' },
-    { key: 'mymap', label: HEATMAP_NAMES.mymap.tab },
+    { key: 'mine', label: HEATMAP_NAMES.mine.tab },
   ]
   const isExchange = heatmap === 'krx' || heatmap === 'nxt'
   const isSelected = (key: HeatmapKey) => (key === 'krx' ? isExchange : heatmap === key)
 
   return (
     <div data-map-select-top-line={atBottom || undefined} style={atBottom ? { backgroundColor: CLASSIFICATION_BACKGROUND_COLOR } : undefined} className={`${atBottom ? 'shrink-0 border-t border-gray-500 px-4 py-3' : 'mb-6 pt-5 pb-6'} text-white`}>
-      <p data-map-select-title className="flex items-center text-base">
+      <p data-map-select-title className="font-roboto-latin flex h-6 items-center whitespace-nowrap text-lg font-bold leading-none">
         {/* 발표 자료의 제목 강조처럼 앞에 세로 막대를 하나 둔다. 색은 홈페이지 메인색(청록)이다. */}
         <span aria-hidden="true" className="mr-[6px] inline-block h-5 w-1 shrink-0 rounded-sm bg-[var(--brand)]" />
-        업종 분류
+        {CLASSIFICATION_SELECT_TITLE}
       </p>
-      <div role="radiogroup" aria-label="업종 분류" style={{ backgroundColor: CLASSIFICATION_BACKGROUND_COLOR }} className="mt-2 grid grid-cols-3 rounded-md border border-gray-600 p-0.5">
+      <div role="radiogroup" aria-label={CLASSIFICATION_SELECT_TITLE} style={{ backgroundColor: CLASSIFICATION_BACKGROUND_COLOR }} className="mt-2 grid grid-cols-3 rounded-md border border-gray-600 p-0.5">
         {options.map(option => (
           <button
             key={option.label}
@@ -978,7 +978,7 @@ function SettingsClassificationSelector({
             role="radio"
             aria-checked={isSelected(option.key)}
             onClick={() => !isSelected(option.key) && onSelectHeatmap(option.key)}
-            className={`min-h-8 rounded px-0.5 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
+            className={`min-h-8 rounded px-0.5 py-1 text-sm font-medium whitespace-nowrap transition-colors ${
               isSelected(option.key)
                 ? 'bg-[var(--brand)] text-black'
                 : 'border-0 bg-transparent text-gray-300 hover:text-white'
@@ -1001,7 +1001,7 @@ function SettingsClassificationSelector({
                   <>
                     <b className="text-red-600">키움 REST API</b>로 받은{'\n'}종목·업종 정보를 서버에{'\n'}마지막으로 동기화한 시각입니다.{'\n\n'}시세 갱신 시각이나 한국거래소의{'\n'}공식 분류 변경 시각과는 다릅니다.
                   </>
-                ) : heatmap === 'mymap' ? (
+                ) : heatmap === 'mine' ? (
                   <>
                     <b className="text-red-600">내가</b> 종목·업종 정보를{'\n'}마지막으로 수정한 시각입니다.
                   </>
@@ -1924,7 +1924,7 @@ interface Props {
   sectionOrder?: readonly SettingsSidebarSectionId[]
   classificationAtBottom?: boolean
   classificationNotice?: string
-  // 하단 히트맵 선택 아래에 표시할 종목 분류 최종 변경 시각(지도 상단 표기와 같은 형식).
+  // 하단 Basis 선택 아래에 표시할 종목 분류 최종 변경 시각(지도 상단 표기와 같은 형식).
   snapshotTime?: string | null
   // 사이드바 열림 상태는 페이지가 관리한다.
   isOpen: boolean
@@ -1933,7 +1933,7 @@ interface Props {
   classificationSection?: 'favorites' | 'industry'
   isCustom?: boolean
   onToggleCustom?: () => void
-  // 지도의 히트맵 선택(KRX / NXT / MARKETRY) — 주면 선택 탭이 이 값을 쓰고, 안 주면 isCustom으로 KRX/MARKETRY만 고른다.
+  // 지도의 Basis 선택(KRX / NXT / MARKETRY) — 주면 선택 탭이 이 값을 쓰고, 안 주면 isCustom으로 KRX/MARKETRY만 고른다.
   heatmap?: HeatmapKey
   onSelectHeatmap?: (heatmap: HeatmapKey) => void
   avgChangeRateUseSimple?: boolean
@@ -2017,7 +2017,7 @@ export default function SettingsSidebar({
     const timer = setTimeout(() => setLoadWaitExpired(true), SETTINGS_LOAD_WAIT_MS)
     return () => clearTimeout(timer)
   }, [isLoggedIn, preferencesLoaded])
-  // 좌우 이동 탭은 "MAP 선택" 줄(앞에 색 막대가 있는 줄)의 높이에 맞춘다. 그 줄이 없으면 가운데에 둔다.
+  // 좌우 이동 탭은 "Basis" 줄(앞에 색 막대가 있는 줄)의 높이에 맞춘다. 그 줄이 없으면 가운데에 둔다.
   const outerRef = useRef<HTMLDivElement>(null)
   const sideTabRef = useRef<HTMLButtonElement>(null)
   // 설정창 안 내용(분류 선택 줄의 위치, 창 높이)이 바뀔 수 있어 그릴 때마다 다시 잰다. 전체화면처럼 다시 그리지 않고 크기만 바뀌는 경우는
@@ -2147,7 +2147,11 @@ export default function SettingsSidebar({
     >
       <div className="flex shrink-0 items-center border-b border-gray-500 px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
-          <p className="flex h-7 items-center whitespace-nowrap text-lg font-bold leading-none text-white">{pageLabel ?? '설정'}</p>
+          <p className="font-roboto-latin flex h-7 items-center whitespace-nowrap text-lg font-bold leading-none text-white">
+            {/* 아래 Basis 제목 앞의 막대와 같은 모양·같은 자리(왼쪽 여백 16px)다. */}
+            <span aria-hidden="true" className="mr-[6px] inline-block h-5 w-1 shrink-0 rounded-sm bg-[var(--brand)]" />
+            {pageLabel ?? '설정'}
+          </p>
           {stockCountLabel && (
             <span className="flex h-7 w-[7rem] shrink-0 items-center justify-end whitespace-nowrap text-right text-sm leading-none text-gray-400">
               {stockCountLabel}

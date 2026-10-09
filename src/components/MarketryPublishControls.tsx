@@ -27,7 +27,7 @@ function createPublicationLabel(now: Date) {
   return `MARKETRY ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
 }
 
-// 관리자 전용 — 내 히트맵을 MARKETRY로 올리고, 이전 버전으로 되돌린다. 다른 사용자의 데이터는 건드리지 않는다.
+// 관리자 전용 — 내 분류를 MARKETRY로 올리고, 이전 버전으로 되돌린다. 다른 사용자의 데이터는 건드리지 않는다.
 export default function MarketryPublishControls() {
   const queryClient = useQueryClient()
   // 올리거나 되돌리는 중이면 그 안내 문구, 아니면 null.
@@ -50,7 +50,7 @@ export default function MarketryPublishControls() {
 
   const handlePublish = async () => {
     const confirmed = await appConfirm(
-      '지금 내 히트맵을 MARKETRY로 올리시겠습니까?\n모든 사용자에게 보이는 MARKETRY가 바뀝니다.\n이전 버전은 남아서 되돌릴 수 있습니다.',
+      '지금 내 분류를 MARKETRY로 올리시겠습니까?\n모든 사용자에게 보이는 MARKETRY가 바뀝니다.\n이전 버전은 남아서 되돌릴 수 있습니다.',
       { adminOnly: true },
     )
     if (!confirmed) return
