@@ -16,3 +16,7 @@ export const logout = () => client.post('/auth/logout')
 // /auth/refresh와 같은 형식의 세션 응답을 돌려준다.
 export const devLogin = () =>
   client.post('/auth/dev-login').then(r => AuthSessionResponseSchema.parse(r.data))
+
+// 백엔드 local 프로필에서만 새 테스트 회원을 만들고 실제 가입 초기화·세션 발급을 수행한다.
+export const devSignup = () =>
+  client.post('/auth/dev-signup').then(r => AuthSessionResponseSchema.parse(r.data))

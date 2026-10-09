@@ -3,6 +3,11 @@
 // 그 상태는 탭을 닫을 때까지 유지되고, ?guest=0으로 열면 다시 자동 로그인으로 돌아간다. 운영 빌드에는 영향이 없다.
 const GUEST_MODE_STORAGE_KEY = 'dev.guestMode'
 
+export function isLocalSignupEnabled(): boolean {
+  return import.meta.env.DEV && import.meta.env.MODE !== 'mock' &&
+    ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
+}
+
 function isLocalAutoLoginConfigured(): boolean {
   return import.meta.env.DEV && import.meta.env.VITE_LOCAL_AUTO_LOGIN === '1'
 }

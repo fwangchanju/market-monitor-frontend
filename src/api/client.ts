@@ -34,6 +34,11 @@ export function getLastRefreshAt() {
   return lastRefreshAt
 }
 
+// 계정 전환 전에 진행 중인 갱신을 마쳐 이전 계정의 쿠키가 새 계정 쿠키를 덮지 않게 한다.
+export async function settleSessionRefresh() {
+  await refreshPromise?.catch(() => undefined)
+}
+
 // 진행 중인 갱신이 있으면 그 promise를 공유하고, 없으면 새로 /auth/refresh를 호출한다. 401
 // 인터셉터와 useSessionKeepAlive(선제 갱신)가 동시에 갱신을 시도해도 요청이 한 번만 나가도록 한다.
 export function refreshSessionOnce(): Promise<AuthSessionResponse> {
