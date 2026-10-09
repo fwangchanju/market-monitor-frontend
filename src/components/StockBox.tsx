@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import type { MarketMapPopupContent } from './MarketMapPopup'
+import type { PopupContent } from './Popup'
 import type { MarketMapItem } from '@/types/api'
 import { toJoEok, toPctSigned, toVolume } from '@/utils/format'
 import { resolveMarketMapColor, type ColorScaleConfig } from '@/utils/marketMapColorScale'
@@ -23,7 +23,7 @@ interface Props {
   // 박스 색칠은 이 설정 하나로만 결정된다(resolveMarketMapColor) — 범례 바(MapPage)도
   // 같은 설정 + 같은 함수를 거치므로 두 화면이 항상 수학적으로 일치한다.
   colorScale: ColorScaleConfig
-  onOpenPopup: (content: MarketMapPopupContent, target: HTMLElement) => void
+  onOpenPopup: (content: PopupContent, target: HTMLElement) => void
   // 커서 이동 방식일 때 박스를 벗어나면 그 박스의 팝업을 닫는다(targetKey가 같은 팝업만).
   onClosePopup: (targetKey: string) => void
   // true면 우클릭 대신 커서를 박스 위로 옮길 때 팝업을 띄운다(설정 사이드바의 "종목 정보 팝업").
@@ -31,7 +31,7 @@ interface Props {
   // 지금 팝업이 떠 있는 섹터/종목의 식별 키(sectorPath/stockPath 기반) — 이 종목의 키와 일치하면
   // 이 박스의 hover 모양(2px 테두리 + 흰 오버레이, index.css)을 "고정(pinned)"으로 계속 보여준다.
   highlightedKey: string | null
-  // 이 박스를 담고 있는 섹터의 전체 경로(MarketMapSectorSection.sectorPath) — stockCode만으로는
+  // 이 박스를 담고 있는 섹터의 전체 경로(SectorBox.sectorPath) — stockCode만으로는
   // 같은 종목이 트리 여러 자리에 나타날 가능성을 배제할 수 없어, 종목 키도 경로로 유일하게 만든다.
   ancestorPath: string
 }
@@ -44,7 +44,7 @@ function fontSizePx(width: number, height: number): number {
   return Math.max(12, Math.min(22, Math.min(width, height) / 5))
 }
 
-export default function MarketMapBox({
+export default function StockBox({
   item,
   x,
   y,
@@ -77,7 +77,7 @@ export default function MarketMapBox({
   const stockKey = `stock:${ancestorPath}\u0000${item.stockCode}`
   // 팝업이 이 종목을 대상으로 떠 있는 동안 hover 모양을 고정해서 보여준다(index.css의 .is-pinned).
   const isPinned = highlightedKey === stockKey
-  const openStockPopup = (target: HTMLElement, transient = false, pointer?: { x: number; y: number }) => {
+  const openStockPopup = (target: HTMLElement, tooltip = false, pointer?: { x: number; y: number }) => {
     onOpenPopup({
       title: item.stockName,
       rows: [
@@ -87,7 +87,7 @@ export default function MarketMapBox({
         `시가총액: ${toJoEok(item.totalMarketValue / 100_000_000)}`,
       ],
       targetKey: stockKey,
-      transient,
+      tooltip,
       pointer,
     }, target)
   }

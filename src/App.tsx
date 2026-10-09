@@ -53,12 +53,14 @@ export default function App() {
           <Route path="/industry" element={<LegacyGroupRedirect />} />
           <Route path="/industry/*" element={<LegacyGroupRedirect />} />
           {/* 커스텀 관리의 주소는 /custom 아래에서 업종·종목 화면으로 나뉜다. */}
-          <Route path="/custom" element={<Navigate to="/custom/industry" replace />} />
-          <Route path="/custom/industry" element={<CustomPage />} />
-          <Route path="/custom/category" element={<Navigate to="/custom/industry" replace />} />
+          <Route path="/custom" element={<Navigate to="/custom/sector" replace />} />
+          <Route path="/custom/sector" element={<CustomPage />} />
+          {/* 예전 주소(/custom/industry)로 들어와도 새 주소로 보낸다. */}
+          <Route path="/custom/industry" element={<Navigate to="/custom/sector" replace />} />
+          <Route path="/custom/category" element={<Navigate to="/custom/sector" replace />} />
           <Route path="/custom/stock" element={<CustomPage />} />
           {/* 기존 링크와 로그인 returnTo 호환을 위해 이전 주소는 새 주소로 보낸다. */}
-          <Route path="/admin/sector" element={<Navigate to="/custom/industry" replace />} />
+          <Route path="/admin/sector" element={<Navigate to="/custom/sector" replace />} />
           <Route path="/admin/stock" element={<Navigate to="/custom/stock" replace />} />
           {/* Google OAuth 동의 화면에 등록하는 공개 페이지 — 로그인 여부와 무관하게 누구나 볼 수
               있어야 하고, 세션/시세 등 데이터 API를 호출하지 않는 순수 정적 페이지다. */}

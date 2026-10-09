@@ -41,6 +41,7 @@
 
 - 화면의 **Basis**(설정창 맨 아래)는 코드에서 `Taxonomy`(분류 선택)다. 코드의 `basis`는 이것이 아니라 일간/시간외 등락률 기준이며, 서버에 보내는 요청 항목 이름(`basis=afterHours`)으로만 남아 있고 코드 안에서는 `ChangeRateMode`라고 부른다.
 - "히트맵", "콤보박스"라는 말은 화면과 코드에서 쓰지 않는다. 드롭다운이라고 부른다.
+- **업종 / 거래소 분류**: 화면의 "업종"은 우리 분류의 한 덩어리(대·중·소분류 어느 단계든, 영어 `Sector`)이고, 종목 표의 "거래소 분류"은 거래소(키움 `upName`)가 정한 업종(코드 `industry`)이다. 화면 영어는 `Sector`만 쓰고 `Industry`는 쓰지 않는다. Custom 페이지 주소는 `/custom/sector`(옛 `/custom/industry`는 새 주소로 보낸다)와 `/custom/stock`이다.
 - 분류 갱신 시각 필드는 `taxonomyUpdatedAt`이다. 서버는 한동안 옛 이름 `classificationUpdatedAt`도 같이 보내며, 화면 전환이 끝난 뒤 서버에서 옛 이름을 지운다.
 
 ## 영역별 화면 요소
@@ -48,21 +49,24 @@
 | 영역 | 화면 이름 | 코드 이름 |
 |---|---|---|
 | 상단 | 메뉴 줄 | `NavSubBar` |
-| 메인 | 툴바 (메인 영역 맨 윗줄) | 맵·그룹 페이지 안(`Toolbar`로 갈 예정) |
+| 메인 | 툴바 (메인 영역 맨 윗줄) | `Toolbar` (맵·그룹 페이지가 함께 씀) |
 | 메인 | 기준 날짜 | `MapPage` 안 |
 | 메인 | 기준 시각 | `PageRefreshButton` |
 | 메인 | 기준 시각 내 새로고침 버튼 ("시각고침") | `PageRefreshButton` |
 | 메인 | 거래 세션 | `TradingSessionIndicator` |
 | 메인 | 누적/따로 토글 | `ChangeRateModeToggle` |
 | 메인 | 분류 배지 (오른쪽 위 청록 글자) | `MapPage`의 `modeStatusText` |
-| 메인 | 업종 박스 (업종 하나를 감싼 큰 사각형) | `MarketMapSectorSection` (`SectorBox`로 갈 예정) |
-| 메인 | 업종 헤더 (업종 박스 맨 위 제목) | 같은 파일 안(`SectorHeader`로 갈 예정) |
-| 메인 | 종목 박스 | `MarketMapBox` |
-| 메인 | 범례 | `MarketMapLegendBar` |
+| 메인 | 업종 박스 (업종 하나를 감싼 큰 사각형) | `SectorBox` |
+| 메인 | 업종 헤더 (업종 박스 맨 위 제목) | `SectorBox` 안(주석에 `SectorHeader`로 표시) |
+| 메인 | 종목 박스 | `StockBox` |
+| 메인 | 툴팁 (박스에 마우스를 올리면 마우스를 따라다니는 설명창) | `Popup`의 `tooltip` 모드 |
+| 메인 | 팝업 (박스를 우클릭하면 박스 옆에 붙는 창, 업종 제외 같은 동작 포함) | `Popup` |
+| 메인 | 말풍선 (`?`를 누르면 열리는 설명) | `HelpBubble` 계열 — `SettingHelpBubble`(설정창), `SourceHelpBubble`(면책 문구) |
+| 메인 | 등락률 바 (색 단계 -8% … +8%, 맵·그룹 페이지 아래쪽) | `ChangeRateBar` |
 | 메인 | 면책 문구 (+ 출처 말풍선) | `DisclaimerNotice` |
 | 사이드 | 설정창 헤더 | `SettingsSidebar` 안 맨 윗줄 |
 | 사이드 | Basis | `SettingsTaxonomySelector` |
 
 ## 아직 이름을 정하지 않은 것
 
-팝업(마우스 올림 팝업 · 우클릭 팝업은 임시로 구분해 부름) · 달력(아직 없는 기능).
+달력(아직 없는 기능).

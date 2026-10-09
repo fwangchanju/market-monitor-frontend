@@ -1,5 +1,5 @@
 // 마켓맵 종목 박스/범례가 공유하는 등락률 컬러 스케일 계산.
-// 박스 색칠(MarketMapBox)과 범례 스와치(MapPage) 양쪽이 반드시 이 모듈만 거치도록 해서,
+// 박스 색칠(StockBox)과 범례 스와치(MapPage) 양쪽이 반드시 이 모듈만 거치도록 해서,
 // 예전처럼 두 곳이 서로 다른 하드코딩 배열을 들고 있다가 실제 값이 어긋나는 문제를 구조적으로 막는다.
 // GET /api/map/scale 응답(MarketMapScaleResponse)을 그대로 입력(ColorScaleConfig)으로 받는다.
 // side는 별도 필드가 아니라 thresholdPercent의 부호로 표현한다(음수=하락, 0=기준, 양수=상승) —
@@ -29,7 +29,7 @@ export const MARKET_INDEX_REFERENCE_COLOR = '#4dd0e1'
 export const DEFAULT_ZERO_COLOR = '#808080'
 
 // 저장된 threshold가 하나도 없는 side에 쓰는 폴백 프리셋(절댓값 기준). 오늘의 계단식 로직
-// (MarketMapBox.boxColorClass, 2/5/8%p 기준)과 최대한 같은 "느낌"을 재현하도록 딱 그 3개
+// (StockBox.boxColorClass, 2/5/8%p 기준)과 최대한 같은 "느낌"을 재현하도록 딱 그 3개
 // 임계값에만 threshold를 둔다. 8% 초과는 별도 threshold를 추가하지 않고, 아래 resolveMarketMapColor의
 // "최고 threshold 초과 시 clamp" 동작에 맡긴다 — 그래야 8~30%(실제로 흔한 구간) 전체가 오늘처럼
 // flat한 red-500/blue-500 그대로 유지된다(중간에 4번째 threshold를 더 두면 8~30% 구간이 다시 서서히

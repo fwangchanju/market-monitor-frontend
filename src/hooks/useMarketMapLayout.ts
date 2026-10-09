@@ -59,7 +59,7 @@ export function sectorHeaderFontSize(depth: number): number {
 
 // 헤더 높이는 폰트 크기에 항상 비례한다 — 원래 대분류 폰트가 16px일 때 높이가 28px이었던 비율(1.75배)을
 // 그대로 기준 삼아, 지금 폰트 크기(SECTOR_HEADER_FONT_SIZES)가 얼마든 그 비율만큼의 높이를 준다. 폰트
-// 크기를 바꾸면 높이도 자동으로 같은 비율로 줄어들거나 커지는 구조. MarketMapSectorSection의 실제
+// 크기를 바꾸면 높이도 자동으로 같은 비율로 줄어들거나 커지는 구조. SectorBox의 실제
 // 렌더링 높이도 이 함수를 그대로 써서 레이아웃 계산과 화면이 어긋나지 않게 한다.
 const SECTOR_HEADER_HEIGHT_RATIO = 20 / 16
 // 비율 계산 결과에서 모든 뎁스 공통으로 1px씩 뺀다 — 대분류/중분류/소분류 헤더를 전체적으로 살짝
@@ -74,7 +74,7 @@ export const SECTOR_SIBLING_GAP = 5
 // 종목은 border-box라 테두리가 안쪽으로 그려지므로 간격을 테두리 두께만큼만 둬도 안 겹친다.
 export const ITEM_SIBLING_GAP = 1
 // 섹터 컴포넌트 내부 — 자기 테두리와 그 안의 자식(하위 섹터든 종목이든)들 사이의 여백 — d3
-// treemap의 paddingOuter. MarketMapSectorSection도 이 값을 그대로 써서, 헤더 바를 자식들과
+// treemap의 paddingOuter. SectorBox도 이 값을 그대로 써서, 헤더 바를 자식들과
 // 같은 폭만큼 안쪽으로 들여쓴다. 0이라 자식이 섹터면 그 테두리가 부모 테두리와 같은 자리에
 // 겹치는데, 형제 간격(SECTOR_SIBLING_GAP)과 같은 이유로 문제없다(평소엔 같은 색이라 한 줄처럼
 // 보이고, hover 중인 쪽은 z-index로 항상 위에 그려짐). 상단 헤더 공간은 paddingTop으로 별도 처리.
@@ -146,7 +146,7 @@ export function useMarketMapLayout(
       .paddingOuter(PADDING)
       .paddingInner(siblingGap)
       // d3 계층에서 node.depth===0은 화면에 안 보이는 합성 root라, 화면 기준 depth로 맞추려면 -1.
-      // selfSectorName(드릴다운으로 들어온 자기 자신)은 헤더를 안 그리므로(MarketMapSectorSection
+      // selfSectorName(드릴다운으로 들어온 자기 자신)은 헤더를 안 그리므로(SectorBox
       // 참고 — breadcrumb과 중복이라 뺐다) 그 몫의 공간도 안 비워두고, 그 아래 자손들은 전부 한 뎁스씩
       // 앞당겨서(자기 자신이 아예 없는 것처럼) 헤더 높이를 매긴다 — selfSectorName이 있으면 항상
       // 이 트리 전체가 그 자기 자신 하나 밑에 있으므로(드릴다운 중엔 groups가 항상 원소 1개) 전역적으로

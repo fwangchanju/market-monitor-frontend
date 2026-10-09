@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useMarketMapLayout, type DisplayGroup, type LaidOutSector } from '@/hooks/useMarketMapLayout'
-import MarketMapSectorSection from './MarketMapSectorSection'
-import MarketMapPopup, { type MarketMapPopupContent, type MarketMapPopupState } from './MarketMapPopup'
+import SectorBox from './SectorBox'
+import Popup, { type PopupContent, type PopupState } from './Popup'
 import type { ColorScaleConfig } from '@/utils/marketMapColorScale'
 import type { StockLabelMode } from '@/hooks/useGlobalSettings'
 
@@ -27,16 +27,16 @@ interface Props {
   tile?: 'squarify' | 'binary'
   // 커스텀 모드가 아닐 때는(기본 분류 트리) 섹터 제외 액션 자체를 제공하지 않는다.
   canExclude: boolean
-  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 박스 색칠 설정의 단일 출처(어드민 라이브 프리뷰에서는
+  // 하위 StockBox까지 그대로 관통해서 전달 — 박스 색칠 설정의 단일 출처(어드민 라이브 프리뷰에서는
   // 저장 전 draft config가 그대로 여기 들어와서 드래그 중에도 실시간으로 반영된다).
   colorScale: ColorScaleConfig
-  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명/등락률 표시 여부를 가르는 넓이 비중(%) 기준.
+  // 하위 StockBox까지 그대로 관통해서 전달 — 종목명/등락률 표시 여부를 가르는 넓이 비중(%) 기준.
   labelMinAreaPercent: number
-  // 하위 MarketMapBox까지 그대로 관통해서 전달 — 종목명만/등락률만/둘 다 보여줄지.
+  // 하위 StockBox까지 그대로 관통해서 전달 — 종목명만/등락률만/둘 다 보여줄지.
   stockLabelMode: StockLabelMode
   // 종목 정보 팝업을 우클릭(false)/마우스 올리기(true) 중 뭘로 띄울지 — 업종 팝업은 항상 우클릭.
   stockPopupOnHover: boolean
-  // 하위 MarketMapSectorSection/MarketMapBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
+  // 하위 SectorBox/StockBox까지 그대로 관통해서 전달 — 등락률(%) 표시 소수점 자릿수.
   decimalPlaces: number
   topPickSectorKeys: Set<string>
   strongIndustryColor: string
@@ -123,7 +123,7 @@ export default function Treemap({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
-  const [popup, setPopup] = useState<MarketMapPopupState | null>(null)
+  const [popup, setPopup] = useState<PopupState | null>(null)
   // 실제(현재) 콘텐츠 wrapper에 거는 transform/opacity — 줌인일 때만 쓴다(작게 시작해서 꽉 차게 커짐).
   const [zoomStyle, setZoomStyle] = useState<React.CSSProperties | undefined>(undefined)
   // 사라지는 옛 화면을 실제 콘텐츠 위/아래에 겹쳐 그리는 고스트 — 형제 섹터들이 순간 사라지지 않고
@@ -172,8 +172,8 @@ export default function Treemap({
   // 팝업을 마우스 좌표가 아니라 우클릭한 박스(섹터 전체 박스, 혹은 종목 박스)의 화면상 위치에 붙인다.
   // 여기서는 그 박스의 뷰포트 기준 rect만 그대로 popup 상태에 실어두고, 그 rect의 어느 가장자리에
   // 어느 쪽으로 붙일지(오른쪽/왼쪽, 위/아래 뒤집기)는 실제 팝업 크기를 알아야 정확히 판단할 수 있어서
-  // MarketMapPopup 쪽에서 렌더 후 측정해서 계산한다(MarketMapPopup.tsx 참고).
-  const handleOpenPopup = (content: MarketMapPopupContent, target: HTMLElement) => {
+  // Popup 쪽에서 렌더 후 측정해서 계산한다(Popup.tsx 참고).
+  const handleOpenPopup = (content: PopupContent, target: HTMLElement) => {
     const map = containerRef.current
     if (!map) return
     const rect = target.getBoundingClientRect()
@@ -187,7 +187,7 @@ export default function Treemap({
 
   // 커서 이동 방식 팝업을 닫는다 — 이미 다른 대상의 팝업으로 바뀌었으면(targetKey 불일치) 건드리지 않는다.
   const handleClosePopup = (targetKey: string) => {
-    setPopup(prev => (prev?.targetKey === targetKey && prev.transient ? null : prev))
+    setPopup(prev => (prev?.targetKey === targetKey && prev.tooltip ? null : prev))
   }
 
   // 팝업이 떠 있는 대상(섹터/종목)의 식별 키 — 그 박스에만 초록 하이라이트를 붙이는 데 쓴다.
@@ -380,7 +380,7 @@ export default function Treemap({
           style={{ transformOrigin: '0 0', zIndex: ghost.direction === 'out' ? 10 : -1, ...ghost.style }}
         >
           {ghost.sectors.map(sector => (
-            <MarketMapSectorSection
+            <SectorBox
               key={sector.sectorName}
               sector={sector}
               depthOffset={ghost.depth}
@@ -415,7 +415,7 @@ export default function Treemap({
           />
         )}
         {sectors.map(sector => (
-          <MarketMapSectorSection
+          <SectorBox
             key={sector.sectorName}
             sector={sector}
             depthOffset={depth}
@@ -440,7 +440,7 @@ export default function Treemap({
           />
         ))}
       </div>
-      <MarketMapPopup popup={popup} onExcludeSector={onExcludeSector} onClose={() => setPopup(null)} />
+      <Popup popup={popup} onExcludeSector={onExcludeSector} onClose={() => setPopup(null)} />
     </div>
   )
 }

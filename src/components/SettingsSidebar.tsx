@@ -72,7 +72,7 @@ const TAXONOMY_BACKGROUND_COLOR = '#363639'
 
 // 말풍선 폭은 가장 긴 줄에 맞춘다(w-max whitespace-pre) — 줄바꿈은 문구마다 \n(문자열) 또는 <br />(JSX)로 직접 정한다. 줄 하나가 설정창(18rem)
 // 안에 들어와야 하니 한 줄을 23글자 안쪽으로 쓴다.
-function SettingHelpIcon({ label, description, bookmarkId }: { label: string; description: ReactNode; bookmarkId?: SettingsBookmarkId }) {
+function SettingHelpBubble({ label, description, bookmarkId }: { label: string; description: ReactNode; bookmarkId?: SettingsBookmarkId }) {
   const [isOpen, setIsOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const tooltipRef = useRef<HTMLSpanElement>(null)
@@ -900,7 +900,7 @@ export function SettingsCustomModeSection({
         labelClassName="text-base settings-section-bullet"
         labelSuffix={
           <>
-            <SettingHelpIcon label="커스텀 모드" description="내가 구성한 업종 분류를 지도에 적용합니다." />
+            <SettingHelpBubble label="커스텀 모드" description="내가 구성한 업종 분류를 지도에 적용합니다." />
             {stockCountLabel && <span className="text-sm text-gray-400">{stockCountLabel}</span>}
           </>
         }
@@ -935,7 +935,7 @@ function EqualWeightToggleSwitch({
       labelSuffix={
         <>
           <span className="text-gray-500">↔ {avgChangeRateUseSimple ? '시총 가중' : '동일 가중'}</span>
-          <SettingHelpIcon label="등락률 평균" description={"업종 등락률을 시가총액 가중\n또는 동일 가중으로 계산합니다."} />
+          <SettingHelpBubble label="등락률 평균" description={"업종 등락률을 시가총액 가중\n또는 동일 가중으로 계산합니다."} />
         </>
       }
       forceLabelWhite
@@ -993,7 +993,7 @@ function SettingsTaxonomySelector({
         <p className={`${FONT_BAR_TIME} mt-2 flex items-center justify-center gap-1.5 whitespace-nowrap text-xs text-gray-400`}>
           <span className="flex items-center">
             업데이트
-            <SettingHelpIcon
+            <SettingHelpBubble
               label="업데이트"
               // 말풍선마다 주어를 빨간 굵은 글씨로 강조한다(누적/따로 말풍선의 전일·당일과 같은 모양). 조사(가)는 강조하지 않는다.
               description={
@@ -1037,7 +1037,7 @@ function SettingsAverageModeSelector({
     <div className="settings-first-stock-size mb-6 pt-5 pb-6 text-white">
       <p className="flex items-center text-[15px]">
         <span className="settings-section-num">등락률 평균</span>
-        <SettingHelpIcon label="등락률 평균" description={"업종 등락률 계산에 적용할\n평균 방식을 선택합니다."} />
+        <SettingHelpBubble label="등락률 평균" description={"업종 등락률 계산에 적용할\n평균 방식을 선택합니다."} />
       </p>
       <div role="radiogroup" aria-label="등락률 평균" className="mt-3 grid grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
         {options.map(option => (
@@ -1075,7 +1075,7 @@ export function SettingsStockSizeSelector({
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <SettingTitle bookmarkId="boxSize" help className="text-[15px]">박스 크기</SettingTitle>
-          <SettingHelpIcon bookmarkId="boxSize" label="박스 크기" description={"박스 면적은 시가총액^(비율÷100)으로 계산합니다.\n0%는 모든 종목을 같은 크기로 표시합니다.\n50%는 시가총액의 제곱근 비율로 표시합니다.\n100%는 시가총액에 비례해 표시합니다."} />
+          <SettingHelpBubble bookmarkId="boxSize" label="박스 크기" description={"박스 면적은 시가총액^(비율÷100)으로 계산합니다.\n0%는 모든 종목을 같은 크기로 표시합니다.\n50%는 시가총액의 제곱근 비율로 표시합니다.\n100%는 시가총액에 비례해 표시합니다."} />
         </div>
         <span className="text-sm text-gray-400">{marketCapRatio}%</span>
       </div>
@@ -1470,7 +1470,7 @@ export function SettingsSectorLevelSection({
             <div className="flex max-w-[16rem] items-center justify-between">
               <span className="flex items-center text-left text-[15px] text-white">
                 <SettingTitle bookmarkId="textThreshold" help>텍스트 표시 기준</SettingTitle>
-                <SettingHelpIcon
+                <SettingHelpBubble
                   bookmarkId="textThreshold"
                   label="텍스트 표시 기준"
                   description={"기준 퍼센트는 지도 전체 면적 대비\n종목 박스 면적입니다."}
@@ -1539,7 +1539,7 @@ export function SettingsSectorLevelSection({
             <div className="settings-fifth-stock-popup mt-6 text-sm">
               <span className="flex max-w-[16rem] items-center text-left text-[15px] text-white">
                 <span className="settings-section-num">종목 정보</span>
-                <SettingHelpIcon label="종목 정보" description={"업종 정보는 우클릭으로만\n열 수 있습니다."} />
+                <SettingHelpBubble label="종목 정보" description={"업종 정보는 우클릭으로만\n열 수 있습니다."} />
               </span>
               <SettingDescription>종목 정보를 여는 방식</SettingDescription>
               <div
@@ -1881,7 +1881,7 @@ export function SettingsStrongIndustryColorSection({
     <div className={`settings-first-strong-color text-white ${bookmark.mode === 'bookmark' ? bookmarkItemClass(bookmark, 'strongColor') : 'pt-5'}`}>
       <p className="flex items-center text-[15px]">
         <SettingTitle bookmarkId="strongColor" help>강조 색상</SettingTitle>
-        <SettingHelpIcon
+        <SettingHelpBubble
           bookmarkId="strongColor"
           label="강조 색상"
           description={<>지도 내 업종명(대분류)과<br /><span className="inline-block whitespace-nowrap font-bold">2-4) 강세 표시</span>의 색상을 설정합니다.</>}

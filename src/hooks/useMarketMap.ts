@@ -20,7 +20,7 @@ export function useMarketMap(
   })
 }
 
-// 로그인 없이 읽는 종목 공통 정보 — 읽기 전용 시트가 NXT 여부·시장·거래소 업종명을 얻는다.
+// 로그인 없이 읽는 종목 공통 정보 — 읽기 전용 시트가 NXT 여부·시장·거래소 분류명을 얻는다.
 export function useStockCatalog(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: marketMapKeys.stockCatalog(),

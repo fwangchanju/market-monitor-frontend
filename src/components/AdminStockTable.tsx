@@ -55,7 +55,7 @@ const COLUMNS: { key: SortKey; header: string; width: string; align: 'center' | 
   { key: 'alias', header: '약칭', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.alias), align: 'left' },
   { key: 'totalMarketValue', header: '시가총액', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.totalMarketValue), align: 'right' },
   { key: 'market', header: '마켓', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.market), align: 'center' },
-  { key: 'originCategoryName', header: '섹터', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.industry), align: 'left' },
+  { key: 'originCategoryName', header: '거래소 분류', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.industry), align: 'left' },
   { key: 'parentSectorName', header: '대분류', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.parentSector), align: 'right' },
   { key: 'midSectorName', header: '중분류', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.midSector), align: 'right' },
   { key: 'subSectorName', header: '소분류', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.subSector), align: 'right' },
@@ -958,7 +958,7 @@ export default function AdminStockTable({
   const [sortDirection, setSortDirection] = usePersistedState<SortDirection>('adminStockTable.sortDirection', 'desc')
   const [isPending, startTransition] = useTransition()
   // 헤더가 sticky + 스크롤 컨테이너(overflow-auto) 안에 있어서, 그 위로 뜨는 툴팁은 일반 absolute로는
-  // 부모의 overflow에 잘린다 — body에 포털로 그려서 잘리지 않게 한다(MarketMapBox 등과 동일한 패턴).
+  // 부모의 overflow에 잘린다 — body에 포털로 그려서 잘리지 않게 한다(StockBox 등과 동일한 패턴).
   const [snapshotTooltipPos, setSnapshotTooltipPos] = useState<{ left: number; top: number } | null>(null)
 
   const assignStockSector = useAssignStockSector()
@@ -1362,10 +1362,10 @@ export default function AdminStockTable({
             pushUndo({ type: 'bulkSector', sectorName, after: sectorId, entries })
           }
           if (result.failedStockCodes.length === 0) {
-            appAlert(`섹터: ${sectorName}\n일괄 적용 완료되었습니다.`)
+            appAlert(`업종: ${sectorName}\n일괄 적용 완료되었습니다.`)
           } else {
             appAlert(
-              `섹터: ${sectorName}\n다음 종목은 반영되지 않았습니다:\n${result.failedStockCodes.join(', ')}`,
+              `업종: ${sectorName}\n다음 종목은 반영되지 않았습니다:\n${result.failedStockCodes.join(', ')}`,
             )
           }
         },
@@ -1448,7 +1448,7 @@ export default function AdminStockTable({
         ...(isAdmin ? { 약칭: item.alias ?? '' } : {}),
         시가총액: item.totalMarketValue ?? '',
         마켓: display.market,
-        '업종': display.originCategoryName,
+        '거래소 분류': display.originCategoryName,
         '대분류': display.parentSectorName,
         '중분류': display.midSectorName,
         '소분류': display.subSectorName,

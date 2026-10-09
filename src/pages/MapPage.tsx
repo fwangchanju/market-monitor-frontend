@@ -16,9 +16,10 @@ import SettingsSidebar, {
   type SettingsSidebarSectionId,
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
+import Toolbar from '@/components/Toolbar'
 import Treemap from '@/components/Treemap'
 import { ChangeRateModeToggle, MarketDropdown, PeriodDropdown } from '@/components/MarketMapControls'
-import MarketMapLegendBar from '@/components/MarketMapLegendBar'
+import ChangeRateBar from '@/components/ChangeRateBar'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
 import { HINT_BUBBLE_COLOR_CLASS } from '@/components/hintBubbleStyle'
 import EmptyMessage, { EMPTY_DATA_MESSAGE } from '@/components/EmptyMessage'
@@ -460,7 +461,7 @@ export default function MapPage() {
           <div ref={captureRef} data-captureid={CAPTURE_ID.MAP} data-capture-ready={!isLoading} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black">
             {/* 왼쪽은 마켓·기간·시계·시간대 묶음, 오른쪽 끝은 프로필(사진 + 거래소·MARKETRY). 두 묶음이 같은 줄에서 서로 밀어내므로
                 창이 좁아져도 겹치지 않고, 부족하면 오른쪽 글자가 먼저 줄어든다. */}
-            <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-[7px] text-sm font-bold text-white">
+            <Toolbar>
               <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
                 <MarketDropdown
                   market={market}
@@ -493,7 +494,7 @@ export default function MapPage() {
               </div>
               {/* 맨 오른쪽 — 분류명을 설정창 업종 분류 선택 버튼 모양으로 표시하고, 좁아지면 이름을 줄인다. 로딩·오류·빈 화면에서도 제자리에 둔다. */}
               <div className={`${FONT_BAR_MODE_STATUS} flex min-w-0 items-center justify-end text-gray-400`}>{modeStatusText}</div>
-            </div>
+            </Toolbar>
             <div className="flex min-h-0 flex-1">
               <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-black">
               {/* NXT 단독 시간대 공지 — 그 시간대에만 보여주는 알림이다. 닫을 수 있고, 시간대가 끝났다가 다시 오면 또 나온다. */}
@@ -607,7 +608,7 @@ export default function MapPage() {
                 <div className="flex h-7 min-w-0 items-center">
                   <DisclaimerNotice />
                 </div>
-                <MarketMapLegendBar swatches={settingsModalProps.legendSwatches} />
+                <ChangeRateBar swatches={settingsModalProps.legendSwatches} />
               </div>
               </div>
             </div>
