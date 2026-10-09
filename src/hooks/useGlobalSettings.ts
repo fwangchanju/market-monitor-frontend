@@ -588,9 +588,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     setColorCustomOn(on)
   }
 
-  // Basis 선택(MARKETRY / 한국거래소 / 내 분류). 내 분류만 로그인이 필요하다. 거래소는 KRX·NXT를 합친 한 칸이고, 시간대에 따라
+  // Basis 선택(MARKETRY / 거래소 / 내 분류). 내 분류만 로그인이 필요하다. 거래소는 KRX·NXT를 합친 한 칸이고, 시간대에 따라
   // NXT 거래 종목만 남길지 자동으로 정한다(taxonomy 값은 그 결과로 'KRX' 또는 'NXT'가 된다).
-  // 비로그인이 내 분류를 누르면 로그인 안내만 띄우고, 보던 분류(MARKETRY 또는 한국거래소)에 그대로 머문다.
+  // 비로그인이 내 분류를 누르면 로그인 안내만 띄우고, 보던 분류(MARKETRY 또는 거래소)에 그대로 머문다.
   // 새로고침 직후처럼 로그인 여부를 아직 모르는 동안은 안내를 띄우지 않고 선택만 받는다.
   const handleSelectTaxonomy = (next: TaxonomyKey) => {
     if (next === 'MINE' && !isLoggedIn && !isSessionLoading) {

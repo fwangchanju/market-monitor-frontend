@@ -29,8 +29,8 @@
 | 가리키는 것 | 코드 이름 | 화면 이름 |
 |---|---|---|
 | 사각형으로 쪼갠 지도 그림 | `Treemap` | 트리맵 |
-| MARKETRY / 한국거래소 / 내 분류 선택 | `Taxonomy` (`TaxonomyKey`, `useTaxonomySelection`, `SettingsTaxonomySelector`) | **Basis** (설정창 제목) |
-| 분류 값 | `MARKETRY` · `KRX` · `MINE` · `NXT` | MARKETRY · 한국거래소 · 내 분류 |
+| MARKETRY / 거래소 / 내 분류 선택 | `Taxonomy` (`TaxonomyKey`, `useTaxonomySelection`, `SettingsTaxonomySelector`) | **Basis** (설정창 제목) |
+| 분류 값 | `MARKETRY` · `KRX` · `MINE` · `NXT` | MARKETRY · 거래소 · 내 분류 |
 | 페이지 | `MapPage` · `GroupPage` · `CustomPage` | Map · Group · Custom |
 | 상단 영역의 메뉴 줄 | `NavSubBar` | 메뉴 줄 |
 | 시장 선택 드롭다운 (Map·Group 공용) | `MarketDropdown` | 시장 드롭다운 |

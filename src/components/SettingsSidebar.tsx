@@ -1,3 +1,4 @@
+import { CountLabelWithBadge } from '@/components/KindBadge'
 import { Children, Fragment, createContext, isValidElement, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { DepthMetric } from '@/hooks/useGlobalSettings'
@@ -799,6 +800,50 @@ function SingleValueSlider({
 // 자체는 안 건드려도 된다.
 
 // 그룹 페이지 등락률 평균 방식 — 시총 가중/동일 가중 중 하나를 고른다.
+export type SectorStockScope = 'MAP' | 'ALL'
+
+// 그룹 페이지 "집계 대상 종목" — 업종 평균과 종목 수에 어떤 종목을 넣을지 고른다.
+// 맵 페이지 기준: 지도 설정창에서 제외한 업종·시가총액 구간을 그대로 따른다. 전체: 제외 설정을 무시하고 전체 종목을 넣는다.
+export function SettingsSectorStockScopeSection({
+  scope,
+  onChange,
+}: {
+  scope: SectorStockScope
+  onChange: (scope: SectorStockScope) => void
+}) {
+  const options: { value: SectorStockScope; label: string }[] = [
+    { value: 'MAP', label: '맵 페이지 기준' },
+    { value: 'ALL', label: '전체' },
+  ]
+  return (
+    <div className="settings-first-depth-level text-sm">
+      <span className="flex max-w-[16rem] items-center text-left text-[15px] font-medium leading-[22px] text-white">
+        <span>집계 대상 종목</span>
+      </span>
+      <SettingDescription>업종 평균에 넣을 종목</SettingDescription>
+      <div role="radiogroup" aria-label="집계 대상 종목" className="mt-4 grid max-w-[16rem] settings-control-inset grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
+        {options.map(option => {
+          const selected = scope === option.value
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(option.value)}
+              className={`min-h-9 rounded px-1 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
+                selected ? 'bg-[var(--accent)] text-black' : 'border-0 bg-transparent text-gray-300 hover:text-white'
+              }`}
+            >
+              {option.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function SettingsAverageModeSection({
   avgChangeRateUseSimple,
   onChange,
@@ -900,8 +945,8 @@ export function SettingsCustomModeSection({
         labelClassName="text-base settings-section-bullet"
         labelSuffix={
           <>
-            <SettingHelpBubble label="커스텀 모드" description="내가 구성한 업종 분류를 지도에 적용합니다." />
-            {stockCountLabel && <span className="text-sm text-gray-400">{stockCountLabel}</span>}
+            <SettingHelpBubble label="커스텀 모드" description="내 분류를 지도에 적용합니다." />
+            {stockCountLabel && <span className="text-sm text-gray-400"><CountLabelWithBadge label={stockCountLabel} /></span>}
           </>
         }
       />
@@ -957,7 +1002,7 @@ function SettingsTaxonomySelector({
   // KRX와 NXT는 "거래소" 한 칸으로 합쳤고, 지금 어느 쪽 종목을 보여줄지는 시간대가 정한다. 내 분류는 로그인이 필요하다(고르면 로그인 창이 뜬다).
   const options: { key: TaxonomyKey; label: string }[] = [
     { key: 'MARKETRY', label: TAXONOMY_NAMES.MARKETRY.tab },
-    { key: 'KRX', label: '한국거래소' },
+    { key: 'KRX', label: '거래소' },
     { key: 'MINE', label: TAXONOMY_NAMES.MINE.tab },
   ]
   const isExchange = taxonomy === 'KRX' || taxonomy === 'NXT'
@@ -999,7 +1044,7 @@ function SettingsTaxonomySelector({
               description={
                 isExchange ? (
                   <>
-                    <b className="text-red-600">키움 REST API</b>로 받은{'\n'}종목·업종 정보를 서버에{'\n'}마지막으로 동기화한 시각입니다.{'\n\n'}시세 갱신 시각이나 한국거래소의{'\n'}공식 분류 변경 시각과는 다릅니다.
+                    <b className="text-red-600">키움증권</b>에서 받은{'\n'}종목·업종 정보를 서버에{'\n'}마지막으로 동기화한 시각입니다.{'\n\n'}시세 갱신 시각이나 거래소의{'\n'}공식 분류 변경 시각과는 다릅니다.
                   </>
                 ) : taxonomy === 'MINE' ? (
                   <>
@@ -2147,25 +2192,26 @@ export default function SettingsSidebar({
     >
       <div className="flex shrink-0 items-center border-b border-gray-500 px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
-          <p className="font-roboto-latin flex h-7 items-center whitespace-nowrap text-lg font-bold leading-none text-white">
+          <p className="font-roboto-latin flex h-7 min-w-[72.75px] items-center whitespace-nowrap text-lg font-bold leading-none text-white">
+            {/* 제목 칸 최소 폭은 가장 긴 제목(Custom)에 맞춘 값이라 Map·Group에서도 옆의 종목/업종 배지가 같은 자리에 온다. */}
             {/* 아래 Basis 제목 앞의 막대와 같은 모양·같은 자리(왼쪽 여백 16px)다. */}
             <span aria-hidden="true" className="mr-[6px] inline-block h-5 w-1 shrink-0 rounded-sm bg-[var(--brand)]" />
             {pageLabel ?? '설정'}
           </p>
           {stockCountLabel && (
-            <span className="flex h-7 w-[7rem] shrink-0 items-center justify-end whitespace-nowrap text-right text-sm leading-none text-gray-400">
-              {stockCountLabel}
+            <span className="flex h-7 w-[7rem] shrink-0 items-center justify-start whitespace-nowrap text-left text-sm leading-none text-gray-400">
+              <CountLabelWithBadge label={stockCountLabel} />
             </span>
           )}
         </div>
         {/* 바꾼 값은 임시값이라 저장을 눌러야 서버에 올라간다. 초기화는 임시값을 버리고 저장값으로 돌아간다. 비로그인은 저장할 곳이 없어 로그인 창을 띄운다. */}
-        {showPreferenceActions && <div className="ml-auto mr-2 flex shrink-0 items-center gap-3">
+        {showPreferenceActions && <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <button type="button" aria-label="초기화" disabled={isPreferenceFeedbackActive} onClick={async () => {
               if (hasDrafts && await appConfirm('기존 저장값으로 되돌리시겠습니까?')) runPreferenceAction(discardDrafts)
             }} className="group relative flex border-0 bg-transparent p-0 text-gray-400 hover:text-white">
             <HeaderButtonHint>{'기존 저장값으로 되돌리기'}</HeaderButtonHint>
             <svg viewBox="0 0 16 16" className="h-[18px] w-[18px]" aria-hidden="true">
-              <path d="M2.5 8a5.5 5.5 0 1 0 1.8-4.07M2.5 2.5v3h3" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M2.5 8a5.5 5.5 0 1 0 1.8-4.07M2.5 2.5v3h3" fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
           <button
@@ -2182,7 +2228,7 @@ export default function SettingsSidebar({
             <HeaderButtonHint>{'변경사항 저장하기'}</HeaderButtonHint>
             {hasDrafts && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[var(--brand)]" />}
             <svg viewBox="0 0 16 16" className="h-[18px] w-[18px]" aria-hidden="true">
-              <path d="M2.5 2.5h8l3 3v8h-11zM5 2.5v3.5h5V2.5M5 13.5V9h6v4.5" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M2.5 2.5h8l3 3v8h-11zM5 2.5v3.5h5V2.5M5 13.5V9h6v4.5" fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
         </div>}

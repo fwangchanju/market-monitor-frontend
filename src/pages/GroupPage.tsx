@@ -5,6 +5,8 @@ import NavSubBar from '@/components/NavSubBar'
 import { ChangeRateModeToggle, MarketDropdown, PeriodDropdown } from '@/components/MarketMapControls'
 import SettingsSidebar, {
   SettingsAverageModeSection,
+  SettingsSectorStockScopeSection,
+  type SectorStockScope,
   SettingsBeforeMinutesSection,
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
@@ -14,19 +16,21 @@ import Toolbar from '@/components/Toolbar'
 import { REFRESH_FEEDBACK_MIN_DURATION_MS } from '@/utils/uiFeedback'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
 import ChangeRateBar from '@/components/ChangeRateBar'
-import { TAXONOMY_NAMES } from '@/utils/taxonomyNames'
+import TaxonomyBadge from '@/components/TaxonomyBadge'
 import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
-import { computeSectorAverage } from '@/utils/sectorAverage'
+import { usePageSetting } from '@/hooks/usePageSetting'
+import { collectItems, computeSectorAverage } from '@/utils/sectorAverage'
+import { collectAllItems, filterTreeByExclusions } from '@/hooks/useFilteredMarketMapTree'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/components/NavBarPageActions'
 import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload, downloadDataUrl, captureFileName } from '@/utils/captureToDownload'
-import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
+import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toCount, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { marketRoute } from '@/utils/marketRoute'
 import {
   resolveMarketMapColor,
@@ -189,6 +193,12 @@ export default function GroupPage() {
     colorScale,
   } = useGlobalSettings({ allowChangeRateMode: true })
 
+  // 집계 대상 종목: 맵 페이지면 지도 설정창의 제외 기준을 따르고, 전체 포함이면 제외 설정 없이 전체 종목으로 계산한다.
+  const [sectorStockScope, setSectorStockScope] = usePageSetting<SectorStockScope>('groupPage.sectorStockScope', 'MAP')
+  const isAllStocks = sectorStockScope === 'ALL'
+  const scopedExcludedSectorIds = useMemo(() => (isAllStocks ? new Set<number>() : excludedSectorIds), [isAllStocks, excludedSectorIds])
+  const scopedExcludedTiers = useMemo(() => (isAllStocks ? new Set<string>() : excludedMarketValueTiers), [isAllStocks, excludedMarketValueTiers])
+
   // now는 여기서 따로 조회하지 않는다 — useGlobalSettings()가 이미 부르는 useMarketMap(market, source)
   // 결과(data)를 그대로 쓴다. before는 그 now.snapshotTime에서 계산한 시각을 쌍으로 묶어 조회한다
   // (marketry-backend 지시서 결정 4) — 이렇게 해야 재조회로 now가 새 tick으로 바뀌는 순간에도
@@ -252,11 +262,7 @@ export default function GroupPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 파라미터가 있을 때만 반응하면 됨
   }, [searchParams])
   // 맵·커스텀 페이지와 같은 청록색 분류자명 버튼을 표시한다.
-  const modeStatusText = (
-    <span className="flex min-w-0 items-center justify-end">
-      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{TAXONOMY_NAMES[settingsModalProps.taxonomy].title}</span>
-    </span>
-  )
+  const modeStatusText = <TaxonomyBadge taxonomy={settingsModalProps.taxonomy} />
 
   const { isOnLeft: isSettingsOnLeft, toggleSide: toggleSettingsSide } = useSettingsSidebarSide()
   const [isShareOpen, setIsShareOpen] = useState(false)
@@ -296,11 +302,18 @@ export default function GroupPage() {
     copyStatus === 'copying' ? 'Copying' : copyStatus === 'copied' ? 'Copied' : copyStatus === 'error' ? 'Failed' : 'Copy'
   const downloadLabel = downloadStatus === 'error' ? '다운로드 실패' : '다운로드'
 
-  // 대상 섹터는 트리의 최상위 노드(response.items)다. 설정 사이드바의 "제외 설정"(섹터 기준)에
-  // 걸린 섹터는 지도 페이지와 동일하게 여기서도 뺀다. now/before 짝은 sectorId가 아니라
-  // sectorName으로 맞춘다 — 기본 모드 노드는 sectorId가 전부 0(NO_SECTOR_ID)이라 id로는 짝을
-  // 맞출 수 없다(marketry-backend 지시서 결정 5). ALL_STOCK은 응답 하나가 이미 두 마켓을 합친
-  // 트리라 마켓별로 따로 합칠 필요가 없다.
+  // 설정창 위쪽 "nn/nn종목" — 분모는 지금 시장의 모든 종목, 분자는 지도 설정창과 같은 기준(제외한 업종은 하위 업종까지,
+  // 제외한 시가총액 구간)으로 걸러 남은 종목이다.
+  const stockCountLabel = useMemo(() => {
+    const nodes = displayNow?.items ?? []
+    const total = nodes.reduce((sum, node) => sum + collectItems(node).length, 0)
+    const included = filterTreeByExclusions(nodes, scopedExcludedSectorIds, scopedExcludedTiers).reduce(
+      (sum, node) => sum + collectAllItems(node).length,
+      0,
+    )
+    return `${toCount(included)}/${toCount(total)}종목`
+  }, [displayNow, scopedExcludedSectorIds, scopedExcludedTiers])
+
   const charts = useMemo(() => {
     if (!displayNow) return { current: buildRankChart([]), delta: buildRankChart([]) }
 
@@ -312,9 +325,9 @@ export default function GroupPage() {
     const deltaEntries: RankedItem[] = []
 
     for (const node of displayNow.items) {
-      if (excludedSectorIds.has(node.sectorId)) continue
+      if (scopedExcludedSectorIds.has(node.sectorId)) continue
 
-      const nowAverage = computeSectorAverage(node, excludedMarketValueTiers)
+      const nowAverage = computeSectorAverage(node, scopedExcludedTiers)
       const nowValue = avgChangeRateUseSimple ? nowAverage.simpleAvg : nowAverage.weightedAvg
       // 새 트리는 종목이 하나도 없는 최상위 섹터도 노드로 준다 — 그런 섹터는 평균이 null이라
       // 두 그래프 모두에서 뺀다(옛 /api/sector는 애초에 그런 섹터를 안 내려줬다).
@@ -323,7 +336,7 @@ export default function GroupPage() {
 
       const beforeNode = beforeByName.get(node.sectorName)
       if (!beforeNode) continue
-      const beforeAverage = computeSectorAverage(beforeNode, excludedMarketValueTiers)
+      const beforeAverage = computeSectorAverage(beforeNode, scopedExcludedTiers)
       const beforeValue = avgChangeRateUseSimple ? beforeAverage.simpleAvg : beforeAverage.weightedAvg
       if (beforeValue === null) continue
       deltaEntries.push({
@@ -355,7 +368,7 @@ export default function GroupPage() {
     }
 
     return { current: buildRankChart(currentEntries), delta: buildRankChart(deltaEntries) }
-  }, [displayNow, displayBefore, excludedSectorIds, excludedMarketValueTiers, avgChangeRateUseSimple, changeRateMode])
+  }, [displayNow, displayBefore, scopedExcludedSectorIds, scopedExcludedTiers, avgChangeRateUseSimple, changeRateMode])
 
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden bg-black">
@@ -519,11 +532,13 @@ export default function GroupPage() {
               isOnLeft={isSettingsOnLeft}
               onToggleSide={toggleSettingsSide}
               pageLabel="Group"
+              stockCountLabel={stockCountLabel}
               taxonomyAtBottom
               taxonomyNotice="Map 설정과 중복 사항은 동일 적용됩니다."
               snapshotTime={data?.taxonomyUpdatedAt}
               plainContent={
                 <>
+                  <SettingsSectorStockScopeSection scope={sectorStockScope} onChange={setSectorStockScope} />
                   <SettingsAverageModeSection
                     avgChangeRateUseSimple={avgChangeRateUseSimple}
                     onChange={onChangeAvgChangeRateUseSimple}

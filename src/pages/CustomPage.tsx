@@ -23,7 +23,7 @@ import { useSession, useIsLoggedIn } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
 import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload, downloadDataUrl, captureFileName } from '@/utils/captureToDownload'
-import { TAXONOMY_NAMES } from '@/utils/taxonomyNames'
+import TaxonomyBadge from '@/components/TaxonomyBadge'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
@@ -110,7 +110,7 @@ export default function CustomPage() {
   } = useStockSectors({ enabled: isLoggedIn })
 
   // 선택한 분류에 맞는 최종 갱신 시각을 가져오며 거래소 시트에서는 본문 데이터도 함께 쓴다.
-  // 비로그인에게는 시트가 마켓트리·한국거래소뿐이라 지도 조회는 항상 열려 있다. 내 분류는 로그인과 세션 확인을 마친 뒤에만 받는다.
+  // 비로그인에게는 시트가 마켓트리·거래소뿐이라 지도 조회는 항상 열려 있다. 내 분류는 로그인과 세션 확인을 마친 뒤에만 받는다.
   const canReadSheet = isLoggedIn || sheet !== 'MINE'
   const {
     data: taxonomyMap,
@@ -199,6 +199,7 @@ export default function CustomPage() {
       isSettingsOpen={isSettingsOpen}
       isNativeFullscreen={isNativeFullscreen}
       onToggleFullscreen={handleToggleNativeFullscreen}
+      showRefresh={false}
     />
   )
 
@@ -241,18 +242,13 @@ export default function CustomPage() {
                   mode={mode === 'stock' ? 'stock' : 'category'}
                   onSelect={path => navigate(path)}
                 />
-                {sheet === 'KRX' && (
-                  <span className="whitespace-nowrap text-sm font-normal text-gray-400">키움 REST API</span>
-                )}
               </div>
               {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다. */}
               {!isReadOnlySheet && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 min-w-0 flex-1 items-center" />}
               {/* 관리자만 — 내 분류를 MARKETRY로 올리고 이전 버전으로 되돌린다. */}
               {session?.role === 'ADMIN' && !isReadOnlySheet && <MarketryPublishControls />}
               <div className={`${FONT_BAR_MODE_STATUS} ml-2 flex min-w-0 items-center justify-end text-gray-400`}>
-                <span className="flex min-w-0 items-center justify-end">
-                  <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{TAXONOMY_NAMES[sheet].title}</span>
-                </span>
+                <TaxonomyBadge taxonomy={sheet} />
               </div>
             </div>
             <EmptyMessageAreaContext.Provider value={emptyMessageArea}>

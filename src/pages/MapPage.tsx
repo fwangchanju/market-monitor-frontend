@@ -40,7 +40,7 @@ import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toCount, toMarketMapSnapshotDateLa
 import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { ReturnArrowIcon } from '@/components/icons/MarketMapIcons'
-import { TAXONOMY_NAMES } from '@/utils/taxonomyNames'
+import TaxonomyBadge from '@/components/TaxonomyBadge'
 import { appAlert } from '@/utils/appDialogBus'
 import { mapStretchFor, mapTileMethod } from '@/utils/mapStretch'
 import { marketRoute } from '@/utils/marketRoute'
@@ -243,12 +243,8 @@ export default function MapPage() {
   const rawCurrentNode = findRawNodeByPath(rootNodes, path)
   const totalItemCount = collectRawItems(rawCurrentNode ? [rawCurrentNode] : rootNodes).length
 
-  // 상단 오른쪽 분류자명은 설정창의 업종 분류 선택 버튼과 같은 청록색 버튼으로 표시한다.
-  const modeStatusText = (
-    <span className="flex min-w-0 items-center justify-end">
-      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{TAXONOMY_NAMES[taxonomy].title}</span>
-    </span>
-  )
+  // 상단 오른쪽 분류 배지(설정창 분류 선택 버튼과 같은 청록색).
+  const modeStatusText = <TaxonomyBadge taxonomy={taxonomy} />
 
   // market은 이제 useGlobalSettings(useRouteAwareMarket)가 경로/쿼리를 반영해서 매 렌더 계산해준다 —
   // 여기서는 그 값이 바뀔 때(NavSubBar에서 마켓을 고르는 등) 드릴다운만 초기화한다. 첫 렌더는 초기화할

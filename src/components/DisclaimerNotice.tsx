@@ -11,11 +11,10 @@ const DISCLAIMER_LINES = [
 
 // 데이터별 출처. 새 외부 데이터를 쓰기 시작하면 여기에 한 줄을 더한다 — 말풍선은 이 목록을 그대로 그린다.
 const DATA_SOURCES: { data: string; source: string }[] = [
-  { data: '시세·등락률', source: '키움증권 REST API' },
-  { data: '종목 정보·시가총액', source: '키움증권 REST API' },
-  { data: '업종 이름', source: '키움증권 REST API' },
-  { data: 'NXT 거래 가능 종목', source: '키움증권, 넥스트레이드' },
-  { data: 'MARKETRY 분류', source: 'MARKETRY가 직접 분류' },
+  { data: '시세/등락률/종목 정보/시가총액/업종명', source: '키움증권' },
+  { data: '날짜/시간/거래 세션', source: '토스증권' },
+  { data: 'NXT 거래 가능 종목', source: '키움증권, NEXTRADE' },
+  { data: 'MARKETRY 분류', source: 'MARKETRY' },
   { data: '내 분류', source: '사용자가 직접 분류' },
 ]
 
@@ -72,7 +71,7 @@ function SourceHelpBubble() {
           <b>데이터 출처</b>
           {DATA_SOURCES.map(({ data, source }) => (
             <div key={data} className="mt-1">
-              <div className="text-gray-600">{data}</div>
+              <div className="font-bold text-red-600">{data}</div>
               <div className="pl-3">{source}</div>
             </div>
           ))}

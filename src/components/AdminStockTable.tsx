@@ -1780,7 +1780,7 @@ export default function AdminStockTable({
             )}
           </tbody>
           </table>
-          {/* 보여줄 종목이 없으면 한국거래소·MARKETRY 표와 같은 안내 글을 가운데에 보여준다. */}
+          {/* 보여줄 종목이 없으면 거래소·MARKETRY 표와 같은 안내 글을 가운데에 보여준다. */}
           {!isPending && sorted.length === 0 && <EmptyMessage message={items.length === 0 ? EMPTY_DATA_MESSAGE : EMPTY_SEARCH_MESSAGE} />}
         </div>
       </div>
