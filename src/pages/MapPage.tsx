@@ -249,7 +249,7 @@ export default function MapPage() {
   const taxonomyTitle = taxonomy === 'MINE' ? session?.nickname || TAXONOMY_NAMES.MINE.title : TAXONOMY_NAMES[taxonomy].title
   const modeStatusText = (
     <span className="flex min-w-0 items-center justify-end">
-      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">분류: {taxonomyTitle}</span>
+      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">*분류: {taxonomyTitle}</span>
     </span>
   )
 
