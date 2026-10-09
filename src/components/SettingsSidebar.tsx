@@ -900,7 +900,7 @@ export function SettingsCustomModeSection({
         labelClassName="text-base settings-section-bullet"
         labelSuffix={
           <>
-            <SettingHelpBubble label="커스텀 모드" description="내가 구성한 업종 분류를 지도에 적용합니다." />
+            <SettingHelpBubble label="커스텀 모드" description="내 분류를 지도에 적용합니다." />
             {stockCountLabel && <span className="text-sm text-gray-400">{stockCountLabel}</span>}
           </>
         }
