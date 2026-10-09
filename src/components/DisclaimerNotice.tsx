@@ -14,8 +14,8 @@ const DATA_SOURCES: { data: string; source: string }[] = [
   { data: '시세·등락률', source: '키움 REST API' },
   { data: '종목 정보·시가총액', source: '키움 REST API' },
   { data: '업종 이름', source: '키움 REST API' },
-  { data: 'NXT 거래 가능 종목', source: '키움증권, 넥스트레이드' },
-  { data: 'MARKETRY 분류', source: 'MARKETRY가 직접 분류' },
+  { data: 'NXT 거래 가능 종목', source: '키움, 넥스트레이드' },
+  { data: 'MARKETRY 분류', source: '마켓트리' },
   { data: '내 분류', source: '사용자가 직접 분류' },
 ]
 
