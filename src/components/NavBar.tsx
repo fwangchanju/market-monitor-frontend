@@ -38,8 +38,10 @@ export default function NavBar({ hideAccount = false }: { hideAccount?: boolean 
     try {
       await settleSessionRefresh()
       await devSignup()
-      // 전체 이동으로 이전 회원의 쿼리 캐시를 비우고, 비회원 확인 모드도 해제한다.
-      window.location.assign('/custom/stock?sheet=MINE&guest=0')
+      // 현재 화면을 다시 열어 이전 회원의 캐시를 비우고, 비회원 확인 모드만 해제한다.
+      const currentUrl = new URL(window.location.href)
+      currentUrl.searchParams.set('guest', '0')
+      window.location.assign(currentUrl.href)
     } catch {
       setDevSignupError('생성 실패: 백엔드 local 프로필을 확인하세요.')
       setIsDevSignupPending(false)
