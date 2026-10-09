@@ -818,7 +818,7 @@ export function SettingsSectorStockScopeSection({
   return (
     <div className="settings-first-depth-level text-sm">
       <span className="flex max-w-[16rem] items-center text-left text-[15px] font-medium leading-[22px] text-white">
-        <span>집계 대상 종목</span>
+        <span className="settings-plain-title">집계 대상 종목</span>
       </span>
       <SettingDescription>업종 평균에 넣을 종목</SettingDescription>
       <div role="radiogroup" aria-label="집계 대상 종목" className="relative mt-4 grid max-w-[16rem] settings-control-inset grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
@@ -870,7 +870,7 @@ export function SettingsAverageModeSection({
   return (
     <div className="settings-first-depth-level text-sm">
       <span className="flex max-w-[16rem] items-center text-left text-[15px] font-medium leading-[22px] text-white">
-        <span>등락률 기준</span>
+        <span className="settings-plain-title">등락률 기준</span>
       </span>
       <SettingDescription>업종 등락률 계산 기준</SettingDescription>
       <div role="radiogroup" aria-label="등락률 기준" className="mt-4 grid max-w-[16rem] settings-control-inset grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
@@ -915,7 +915,7 @@ export function SettingsBeforeMinutesSection({
   return (
     <div className="settings-second-depth-metric relative mt-6 text-sm">
       <span className="flex max-w-[16rem] items-center text-left text-[15px] font-medium leading-[22px] text-white">
-        <span>비교 시점</span>
+        <span className="settings-plain-title">비교 시점</span>
       </span>
       <SettingDescription>현재 등락률과 비교할 시점</SettingDescription>
       <div className="settings-slider-control mt-[18px]">
