@@ -3,7 +3,7 @@ import compositionIcon from '@/assets/settings-icons/composition.png'
 import colorsIcon from '@/assets/settings-icons/colors.svg'
 import bookmarkIcon from '@/assets/settings-icons/bookmark.svg'
 import industryIcon from '@/assets/settings-icons/industry.png'
-import stockDisplayIcon from '@/assets/settings-icons/stock-display.png'
+import stockDisplayIcon from '@/assets/settings-icons/stock-display.svg'
 
 export type SettingsSectionIconName = 'favorites' | 'composition' | 'industry' | 'stock-display' | 'colors'
 
@@ -25,7 +25,7 @@ const ICON_ERODE_RADIUS: Record<SettingsSectionIconName, number> = {
   favorites: 0.6,
   composition: 1.3,
   industry: 0.6,
-  'stock-display': 1.1,
+  'stock-display': 0,
   colors: 0.6,
 }
 
