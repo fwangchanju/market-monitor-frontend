@@ -193,7 +193,7 @@ export default function GroupPage() {
     colorScale,
   } = useGlobalSettings({ allowChangeRateMode: true })
 
-  // 업종 내 종목(임시): 맵 페이지면 지도 설정창의 제외 기준을 따르고, 전체 포함이면 제외 설정 없이 전체 종목으로 계산한다.
+  // 집계 대상 종목: 맵 페이지면 지도 설정창의 제외 기준을 따르고, 전체 포함이면 제외 설정 없이 전체 종목으로 계산한다.
   const [sectorStockScope, setSectorStockScope] = usePageSetting<SectorStockScope>('groupPage.sectorStockScope', 'MAP')
   const isAllStocks = sectorStockScope === 'ALL'
   const scopedExcludedSectorIds = useMemo(() => (isAllStocks ? new Set<number>() : excludedSectorIds), [isAllStocks, excludedSectorIds])
