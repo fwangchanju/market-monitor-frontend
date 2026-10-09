@@ -819,6 +819,10 @@ export function SettingsSectorStockScopeSection({
     <div className="settings-first-depth-level text-sm">
       <span className="flex max-w-[16rem] items-center text-left text-[15px] font-medium leading-[22px] text-white">
         <span>집계 대상 종목</span>
+        <SettingHelpBubble
+          label="집계 대상 종목"
+          description={<><b className="text-red-600">전체</b>를 고르면{'\n'}맵 페이지 등락률과{'\n'}다르게 집계됩니다.</>}
+        />
       </span>
       <SettingDescription>업종 평균에 넣을 종목</SettingDescription>
       <div role="radiogroup" aria-label="집계 대상 종목" className="mt-4 grid max-w-[16rem] settings-control-inset grid-cols-2 rounded-md border border-gray-600 bg-zinc-700 p-0.5">
@@ -840,11 +844,6 @@ export function SettingsSectorStockScopeSection({
           )
         })}
       </div>
-      {scope === 'ALL' && (
-        <p className="mt-2 max-w-[16rem] text-center text-xs leading-snug text-red-500">
-          맵 페이지 등락률과 다르게 집계됩니다.
-        </p>
-      )}
     </div>
   )
 }
@@ -2274,7 +2273,7 @@ export default function SettingsSidebar({
       <div aria-busy={isPreferenceFeedbackActive || undefined} className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="contents" inert={isPreferenceFeedbackActive || undefined}>
       {plainContent && (
-        <div data-align-second-heading className="settings-section-list settings-sidebar-tab-content min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-8 text-sm">
+        <div data-align-second-heading className="settings-section-list settings-plain-content settings-sidebar-tab-content min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-8 text-sm">
           {plainContent}
         </div>
       )}

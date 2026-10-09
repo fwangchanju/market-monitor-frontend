@@ -518,6 +518,20 @@ a { color: var(--accent-light); text-decoration: none; }
   display: block;
 }
 
+/* 그룹 페이지처럼 탭 없이 항목만 쌓는 설정 본문 — 첫 항목을 뺀 각 항목 위에 구분선을 둔다. */
+.settings-plain-content > * + * {
+  position: relative;
+}
+
+.settings-plain-content > * + *::before {
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: 0;
+  right: 0;
+  border-top: 1px solid rgb(255 255 255 / 12%);
+}
+
 /* 북마크 탭 — 각 항목을 같은 높이로 쌓고, 항목 사이에 구분선을 둔다. */
 .settings-bookmark-tab {
   padding-top: 20px;
