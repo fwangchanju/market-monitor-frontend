@@ -110,7 +110,7 @@ export default function CustomPage() {
   } = useStockSectors({ enabled: isLoggedIn })
 
   // 선택한 분류에 맞는 최종 갱신 시각을 가져오며 거래소 시트에서는 본문 데이터도 함께 쓴다.
-  // 비로그인에게는 시트가 마켓트리·한국거래소뿐이라 지도 조회는 항상 열려 있다. 내 분류는 로그인과 세션 확인을 마친 뒤에만 받는다.
+  // 비로그인에게는 시트가 마켓트리·거래소뿐이라 지도 조회는 항상 열려 있다. 내 분류는 로그인과 세션 확인을 마친 뒤에만 받는다.
   const canReadSheet = isLoggedIn || sheet !== 'MINE'
   const {
     data: taxonomyMap,

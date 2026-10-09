@@ -7,7 +7,7 @@ const BASE_LINKS = [
   { to: '/map/allstock', label: 'Map' },
   { to: '/group/allstock', label: 'Group' },
 ]
-// 비로그인에게도 열려 있다 — 마켓트리·한국거래소 시트는 읽고, 내 분류는 비어 있으며 수정하려 할 때 로그인 팝업이 뜬다.
+// 비로그인에게도 열려 있다 — 마켓트리·거래소 시트는 읽고, 내 분류는 비어 있으며 수정하려 할 때 로그인 팝업이 뜬다.
 const CUSTOM_LINK = { to: '/custom/sector', label: 'Custom' }
 
 interface Props {

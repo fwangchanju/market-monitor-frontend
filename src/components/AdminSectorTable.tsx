@@ -499,7 +499,7 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget, onCou
               </div>
             </div>
           ))}
-          {/* 업종이 하나도 없으면 한국거래소·MARKETRY 표와 같은 안내 글을 가운데에 보여준다. */}
+          {/* 업종이 하나도 없으면 거래소·MARKETRY 표와 같은 안내 글을 가운데에 보여준다. */}
           {viewSectors.length === 0 && <EmptyMessage message={sectors.length === 0 ? EMPTY_DATA_MESSAGE : EMPTY_SEARCH_MESSAGE} topClass="top-7" />}
         </div>
       </div>
