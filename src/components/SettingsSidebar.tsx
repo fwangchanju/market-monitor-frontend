@@ -836,15 +836,20 @@ export function SettingsSectorStockScopeSection({
               }`}
             >
               {option.label}
+              {/* 아이콘이 들어갈 자리(여백 4px + 16px)만큼 글자를 왼쪽으로 비켜 둬서, 아이콘이 글자 바로 옆에 붙어 보이게 한다. */}
+              {option.value === 'ALL' && <span aria-hidden="true" className="ml-1 inline-block w-4" />}
             </button>
           )
         })}
         {/* 전종목 버튼 안쪽 오른쪽 — 버튼 안에 버튼을 넣을 수 없어 같은 자리에 겹쳐 두고, 눌러도 선택이 바뀌지 않는다. translate를 쓰면 안쪽의 fixed 말풍선이 이 칸 기준으로 위치가 틀어져 inset-y-0으로 가운데에 둔다. 전종목이 선택되면 바탕이 밝아져 아이콘을 진하게 바꾼다. */}
-        <span className={`absolute inset-y-0 right-2 flex items-center ${scope === 'ALL' ? '[&_button]:text-gray-700 [&_button:hover]:text-black' : ''}`}>
-          <SettingHelpBubble
-            label="집계 대상 종목"
-            description={<><b className="text-red-600">전종목</b>을 선택하면{'\n'}맵 페이지 등락률과{'\n'}<b className="text-red-600">다르게 집계</b>될 수 있습니다.</>}
-          />
+        <span className={`pointer-events-none absolute inset-y-0 left-1/2 right-0.5 flex items-center justify-center text-xs font-medium ${scope === 'ALL' ? '[&_button]:text-gray-700 [&_button:hover]:text-black' : ''}`}>
+          <span aria-hidden="true" className="invisible whitespace-nowrap">전종목</span>
+          <span className="pointer-events-auto flex items-center">
+            <SettingHelpBubble
+              label="집계 대상 종목"
+              description={<><b className="text-red-600">전종목</b>을 선택하면{'\n'}맵 페이지 등락률과{'\n'}<b className="text-red-600">다르게 집계</b>될 수 있습니다.</>}
+            />
+          </span>
         </span>
       </div>
     </div>
