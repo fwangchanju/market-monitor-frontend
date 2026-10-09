@@ -199,6 +199,7 @@ export default function CustomPage() {
       isSettingsOpen={isSettingsOpen}
       isNativeFullscreen={isNativeFullscreen}
       onToggleFullscreen={handleToggleNativeFullscreen}
+      showRefresh={false}
     />
   )
 
