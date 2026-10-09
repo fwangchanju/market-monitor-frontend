@@ -17,7 +17,7 @@ export function CountLabelWithBadge({ label }: { label: string }) {
   const match = /^(.*?)(종목|업종)$/.exec(label)
   if (!match) return <>{label}</>
   return (
-    <span className="inline-flex items-center gap-1">
+    <span className="inline-flex items-center gap-1.5">
       <KindBadge kind={match[2] as Kind} onDark />
       <span>{match[1]}</span>
     </span>
