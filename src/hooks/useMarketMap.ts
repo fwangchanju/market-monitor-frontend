@@ -3,11 +3,11 @@ import { getMarketMap, getStockCatalog, type ChangeRateBasis } from '@/api/marke
 import { marketMapKeys } from './queryKeys'
 import { MARKET_DATA_CACHE, STATIC_REFERENCE_CACHE } from './cacheConfig'
 import type { MarketQuery } from '@/types/api'
-import type { ClassificationSource } from '@/utils/taxonomyNames'
+import type { TaxonomySource } from '@/utils/taxonomyNames'
 
 export function useMarketMap(
   market: MarketQuery,
-  source: ClassificationSource,
+  source: TaxonomySource,
   nxtOnly: boolean,
   options?: { enabled?: boolean; basis?: ChangeRateBasis },
 ) {

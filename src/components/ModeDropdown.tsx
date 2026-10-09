@@ -5,7 +5,7 @@ const OPTIONS = [
   { mode: 'stock', label: 'STOCK', to: '/custom/stock' },
 ] as const
 
-export default function CustomManageModeCombobox({ mode, onSelect }: {
+export default function ModeDropdown({ mode, onSelect }: {
   mode: 'category' | 'stock'
   onSelect: (path: string) => void
 }) {

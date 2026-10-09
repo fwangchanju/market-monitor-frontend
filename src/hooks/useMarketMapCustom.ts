@@ -29,7 +29,7 @@ interface StockSectorListResponse {
   items: StockSectorListItem[]
 }
 
-function invalidateCustomClassification(queryClient: ReturnType<typeof useQueryClient>) {
+function invalidateCustomTaxonomy(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({
     queryKey: marketMapKeys.all,
     predicate: ({ queryKey }) =>
@@ -59,7 +59,7 @@ export function useCreateSector() {
     mutationFn: ({ name, parentId }: { name: string; parentId: number | null }) => createSector(name, parentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() })
-      invalidateCustomClassification(queryClient)
+      invalidateCustomTaxonomy(queryClient)
     },
   })
 }
@@ -70,7 +70,7 @@ export function useRenameSector() {
     mutationFn: ({ id, name }: { id: number; name: string }) => renameSector(id, name),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() })
-      invalidateCustomClassification(queryClient)
+      invalidateCustomTaxonomy(queryClient)
     },
   })
 }
@@ -81,7 +81,7 @@ export function useReparentSector() {
     mutationFn: ({ id, parentId }: { id: number; parentId: number | null }) => reparentSector(id, parentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() })
-      invalidateCustomClassification(queryClient)
+      invalidateCustomTaxonomy(queryClient)
     },
   })
 }
@@ -92,7 +92,7 @@ export function useDeleteSector() {
     mutationFn: (id: number) => deleteSector(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() })
-      invalidateCustomClassification(queryClient)
+      invalidateCustomTaxonomy(queryClient)
     },
     meta: { skipGlobalError: true },
   })
@@ -143,7 +143,7 @@ export function useRestoreSnapshot() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customMarketMapKeys.sectors() })
       queryClient.invalidateQueries({ queryKey: customMarketMapKeys.currentSnapshot() })
-      invalidateCustomClassification(queryClient)
+      invalidateCustomTaxonomy(queryClient)
     },
   })
 }
@@ -168,7 +168,7 @@ function patchStockSectorId(queryClient: ReturnType<typeof useQueryClient>, stoc
       ? { ...old, items: old.items.map(item => (stockCodeSet.has(item.stockCode) ? { ...item, sectorId } : item)) }
       : old,
   )
-  invalidateCustomClassification(queryClient)
+  invalidateCustomTaxonomy(queryClient)
 }
 
 export function useAssignStockSector() {

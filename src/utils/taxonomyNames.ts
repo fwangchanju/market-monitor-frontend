@@ -2,7 +2,7 @@
 export type TaxonomyKey = 'KRX' | 'NXT' | 'MARKETRY' | 'MINE'
 
 // 서버 지도 요청의 source 값 — NXT는 거래소의 한 모습이라 따로 없다.
-export type ClassificationSource = 'KRX' | 'MARKETRY' | 'MINE'
+export type TaxonomySource = 'KRX' | 'MARKETRY' | 'MINE'
 
 export const TAXONOMY_NAMES = {
   // 지도 상단 표시(title)는 KRX와 NXT를 합친 거래소 분류 하나라 둘 다 같은 이름이다. 설정창의 "한국거래소" 버튼, 그룹 페이지와 같은 이름을 쓴다.
@@ -13,4 +13,4 @@ export const TAXONOMY_NAMES = {
 } as const
 
 // 설정창 아래쪽 선택 버튼 묶음(MARKETRY / 한국거래소 / 내 분류)의 제목. 이름을 또 바꿀 때는 여기만 고친다.
-export const CLASSIFICATION_SELECT_TITLE = 'Basis'
+export const TAXONOMY_SELECT_TITLE = 'Basis'

@@ -17,7 +17,7 @@ import SettingsSidebar, {
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Treemap from '@/components/Treemap'
-import { ChangeRateBasisToggle, MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/MarketMapControls'
+import { ChangeRateBasisToggle, MarketDropdown, PeriodDropdown } from '@/components/MarketMapControls'
 import MarketMapLegendBar from '@/components/MarketMapLegendBar'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
 import { HINT_BUBBLE_COLOR_CLASS } from '@/components/hintBubbleStyle'
@@ -462,14 +462,14 @@ export default function MapPage() {
                 창이 좁아져도 겹치지 않고, 부족하면 오른쪽 글자가 먼저 줄어든다. */}
             <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-[7px] text-sm font-bold text-white">
               <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
-                <MarketMapMarketCombobox
+                <MarketDropdown
                   market={market}
                   onSelect={selectedMarket => {
                     if (selectedMarket === market) handleGoToDepth(0)
                     else navigate(marketRoute('/map', selectedMarket))
                   }}
                 />
-                <MarketMapPeriodCombobox />
+                <PeriodDropdown />
                 {/* 로딩·오류·빈 화면에서도 시계·시간대·누적/따로를 제자리에 둔다. 데이터가 없으면 시각 글자만 비어 있다. */}
                 <>
                     <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
@@ -622,7 +622,7 @@ export default function MapPage() {
               onChangeBoxSizeMarketCapRatio={onChangeBoxSizeMarketCapRatio}
               pageLabel="Map"
               sectionOrder={MAP_SETTINGS_SECTION_ORDER}
-              classificationAtBottom
+              taxonomyAtBottom
               snapshotTime={data?.classificationUpdatedAt}
               stockCountLabel={`${toCount(visibleItems.length)}/${toCount(totalItemCount)}종목`}
               bookmarks={settingsBookmarks}
@@ -663,7 +663,7 @@ export default function MapPage() {
                 <SettingsSectorLevelSection {...settingsModalProps} showTopPick showStockDisplay={false} />
               </SettingsSidebarGroup>
               <SettingsSidebarGroup section="stockDisplay">
-                <SettingsSectorLevelSection {...settingsModalProps} showClassification={false} showDecimalPlaces />
+                <SettingsSectorLevelSection {...settingsModalProps} showTaxonomy={false} showDecimalPlaces />
               </SettingsSidebarGroup>
               {/* 북마크 탭 — 원래 탭의 항목을 같은 순서로 다시 그리고, 북마크한 항목만 보인다. */}
               <SettingsSidebarGroup section="favorites">
@@ -692,7 +692,7 @@ export default function MapPage() {
                 <SettingsExcludeSection {...settingsModalProps} afterStockChange />
                 <SettingsSectorLevelSection {...settingsModalProps} showTopPick showStockDisplay={false} />
                 <SettingsStockSizeSelector marketCapRatio={boxSizeMarketCapRatio} onChangeMarketCapRatio={onChangeBoxSizeMarketCapRatio} />
-                <SettingsSectorLevelSection {...settingsModalProps} showClassification={false} showDecimalPlaces />
+                <SettingsSectorLevelSection {...settingsModalProps} showTaxonomy={false} showDecimalPlaces />
                 {strongIndustryColor && onChangeStrongIndustryColor && (
                   <SettingsStrongIndustryColorSection color={strongIndustryColor} onChange={onChangeStrongIndustryColor} />
                 )}

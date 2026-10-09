@@ -4,7 +4,7 @@ import { marketMapKeys } from './queryKeys'
 import { subtractMinutesFromSnapshotTime } from '@/utils/snapshotTime'
 import { isAfterHoursSelectable } from '@/utils/tradingWindow'
 import type { MarketMapResponse, MarketQuery } from '@/types/api'
-import type { ClassificationSource } from '@/utils/taxonomyNames'
+import type { TaxonomySource } from '@/utils/taxonomyNames'
 
 export interface SectorMarketMapPair {
   now: MarketMapResponse
@@ -37,7 +37,7 @@ function isValidBefore(response: MarketMapResponse, requestedSnapshotTime: strin
  */
 export function useSectorMarketMapPair(
   market: MarketQuery,
-  source: ClassificationSource,
+  source: TaxonomySource,
   nxtOnly: boolean,
   beforeMinutes: number,
   now: MarketMapResponse | undefined,

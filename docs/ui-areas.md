@@ -29,10 +29,32 @@
 | 가리키는 것 | 코드 이름 | 화면 이름 |
 |---|---|---|
 | 사각형으로 쪼갠 지도 그림 | `Treemap` | 트리맵 |
-| MARKETRY / 한국거래소 / 내 분류 선택 | `Taxonomy` (`TaxonomyKey`, `useTaxonomySelection`) | **Basis** (설정창 제목) |
+| MARKETRY / 한국거래소 / 내 분류 선택 | `Taxonomy` (`TaxonomyKey`, `useTaxonomySelection`, `SettingsTaxonomySelector`) | **Basis** (설정창 제목) |
 | 분류 값 | `MARKETRY` · `KRX` · `MINE` · `NXT` | MARKETRY · 한국거래소 · 내 분류 |
 | 페이지 | `MapPage` · `GroupPage` · `CustomPage` | Map · Group · Custom |
 | 상단 영역의 메뉴 줄 | `NavSubBar` | 메뉴 줄 |
+| 시장 선택 드롭다운 (Map·Group 공용) | `MarketDropdown` | 시장 드롭다운 |
+| 기간 선택 드롭다운 (Map·Group 공용) | `PeriodDropdown` | 기간 드롭다운 |
+| Custom 페이지의 업종·종목 전환 드롭다운 | `ModeDropdown` | 업종·종목 전환 드롭다운 |
 
 - `basis`는 코드에서 이미 일간/시간외 등락률 기준(`changeRateBasis`)이라서, 분류 선택 이름에는 쓰지 않는다.
-- "히트맵"이라는 말은 화면과 코드에서 쓰지 않는다.
+- "히트맵", "콤보박스"라는 말은 화면과 코드에서 쓰지 않는다. 드롭다운이라고 부른다.
+- 서버가 보내는 `classificationUpdatedAt` 필드는 서버 쪽 이름이라 아직 그대로다(바꿀 때는 서버를 먼저 배포한다).
+
+## 영역별 화면 요소
+
+| 영역 | 화면 이름 | 코드 이름 |
+|---|---|---|
+| 상단 | 메뉴 줄 | `NavSubBar` |
+| 메인 | 기준 날짜 | `MapPage` 안 |
+| 메인 | 기준 시각 | `PageRefreshButton` |
+| 메인 | 분류 배지 (오른쪽 위 청록 글자) | `MapPage`의 `modeStatusText` |
+| 메인 | 종목 박스 | `MarketMapBox` |
+| 메인 | 범례 | `MarketMapLegendBar` |
+| 메인 | 면책 문구 (+ 출처 말풍선) | `DisclaimerNotice` |
+| 사이드 | 설정창 헤더 | `SettingsSidebar` 안 맨 윗줄 |
+| 사이드 | Basis | `SettingsTaxonomySelector` |
+
+## 아직 이름을 정하지 않은 것
+
+도구줄(메인 영역 맨 윗줄) · 업종 박스와 업종 제목줄 · 시장 상태 표시("● 애프터 마켓") · 새로고침 버튼 · 달력 · 누적/따로 토글 · 우클릭 팝업.

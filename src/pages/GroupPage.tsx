@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import NavSubBar from '@/components/NavSubBar'
-import { ChangeRateBasisToggle, MarketMapMarketCombobox, MarketMapPeriodCombobox } from '@/components/MarketMapControls'
+import { ChangeRateBasisToggle, MarketDropdown, PeriodDropdown } from '@/components/MarketMapControls'
 import SettingsSidebar, {
   SettingsAverageModeSection,
   SettingsBeforeMinutesSection,
@@ -386,13 +386,13 @@ export default function GroupPage() {
           <div ref={captureRef} data-captureid={CAPTURE_ID.SECTOR} data-capture-ready={isDataCaptureReady} className="flex min-h-0 min-w-0 flex-1 flex-col bg-black text-white">
             <div className="relative mt-[5.25px] mb-[5.25px] flex h-7 w-full shrink-0 items-center justify-between bg-black/70 pl-[7px] pr-[7px] text-sm font-bold text-white">
               <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
-                <MarketMapMarketCombobox
+                <MarketDropdown
                   market={market}
                   onSelect={selectedMarket => {
                     if (selectedMarket !== market) navigate(marketRoute('/group', selectedMarket))
                   }}
                 />
-                <MarketMapPeriodCombobox />
+                <PeriodDropdown />
                 {/* 로딩 원이나 오류 문구가 보이는 동안에도 시계·시간대·누적/따로·분류명을 제자리에 둔다. 데이터가 없으면 시각 글자만 비어 있다. */}
                   <>
                 <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
@@ -518,8 +518,8 @@ export default function GroupPage() {
               isOnLeft={isSettingsOnLeft}
               onToggleSide={toggleSettingsSide}
               pageLabel="Group"
-              classificationAtBottom
-              classificationNotice="Map 설정과 중복 사항은 동일 적용됩니다."
+              taxonomyAtBottom
+              taxonomyNotice="Map 설정과 중복 사항은 동일 적용됩니다."
               snapshotTime={data?.classificationUpdatedAt}
               plainContent={
                 <>
