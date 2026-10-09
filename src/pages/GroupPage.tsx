@@ -555,8 +555,7 @@ export default function GroupPage() {
               className={`${HINT_BUBBLE_COLOR_CLASS} pointer-events-none absolute left-1/2 top-1/2 z-30 max-w-[calc(100%-1rem)] -translate-x-1/2 -translate-y-1/2 px-5 py-3 text-lg leading-snug`}
             >
               집계 대상 종목을 전종목으로 선택하는 경우<br />
-              지도 페이지에서의 등락률과 달라 오판의 여지가<br />
-              있으므로, 이동을 제한합니다.
+              이동을 제한합니다.
             </div>
           )}
           </div>
