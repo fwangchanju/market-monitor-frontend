@@ -5,12 +5,12 @@ export type TaxonomyKey = 'KRX' | 'NXT' | 'MARKETRY' | 'MINE'
 export type TaxonomySource = 'KRX' | 'MARKETRY' | 'MINE'
 
 export const TAXONOMY_NAMES = {
-  // 지도 상단 표시(title)는 KRX와 NXT를 합친 거래소 분류 하나라 둘 다 같은 이름이다. 설정창의 "한국거래소" 버튼, 그룹 페이지와 같은 이름을 쓴다.
-  KRX: { tab: 'KRX', title: '한국거래소' },
-  NXT: { tab: 'NXT', title: '한국거래소' },
+  // 지도 상단 표시(title)는 KRX와 NXT를 합친 거래소 분류 하나라 둘 다 같은 이름이다. 설정창의 "거래소" 버튼, 그룹 페이지와 같은 이름을 쓴다.
+  KRX: { tab: 'KRX', title: '거래소' },
+  NXT: { tab: 'NXT', title: '거래소' },
   MARKETRY: { tab: 'MARKETRY', title: 'MARKETRY' },
   MINE: { tab: '내 분류', title: '내 분류' },
 } as const
 
-// 설정창 아래쪽 선택 버튼 묶음(MARKETRY / 한국거래소 / 내 분류)의 제목. 이름을 또 바꿀 때는 여기만 고친다.
+// 설정창 아래쪽 선택 버튼 묶음(MARKETRY / 거래소 / 내 분류)의 제목. 이름을 또 바꿀 때는 여기만 고친다.
 export const TAXONOMY_SELECT_TITLE = 'Basis'

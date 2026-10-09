@@ -957,7 +957,7 @@ function SettingsTaxonomySelector({
   // KRX와 NXT는 "거래소" 한 칸으로 합쳤고, 지금 어느 쪽 종목을 보여줄지는 시간대가 정한다. 내 분류는 로그인이 필요하다(고르면 로그인 창이 뜬다).
   const options: { key: TaxonomyKey; label: string }[] = [
     { key: 'MARKETRY', label: TAXONOMY_NAMES.MARKETRY.tab },
-    { key: 'KRX', label: '한국거래소' },
+    { key: 'KRX', label: '거래소' },
     { key: 'MINE', label: TAXONOMY_NAMES.MINE.tab },
   ]
   const isExchange = taxonomy === 'KRX' || taxonomy === 'NXT'
