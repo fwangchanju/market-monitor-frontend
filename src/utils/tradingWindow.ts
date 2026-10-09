@@ -59,21 +59,21 @@ export function isNxtOnlyTime(now: Date): boolean {
 }
 
 // 지금 시장이 어느 시간대인지(한국 시간, 평일) — 상단바 After-Market 묶음의 말머리로 쓴다.
-// 08:00~09:00 프리 마켓(08:50~09:00 동시 호가 구간에도 지도에는 프리 마켓 데이터가 나온다), 09:00~15:30 정규 시장, 15:40~20:00 애프터 마켓.
-// 15:30~15:40은 KRX·NXT가 둘 다 닫혀 있고, 20:00 이후·08:00 이전·주말과 함께 "시장 마감"이다. 공휴일은 구분하지 않는다.
-export type MarketPhase = '프리 마켓' | '정규 시장' | '애프터 마켓' | '시장 마감'
+// 08:00~09:00 프리 마켓(08:50~09:00 동시 호가 구간에도 지도에는 프리 마켓 데이터가 나온다), 09:00~15:30 메인 마켓, 15:40~20:00 애프터 마켓.
+// 15:30~15:40은 KRX·NXT가 둘 다 닫혀 있고, 20:00 이후·08:00 이전·주말과 함께 "마켓 종료"이다. 공휴일은 구분하지 않는다.
+export type TradingSession = '프리 마켓' | '메인 마켓' | '애프터 마켓' | '마켓 종료'
 
-export function currentMarketPhase(now: Date): MarketPhase {
+export function currentTradingSession(now: Date): TradingSession {
   const parts = KST_PARTS.formatToParts(now)
   const value = (type: string) => parts.find(part => part.type === type)?.value ?? ''
   const weekday = value('weekday')
-  if (weekday === 'Sat' || weekday === 'Sun') return '시장 마감'
+  if (weekday === 'Sat' || weekday === 'Sun') return '마켓 종료'
   const minutes = Number(value('hour')) * 60 + Number(value('minute'))
   if (minutes >= 8 * 60 && minutes < 9 * 60) return '프리 마켓'
-  if (minutes >= 9 * 60 && minutes < 15 * 60 + 30) return '정규 시장'
+  if (minutes >= 9 * 60 && minutes < 15 * 60 + 30) return '메인 마켓'
   if (minutes >= 15 * 60 + 40 && minutes < 20 * 60) return '애프터 마켓'
-  return '시장 마감'
+  return '마켓 종료'
 }
 
 // 이름 중 가장 긴 것 — 상단바 말머리는 이 이름의 너비를 기준으로 자리를 잡아서 시간대가 바뀌어도 시작 위치가 같다.
-export const LONGEST_MARKET_PHASE: MarketPhase = '애프터 마켓'
+export const LONGEST_TRADING_SESSION: TradingSession = '애프터 마켓'

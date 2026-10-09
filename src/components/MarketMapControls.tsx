@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { MarketQuery } from '@/types/api'
 import { accentColor } from '@/utils/accentPalette'
-import { LONGEST_MARKET_PHASE, type MarketPhase } from '@/utils/tradingWindow'
-import { useMarketPhase } from '@/hooks/useMarketPhase'
+import { LONGEST_TRADING_SESSION, type TradingSession } from '@/utils/tradingWindow'
+import { useTradingSession } from '@/hooks/useTradingSession'
 import { FONT_BAR_TIME } from '@/components/FontStyle'
 import { HINT_BUBBLE_CLASS } from '@/components/hintBubbleStyle'
 
@@ -147,24 +147,24 @@ export function PeriodDropdown() {
 }
 
 // 시간대 말머리 앞 점의 색 — 설정창 4-1) 강조 색상 기준으로 프리 마켓은 연노랑,
-// 정규 시장은 형광, 애프터 마켓은 주황, 시장 마감은 연회색이다.
-const PHASE_DOT_COLOR: Record<MarketPhase, string> = {
+// 메인 마켓은 형광, 애프터 마켓은 주황, 마켓 종료은 연회색이다.
+const SESSION_DOT_COLOR: Record<TradingSession, string> = {
   '프리 마켓': accentColor('연노랑'),
-  '정규 시장': accentColor('형광'),
+  '메인 마켓': accentColor('형광'),
   '애프터 마켓': accentColor('주황'),
-  '시장 마감': accentColor('연회색'),
+  '마켓 종료': accentColor('연회색'),
 }
 
 // 지도·그룹 페이지가 같은 시간대 문구와 강조 색상을 사용한다.
-export function MarketPhaseIndicator() {
-  const phase = useMarketPhase()
+export function TradingSessionIndicator() {
+  const session = useTradingSession()
   return (
     <span className={`${FONT_BAR_TIME} flex items-center text-gray-400`}>
-      <span aria-hidden="true" className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: PHASE_DOT_COLOR[phase] }} />
+      <span aria-hidden="true" className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: SESSION_DOT_COLOR[session] }} />
       {/* 가장 긴 이름으로 너비를 유지해 시간대가 바뀌어도 옆 항목이 움직이지 않게 한다. */}
       <span className="grid">
-        <span aria-hidden="true" className="invisible col-start-1 row-start-1">{LONGEST_MARKET_PHASE}</span>
-        <span className="col-start-1 row-start-1">{phase}</span>
+        <span aria-hidden="true" className="invisible col-start-1 row-start-1">{LONGEST_TRADING_SESSION}</span>
+        <span className="col-start-1 row-start-1">{session}</span>
       </span>
     </span>
   )
@@ -173,7 +173,7 @@ export function MarketPhaseIndicator() {
 // 등락률 기준 토글 — 누적(전일 종가 대비) / 따로(당일 종가 대비). 애프터 마켓 시작부터 다음 프리 마켓 개장 전까지만 보인다.
 // 시간외 스냅샷이 아직 없으면 따로는 잠긴다. 시장 시간대 말머리는 버튼의 표시 여부와 무관하게 유지한다.
 // 버튼을 누르면 그 버튼 아래에 설명 팝업이 뜬다(새로고침 버튼의 설명창과 같은 모양). 잠긴 따로도 눌러서 설명을 볼 수 있다.
-export function ChangeRateBasisToggle({ basis, visible, selectable, onChange }: {
+export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
   basis: 'daily' | 'afterHours'
   visible: boolean
   selectable: boolean
@@ -237,7 +237,7 @@ export function ChangeRateBasisToggle({ basis, visible, selectable, onChange }: 
 
   return (
     <div className="-mr-[5px] flex shrink-0 items-center gap-2 whitespace-nowrap" data-basis-toggle>
-      <MarketPhaseIndicator />
+      <TradingSessionIndicator />
       {visible && <div
         role="radiogroup"
         aria-label="등락률 기준"
@@ -254,7 +254,7 @@ export function ChangeRateBasisToggle({ basis, visible, selectable, onChange }: 
             style={basis === option.value
               ? {
                   color: '#111827',
-                  backgroundColor: PHASE_DOT_COLOR['애프터 마켓'],
+                  backgroundColor: SESSION_DOT_COLOR['애프터 마켓'],
                   borderRadius: 0,
                   boxShadow: 'inset 0 1px 1px rgb(255 255 255 / 45%), inset 0 -1px 1px rgb(0 0 0 / 18%)',
                 }
@@ -262,7 +262,7 @@ export function ChangeRateBasisToggle({ basis, visible, selectable, onChange }: 
                   color: option.locked ? '#737373' : '#d1d5db',
                   backgroundColor: 'transparent',
                   borderRadius: 0,
-                  outline: `1px solid ${PHASE_DOT_COLOR['애프터 마켓']}`,
+                  outline: `1px solid ${SESSION_DOT_COLOR['애프터 마켓']}`,
                   outlineOffset: '-1px',
                   boxShadow: 'inset 0 1px 2px rgb(0 0 0 / 48%), inset 0 -1px 1px rgb(255 255 255 / 12%)',
                 }}
