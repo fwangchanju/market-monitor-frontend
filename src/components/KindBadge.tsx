@@ -12,14 +12,14 @@ export default function KindBadge({ kind, onDark = false, className = '' }: { ki
   )
 }
 
-// "12/30종목" 같은 개수 글자를 "12/30 [종목]"(뒤 단어만 배지)으로 그린다. 끝이 종목/업종이 아니면 글자 그대로 둔다.
+// "12/30종목" 같은 개수 글자를 "[종목] 12/30"(배지가 앞, 숫자가 바로 뒤)으로 그린다. 끝이 종목/업종이 아니면 글자 그대로 둔다.
 export function CountLabelWithBadge({ label }: { label: string }) {
   const match = /^(.*?)(종목|업종)$/.exec(label)
   if (!match) return <>{label}</>
   return (
     <span className="inline-flex items-center gap-1">
-      <span>{match[1]}</span>
       <KindBadge kind={match[2] as Kind} onDark />
+      <span>{match[1]}</span>
     </span>
   )
 }
