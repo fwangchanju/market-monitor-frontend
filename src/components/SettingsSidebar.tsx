@@ -2161,7 +2161,7 @@ export default function SettingsSidebar({
           )}
         </div>
         {/* 바꾼 값은 임시값이라 저장을 눌러야 서버에 올라간다. 초기화는 임시값을 버리고 저장값으로 돌아간다. 비로그인은 저장할 곳이 없어 로그인 창을 띄운다. */}
-        {showPreferenceActions && <div className="ml-auto flex shrink-0 items-center gap-3">
+        {showPreferenceActions && <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <button type="button" aria-label="초기화" disabled={isPreferenceFeedbackActive} onClick={async () => {
               if (hasDrafts && await appConfirm('기존 저장값으로 되돌리시겠습니까?')) runPreferenceAction(discardDrafts)
             }} className="group relative flex border-0 bg-transparent p-0 text-gray-400 hover:text-white">
