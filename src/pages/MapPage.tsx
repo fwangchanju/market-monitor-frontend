@@ -32,7 +32,7 @@ import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
 import { usePageSetting } from '@/hooks/usePageSetting'
 import { sanitizeBookmarkIds } from '@/utils/settingsBookmarks'
-import { useIsLoggedIn } from '@/hooks/useSession'
+import { useIsLoggedIn, useSession } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
@@ -244,9 +244,12 @@ export default function MapPage() {
   const totalItemCount = collectRawItems(rawCurrentNode ? [rawCurrentNode] : rootNodes).length
 
   // 상단 오른쪽 분류자명은 설정창의 업종 분류 선택 버튼과 같은 청록색 버튼으로 표시한다.
+  // 내 분류는 이름 대신 내 닉네임을 보여 준다(닉네임이 없으면 '내 분류').
+  const { data: session } = useSession()
+  const taxonomyTitle = taxonomy === 'MINE' ? session?.nickname || TAXONOMY_NAMES.MINE.title : TAXONOMY_NAMES[taxonomy].title
   const modeStatusText = (
     <span className="flex min-w-0 items-center justify-end">
-      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{TAXONOMY_NAMES[taxonomy].title}</span>
+      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">분류: {taxonomyTitle}</span>
     </span>
   )
 
