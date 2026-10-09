@@ -13,11 +13,12 @@ export default function KindBadge({ kind, onDark = false, className = '' }: { ki
 }
 
 // "12/30종목" 같은 개수 글자를 "[종목] 12/30"(배지가 앞, 숫자가 바로 뒤)으로 그린다. 숫자의 천 단위 쉼표는 뺀다. 끝이 종목/업종이 아니면 글자 그대로 둔다.
-export function CountLabelWithBadge({ label }: { label: string }) {
+// spread면 배지는 칸의 왼쪽 끝에, 숫자는 오른쪽 끝에 붙인다(숫자 자릿수가 달라도 배지 자리는 그대로).
+export function CountLabelWithBadge({ label, spread = false }: { label: string; spread?: boolean }) {
   const match = /^(.*?)(종목|업종)$/.exec(label)
   if (!match) return <>{label}</>
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className={spread ? 'flex w-full items-center justify-between gap-1.5' : 'inline-flex items-center gap-1.5'}>
       <KindBadge kind={match[2] as Kind} onDark />
       <span>{match[1].replaceAll(',', '')}</span>
     </span>
