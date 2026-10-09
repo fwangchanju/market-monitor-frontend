@@ -2161,13 +2161,13 @@ export default function SettingsSidebar({
           )}
         </div>
         {/* 바꾼 값은 임시값이라 저장을 눌러야 서버에 올라간다. 초기화는 임시값을 버리고 저장값으로 돌아간다. 비로그인은 저장할 곳이 없어 로그인 창을 띄운다. */}
-        {showPreferenceActions && <div className="ml-auto mr-2 flex shrink-0 items-center gap-3">
+        {showPreferenceActions && <div className="ml-auto flex shrink-0 items-center gap-3">
           <button type="button" aria-label="초기화" disabled={isPreferenceFeedbackActive} onClick={async () => {
               if (hasDrafts && await appConfirm('기존 저장값으로 되돌리시겠습니까?')) runPreferenceAction(discardDrafts)
             }} className="group relative flex border-0 bg-transparent p-0 text-gray-400 hover:text-white">
             <HeaderButtonHint>{'기존 저장값으로 되돌리기'}</HeaderButtonHint>
             <svg viewBox="0 0 16 16" className="h-[18px] w-[18px]" aria-hidden="true">
-              <path d="M2.5 8a5.5 5.5 0 1 0 1.8-4.07M2.5 2.5v3h3" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M2.5 8a5.5 5.5 0 1 0 1.8-4.07M2.5 2.5v3h3" fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
           <button
@@ -2184,7 +2184,7 @@ export default function SettingsSidebar({
             <HeaderButtonHint>{'변경사항 저장하기'}</HeaderButtonHint>
             {hasDrafts && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[var(--brand)]" />}
             <svg viewBox="0 0 16 16" className="h-[18px] w-[18px]" aria-hidden="true">
-              <path d="M2.5 2.5h8l3 3v8h-11zM5 2.5v3.5h5V2.5M5 13.5V9h6v4.5" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M2.5 2.5h8l3 3v8h-11zM5 2.5v3.5h5V2.5M5 13.5V9h6v4.5" fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
         </div>}
