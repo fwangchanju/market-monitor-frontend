@@ -821,7 +821,7 @@ export function SettingsSectorStockScopeSection({
         <span>집계 대상 종목</span>
         <SettingHelpBubble
           label="집계 대상 종목"
-          description={<><b className="text-red-600">전종목</b>을 선택하면{'\n'}맵 페이지 등락률과{'\n'}다르게 집계될 수 있습니다.</>}
+          description={<><b className="text-red-600">전종목</b>을 선택하면{'\n'}맵 페이지 등락률과{'\n'}<b className="text-red-600">다르게 집계</b>될 수 있습니다.</>}
         />
       </span>
       <SettingDescription>업종 평균에 넣을 종목</SettingDescription>
