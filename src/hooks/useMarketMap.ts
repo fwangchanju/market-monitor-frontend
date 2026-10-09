@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getMarketMap, getStockCatalog, type ChangeRateBasis } from '@/api/marketMap'
+import { getMarketMap, getStockCatalog, type ChangeRateMode } from '@/api/marketMap'
 import { marketMapKeys } from './queryKeys'
 import { MARKET_DATA_CACHE, STATIC_REFERENCE_CACHE } from './cacheConfig'
 import type { MarketQuery } from '@/types/api'
@@ -9,7 +9,7 @@ export function useMarketMap(
   market: MarketQuery,
   source: TaxonomySource,
   nxtOnly: boolean,
-  options?: { enabled?: boolean; basis?: ChangeRateBasis },
+  options?: { enabled?: boolean; basis?: ChangeRateMode },
 ) {
   const basis = options?.basis ?? 'daily'
   return useQuery({

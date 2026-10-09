@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { getMarketMap, type ChangeRateBasis } from '@/api/marketMap'
+import { getMarketMap, type ChangeRateMode } from '@/api/marketMap'
 import { marketMapKeys } from './queryKeys'
 import { subtractMinutesFromSnapshotTime } from '@/utils/snapshotTime'
 import { isAfterHoursSelectable } from '@/utils/tradingWindow'
@@ -41,7 +41,7 @@ export function useSectorMarketMapPair(
   nxtOnly: boolean,
   beforeMinutes: number,
   now: MarketMapResponse | undefined,
-  basis: ChangeRateBasis = 'daily',
+  basis: ChangeRateMode = 'daily',
 ) {
   const nowSnapshotTime = now?.snapshotTime ?? null
 

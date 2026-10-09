@@ -17,7 +17,7 @@ import SettingsSidebar, {
 } from '@/components/SettingsSidebar'
 import MarketMapShareModal from '@/components/MarketMapShareModal'
 import Treemap from '@/components/Treemap'
-import { ChangeRateBasisToggle, MarketDropdown, PeriodDropdown } from '@/components/MarketMapControls'
+import { ChangeRateModeToggle, MarketDropdown, PeriodDropdown } from '@/components/MarketMapControls'
 import MarketMapLegendBar from '@/components/MarketMapLegendBar'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
 import { HINT_BUBBLE_COLOR_CLASS } from '@/components/hintBubbleStyle'
@@ -160,10 +160,10 @@ export default function MapPage() {
     taxonomy,
     nxtOnly,
     nxtOnlyWindow,
-    changeRateBasis,
+    changeRateMode,
     isAfterHoursControlsVisible,
     isAfterHoursSelectable,
-    onChangeChangeRateBasis,
+    onChangeChangeRateMode,
     data,
     refetchMarketMap,
     isRefetchingMarketMap,
@@ -195,7 +195,7 @@ export default function MapPage() {
     decimalPlaces,
     colorScale,
     handleExcludeSector,
-  } = useGlobalSettings({ allowChangeRateBasis: true })
+  } = useGlobalSettings({ allowChangeRateMode: true })
 
   const [searchParams, setSearchParams] = useSearchParams()
   const { isNativeFullscreen, handleToggleNativeFullscreen } = useNativeFullscreen()
@@ -487,7 +487,7 @@ export default function MapPage() {
                 </span>
                 {/* 시장 시간대 말머리와 누적/따로 — 시간과 관련된 표시라 시계 옆에 붙인다. */}
                 <span className="flex shrink-0">
-                  <ChangeRateBasisToggle basis={changeRateBasis} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateBasis} />
+                  <ChangeRateModeToggle basis={changeRateMode} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateMode} />
                 </span>
                 </>
               </div>

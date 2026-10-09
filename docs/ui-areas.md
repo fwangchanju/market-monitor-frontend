@@ -36,8 +36,10 @@
 | 시장 선택 드롭다운 (Map·Group 공용) | `MarketDropdown` | 시장 드롭다운 |
 | 기간 선택 드롭다운 (Map·Group 공용) | `PeriodDropdown` | 기간 드롭다운 |
 | Custom 페이지의 업종·종목 전환 드롭다운 | `ModeDropdown` | 업종·종목 전환 드롭다운 |
+| 시계 옆 "● 메인 마켓" 표시 (프리 마켓 · 메인 마켓 · 애프터 마켓 · 마켓 종료) | `TradingSession`, `TradingSessionIndicator` | 거래 세션 |
+| 일간(누적) / 시간외(따로) 등락률 전환 스위치 | `ChangeRateMode`, `ChangeRateModeToggle` | 누적/따로 토글 |
 
-- `basis`는 코드에서 이미 일간/시간외 등락률 기준(`changeRateBasis`)이라서, 분류 선택 이름에는 쓰지 않는다.
+- 화면의 **Basis**(설정창 맨 아래)는 코드에서 `Taxonomy`(분류 선택)다. 코드의 `basis`는 이것이 아니라 일간/시간외 등락률 기준이며, 서버에 보내는 요청 항목 이름(`basis=afterHours`)으로만 남아 있고 코드 안에서는 `ChangeRateMode`라고 부른다.
 - "히트맵", "콤보박스"라는 말은 화면과 코드에서 쓰지 않는다. 드롭다운이라고 부른다.
 - 분류 갱신 시각 필드는 `taxonomyUpdatedAt`이다. 서버는 한동안 옛 이름 `classificationUpdatedAt`도 같이 보내며, 화면 전환이 끝난 뒤 서버에서 옛 이름을 지운다.
 
@@ -46,9 +48,15 @@
 | 영역 | 화면 이름 | 코드 이름 |
 |---|---|---|
 | 상단 | 메뉴 줄 | `NavSubBar` |
+| 메인 | 툴바 (메인 영역 맨 윗줄) | 맵·그룹 페이지 안(`Toolbar`로 갈 예정) |
 | 메인 | 기준 날짜 | `MapPage` 안 |
 | 메인 | 기준 시각 | `PageRefreshButton` |
+| 메인 | 기준 시각 내 새로고침 버튼 ("시각고침") | `PageRefreshButton` |
+| 메인 | 거래 세션 | `TradingSessionIndicator` |
+| 메인 | 누적/따로 토글 | `ChangeRateModeToggle` |
 | 메인 | 분류 배지 (오른쪽 위 청록 글자) | `MapPage`의 `modeStatusText` |
+| 메인 | 업종 박스 (업종 하나를 감싼 큰 사각형) | `MarketMapSectorSection` (`SectorBox`로 갈 예정) |
+| 메인 | 업종 헤더 (업종 박스 맨 위 제목) | 같은 파일 안(`SectorHeader`로 갈 예정) |
 | 메인 | 종목 박스 | `MarketMapBox` |
 | 메인 | 범례 | `MarketMapLegendBar` |
 | 메인 | 면책 문구 (+ 출처 말풍선) | `DisclaimerNotice` |
@@ -57,4 +65,4 @@
 
 ## 아직 이름을 정하지 않은 것
 
-도구줄(메인 영역 맨 윗줄) · 업종 박스와 업종 제목줄 · 시장 상태 표시("● 애프터 마켓") · 새로고침 버튼 · 달력 · 누적/따로 토글 · 우클릭 팝업.
+팝업(마우스 올림 팝업 · 우클릭 팝업은 임시로 구분해 부름) · 달력(아직 없는 기능).

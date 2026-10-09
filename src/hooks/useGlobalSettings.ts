@@ -5,9 +5,9 @@ import { useTaxonomySelection } from './useTaxonomySelection'
 import { MEMBER_DEFAULTS, settingDefaultsFor } from '@/utils/settingDefaults'
 import type { TaxonomySource, TaxonomyKey } from '@/utils/taxonomyNames'
 import { useNxtOnlyWindow } from '@/hooks/useNxtOnlyWindow'
-import { useAfterHoursControlsVisible } from '@/hooks/useMarketPhase'
+import { useAfterHoursControlsVisible } from '@/hooks/useTradingSession'
 import { isAfterHoursSelectable as isAfterHoursSelectableAt } from '@/utils/tradingWindow'
-import type { ChangeRateBasis } from '@/api/marketMap'
+import type { ChangeRateMode } from '@/api/marketMap'
 import { usePageSetting } from './usePageSetting'
 import { useRouteAwareMarket } from './useRouteAwareMarket'
 import { useIsLoggedIn, useSession } from './useSession'
@@ -103,11 +103,11 @@ function topPickAverage(node: FilteredMarketMapSectorNode, metric: DepthMetric):
 // 간접적으로 필요한 페이지는 false를 넘겨서 사이드바를 열기 전까지 조회 자체를 미룬다 — 그래도 설정을
 // 열면 그 순간부터는 조회하므로(그리고 지도/섹터를 먼저 봤다면 react-query 캐시로 즉시 뜨므로) 설정
 // 내용 자체는 어느 페이지에서 열든 동일하게 보인다.
-export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRateBasis?: boolean }) {
+export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRateMode?: boolean }) {
   const needsTree = options?.needsTree ?? true
   // 등락률 기준(누적/시간외) 선택은 지도 페이지만 쓴다. 그룹 페이지는 now·before 쌍을 따로 받아 누적 기준으로 그리므로
   // 같은 값을 실으면 화면이 섞인다.
-  const allowChangeRateBasis = options?.allowChangeRateBasis ?? false
+  const allowChangeRateMode = options?.allowChangeRateMode ?? false
   const { pathname } = useLocation()
   const isLoggedIn = useIsLoggedIn()
   const { isLoading: isSessionLoading } = useSession()
@@ -138,8 +138,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   // 등락률 기준은 애프터 마켓 시작부터 다음 프리 마켓 개장 전까지 선택한다.
   // 표시 시간대가 아니거나 시간외 스냅샷이 아직 없으면 저장한 선택과 무관하게 누적으로 보인다.
   const isAfterHoursControlsVisible = useAfterHoursControlsVisible()
-  const [storedChangeRateBasis, setStoredChangeRateBasis] = usePersistedState<ChangeRateBasis>('marketMap.changeRateBasis', 'daily')
-  const requestedBasis: ChangeRateBasis = allowChangeRateBasis && isAfterHoursControlsVisible ? storedChangeRateBasis : 'daily'
+  const [storedChangeRateMode, setStoredChangeRateMode] = usePersistedState<ChangeRateMode>('marketMap.changeRateMode', 'daily')
+  const requestedBasis: ChangeRateMode = allowChangeRateMode && isAfterHoursControlsVisible ? storedChangeRateMode : 'daily'
   const taxonomy: TaxonomyKey = isMarketry ? 'MARKETRY' : isCustom ? 'MINE' : nxtOnly ? 'NXT' : 'KRX'
   // 섹터 랭킹/강세 업종 계산에 쓰는 평균 방식은 박스 크기 비율과 별도로 저장한다.
   const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', defaults.avgChangeRateUseSimple)
@@ -250,7 +250,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     basis: requestedBasis,
   })
   const isAfterHoursSelectable = isAfterHoursControlsVisible && isAfterHoursSelectableAt(data?.snapshotTime)
-  const changeRateBasis: ChangeRateBasis = isAfterHoursSelectable ? requestedBasis : 'daily'
+  const changeRateMode: ChangeRateMode = isAfterHoursSelectable ? requestedBasis : 'daily'
   const rawRootNodes = data?.items
   // 비로그인의 거래소 분류는 업종 id가 모두 0이라, 제외 기능이 동작하도록 이름 기반 고유 id를 붙인다.
   // MARKETRY는 비로그인도 진짜 업종 id를 받으므로 그대로 쓴다.
@@ -722,10 +722,10 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     isMarketry,
     nxtOnly,
     nxtOnlyWindow,
-    changeRateBasis,
+    changeRateMode,
     isAfterHoursControlsVisible,
     isAfterHoursSelectable,
-    onChangeChangeRateBasis: setStoredChangeRateBasis,
+    onChangeChangeRateMode: setStoredChangeRateMode,
     taxonomy,
     data,
     refetchMarketMap,

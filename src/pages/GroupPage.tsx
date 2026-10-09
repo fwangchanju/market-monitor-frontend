@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
 import NavSubBar from '@/components/NavSubBar'
-import { ChangeRateBasisToggle, MarketDropdown, PeriodDropdown } from '@/components/MarketMapControls'
+import { ChangeRateModeToggle, MarketDropdown, PeriodDropdown } from '@/components/MarketMapControls'
 import SettingsSidebar, {
   SettingsAverageModeSection,
   SettingsBeforeMinutesSection,
@@ -171,10 +171,10 @@ export default function GroupPage() {
     market,
     source,
     nxtOnly,
-    changeRateBasis,
+    changeRateMode,
     isAfterHoursControlsVisible,
     isAfterHoursSelectable,
-    onChangeChangeRateBasis,
+    onChangeChangeRateMode,
     data,
     isLoading,
     isError,
@@ -186,7 +186,7 @@ export default function GroupPage() {
     excludedMarketValueTiers,
     excludedSectorIds,
     colorScale,
-  } = useGlobalSettings({ allowChangeRateBasis: true })
+  } = useGlobalSettings({ allowChangeRateMode: true })
 
   // now는 여기서 따로 조회하지 않는다 — useGlobalSettings()가 이미 부르는 useMarketMap(market, source)
   // 결과(data)를 그대로 쓴다. before는 그 now.snapshotTime에서 계산한 시각을 쌍으로 묶어 조회한다
@@ -194,7 +194,7 @@ export default function GroupPage() {
   // 화면이 새 now·옛 before를 잠깐이라도 섞어 그리지 않는다.
   // 업종을 누르면 지도 페이지로 가서 그 업종을 누른 상태로 연다(지도 페이지가 sector 주소 값을 읽어 한 번만 쓴다).
   const handleSelectSector = (sectorName: string) => navigate(`${marketRoute('/map', market)}?sector=${encodeURIComponent(sectorName)}`)
-  const pairQuery = useSectorMarketMapPair(market, source, nxtOnly, beforeMinutes, data, changeRateBasis)
+  const pairQuery = useSectorMarketMapPair(market, source, nxtOnly, beforeMinutes, data, changeRateMode)
   // 쌍 쿼리가 에러(재시도 1회 뒤)면 "before 없음"으로 보고 now 쿼리의 현재 data로 그린다. 그 외에는
   // 화면에 그리는 now가 항상 "쌍 안의 now"다 — placeholder 기간에도 그 쌍이 만들어질 때의 now·before가
   // 함께 유지되어, 상단 바 시각과 그래프가 서로 어긋나지 않는다.
@@ -335,7 +335,7 @@ export default function GroupPage() {
     // marketOverview는 단일 마켓 조회에만 온다(ALL_STOCK이면 단일 지수값이 없어 null) — 지도 페이지와
     // 동일하게 ALL_STOCK이면 지수 막대를 아예 안 보여준다. 지수 참조 값은 누적 등락률이므로 따로에서는 표시하지 않는다.
     const nowOverview = displayNow.marketOverview
-    if (nowOverview && changeRateBasis === 'daily') {
+    if (nowOverview && changeRateMode === 'daily') {
       currentEntries.push({
         key: MARKET_INDEX_KEY,
         sectorName: MARKET_INDEX_LABEL_KO[nowOverview.market],
@@ -354,7 +354,7 @@ export default function GroupPage() {
     }
 
     return { current: buildRankChart(currentEntries), delta: buildRankChart(deltaEntries) }
-  }, [displayNow, displayBefore, excludedSectorIds, excludedMarketValueTiers, avgChangeRateUseSimple, changeRateBasis])
+  }, [displayNow, displayBefore, excludedSectorIds, excludedMarketValueTiers, avgChangeRateUseSimple, changeRateMode])
 
   return (
     <div className="flex h-screen select-none flex-col overflow-hidden bg-black">
@@ -409,7 +409,7 @@ export default function GroupPage() {
                   </PageRefreshButton>
                 </span>
                 <span className="flex shrink-0">
-                  <ChangeRateBasisToggle basis={changeRateBasis} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateBasis} />
+                  <ChangeRateModeToggle basis={changeRateMode} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateMode} />
                 </span>
                   </>
               </div>
