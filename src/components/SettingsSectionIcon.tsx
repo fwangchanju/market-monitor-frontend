@@ -3,7 +3,7 @@ import compositionIcon from '@/assets/settings-icons/composition.png'
 import colorsIcon from '@/assets/settings-icons/colors.svg'
 import bookmarkIcon from '@/assets/settings-icons/bookmark.svg'
 import industryIcon from '@/assets/settings-icons/industry.png'
-import stockDisplayIcon from '@/assets/settings-icons/stock-display.png'
+import stockDisplayIcon from '@/assets/settings-icons/stock-display.svg'
 
 export type SettingsSectionIconName = 'favorites' | 'composition' | 'industry' | 'stock-display' | 'colors'
 
@@ -25,13 +25,14 @@ const ICON_ERODE_RADIUS: Record<SettingsSectionIconName, number> = {
   favorites: 0.6,
   composition: 1.3,
   industry: 0.6,
-  'stock-display': 0.8,
+  'stock-display': 0,
   colors: 0.6,
 }
 
 // 아이콘 원본마다 여백이 달라 같은 칸에서도 작아 보여서, 레이아웃은 그대로 두고 그리는 크기만 키운다.
 const ICON_SCALE: Partial<Record<SettingsSectionIconName, number>> = {
-  'stock-display': 1.1,
+  // 그림 원본의 실제 도형 크기가 종목 구성은 476px, 종목 박스는 416px라 476/416 ≈ 1.14배로 키워 두 아이콘의 사각형이 비슷하게 보이게 한다.
+  'stock-display': 1.14,
 }
 
 export default function SettingsSectionIcon({ icon, className = '' }: SettingsSectionIconProps) {

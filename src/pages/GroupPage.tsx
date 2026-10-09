@@ -22,6 +22,7 @@ import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
 import { usePageSetting } from '@/hooks/usePageSetting'
+import { appAlert } from '@/utils/appDialogBus'
 import { collectItems, computeSectorAverage } from '@/utils/sectorAverage'
 import { collectAllItems, filterTreeByExclusions } from '@/hooks/useFilteredMarketMapTree'
 import { CAPTURE_ID } from '@/utils/captureIds'
@@ -204,7 +205,14 @@ export default function GroupPage() {
   // (marketry-backend 지시서 결정 4) — 이렇게 해야 재조회로 now가 새 tick으로 바뀌는 순간에도
   // 화면이 새 now·옛 before를 잠깐이라도 섞어 그리지 않는다.
   // 업종을 누르면 지도 페이지로 가서 그 업종을 누른 상태로 연다(지도 페이지가 sector 주소 값을 읽어 한 번만 쓴다).
-  const handleSelectSector = (sectorName: string) => navigate(`${marketRoute('/map', market)}?sector=${encodeURIComponent(sectorName)}`)
+  // 전종목이면 그래프의 숫자가 지도와 다르게 집계되므로 지도로 이동하지 않고, 안내창으로 이유를 알려 준다.
+  const handleSelectSector = (sectorName: string) => {
+    if (isAllStocks) {
+      void appAlert('집계 대상 종목을 전종목으로 선택하는 경우\n이동을 제한합니다.')
+      return
+    }
+    navigate(`${marketRoute('/map', market)}?sector=${encodeURIComponent(sectorName)}`)
+  }
   const pairQuery = useSectorMarketMapPair(market, source, nxtOnly, beforeMinutes, data, changeRateMode)
   // 쌍 쿼리가 에러(재시도 1회 뒤)면 "before 없음"으로 보고 now 쿼리의 현재 data로 그린다. 그 외에는
   // 화면에 그리는 now가 항상 "쌍 안의 now"다 — placeholder 기간에도 그 쌍이 만들어질 때의 now·before가
@@ -534,7 +542,6 @@ export default function GroupPage() {
               pageLabel="Group"
               stockCountLabel={stockCountLabel}
               taxonomyAtBottom
-              taxonomyNotice="Map 설정과 중복 사항은 동일 적용됩니다."
               snapshotTime={data?.taxonomyUpdatedAt}
               plainContent={
                 <>
