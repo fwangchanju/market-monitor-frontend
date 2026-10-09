@@ -121,14 +121,14 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   // 기존 계정 설정은 브라우저 선택이 없을 때만 기본값으로 사용한다. 새 선택은 세 페이지가 localStorage로 공유한다.
   const [savedIsCustom] = usePageSetting('marketMap.isCustom', defaults.isCustom)
   const [selectedHeatmap, setSelectedHeatmap] = useHeatmapSelection(savedIsCustom ? 'marketry' : 'krx')
-  // 내 히트맵(mymap)은 로그인이 필요하다 — 로그아웃 상태에서는 처음 화면인 MARKETRY로 보이고, 브라우저에 저장한 선택 자체는 보존한다.
+  // 내 분류(mine)는 로그인이 필요하다 — 로그아웃 상태에서는 처음 화면인 MARKETRY로 보이고, 브라우저에 저장한 선택 자체는 보존한다.
   // MARKETRY는 올린 분류라 로그인 없이 읽는다(읽기 전용).
-  const source: ClassificationSource = selectedHeatmap === 'mymap' && !isLoggedIn ? 'marketry' : selectedHeatmap
-  // 새로고침 직후에는 로그인 여부를 아직 모른다. 내 히트맵을 골라 둔 사람이 그 사이에 다른 분류 지도를 받았다가 바뀌지 않도록,
+  const source: ClassificationSource = selectedHeatmap === 'mine' && !isLoggedIn ? 'marketry' : selectedHeatmap
+  // 새로고침 직후에는 로그인 여부를 아직 모른다. 내 분류를 골라 둔 사람이 그 사이에 다른 분류 지도를 받았다가 바뀌지 않도록,
   // 로그인 확인이 끝날 때까지는 지도를 요청하지 않고 로딩으로 둔다.
-  const isWaitingForSession = selectedHeatmap === 'mymap' && isSessionLoading
-  // isCustom: 본인 데이터로 만든 내 히트맵(편집·서버 저장이 되는 분류). isMarketry: 올린 MARKETRY. 둘 다 대·중·소분류 트리를 쓴다.
-  const isCustom = source === 'mymap'
+  const isWaitingForSession = selectedHeatmap === 'mine' && isSessionLoading
+  // isCustom: 본인 데이터로 만든 내 분류(편집·서버 저장이 되는 분류). isMarketry: 올린 MARKETRY. 둘 다 대·중·소분류 트리를 쓴다.
+  const isCustom = source === 'mine'
   const isMarketry = source === 'marketry'
   const usesCustomTree = isCustom || isMarketry
   // NXT 종목만 보기 — 어느 히트맵(거래소/MARKETRY)이든 시간대가 정한다. NXT 단독 시간대(08:00~08:50, 15:40~16:00)에만
@@ -140,7 +140,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   const isAfterHoursControlsVisible = useAfterHoursControlsVisible()
   const [storedChangeRateBasis, setStoredChangeRateBasis] = usePersistedState<ChangeRateBasis>('marketMap.changeRateBasis', 'daily')
   const requestedBasis: ChangeRateBasis = allowChangeRateBasis && isAfterHoursControlsVisible ? storedChangeRateBasis : 'daily'
-  const heatmap: HeatmapKey = isMarketry ? 'marketry' : isCustom ? 'mymap' : nxtOnly ? 'nxt' : 'krx'
+  const heatmap: HeatmapKey = isMarketry ? 'marketry' : isCustom ? 'mine' : nxtOnly ? 'nxt' : 'krx'
   // 섹터 랭킹/강세 업종 계산에 쓰는 평균 방식은 박스 크기 비율과 별도로 저장한다.
   const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', defaults.avgChangeRateUseSimple)
   // 0은 동일 크기, 100은 시가총액 비례이며 중간값은 시가총액 차이를 거듭제곱으로 압축한다.
@@ -588,18 +588,18 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     setColorCustomOn(on)
   }
 
-  // 히트맵 선택(MARKETRY / 한국거래소 / 내 히트맵). 내 히트맵만 로그인이 필요하다. 거래소는 KRX·NXT를 합친 한 칸이고, 시간대에 따라
+  // Basis 선택(MARKETRY / 한국거래소 / 내 분류). 내 분류만 로그인이 필요하다. 거래소는 KRX·NXT를 합친 한 칸이고, 시간대에 따라
   // NXT 거래 종목만 남길지 자동으로 정한다(heatmap 값은 그 결과로 'krx' 또는 'nxt'가 된다).
-  // 비로그인이 내 히트맵을 누르면 로그인 안내만 띄우고, 보던 분류(MARKETRY 또는 한국거래소)에 그대로 머문다.
+  // 비로그인이 내 분류를 누르면 로그인 안내만 띄우고, 보던 분류(MARKETRY 또는 한국거래소)에 그대로 머문다.
   // 새로고침 직후처럼 로그인 여부를 아직 모르는 동안은 안내를 띄우지 않고 선택만 받는다.
   const handleSelectHeatmap = (next: HeatmapKey) => {
-    if (next === 'mymap' && !isLoggedIn && !isSessionLoading) {
+    if (next === 'mine' && !isLoggedIn && !isSessionLoading) {
       requireLogin(pathname)
       return
     }
-    setSelectedHeatmap(next === 'marketry' || next === 'mymap' ? next : 'krx')
+    setSelectedHeatmap(next === 'marketry' || next === 'mine' ? next : 'krx')
   }
-  const handleToggleCustom = () => handleSelectHeatmap(isCustom ? 'krx' : 'mymap')
+  const handleToggleCustom = () => handleSelectHeatmap(isCustom ? 'krx' : 'mine')
 
   const handleChangeActiveDepthMetric = (metric: DepthMetric) => setStoredDepthMetric(metric)
 
@@ -619,7 +619,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   const handleExcludeSector = (sectorId: number, sectorName: string) => {
     const path = findSectorPath(rootNodes, sectorId)
     setExcludedSectorNames(prev => new Map(prev).set(sectorId, path ? path.join(' > ') : sectorName))
-    // 서버에는 내 히트맵(본인 데이터)일 때만 저장한다. MARKETRY·비로그인은 이 탭에만 남는다.
+    // 서버에는 내 분류(본인 데이터)일 때만 저장한다. MARKETRY·비로그인은 이 탭에만 남는다.
     if (isCustom) registerExcludedSector(sectorId).catch(e => console.error('섹터 제외 실패', e))
   }
 
@@ -678,7 +678,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     sectorFilterEnabled,
     onToggleSectorFilter: () => setSectorFilterEnabled(prev => !prev),
     // 제외 업종 목록은 이름순으로 보여준다 — 서버가 내려주는 트리 순서는 업종을 만든 순서를 따라서, 같은 분류라도
-    // MARKETRY와 내 히트맵에서 순서가 다르게 나왔다.
+    // MARKETRY와 내 분류에서 순서가 다르게 나왔다.
     excludedSectors: Array.from(excludedSectorNames, ([sectorId, sectorName]) => ({ sectorId, sectorName })).sort((a, b) =>
       a.sectorName.localeCompare(b.sectorName, 'ko'),
     ),

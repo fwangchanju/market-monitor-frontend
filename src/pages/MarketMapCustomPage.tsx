@@ -452,7 +452,7 @@ export default function MarketMapCustomPage() {
       <div className="flex min-h-0 flex-1">
         {/* 공유·텔레그램 모두 [세 번째 바+본문] 열만 캡처해 설정창을 제외한다. */}
         <div
-          className="relative z-10 -mt-[10.5px] flex min-h-0 flex-1 bg-black"
+          className="relative z-10 -mt-[10.5px] flex min-h-0 min-w-0 flex-1 bg-black"
         >
           {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서(overflow: visible이면 내부 콘텐츠의
               min-content 폭을 그대로 강제해서 사이드바 쪽을 밀어냄) 창을 좁혀도 사이드바(w-80)가
@@ -495,7 +495,7 @@ export default function MarketMapCustomPage() {
               <div className={`${FONT_BAR_MODE_STATUS} flex min-w-0 items-center justify-end text-gray-400`}>{modeStatusText}</div>
             </div>
             <div className="flex min-h-0 flex-1">
-              <div className="relative flex min-h-0 flex-1 flex-col bg-black">
+              <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-black">
               {/* NXT 단독 시간대 공지 — 그 시간대에만 보여주는 알림이다. 닫을 수 있고, 시간대가 끝났다가 다시 오면 또 나온다. */}
               {/* 지도가 그려진 뒤에만 보인다 — 로딩 중이거나 불러오지 못했을 때는 가운데 로딩 원 위에 겹쳐 뜨지 않게 한다. */}
               {nxtOnlyWindow && !isNxtNoticeDismissed && !isLoading && !isError && (
@@ -556,12 +556,13 @@ export default function MarketMapCustomPage() {
                   })}
                 </nav>
               )}
+              {/* 로딩·오류 원은 그룹 페이지와 같은 높이에 오도록 위 16px·아래 19.5px 여백 안에서 가운데에 둔다. */}
               {isLoading ? (
-                <div className="flex flex-1 items-center justify-center">
+                <div className="flex flex-1 items-center justify-center pt-4 pb-[19.5px]">
                   <Spinner showElapsed />
                 </div>
               ) : isError ? (
-                <div className="flex flex-1 items-center justify-center">
+                <div className="flex flex-1 items-center justify-center pt-4 pb-[19.5px]">
                   <Spinner errorMessage="데이터를 불러오지 못했습니다." />
                 </div>
               ) : visibleItems.length === 0 ? (
@@ -619,7 +620,7 @@ export default function MarketMapCustomPage() {
               onToggleSide={toggleSettingsSide}
               boxSizeMarketCapRatio={boxSizeMarketCapRatio}
               onChangeBoxSizeMarketCapRatio={onChangeBoxSizeMarketCapRatio}
-              pageLabel="MAP"
+              pageLabel="Map"
               sectionOrder={MAP_SETTINGS_SECTION_ORDER}
               classificationAtBottom
               snapshotTime={data?.classificationUpdatedAt}

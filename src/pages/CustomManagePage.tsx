@@ -38,28 +38,28 @@ export default function CustomManagePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   // /custom/industry는 업종 화면이고, /custom/stock은 종목 화면이다.
   const mode = pathname === '/custom/stock' || searchParams.get('mode') === 'stock' ? 'stock' : 'sector'
-  // 히트맵 시트 — 내 히트맵(mymap)만 편집할 수 있다. ?sheet=krx는 읽기 전용 KRX 시트, ?sheet=marketry는 올린
-  // MARKETRY를 읽기 전용으로 보여준다(MARKETRY는 내 히트맵에서 올려서 바꾼다).
+  // 히트맵 시트 — 내 분류(mine)만 편집할 수 있다. ?sheet=krx는 읽기 전용 KRX 시트, ?sheet=marketry는 올린
+  // MARKETRY를 읽기 전용으로 보여준다(MARKETRY는 내 분류에서 올려서 바꾼다).
   // 예전 주소(?sheet=nxt)는 KRX 시트에서 "NXT 종목만 보기"를 켠 상태로 연다.
   const { data: session, isLoading: isSessionLoading } = useSession()
   const isLoggedIn = useIsLoggedIn()
   const { requireLogin } = useLoginGate()
-  // 로그인 여부가 확정된 비로그인 — 세션을 확인하는 동안은 아직 모르므로 내 히트맵 선택을 그대로 둔다.
+  // 로그인 여부가 확정된 비로그인 — 세션을 확인하는 동안은 아직 모르므로 내 분류 선택을 그대로 둔다.
   const isGuestKnown = !isSessionLoading && !isLoggedIn
   const sheetParam = searchParams.get('sheet')
   const [selectedHeatmap, setSelectedHeatmap] = useHeatmapSelection()
   const explicitSheet =
-    sheetParam === 'krx' || sheetParam === 'nxt' ? 'krx' : sheetParam === 'marketry' || sheetParam === 'mymap' ? sheetParam : null
+    sheetParam === 'krx' || sheetParam === 'nxt' ? 'krx' : sheetParam === 'marketry' || sheetParam === 'mine' ? sheetParam : sheetParam === 'mymap' ? 'mine' : null
   const chosenSheet = explicitSheet ?? selectedHeatmap
-  // 내 히트맵은 로그인이 필요하다 — 비로그인에게는 MARKETRY로 보이고, 브라우저에 저장한 선택 자체는 보존한다(지도·그룹 페이지와 같다).
-  const sheet = isGuestKnown && chosenSheet === 'mymap' ? 'marketry' : chosenSheet
-  const isReadOnlySheet = sheet !== 'mymap'
+  // 내 분류는 로그인이 필요하다 — 비로그인에게는 MARKETRY로 보이고, 브라우저에 저장한 선택 자체는 보존한다(지도·그룹 페이지와 같다).
+  const sheet = isGuestKnown && chosenSheet === 'mine' ? 'marketry' : chosenSheet
+  const isReadOnlySheet = sheet !== 'mine'
   const [sectorSettingsActionsTarget, setSectorSettingsActionsTarget] = useState<HTMLDivElement | null>(null)
   // 종목 화면의 실행취소·다시실행 아이콘이 들어갈 설정창 안의 자리.
   const [stockHistoryTarget, setStockHistoryTarget] = useState<HTMLDivElement | null>(null)
-  // 비로그인이 내 히트맵을 누르면 로그인 안내만 띄우고, 보던 분류에 그대로 머문다.
+  // 비로그인이 내 분류를 누르면 로그인 안내만 띄우고, 보던 분류에 그대로 머문다.
   const handleSelectSheet = (next: HeatmapSelection) => {
-    if (next === 'mymap' && isGuestKnown) {
+    if (next === 'mine' && isGuestKnown) {
       requireLogin(pathname)
       return
     }
@@ -76,9 +76,9 @@ export default function CustomManagePage() {
   // 기존 시트 링크는 처음부터 적용하고 브라우저 공통 선택으로 옮겨 URL이 이후 선택을 덮지 않게 한다.
   useEffect(() => {
     if (!explicitSheet) return
-    // 내 히트맵 주소는 로그인 여부가 확정된 뒤에 처리한다 — 비로그인이면 선택을 옮기지 않고 팝업만 띄운다.
-    if (explicitSheet === 'mymap' && isSessionLoading) return
-    if (explicitSheet === 'mymap' && isGuestKnown) requireLogin(pathname)
+    // 내 분류 주소는 로그인 여부가 확정된 뒤에 처리한다 — 비로그인이면 선택을 옮기지 않고 팝업만 띄운다.
+    if (explicitSheet === 'mine' && isSessionLoading) return
+    if (explicitSheet === 'mine' && isGuestKnown) requireLogin(pathname)
     else setSelectedHeatmap(explicitSheet)
     if (sheetParam === 'nxt') setIsNxtOnlyView(true)
     setSearchParams(previous => {
@@ -109,8 +109,8 @@ export default function CustomManagePage() {
   } = useStockSectors({ enabled: isLoggedIn })
 
   // 선택한 분류에 맞는 최종 갱신 시각을 가져오며 거래소 시트에서는 본문 데이터도 함께 쓴다.
-  // 비로그인에게는 시트가 마켓트리·한국거래소뿐이라 지도 조회는 항상 열려 있다. 내 히트맵은 로그인과 세션 확인을 마친 뒤에만 받는다.
-  const canReadSheet = isLoggedIn || sheet !== 'mymap'
+  // 비로그인에게는 시트가 마켓트리·한국거래소뿐이라 지도 조회는 항상 열려 있다. 내 분류는 로그인과 세션 확인을 마친 뒤에만 받는다.
+  const canReadSheet = isLoggedIn || sheet !== 'mine'
   const {
     data: classificationMap,
     isLoading: isClassificationLoading,
@@ -246,7 +246,7 @@ export default function CustomManagePage() {
               </div>
               {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다. */}
               {!isReadOnlySheet && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 min-w-0 flex-1 items-center" />}
-              {/* 관리자만 — 내 히트맵을 MARKETRY로 올리고 이전 버전으로 되돌린다. */}
+              {/* 관리자만 — 내 분류를 MARKETRY로 올리고 이전 버전으로 되돌린다. */}
               {session?.role === 'ADMIN' && !isReadOnlySheet && <MarketryPublishControls />}
               <div className={`${FONT_BAR_MODE_STATUS} ml-2 flex min-w-0 items-center justify-end text-gray-400`}>
                 <span className="flex min-w-0 items-center justify-end">
@@ -296,7 +296,7 @@ export default function CustomManagePage() {
           </div>
           <div className={`flex shrink-0 pt-[7px] ${isSettingsOnLeft ? 'order-first' : ''}`}>
             <SettingsSidebar
-              pageLabel="CUSTOM"
+              pageLabel="Custom"
               stockCountLabel={countLabel}
               // 저장·초기화는 기능 검토 전 임시 숨김. 재요청 시 새 버튼을 만들지 말고 이 옵션을 true로 바꿔 기존 버튼을 복원한다.
               showPreferenceActions={false}
