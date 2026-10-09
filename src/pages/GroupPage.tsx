@@ -14,7 +14,7 @@ import Toolbar from '@/components/Toolbar'
 import { REFRESH_FEEDBACK_MIN_DURATION_MS } from '@/utils/uiFeedback'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
 import ChangeRateBar from '@/components/ChangeRateBar'
-import { TAXONOMY_NAMES } from '@/utils/taxonomyNames'
+import TaxonomyBadge from '@/components/TaxonomyBadge'
 import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
@@ -252,11 +252,7 @@ export default function GroupPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 파라미터가 있을 때만 반응하면 됨
   }, [searchParams])
   // 맵·커스텀 페이지와 같은 청록색 분류자명 버튼을 표시한다.
-  const modeStatusText = (
-    <span className="flex min-w-0 items-center justify-end">
-      <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{TAXONOMY_NAMES[settingsModalProps.taxonomy].title}</span>
-    </span>
-  )
+  const modeStatusText = <TaxonomyBadge taxonomy={settingsModalProps.taxonomy} />
 
   const { isOnLeft: isSettingsOnLeft, toggleSide: toggleSettingsSide } = useSettingsSidebarSide()
   const [isShareOpen, setIsShareOpen] = useState(false)

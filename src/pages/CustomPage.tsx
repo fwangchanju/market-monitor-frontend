@@ -23,7 +23,7 @@ import { useSession, useIsLoggedIn } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
 import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload, downloadDataUrl, captureFileName } from '@/utils/captureToDownload'
-import { TAXONOMY_NAMES } from '@/utils/taxonomyNames'
+import TaxonomyBadge from '@/components/TaxonomyBadge'
 
 type CopyStatus = 'idle' | 'copying' | 'copied' | 'error'
 type DownloadStatus = 'idle' | 'downloading' | 'error'
@@ -250,9 +250,7 @@ export default function CustomPage() {
               {/* 관리자만 — 내 분류를 MARKETRY로 올리고 이전 버전으로 되돌린다. */}
               {session?.role === 'ADMIN' && !isReadOnlySheet && <MarketryPublishControls />}
               <div className={`${FONT_BAR_MODE_STATUS} ml-2 flex min-w-0 items-center justify-end text-gray-400`}>
-                <span className="flex min-w-0 items-center justify-end">
-                  <span className="min-w-0 truncate bg-[var(--brand)] px-2 py-1 text-black">{TAXONOMY_NAMES[sheet].title}</span>
-                </span>
+                <TaxonomyBadge taxonomy={sheet} />
               </div>
             </div>
             <EmptyMessageAreaContext.Provider value={emptyMessageArea}>
