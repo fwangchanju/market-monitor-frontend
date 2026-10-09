@@ -125,11 +125,11 @@ function SettingHelpBubble({ label, description, bookmarkId, warning = false }: 
         className={`inline-flex h-4 w-4 items-center justify-center border-0 bg-transparent p-0 focus-visible:outline focus-visible:outline-1 ${warning ? 'text-red-500 hover:text-red-400' : 'text-gray-400 hover:text-gray-200'}`}
       >
         <svg aria-hidden="true" viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="8" cy="8" r="6.35" />
+          <circle cx="8" cy="8" r="6.35" strokeWidth={warning ? 0.9 : undefined} />
           {warning ? (
             <>
-              <path d="M8 4.2V9" strokeWidth="1.9" />
-              <circle cx="8" cy="11.6" r="0.95" fill="currentColor" stroke="none" />
+              <path d="M8 4.4V8.9" strokeWidth="2.3" />
+              <circle cx="8" cy="11.45" r="1.15" fill="currentColor" stroke="none" />
             </>
           ) : (
             <>
