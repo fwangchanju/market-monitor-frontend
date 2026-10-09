@@ -278,8 +278,8 @@ export const StockSectorListItemSchema = z.object({
   marketValueTier: z.string().nullable(),
   industryName: z.string().nullable(),
   parentSectorName: z.string().nullable(),
-  sectorName: z.string(),
-  sectorId: z.number(),
+  sectorName: z.string().nullable(),
+  sectorId: z.number().nullable(),
 })
 export type StockSectorListItem = z.infer<typeof StockSectorListItemSchema>
 
