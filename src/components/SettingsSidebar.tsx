@@ -1972,7 +1972,6 @@ interface Props {
   plainContent?: ReactNode
   sectionOrder?: readonly SettingsSidebarSectionId[]
   taxonomyAtBottom?: boolean
-  taxonomyNotice?: string
   // 하단 Basis 선택 아래에 표시할 종목 분류 최종 변경 시각(지도 상단 표기와 같은 형식).
   snapshotTime?: string | null
   // 사이드바 열림 상태는 페이지가 관리한다.
@@ -2017,7 +2016,6 @@ export default function SettingsSidebar({
   showPreferenceActions = true,
   sectionOrder,
   taxonomyAtBottom = false,
-  taxonomyNotice,
   snapshotTime,
   taxonomySection = 'industry',
   isOpen,
@@ -2325,11 +2323,6 @@ export default function SettingsSidebar({
       </div>
       {taxonomyAtBottom && hasTaxonomySelector && (
         <>
-          {taxonomyNotice && (
-            <p style={{ backgroundColor: TAXONOMY_BACKGROUND_COLOR }} className="shrink-0 px-4 pb-2 text-xs leading-relaxed text-gray-400">
-              {taxonomyNotice}
-            </p>
-          )}
           <SettingsTaxonomySelector taxonomy={selectedTaxonomy} onSelectTaxonomy={handleSelectTaxonomy} atBottom snapshotTime={snapshotTime} />
         </>
       )}

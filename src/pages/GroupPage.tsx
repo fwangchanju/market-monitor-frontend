@@ -534,7 +534,6 @@ export default function GroupPage() {
               pageLabel="Group"
               stockCountLabel={stockCountLabel}
               taxonomyAtBottom
-              taxonomyNotice="Map 설정과 중복 사항은 동일 적용됩니다."
               snapshotTime={data?.taxonomyUpdatedAt}
               plainContent={
                 <>
