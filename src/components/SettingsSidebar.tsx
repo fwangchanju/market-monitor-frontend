@@ -842,7 +842,7 @@ export function SettingsSectorStockScopeSection({
       </div>
       {scope === 'ALL' && (
         <p className="mt-2 max-w-[16rem] text-left text-xs leading-snug text-red-500">
-          현 상태의 등락률과 맵 페이지의 등락률은 다르게 계산됩니다.
+          맵 페이지에서의 등락률과 다르게 집계됩니다.
         </p>
       )}
     </div>
