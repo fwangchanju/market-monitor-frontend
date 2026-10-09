@@ -33,7 +33,7 @@ function invalidateCustomTaxonomy(queryClient: ReturnType<typeof useQueryClient>
   queryClient.invalidateQueries({
     queryKey: marketMapKeys.all,
     predicate: ({ queryKey }) =>
-      (queryKey[1] === 'map' || queryKey[1] === 'sectorPair') && queryKey[3] === true,
+      (queryKey[1] === 'map' || queryKey[1] === 'sectorPair') && queryKey[3] === 'MINE',
   })
 }
 

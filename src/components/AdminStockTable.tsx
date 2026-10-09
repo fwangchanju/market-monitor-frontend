@@ -171,9 +171,9 @@ interface SectorChain {
   leafName: string | null
 }
 
-function resolveSectorChain(sectorOptionsById: Map<number, SectorOption>, sectorId: number): SectorChain {
+function resolveSectorChain(sectorOptionsById: Map<number, SectorOption>, sectorId: number | null): SectorChain {
   const chain: SectorOption[] = []
-  let current = sectorOptionsById.get(sectorId)
+  let current = sectorId == null ? undefined : sectorOptionsById.get(sectorId)
   while (current) {
     chain.unshift(current)
     current = current.parentId != null ? sectorOptionsById.get(current.parentId) : undefined

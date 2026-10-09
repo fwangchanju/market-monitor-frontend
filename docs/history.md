@@ -349,3 +349,7 @@ MARKETRY 업데이트는 운영자 계정의 종목 배정 수정과 업종 정�
 ## 관리자 페이지로 옮길 준비 (2026-10-08)
 
 MARKETRY UPDATE/ROLLBACK은 지금 CUSTOM 페이지의 내 히트맵 시트 상단바에 있지만, 나중에 관리자 페이지를 따로 만들면 그리로 옮긴다(백엔드 `docs/backlog.md`의 관리자 페이지 구상). 옮기기 쉽게 `MarketryPublishControls`는 속성(props) 없이 API(`api/marketryPublish.ts`)와 알림창(`appConfirm/appAlert`)만 쓰도록 독립시켜 뒀다. 쓰는 곳은 `CustomManagePage.tsx` 한 줄뿐이라 옮길 때는 그 줄을 지우고 관리자 페이지에 같은 컴포넌트를 놓으면 된다. 서버 API(`/api/admin/marketry/publications`)는 이미 관리자 전용 경로다. 옮긴 뒤에도 조심해서 누르게 하는 ADMIN 표시와 붉은 확인창(`adminOnly`)은 그대로 쓴다.
+
+## 신규 회원의 커스텀 종목 목록 (2026-10-09)
+
+내 히트맵의 STOCK 표는 사용자가 섹터를 만들거나 종목을 배정하기 전에도 활성 주권 종목 전체를 보여준다. 미배정 종목의 대·중·소분류는 `-`로 표시하며, 섹터를 만든 뒤 개별 또는 일괄 배정할 수 있다. 내 히트맵 지도에는 사용자가 배정한 종목만 표시한다. 키움의 industry와 사용자가 만드는 sector는 별개다.
