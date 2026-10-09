@@ -1,13 +1,13 @@
 import { useSyncExternalStore } from 'react'
 
-export type HeatmapSelection = 'marketry' | 'krx' | 'mine'
+export type TaxonomySelection = 'MARKETRY' | 'KRX' | 'MINE'
 
-const STORAGE_KEY = 'marketMap.heatmapSelection'
-const CHANGE_EVENT = 'marketry:heatmap-selection'
-let memorySelection: HeatmapSelection | null = null
+const STORAGE_KEY = 'marketMap.taxonomySelection'
+const CHANGE_EVENT = 'marketry:taxonomy-selection'
+let memorySelection: TaxonomySelection | null = null
 let useMemoryStorage = false
 
-function getSelection(): HeatmapSelection | null {
+function getSelection(): TaxonomySelection | null {
   if (useMemoryStorage) return memorySelection
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
@@ -18,9 +18,10 @@ function getSelection(): HeatmapSelection | null {
     } catch {
       return null
     }
-    // 예전에 저장된 값도 새 이름으로 읽는다.
-    if (value === 'mymap') return 'mine'
-    return value === 'marketry' || value === 'krx' || value === 'mine' ? value : null
+    // 예전에 저장된 값(소문자, mymap)도 새 이름으로 읽는다.
+    if (typeof value !== 'string') return null
+    const key = value.toLowerCase() === 'mymap' ? 'MINE' : value.toUpperCase()
+    return key === 'MARKETRY' || key === 'KRX' || key === 'MINE' ? key : null
   } catch {
     useMemoryStorage = true
     return memorySelection
@@ -39,7 +40,7 @@ function subscribe(onChange: () => void) {
   }
 }
 
-function setSelection(next: HeatmapSelection) {
+function setSelection(next: TaxonomySelection) {
   memorySelection = next
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
@@ -53,7 +54,7 @@ function setSelection(next: HeatmapSelection) {
 const getServerSelection = () => null
 
 // 지도·그룹·커스텀이 공유하며, 탭을 닫은 뒤에도 이 브라우저에 선택을 저장한다.
-export function useHeatmapSelection(defaultSelection: HeatmapSelection = 'marketry'): [HeatmapSelection, (next: HeatmapSelection) => void] {
+export function useTaxonomySelection(defaultSelection: TaxonomySelection = 'MARKETRY'): [TaxonomySelection, (next: TaxonomySelection) => void] {
   const selection = useSyncExternalStore(subscribe, getSelection, getServerSelection)
   return [selection ?? defaultSelection, setSelection]
 }

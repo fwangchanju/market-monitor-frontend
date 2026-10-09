@@ -8,7 +8,7 @@ import { useSectorDeleteFlow } from '@/hooks/useSectorDeleteFlow'
 import { halfOverlapCollisionDetection } from '@/utils/dndCollision'
 import { toCount } from '@/utils/format'
 import { appAlert, appConfirm } from '@/utils/appDialogBus'
-import { SearchBar } from '@/components/ReadOnlyHeatmapSheet'
+import { SearchBar } from '@/components/ReadOnlyTaxonomySheet'
 import EmptyMessage, { EMPTY_DATA_MESSAGE, EMPTY_SEARCH_MESSAGE } from '@/components/EmptyMessage'
 import { EditIcon, PlusIcon, TrashIcon } from '@/components/icons/MarketMapIcons'
 

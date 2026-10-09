@@ -98,7 +98,7 @@ interface Props {
   // 데이터를 불러오지 못했는지 — 못 불러온 것을 "표시할 데이터가 없다"로 잘못 보여주지 않는다.
   isError: boolean
   // 어떤 분류를 읽기 전용으로 보여주는지 — krx는 거래소 분류, marketry는 올린 분류다. "NXT만 보기"는 krx만 쓴다.
-  source: 'krx' | 'marketry'
+  source: 'KRX' | 'MARKETRY'
   // NXT 시트면 NXT 거래 가능 종목만 남긴다. 업종 분류는 KRX 것을 그대로 쓴다.
   nxtOnly: boolean
   // 검색창 옆 "NXT만 보기" 체크박스를 눌렀을 때.
@@ -132,9 +132,9 @@ function collectSectorRows(nodes: MarketMapResponse['items'], parentPath: string
   })
 }
 
-// KRX/NXT·MARKETRY 시트 — 업종 분류를 읽기만 하는 화면이다. 편집 기능(추가·이동·배정)은 없고, 지도의 해당 히트맵이 보여주는
+// KRX/NXT·MARKETRY 시트 — 업종 분류를 읽기만 하는 화면이다. 편집 기능(추가·이동·배정)은 없고, 지도의 해당 분류이 보여주는
 // 분류(/map?source=...)를 그대로 표로 보여준다. 시세가 있는 종목만 내려오므로 거래정지 종목 등은 빠질 수 있다.
-export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, isError, source, nxtOnly, onNxtOnlyChange, nxtStockCodes, stockMarkets, stockIndustries, isNxtLoading, onCountLabelChange }: Props) {
+export default function ReadOnlyTaxonomySheet({ mode, data, isLoading, isError, source, nxtOnly, onNxtOnlyChange, nxtStockCodes, stockMarkets, stockIndustries, isNxtLoading, onCountLabelChange }: Props) {
   const sectors = useMemo<SectorRow[]>(() => {
     if (!data) return []
     // 업종 표는 최상위 업종별로 하위 종목까지 집계하고, 종목 표는 실제 배정 업종별로 펼친다.
@@ -170,7 +170,7 @@ export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, isError, s
   const emptyMessage = nxtOnly
     ? 'NXT 거래 종목이 아직 없습니다.\n평일 오전 7시 종목 정보 동기화 뒤에 표시됩니다.'
     : EMPTY_DATA_MESSAGE
-  const nxtOnlyToggle = source === 'krx' && (
+  const nxtOnlyToggle = source === 'KRX' && (
     <label className="flex cursor-pointer items-center gap-1.5 text-sm text-white">
       <input
         type="checkbox"
@@ -182,7 +182,7 @@ export default function ReadOnlyHeatmapSheet({ mode, data, isLoading, isError, s
     </label>
   )
   return mode === 'stock' ? (
-    <StockTable showHierarchy={source === 'marketry'} sectors={sectors} emptyMessage={emptyMessage} nxtStockCodes={nxtStockCodes} stockMarkets={stockMarkets} stockIndustries={stockIndustries} extra={nxtOnlyToggle} onCountLabelChange={onCountLabelChange} />
+    <StockTable showHierarchy={source === 'MARKETRY'} sectors={sectors} emptyMessage={emptyMessage} nxtStockCodes={nxtStockCodes} stockMarkets={stockMarkets} stockIndustries={stockIndustries} extra={nxtOnlyToggle} onCountLabelChange={onCountLabelChange} />
   ) : (
     <CategoryTable sectors={sectors} emptyMessage={emptyMessage} extra={nxtOnlyToggle} onCountLabelChange={onCountLabelChange} />
   )

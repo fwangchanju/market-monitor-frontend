@@ -10,7 +10,7 @@ import { ReturnArrowIcon } from '@/components/icons/MarketMapIcons'
 import type { MarketValueTierItem } from '@/types/api'
 import { FONT_BAR_TIME } from '@/components/FontStyle'
 import { ACCENT_PALETTE } from '@/utils/accentPalette'
-import { CLASSIFICATION_SELECT_TITLE, HEATMAP_NAMES, type HeatmapKey } from '@/utils/heatmapNames'
+import { CLASSIFICATION_SELECT_TITLE, TAXONOMY_NAMES, type TaxonomyKey } from '@/utils/taxonomyNames'
 import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { useIsLoggedIn } from '@/hooks/useSession'
 import { useCustomPreferences } from '@/hooks/useCustomPreferences'
@@ -944,24 +944,24 @@ function EqualWeightToggleSwitch({
 }
 
 function SettingsClassificationSelector({
-  heatmap,
-  onSelectHeatmap,
+  taxonomy,
+  onSelectTaxonomy,
   atBottom = false,
   snapshotTime,
 }: {
-  heatmap: HeatmapKey
-  onSelectHeatmap: (heatmap: HeatmapKey) => void
+  taxonomy: TaxonomyKey
+  onSelectTaxonomy: (taxonomy: TaxonomyKey) => void
   atBottom?: boolean
   snapshotTime?: string | null
 }) {
   // KRX와 NXT는 "거래소" 한 칸으로 합쳤고, 지금 어느 쪽 종목을 보여줄지는 시간대가 정한다. 내 분류는 로그인이 필요하다(고르면 로그인 창이 뜬다).
-  const options: { key: HeatmapKey; label: string }[] = [
-    { key: 'marketry', label: HEATMAP_NAMES.marketry.tab },
-    { key: 'krx', label: '한국거래소' },
-    { key: 'mine', label: HEATMAP_NAMES.mine.tab },
+  const options: { key: TaxonomyKey; label: string }[] = [
+    { key: 'MARKETRY', label: TAXONOMY_NAMES.MARKETRY.tab },
+    { key: 'KRX', label: '한국거래소' },
+    { key: 'MINE', label: TAXONOMY_NAMES.MINE.tab },
   ]
-  const isExchange = heatmap === 'krx' || heatmap === 'nxt'
-  const isSelected = (key: HeatmapKey) => (key === 'krx' ? isExchange : heatmap === key)
+  const isExchange = taxonomy === 'KRX' || taxonomy === 'NXT'
+  const isSelected = (key: TaxonomyKey) => (key === 'KRX' ? isExchange : taxonomy === key)
 
   return (
     <div data-map-select-top-line={atBottom || undefined} style={atBottom ? { backgroundColor: CLASSIFICATION_BACKGROUND_COLOR } : undefined} className={`${atBottom ? 'shrink-0 border-t border-gray-500 px-4 py-3' : 'mb-6 pt-5 pb-6'} text-white`}>
@@ -977,7 +977,7 @@ function SettingsClassificationSelector({
             type="button"
             role="radio"
             aria-checked={isSelected(option.key)}
-            onClick={() => !isSelected(option.key) && onSelectHeatmap(option.key)}
+            onClick={() => !isSelected(option.key) && onSelectTaxonomy(option.key)}
             className={`min-h-8 rounded px-0.5 py-1 text-sm font-medium whitespace-nowrap transition-colors ${
               isSelected(option.key)
                 ? 'bg-[var(--brand)] text-black'
@@ -1001,7 +1001,7 @@ function SettingsClassificationSelector({
                   <>
                     <b className="text-red-600">키움 REST API</b>로 받은{'\n'}종목·업종 정보를 서버에{'\n'}마지막으로 동기화한 시각입니다.{'\n\n'}시세 갱신 시각이나 한국거래소의{'\n'}공식 분류 변경 시각과는 다릅니다.
                   </>
-                ) : heatmap === 'mine' ? (
+                ) : taxonomy === 'MINE' ? (
                   <>
                     <b className="text-red-600">내가</b> 종목·업종 정보를{'\n'}마지막으로 수정한 시각입니다.
                   </>
@@ -1101,7 +1101,7 @@ export function SettingsSectorLevelSection({
   sectorLevelEnabled,
   onToggleSectorLevel,
   availableMaxDepth,
-  heatmap,
+  taxonomy,
   onChangeMaxDepth,
   activeDepthMetric,
   onChangeActiveDepthMetric,
@@ -1143,7 +1143,7 @@ export function SettingsSectorLevelSection({
   onToggleSectorLevel: () => void
   availableMaxDepth: number
   // 거래소(KRX·NXT) 분류는 대분류만 있어서 중·소분류는 고를 수 없다. MARKETRY만 하위 분류를 가진다.
-  heatmap?: HeatmapKey
+  taxonomy?: TaxonomyKey
   onChangeMaxDepth: (value: number) => void
   // 그룹 탭에 표시할 네 항목 중 하나만 고른다.
   activeDepthMetric: DepthMetric
@@ -1191,7 +1191,7 @@ export function SettingsSectorLevelSection({
   // 화면 결과만 비어 있을 뿐, 사용자가 미리 설정해 둔 값을 UI가 임의로 막거나 지우지는 않는다.
   const depthLabelCount = Math.max(availableMaxDepth, DEPTH_LABELS.length)
   // 분류 자체에 하위 단계가 없으면(KRX·NXT) 그 단계는 고를 수 없다. 저장된 값은 건드리지 않고 화면에서만 막는다.
-  const selectableDepth = heatmap && heatmap !== 'marketry' ? 1 : depthLabelCount
+  const selectableDepth = taxonomy && taxonomy !== 'MARKETRY' ? 1 : depthLabelCount
   const depthValue = Math.min(maxDepth ?? depthLabelCount, selectableDepth)
   const depthMetricMaxSelectableIndex = Math.max(0, Math.min(selectableDepth, maxDepth ?? selectableDepth) - 1)
   const isDepthMetricDisabled = !sectorLevelEnabled
@@ -1758,11 +1758,11 @@ export function SettingsExcludeSection({
                 key={sector.sectorId}
                 type="button"
                 onClick={async () => {
-                  if (!await appConfirm(`${sector.sectorName}\n히트맵으로 복원하시겠습니까?`)) return
+                  if (!await appConfirm(`${sector.sectorName}\n트리맵으로 복원하시겠습니까?`)) return
                   onRemoveExcludedSector(sector.sectorId)
                 }}
-                aria-label={`${sector.sectorName} 히트맵에 다시 표시`}
-                title="히트맵에 다시 표시"
+                aria-label={`${sector.sectorName} 트리맵에 다시 표시`}
+                title="트리맵에 다시 표시"
                 className="flex h-7 w-full shrink-0 cursor-pointer items-center justify-start gap-1.5 border-0 bg-transparent pl-2 pr-1.5 text-left text-[12px] font-bold text-white transition-colors hover:bg-white/35"
               >
                 <ReturnArrowIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -1913,7 +1913,7 @@ export function SettingsStrongIndustryColorSection({
 }
 
 interface Props {
-  // 헤더에 그대로 표시 — SubNavBar 탭 이름과 동일한 문구(MAP, GROUP 등)를 각 페이지가 그대로 넘겨준다. 안 넘기면 "설정".
+  // 헤더에 그대로 표시 — NavSubBar 탭 이름과 동일한 문구(MAP, GROUP 등)를 각 페이지가 그대로 넘겨준다. 안 넘기면 "설정".
   // 생략하면 페이지 이름 없이 "설정"만 표시한다(페이지 이름을 반복하는 동어 반복을 피하고 싶은 페이지용).
   pageLabel?: string
   // 설정 저장·초기화 기능을 제공하는 페이지에서만 헤더 버튼을 표시한다.
@@ -1934,8 +1934,8 @@ interface Props {
   isCustom?: boolean
   onToggleCustom?: () => void
   // 지도의 Basis 선택(KRX / NXT / MARKETRY) — 주면 선택 탭이 이 값을 쓰고, 안 주면 isCustom으로 KRX/MARKETRY만 고른다.
-  heatmap?: HeatmapKey
-  onSelectHeatmap?: (heatmap: HeatmapKey) => void
+  taxonomy?: TaxonomyKey
+  onSelectTaxonomy?: (taxonomy: TaxonomyKey) => void
   avgChangeRateUseSimple?: boolean
   onToggleAvgChangeRateUseSimple?: () => void
   // 지도 페이지의 박스 면적 시가총액 반영 비율(0=동일 크기, 100=시가총액 비례).
@@ -1974,8 +1974,8 @@ export default function SettingsSidebar({
   isOpen,
   isCustom,
   onToggleCustom,
-  heatmap,
-  onSelectHeatmap,
+  taxonomy,
+  onSelectTaxonomy,
   avgChangeRateUseSimple,
   onToggleAvgChangeRateUseSimple,
   boxSizeMarketCapRatio,
@@ -2070,9 +2070,9 @@ export default function SettingsSidebar({
   // 계속 표시한다. 각 페이지 통합이 끝나면 모든 설정이 명시적인 group 아래에 놓인다.
   const ungroupedNodes = childNodes.filter(node => !isSettingsSidebarGroup(node))
   if (ungroupedNodes.length > 0) addSectionContent('composition', ungroupedNodes)
-  const hasClassificationSelector = Boolean(heatmap && onSelectHeatmap) || (typeof isCustom === 'boolean' && Boolean(onToggleCustom))
-  const selectedHeatmap: HeatmapKey = heatmap ?? (isCustom ? 'marketry' : 'krx')
-  const handleSelectHeatmap = onSelectHeatmap ?? (() => onToggleCustom?.())
+  const hasClassificationSelector = Boolean(taxonomy && onSelectTaxonomy) || (typeof isCustom === 'boolean' && Boolean(onToggleCustom))
+  const selectedTaxonomy: TaxonomyKey = taxonomy ?? (isCustom ? 'MARKETRY' : 'KRX')
+  const handleSelectTaxonomy = onSelectTaxonomy ?? (() => onToggleCustom?.())
   const hasStockSizeSelector = typeof avgChangeRateUseSimple === 'boolean' && Boolean(onToggleAvgChangeRateUseSimple)
   const hasBoxSizeRatioSlider = typeof boxSizeMarketCapRatio === 'number' && Boolean(onChangeBoxSizeMarketCapRatio)
 
@@ -2243,7 +2243,7 @@ export default function SettingsSidebar({
           }`}
         >
           {!classificationAtBottom && selectedSection.id === classificationSection && hasClassificationSelector && (
-            <SettingsClassificationSelector heatmap={selectedHeatmap} onSelectHeatmap={handleSelectHeatmap} />
+            <SettingsClassificationSelector taxonomy={selectedTaxonomy} onSelectTaxonomy={handleSelectTaxonomy} />
           )}
           {selectedSection.id === 'stockDisplay' && hasBoxSizeRatioSlider ? (
             <SettingsStockSizeSelector
@@ -2280,7 +2280,7 @@ export default function SettingsSidebar({
               {classificationNotice}
             </p>
           )}
-          <SettingsClassificationSelector heatmap={selectedHeatmap} onSelectHeatmap={handleSelectHeatmap} atBottom snapshotTime={snapshotTime} />
+          <SettingsClassificationSelector taxonomy={selectedTaxonomy} onSelectTaxonomy={handleSelectTaxonomy} atBottom snapshotTime={snapshotTime} />
         </>
       )}
     </div>

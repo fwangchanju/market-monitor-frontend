@@ -129,7 +129,7 @@ export const handlers = [
     const market = url.searchParams.get('market')
     // source가 krx가 아니면(marketry·mine) 커스텀 트리를 준다. 옛 요청(source 없음)은 isCustom을 따른다.
     const source = url.searchParams.get('source')
-    const isCustom = source ? source !== 'krx' : url.searchParams.get('isCustom') === 'true'
+    const isCustom = source ? source !== 'KRX' : url.searchParams.get('isCustom') === 'true'
     const snapshotTime = url.searchParams.get('snapshotTime')
     const marketOverview = data.marketOverviews.find(o => o.market === market) ?? null
     const tree = isCustom ? data.marketMapTree : data.toDefaultModeTree(data.marketMapTree)

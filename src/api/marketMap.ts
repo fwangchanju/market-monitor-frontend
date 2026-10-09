@@ -8,7 +8,7 @@ import {
   type MarketQuery,
 } from '@/types/api'
 import { z } from 'zod'
-import type { ClassificationSource } from '@/utils/heatmapNames'
+import type { ClassificationSource } from '@/utils/taxonomyNames'
 
 const excludedStockListResponseSchema = z.array(ExcludedStockItemSchema)
 

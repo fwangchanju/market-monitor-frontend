@@ -1,5 +1,5 @@
 import type { ChangeRateBasis } from '@/api/marketMap'
-import type { ClassificationSource } from '@/utils/heatmapNames'
+import type { ClassificationSource } from '@/utils/taxonomyNames'
 import type {
   AmtQty,
   MarketQuery,
