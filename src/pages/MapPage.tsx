@@ -623,7 +623,7 @@ export default function MapPage() {
               pageLabel="Map"
               sectionOrder={MAP_SETTINGS_SECTION_ORDER}
               taxonomyAtBottom
-              snapshotTime={data?.classificationUpdatedAt}
+              snapshotTime={data?.taxonomyUpdatedAt}
               stockCountLabel={`${toCount(visibleItems.length)}/${toCount(totalItemCount)}종목`}
               bookmarks={settingsBookmarks}
               onToggleBookmark={toggleSettingsBookmark}

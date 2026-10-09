@@ -520,7 +520,7 @@ export default function GroupPage() {
               pageLabel="Group"
               taxonomyAtBottom
               taxonomyNotice="Map 설정과 중복 사항은 동일 적용됩니다."
-              snapshotTime={data?.classificationUpdatedAt}
+              snapshotTime={data?.taxonomyUpdatedAt}
               plainContent={
                 <>
                   <SettingsAverageModeSection

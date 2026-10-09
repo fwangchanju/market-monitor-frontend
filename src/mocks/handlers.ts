@@ -138,7 +138,7 @@ export const handlers = [
       return HttpResponse.json({
         ...snapshot(tree),
         marketOverview,
-        classificationUpdatedAt: isCustom ? '2026-10-01T09:00:00' : '2026-10-02T07:00:00',
+        taxonomyUpdatedAt: isCustom ? '2026-10-01T09:00:00' : '2026-10-02T07:00:00',
       })
     }
     // snapshotTime이 있으면 그 값을 응답에 그대로 싣고(결정 4의 "요청 시각과 같아야 before로 인정" 조건을

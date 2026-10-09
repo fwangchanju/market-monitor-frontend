@@ -316,7 +316,7 @@ export default function CustomPage() {
                 </div>
               ) : null}
               taxonomyAtBottom
-              snapshotTime={taxonomyMap?.classificationUpdatedAt}
+              snapshotTime={taxonomyMap?.taxonomyUpdatedAt}
               taxonomy={sheet}
               onSelectTaxonomy={next => handleSelectSheet(next === 'KRX' || next === 'NXT' ? 'KRX' : next)}
             />
