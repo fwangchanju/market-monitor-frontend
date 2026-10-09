@@ -107,7 +107,7 @@ interface Props {
   nxtStockCodes: ReadonlySet<string>
   // 지도 응답에는 마켓 정보가 없어 MARKETRY 표와 같은 커스텀 종목 목록에서 가져온다.
   stockMarkets: ReadonlyMap<string, Market>
-  // 거래소 업종명은 종목 메타데이터에서 읽고, MARKETRY 대·중·소분류와 별도로 표시한다.
+  // 거래소 분류명은 종목 메타데이터에서 읽고, MARKETRY 대·중·소분류와 별도로 표시한다.
   stockIndustries: ReadonlyMap<string, string | null>
   // nxtStockCodes를 아직 받아오는 중인지 — 받기 전에는 "종목이 없다"고 잘못 보이지 않게 스피너를 보여준다.
   isNxtLoading: boolean
@@ -389,7 +389,7 @@ function StockTable({ showHierarchy, sectors, emptyMessage, nxtStockCodes, stock
               {header('alias', '약칭', STOCK_COLUMN_PERCENT.alias)}
               {header('totalMarketValue', '시가총액', STOCK_COLUMN_PERCENT.totalMarketValue)}
               {header('market', '마켓', STOCK_COLUMN_PERCENT.market)}
-              {header(showHierarchy ? 'industryName' : 'sectorName', '거래소 업종', STOCK_COLUMN_PERCENT.industry)}
+              {header(showHierarchy ? 'industryName' : 'sectorName', '거래소 분류', STOCK_COLUMN_PERCENT.industry)}
               {showHierarchy && (
                 <>
                   {header('parentSector', '대분류', STOCK_COLUMN_PERCENT.parentSector)}

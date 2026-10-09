@@ -120,7 +120,7 @@ export default function CustomPage() {
     isRefetching: isRefetchingTaxonomy,
   } = useMarketMap('ALL_STOCK', sheet, false, { enabled: canReadSheet })
 
-  // 읽기 전용 시트의 NXT 여부·시장·거래소 업종명은 회원 데이터가 아니라 공통 종목 정보에서 받는다.
+  // 읽기 전용 시트의 NXT 여부·시장·거래소 분류명은 회원 데이터가 아니라 공통 종목 정보에서 받는다.
   const {
     data: stockCatalog,
     isLoading: isStockCatalogLoading,
