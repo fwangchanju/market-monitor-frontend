@@ -36,6 +36,21 @@ export const getMarketMap = (
     })
     .then(r => MarketMapResponseSchema.parse(r.data))
 
+// 달력에서 고를 수 있는 날짜 — month는 'yyyy-MM'. 날짜마다 그날 종가 스냅샷 시각이 같이 온다(getMarketMap의 snapshotTime에 그대로 쓴다).
+const MarketMapSnapshotDaySchema = z.object({ date: z.string(), snapshotTime: z.string() })
+export type MarketMapSnapshotDay = z.infer<typeof MarketMapSnapshotDaySchema>
+
+export const getMarketMapSnapshotDays = (market: MarketQuery, month: string) =>
+  client
+    .get('/map/snapshot-days', { params: { market, month } })
+    .then(r => z.array(MarketMapSnapshotDaySchema).parse(r.data))
+
+// from(포함하지 않음)부터 to(포함)까지의 거래일 수 — 주말·휴장일은 세지 않는다. 날짜는 'yyyy-MM-dd'.
+export const getTradingDayGap = (from: string, to: string) =>
+  client
+    .get('/map/trading-day-gap', { params: { from, to } })
+    .then(r => z.object({ tradingDays: z.number() }).parse(r.data).tradingDays)
+
 // 로그인 없이 읽는 종목 공통 정보(시장·NXT 거래 가능 여부·거래소 분류명) — 읽기 전용 시트가 쓴다.
 export const getStockCatalog = () =>
   client.get('/map/stock-catalog').then(r => z.array(StockCatalogItemSchema).parse(r.data))

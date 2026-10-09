@@ -53,7 +53,7 @@ function SourceHelpBubble() {
         aria-expanded={isOpen}
         onClick={() => setIsOpen(open => !open)}
         onBlur={() => setIsOpen(false)}
-        className="inline-flex h-4 w-4 items-center justify-center border-0 bg-transparent p-0 text-white/50 hover:text-white focus-visible:outline focus-visible:outline-1"
+        className="inline-flex h-4 w-4 items-center justify-center border-0 bg-transparent p-0 text-white/50 hover:text-[var(--brand)] focus-visible:text-[var(--brand)] focus-visible:outline focus-visible:outline-1"
       >
         <svg aria-hidden="true" viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="8" cy="8" r="6.35" />

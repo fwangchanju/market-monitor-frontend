@@ -13,6 +13,9 @@ import MarketMapShareModal from '@/components/MarketMapShareModal'
 import EmptyMessage, { EMPTY_DATA_MESSAGE } from '@/components/EmptyMessage'
 import Spinner from '@/components/Spinner'
 import Toolbar from '@/components/Toolbar'
+import { ClockIcon } from '@/components/icons/MarketMapIcons'
+import SnapshotDatePicker from '@/components/SnapshotDatePicker'
+import ClosingPriceLabel from '@/components/ClosingPriceLabel'
 import { REFRESH_FEEDBACK_MIN_DURATION_MS } from '@/utils/uiFeedback'
 import DisclaimerNotice from '@/components/DisclaimerNotice'
 import ChangeRateBar from '@/components/ChangeRateBar'
@@ -182,6 +185,9 @@ export default function GroupPage() {
     isAfterHoursSelectable,
     onChangeChangeRateMode,
     data,
+    liveSnapshotTime,
+    onChangePinnedSnapshotTime,
+    pinnedSnapshotTime,
     isLoading,
     isError,
     isMarketMapSuccess,
@@ -193,6 +199,8 @@ export default function GroupPage() {
     excludedSectorIds,
     colorScale,
   } = useGlobalSettings({ allowChangeRateMode: true })
+  // 달력에서 지난 날짜를 골라 보는 중이면 시각·시간대·누적/따로 표시는 숨긴다(실시간 정보라서).
+  const isPastSnapshot = pinnedSnapshotTime !== undefined
 
   // 집계 대상 종목: 맵 페이지면 지도 설정창의 제외 기준을 따르고, 전체 포함이면 제외 설정 없이 전체 종목으로 계산한다.
   const [sectorStockScope, setSectorStockScope] = usePageSetting<SectorStockScope>('groupPage.sectorStockScope', 'MAP')
@@ -417,22 +425,38 @@ export default function GroupPage() {
                 <PeriodDropdown />
                 {/* 로딩 원이나 오류 문구가 보이는 동안에도 시계·시간대·누적/따로·분류명을 제자리에 둔다. 데이터가 없으면 시각 글자만 비어 있다. */}
                   <>
-                <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
+                <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap ${isPastSnapshot ? 'text-[var(--brand)]' : 'text-gray-400'}`}>
                   {/* 데이터가 없어도 날짜·시각 자리는 같은 폭으로 잡아 둬서 뒤의 시장 시간대 표시가 당겨지지 않게 한다. */}
-                  <span className={displayNow?.snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotDateLabel(displayNow?.snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
-                  <PageRefreshButton
-                    onRefresh={refetchMarketMap}
-                    isRefreshing={isRefreshing}
-                    className={FONT_BAR_TIME}
-                    helpText={SNAPSHOT_REFRESH_HELP}
-                    minSpinDurationMs={REFRESH_FEEDBACK_MIN_DURATION_MS}
+                  <SnapshotDatePicker
+                    market={market}
+                    viewedSnapshotTime={displayNow?.snapshotTime ?? null}
+                    liveSnapshotTime={liveSnapshotTime}
+                    onSelectSnapshotTime={onChangePinnedSnapshotTime}
+                    isPast={isPastSnapshot}
                   >
-                    <span className={displayNow?.snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotTimeOnlyLabel(displayNow?.snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
-                  </PageRefreshButton>
+                    <span className={displayNow?.snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotDateLabel(displayNow?.snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
+                  </SnapshotDatePicker>
+                  {isPastSnapshot && <ClosingPriceLabel viewedSnapshotTime={displayNow?.snapshotTime ?? null} liveSnapshotTime={liveSnapshotTime} />}
+                  {isPastSnapshot === false && (
+                    <>
+                      <ClockIcon className="-mr-0.5 h-[15px] w-[15px] shrink-0" aria-hidden />
+                      <PageRefreshButton
+                        onRefresh={refetchMarketMap}
+                        isRefreshing={isRefreshing}
+                        className={FONT_BAR_TIME}
+                        helpText={SNAPSHOT_REFRESH_HELP}
+                        minSpinDurationMs={REFRESH_FEEDBACK_MIN_DURATION_MS}
+                      >
+                        <span className={displayNow?.snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotTimeOnlyLabel(displayNow?.snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
+                      </PageRefreshButton>
+                    </>
+                  )}
                 </span>
-                <span className="flex shrink-0">
-                  <ChangeRateModeToggle basis={changeRateMode} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateMode} />
-                </span>
+                {isPastSnapshot === false && (
+                  <span className="flex shrink-0">
+                    <ChangeRateModeToggle basis={changeRateMode} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateMode} />
+                  </span>
+                )}
                   </>
               </div>
               {/* 지도 페이지와 동일하게 맨 오른쪽 끝에 프로필(사진이 끝, 글자는 그 왼쪽)을 둔다. */}

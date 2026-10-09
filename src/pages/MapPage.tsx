@@ -39,7 +39,9 @@ import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
 import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toCount, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
-import { ReturnArrowIcon } from '@/components/icons/MarketMapIcons'
+import { ClockIcon, ReturnArrowIcon } from '@/components/icons/MarketMapIcons'
+import SnapshotDatePicker from '@/components/SnapshotDatePicker'
+import ClosingPriceLabel from '@/components/ClosingPriceLabel'
 import TaxonomyBadge from '@/components/TaxonomyBadge'
 import { appAlert } from '@/utils/appDialogBus'
 import { mapStretchFor, mapTileMethod } from '@/utils/mapStretch'
@@ -166,6 +168,9 @@ export default function MapPage() {
     isAfterHoursSelectable,
     onChangeChangeRateMode,
     data,
+    liveSnapshotTime,
+    onChangePinnedSnapshotTime,
+    pinnedSnapshotTime,
     refetchMarketMap,
     isRefetchingMarketMap,
     isLoading,
@@ -197,6 +202,8 @@ export default function MapPage() {
     colorScale,
     handleExcludeSector,
   } = useGlobalSettings({ allowChangeRateMode: true })
+  // 달력에서 지난 날짜를 골라 보는 중이면 시각·시간대·누적/따로 표시는 숨긴다(실시간 정보라서).
+  const isPastSnapshot = pinnedSnapshotTime !== undefined
 
   const [searchParams, setSearchParams] = useSearchParams()
   const { isNativeFullscreen, handleToggleNativeFullscreen } = useNativeFullscreen()
@@ -469,23 +476,39 @@ export default function MapPage() {
                 <PeriodDropdown />
                 {/* 로딩·오류·빈 화면에서도 시계·시간대·누적/따로를 제자리에 둔다. 데이터가 없으면 시각 글자만 비어 있다. */}
                 <>
-                    <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap text-gray-400`}>
+                    <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap ${isPastSnapshot ? 'text-[var(--brand)]' : 'text-gray-400'}`}>
                   {/* 데이터가 없어도 날짜·시각 자리는 같은 폭으로 잡아 둬서 뒤의 시장 시간대 표시가 당겨지지 않게 한다. */}
-                  <span className={data?.snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotDateLabel(data?.snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
-                  <PageRefreshButton
-                    onRefresh={refetchMarketMap}
-                    isRefreshing={isRefetchingMarketMap}
-                    className={FONT_BAR_TIME}
-                    helpText={SNAPSHOT_REFRESH_HELP}
-                    minSpinDurationMs={REFRESH_FEEDBACK_MIN_DURATION_MS}
+                  <SnapshotDatePicker
+                    market={market}
+                    viewedSnapshotTime={data?.snapshotTime ?? null}
+                    liveSnapshotTime={liveSnapshotTime}
+                    onSelectSnapshotTime={onChangePinnedSnapshotTime}
+                    isPast={isPastSnapshot}
                   >
-                    <span className={data?.snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotTimeOnlyLabel(data?.snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
-                  </PageRefreshButton>
+                    <span className={data?.snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotDateLabel(data?.snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
+                  </SnapshotDatePicker>
+                  {isPastSnapshot && <ClosingPriceLabel viewedSnapshotTime={data?.snapshotTime ?? null} liveSnapshotTime={liveSnapshotTime} />}
+                  {isPastSnapshot === false && (
+                    <>
+                      <ClockIcon className="-mr-0.5 h-[15px] w-[15px] shrink-0" aria-hidden />
+                      <PageRefreshButton
+                        onRefresh={refetchMarketMap}
+                        isRefreshing={isRefetchingMarketMap}
+                        className={FONT_BAR_TIME}
+                        helpText={SNAPSHOT_REFRESH_HELP}
+                        minSpinDurationMs={REFRESH_FEEDBACK_MIN_DURATION_MS}
+                      >
+                        <span className={data?.snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotTimeOnlyLabel(data?.snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
+                      </PageRefreshButton>
+                    </>
+                  )}
                 </span>
                 {/* 시장 시간대 말머리와 누적/따로 — 시간과 관련된 표시라 시계 옆에 붙인다. */}
-                <span className="flex shrink-0">
-                  <ChangeRateModeToggle basis={changeRateMode} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateMode} />
-                </span>
+                {isPastSnapshot === false && (
+                  <span className="flex shrink-0">
+                    <ChangeRateModeToggle basis={changeRateMode} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateMode} />
+                  </span>
+                )}
                 </>
               </div>
               {/* 맨 오른쪽 — 분류명을 설정창 업종 분류 선택 버튼 모양으로 표시하고, 좁아지면 이름을 줄인다. 로딩·오류·빈 화면에서도 제자리에 둔다. */}
