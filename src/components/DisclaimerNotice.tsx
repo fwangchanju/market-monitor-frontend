@@ -22,7 +22,7 @@ const DATA_SOURCES: { data: string; source: string }[] = [
 // 말풍선이 화면 가장자리에서 띄우는 최소 간격.
 const BUBBLE_MARGIN = 6
 
-function DataSourceHint() {
+function SourceHelpBubble() {
   const [isOpen, setIsOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const bubbleRef = useRef<HTMLDivElement>(null)
@@ -89,7 +89,7 @@ export default function DisclaimerNotice() {
         {DISCLAIMER_LINES.map((line, index) => (
           <span key={line} className="block truncate">
             {line}
-            {index === DISCLAIMER_LINES.length - 1 && <DataSourceHint />}
+            {index === DISCLAIMER_LINES.length - 1 && <SourceHelpBubble />}
           </span>
         ))}
       </span>

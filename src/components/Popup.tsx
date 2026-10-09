@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { appConfirm } from '@/utils/appDialogBus'
 
-export interface MarketMapPopupContent {
+export interface PopupContent {
   title: string
   rows: string[]
   excludeSector?: { id: number; name: string }
@@ -11,7 +11,7 @@ export interface MarketMapPopupContent {
   targetKey: string
   // true면 커서 이동(hover)으로 뜬 임시 팝업 — 마우스 이벤트를 받지 않아서 커서가 팝업 위로 가도
   // 박스의 pointerleave가 튀지 않는다.
-  transient?: boolean
+  tooltip?: boolean
   // 커서 이동(hover)으로 뜬 팝업이 따라갈 마우스의 뷰포트 좌표. 있으면 박스 가장자리가 아니라 마우스 근처에 놓고 마우스를 따라 움직인다.
   pointer?: { x: number; y: number }
 }
@@ -19,28 +19,28 @@ export interface MarketMapPopupContent {
 // 우클릭한 박스(섹터 전체 박스 혹은 종목 박스)의 뷰포트 기준 rect. 팝업은 마우스 좌표가 아니라
 // 이 rect의 가장자리에 스티커 메모처럼 붙는다 — 실제 정렬(오른쪽/왼쪽, 위/아래) 계산은 팝업 자신의
 // 렌더된 크기를 알아야 하므로 아래 PopupBody에서 한다.
-export interface MarketMapPopupAnchorRect {
+export interface PopupAnchorRect {
   left: number
   top: number
   right: number
   bottom: number
 }
 
-export interface MarketMapPopupState extends MarketMapPopupContent {
-  anchorRect: MarketMapPopupAnchorRect
+export interface PopupState extends PopupContent {
+  anchorRect: PopupAnchorRect
   mapBounds: { left: number; right: number; top: number; bottom: number }
 }
 
 interface Props {
-  popup: MarketMapPopupState | null
+  popup: PopupState | null
   onExcludeSector: (sectorId: number, sectorName: string) => void
   onClose: () => void
 }
 
-export default function MarketMapPopup({ popup, onExcludeSector, onClose }: Props) {
+export default function Popup({ popup, onExcludeSector, onClose }: Props) {
   // popup이 null이면 PopupBody를 트리에서 아예 뺀다 — 이래야 popup이 바뀔 때마다(닫혔다 다시 열릴
   // 때마다) PopupBody가 실제로 언마운트·재마운트되어 confirming/위치 계산 state가 매번 새로 시작한다.
-  // MarketMapPopup 자신은 부모가 항상 렌더하는 컴포넌트라 여기 직접 훅을 두면 그 state가 다음 팝업까지
+  // Popup 자신은 부모가 항상 렌더하는 컴포넌트라 여기 직접 훅을 두면 그 state가 다음 팝업까지
   // 이어져버린다.
   if (!popup) return null
   return createPortal(
@@ -83,7 +83,7 @@ function placeNearPointer(el: HTMLElement, point: { x: number; y: number }, boun
 }
 
 interface PopupBodyProps {
-  popup: MarketMapPopupState
+  popup: PopupState
   onExcludeSector: (sectorId: number, sectorName: string) => void
   onClose: () => void
 }
@@ -170,7 +170,7 @@ function PopupBody({ popup, onExcludeSector, onClose }: PopupBodyProps) {
       <div
         ref={elRef}
         data-market-map-popup
-        className={`invisible fixed z-[9999] w-max break-words border border-[#7a6d55] px-2 py-1 text-left text-base text-black shadow-lg ${popup.transient ? 'pointer-events-none' : ''}`}
+        className={`invisible fixed z-[9999] w-max break-words border border-[#7a6d55] px-2 py-1 text-left text-base text-black shadow-lg ${popup.tooltip ? 'pointer-events-none' : ''}`}
         style={{ maxWidth, backgroundColor: POPUP_BACKGROUND }}
       >
         <div className="flex items-center justify-between gap-3 font-bold">

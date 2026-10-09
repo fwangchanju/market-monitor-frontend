@@ -1,6 +1,6 @@
 import { useRef, type CSSProperties } from 'react'
 import StockBox from './StockBox'
-import type { MarketMapPopupContent } from './MarketMapPopup'
+import type { PopupContent } from './Popup'
 import { sectorHeaderFontSize, sectorHeaderHeight, PADDING, type LaidOutSector } from '@/hooks/useMarketMapLayout'
 import { TAB_GAP, toJoEokDecimal, toPctSigned } from '@/utils/format'
 import type { MarketMapItem } from '@/types/api'
@@ -11,7 +11,7 @@ interface Props {
   sector: LaidOutSector
   // rect는 이 섹터 박스 전체의 화면상 위치 — 줌인 애니메이션이 어디서부터 확대되는지 계산하는 데 쓴다.
   onSelectSector: (sectorName: string, rect: DOMRect) => void
-  onOpenPopup: (content: MarketMapPopupContent, target: HTMLElement) => void
+  onOpenPopup: (content: PopupContent, target: HTMLElement) => void
   // 하위 종목 박스에 전달 — 마우스를 올려 띄운 종목 팝업은 박스를 벗어나면 닫는다.
   onClosePopup: (targetKey: string) => void
   // 하위 종목 박스에만 적용 — 업종 정보는 이 설정과 무관하게 항상 우클릭으로 연다.
@@ -115,7 +115,7 @@ export default function SectorBox({
       ],
       excludeSector: canExclude ? { id: sector.sectorId, name: sector.sectorName } : undefined,
       targetKey: sectorKey,
-      transient: false,
+      tooltip: false,
     }, target)
   }
   const items = collectSectorItems(sector)
