@@ -19,14 +19,14 @@ import { useSectorMarketMapPair } from '@/hooks/useSectorMarketMapPair'
 import { useGlobalSettings } from '@/hooks/useGlobalSettings'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
-import { computeSectorAverage } from '@/utils/sectorAverage'
+import { collectItems, computeSectorAverage } from '@/utils/sectorAverage'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import NavBarPageActions, { PageRefreshButton, SNAPSHOT_REFRESH_HELP } from '@/components/NavBarPageActions'
 import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload, downloadDataUrl, captureFileName } from '@/utils/captureToDownload'
-import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
+import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toCount, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
 import { marketRoute } from '@/utils/marketRoute'
 import {
   resolveMarketMapColor,
@@ -292,6 +292,16 @@ export default function GroupPage() {
     copyStatus === 'copying' ? 'Copying' : copyStatus === 'copied' ? 'Copied' : copyStatus === 'error' ? 'Failed' : 'Copy'
   const downloadLabel = downloadStatus === 'error' ? '다운로드 실패' : '다운로드'
 
+  // 설정창 위쪽 "nn/nn종목" — 분母는 지금 시장의 모든 종목, 분자는 제외한 업종·시가총액 구간을 뺀 종목(평균에 들어가는 종목)이다.
+  const stockCountLabel = useMemo(() => {
+    const nodes = displayNow?.items ?? []
+    const total = nodes.reduce((sum, node) => sum + collectItems(node).length, 0)
+    const included = nodes
+      .filter(node => !excludedSectorIds.has(node.sectorId))
+      .reduce((sum, node) => sum + collectItems(node).filter(item => !excludedMarketValueTiers.has(item.marketValueTier)).length, 0)
+    return `${toCount(included)}/${toCount(total)}종목`
+  }, [displayNow, excludedSectorIds, excludedMarketValueTiers])
+
   // 대상 섹터는 트리의 최상위 노드(response.items)다. 설정 사이드바의 "제외 설정"(섹터 기준)에
   // 걸린 섹터는 지도 페이지와 동일하게 여기서도 뺀다. now/before 짝은 sectorId가 아니라
   // sectorName으로 맞춘다 — 기본 모드 노드는 sectorId가 전부 0(NO_SECTOR_ID)이라 id로는 짝을
@@ -515,6 +525,7 @@ export default function GroupPage() {
               isOnLeft={isSettingsOnLeft}
               onToggleSide={toggleSettingsSide}
               pageLabel="Group"
+              stockCountLabel={stockCountLabel}
               taxonomyAtBottom
               taxonomyNotice="Map 설정과 중복 사항은 동일 적용됩니다."
               snapshotTime={data?.taxonomyUpdatedAt}
