@@ -181,6 +181,7 @@ export default function GroupPage() {
     source,
     nxtOnly,
     changeRateMode,
+    changeRateChoice,
     isAfterHoursControlsVisible,
     isAfterHoursSelectable,
     onChangeChangeRateMode,
@@ -454,7 +455,7 @@ export default function GroupPage() {
                 </span>
                 {isPastSnapshot === false && (
                   <span className="flex shrink-0">
-                    <ChangeRateModeToggle basis={changeRateMode} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateMode} />
+                    <ChangeRateModeToggle basis={changeRateChoice} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateMode} />
                   </span>
                 )}
                   </>
