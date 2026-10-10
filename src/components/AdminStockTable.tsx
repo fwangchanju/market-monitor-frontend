@@ -1,3 +1,4 @@
+import { compareKoreanText } from '@/utils/koreanSort'
 import { useReportCountLabel } from '@/hooks/useReportCountLabel'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
@@ -12,8 +13,10 @@ import { useSession } from '@/hooks/useSession'
 import Spinner from './Spinner'
 import { SearchBar } from './ReadOnlyTaxonomySheet'
 import EmptyMessage, { EMPTY_DATA_MESSAGE, EMPTY_SEARCH_MESSAGE } from './EmptyMessage'
-import { STOCK_COLUMN_PERCENT, stockColumnPercentWidth } from '@/utils/stockTableColumns'
-import { ChevronDownIcon, CloseIcon, ExcelIcon, RedoIcon, SortIcon, UndoIcon } from './icons/MarketMapIcons'
+import { STOCK_HEADER_ROW_PX, stockTableMinWidthPx, type StockColumnKey } from '@/utils/stockTableColumns'
+import StockTableColGroup from '@/components/StockTableColGroup'
+import StockSortHeader from '@/components/StockSortHeader'
+import { ChevronDownIcon, CloseIcon, ExcelIcon, RedoIcon, UndoIcon } from './icons/MarketMapIcons'
 
 interface Props {
   items: StockSectorListItem[]
@@ -27,7 +30,11 @@ interface Props {
   historyContainer?: HTMLElement | null
   // 검색창 옆에 두던 "N/N종목" 개수를 받아 갈 곳 — 페이지가 설정창 머리글에 그려 준다.
   onCountLabelChange?: (label: string | undefined) => void
+  // NXT에서도 거래되는 종목 코드 — NXT 열에 O/-로 보여준다(공개 종목 정보라 모든 사용자가 같다).
+  nxtStockCodes?: ReadonlySet<string>
 }
+
+const NO_NXT_CODES: ReadonlySet<string> = new Set()
 
 type SortKey =
   | 'stockCode'
@@ -35,10 +42,12 @@ type SortKey =
   | 'stockName'
   | 'alias'
   | 'totalMarketValue'
+  | 'sizeTier'
   | 'originCategoryName'
   | 'parentSectorName'
   | 'midSectorName'
   | 'subSectorName'
+  | 'nxt'
 type SortDirection = 'asc' | 'desc'
 
 // 체크박스(20px)가 줄 높이(29px)에서 남기는 상하 여백(약 4.5px)과 비슷하게 좌우 여백도 4.5px씩 둔다(20 + 9 = 29px).
@@ -49,16 +58,19 @@ const CHECKBOX_CELL_STYLE = { width: CHECKBOX_COLUMN_WIDTH, minWidth: CHECKBOX_C
 // 정렬을 끈 상태(null)에서 쓰는 기본 순서 — 시가총액 내림차순.
 const DEFAULT_SORT_KEY: SortKey = 'totalMarketValue'
 
-const COLUMNS: { key: SortKey; header: string; width: string; align: 'center' | 'left' | 'right' }[] = [
-  { key: 'stockCode', header: '종목코드', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.stockCode), align: 'center' },
-  { key: 'stockName', header: '종목명', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.stockName), align: 'left' },
-  { key: 'alias', header: '약칭', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.alias), align: 'left' },
-  { key: 'totalMarketValue', header: '시가총액', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.totalMarketValue), align: 'right' },
-  { key: 'market', header: '마켓', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.market), align: 'center' },
-  { key: 'originCategoryName', header: '거래소 분류', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.industry), align: 'left' },
-  { key: 'parentSectorName', header: '대분류', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.parentSector), align: 'right' },
-  { key: 'midSectorName', header: '중분류', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.midSector), align: 'right' },
-  { key: 'subSectorName', header: '소분류', width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.subSector), align: 'right' },
+// 세 종목 표(MARKETRY·거래소·내 분류)가 같은 열을 보여준다. columnKey는 열 폭(stockTableColumns)을 찾는 이름이다.
+const COLUMNS: { key: SortKey; columnKey: StockColumnKey; header: string; align: 'center' | 'left' | 'right' }[] = [
+  { key: 'stockCode', columnKey: 'stockCode', header: '종목코드', align: 'center' },
+  { key: 'stockName', columnKey: 'stockName', header: '종목명', align: 'left' },
+  { key: 'alias', columnKey: 'alias', header: '약칭', align: 'left' },
+  { key: 'totalMarketValue', columnKey: 'totalMarketValue', header: '시가총액', align: 'right' },
+  { key: 'sizeTier', columnKey: 'sizeTier', header: '종목 크기', align: 'center' },
+  { key: 'market', columnKey: 'market', header: '마켓', align: 'center' },
+  { key: 'originCategoryName', columnKey: 'industry', header: '거래소 분류', align: 'left' },
+  { key: 'parentSectorName', columnKey: 'parentSector', header: '대분류', align: 'right' },
+  { key: 'midSectorName', columnKey: 'midSector', header: '중분류', align: 'right' },
+  { key: 'subSectorName', columnKey: 'subSector', header: '소분류', align: 'right' },
+  { key: 'nxt', columnKey: 'nxt', header: 'NXT', align: 'center' },
 ]
 
 const alignClass = (align: 'center' | 'left' | 'right') =>
@@ -66,8 +78,6 @@ const alignClass = (align: 'center' | 'left' | 'right') =>
 
 const MARKET_LABEL: Record<'KOSPI' | 'KOSDAQ', string> = { KOSPI: '코스피', KOSDAQ: '코스닥' }
 const marketColorClass = (market: 'KOSPI' | 'KOSDAQ') => (market === 'KOSPI' ? 'text-gray-400' : 'text-[var(--brand)]')
-
-const KOREAN_COLLATOR = new Intl.Collator('ko')
 
 // 화면에 실제로 표시되는 값 기준으로 정렬하는 열 — 정렬 판정을 이 값으로 통일해서 화면과 어긋나지 않게 한다.
 type DisplaySortKey = 'market' | 'originCategoryName' | 'parentSectorName' | 'midSectorName' | 'subSectorName'
@@ -89,15 +99,19 @@ function compareByKey(
   key: SortKey,
   displayByStockCode: Map<string, ItemDisplayValues>,
 ): number {
-  if (key === 'totalMarketValue') {
+  // 종목 크기는 시가총액이 클수록 큰 구간이라 시가총액 순서와 같다.
+  if (key === 'totalMarketValue' || key === 'sizeTier') {
     return (a.totalMarketValue ?? -Infinity) - (b.totalMarketValue ?? -Infinity)
+  }
+  if (key === 'nxt') {
+    return Number(displayByStockCode.get(a.stockCode)?.isNxt ?? false) - Number(displayByStockCode.get(b.stockCode)?.isNxt ?? false)
   }
   if (isDisplaySortKey(key)) {
     const av = displayByStockCode.get(a.stockCode)?.[key] ?? ''
     const bv = displayByStockCode.get(b.stockCode)?.[key] ?? ''
-    return KOREAN_COLLATOR.compare(av, bv)
+    return compareKoreanText(av, bv)
   }
-  return KOREAN_COLLATOR.compare(a[key] ?? '', b[key] ?? '')
+  return compareKoreanText(a[key as 'stockCode' | 'stockName' | 'alias'] ?? '', b[key as 'stockCode' | 'stockName' | 'alias'] ?? '')
 }
 
 // 섹터를 부모-자식 순서로 펼쳐서 검색 옵션으로 만든다 (자식은 들여쓰기 표시).
@@ -108,7 +122,7 @@ function buildSectorOptions(sectors: SectorItem[]): SectorOption[] {
     if (list) list.push(c)
     else byParent.set(c.parentId, [c])
   }
-  for (const list of byParent.values()) list.sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+  for (const list of byParent.values()) list.sort((a, b) => compareKoreanText(a.name, b.name))
 
   const options: SectorOption[] = []
   const walk = (parentId: number | null, depth: number) => {
@@ -194,9 +208,10 @@ interface ItemDisplayValues {
   parentSectorName: string
   midSectorName: string
   subSectorName: string
+  isNxt: boolean
 }
 
-function computeDisplayValues(item: StockSectorListItem, sectorOptionsById: Map<number, SectorOption>): ItemDisplayValues {
+function computeDisplayValues(item: StockSectorListItem, sectorOptionsById: Map<number, SectorOption>, nxtStockCodes: ReadonlySet<string>): ItemDisplayValues {
   const chain = resolveSectorChain(sectorOptionsById, item.sectorId)
   return {
     market: MARKET_LABEL[item.market],
@@ -204,6 +219,7 @@ function computeDisplayValues(item: StockSectorListItem, sectorOptionsById: Map<
     parentSectorName: chain.rootName,
     midSectorName: chain.midName ?? '-',
     subSectorName: chain.leafName ?? '-',
+    isNxt: nxtStockCodes.has(item.stockCode),
   }
 }
 
@@ -570,7 +586,7 @@ function AdminStockSectorCell({
     <td
       ref={cellRef}
       data-no-row-select
-      className={`pl-4 text-left ${disabled ? 'cursor-default text-gray-500' : 'cursor-pointer'} ${
+      className={`truncate pl-2 text-left ${disabled ? 'cursor-default text-gray-500' : 'cursor-pointer'} ${
         isHighlighted ? 'bg-[var(--brand)]/35' : rowHoverClass
       }`}
       onMouseEnter={onHoverStart}
@@ -749,8 +765,8 @@ function AdminAliasCell({
 
   if (isEditing) {
     return (
-      // 입력칸은 칸 안쪽(좌우 8px 여백)에 두고 입력 글자 시작선을 보통 글자(pl-4=16px)와 맞춘다.
-      <td className={`text-left px-2 ${rowHoverClass}`} data-no-row-select onClick={e => e.stopPropagation()}>
+      // 입력칸은 칸 안쪽(좌우 4px 여백)에 두고 입력 글자 시작선을 보통 글자(pl-2=8px)와 맞춘다.
+      <td className={`text-left px-1 ${rowHoverClass}`} data-no-row-select onClick={e => e.stopPropagation()}>
         <input
           type="text"
           autoFocus
@@ -762,7 +778,7 @@ function AdminAliasCell({
             if (e.key === 'Enter') submit()
             if (e.key === 'Escape') stopEdit()
           }}
-          className="nes-input is-dark h-5 w-full rounded-md border-0 bg-[#3b3b3b] px-2 text-left text-sm text-white outline-none focus:ring-1 focus:ring-inset focus:ring-[var(--brand)]"
+          className="nes-input is-dark h-5 w-full rounded-md border-0 bg-[#3b3b3b] px-1 text-left text-sm text-white outline-none focus:ring-1 focus:ring-inset focus:ring-[var(--brand)]"
         />
       </td>
     )
@@ -770,7 +786,7 @@ function AdminAliasCell({
 
   return (
     <td
-      className={`cursor-pointer text-white ${alignClass('left')} ${isHighlighted ? 'bg-[var(--brand)]/35' : rowHoverClass}`}
+      className={`cursor-pointer truncate pl-2 text-left text-white ${isHighlighted ? 'bg-[var(--brand)]/35' : rowHoverClass}`}
       data-no-row-select
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
@@ -804,6 +820,7 @@ const AdminStockRow = memo(function AdminStockRow({
   onAssign,
   onUpdateAlias,
   showAlias,
+  isNxt,
 }: {
   item: StockSectorListItem
   index: number
@@ -821,6 +838,7 @@ const AdminStockRow = memo(function AdminStockRow({
   onAssign: (stockCode: string, sectorId: number) => void
   onUpdateAlias: (stockCode: string, alias: string | null) => void
   showAlias: boolean
+  isNxt: boolean
 }) {
   // 행 어디에 마우스를 올려도(체크박스/#/시가총액 등 포함) 줄 전체가 옅게 강조되고, 대분류/소분류/약칭
   // 중 하나를 hover 중일 때는 그 열만 추가로 진하게 표시해서 어떤 걸 hover 중인지 구분되게 한다.
@@ -891,7 +909,8 @@ const AdminStockRow = memo(function AdminStockRow({
         <input type="checkbox" className="mx-auto my-0 block thin-check" checked={isSelected} onChange={() => {}} />
       </td>
       <td className={`${alignClass('center')} text-gray-400 ${rowHoverClass}`}>{item.stockCode}</td>
-      <td className={`${alignClass('left')} ${marketColorClass(item.market)} ${rowHoverClass}`}>{item.stockName}</td>
+      <td className={`truncate pl-2 text-left ${marketColorClass(item.market)} ${rowHoverClass}`}>{item.stockName}</td>
+      {!showAlias && <td className={`pl-2 text-left ${rowHoverClass}`} />}
       {showAlias && (
         <AdminAliasCell
           alias={item.alias}
@@ -906,8 +925,9 @@ const AdminStockRow = memo(function AdminStockRow({
       <td className={`${alignClass('right')} text-gray-400 ${rowHoverClass}`}>
         {item.totalMarketValue != null ? toJoEokDecimal(item.totalMarketValue / 100_000_000) : '-'}
       </td>
+      <td className={`text-center text-gray-400 ${rowHoverClass}`}>{item.marketValueTier || '-'}</td>
       <td className={`text-center ${marketColorClass(item.market)} ${rowHoverClass}`}>{MARKET_LABEL[item.market]}</td>
-      <td className={`${alignClass('left')} text-gray-400 ${rowHoverClass}`}>{item.industryName ?? '-'}</td>
+      <td className={`truncate pl-2 text-left text-gray-400 ${rowHoverClass}`}>{item.industryName ?? '-'}</td>
       <AdminStockSectorCell
         value={chain.rootName}
         options={parentSectorOptions}
@@ -942,6 +962,7 @@ const AdminStockRow = memo(function AdminStockRow({
         disabled={chain.midId == null}
         disabledHint="중분류를 먼저 지정하세요"
       />
+      <td className={`text-center ${isNxt ? 'text-gray-400' : 'text-gray-500'} ${rowHoverClass}`}>{isNxt ? 'O' : '-'}</td>
     </tr>
   )
 })
@@ -953,6 +974,7 @@ export default function AdminStockTable({
   toolbarContainer,
   historyContainer,
   onCountLabelChange,
+  nxtStockCodes = NO_NXT_CODES,
 }: Props) {
   const [sortKey, setSortKey] = usePersistedState<SortKey | null>('adminStockTable.sortKey', DEFAULT_SORT_KEY)
   const [sortDirection, setSortDirection] = usePersistedState<SortDirection>('adminStockTable.sortDirection', 'desc')
@@ -965,19 +987,11 @@ export default function AdminStockTable({
   const bulkAssignStockSector = useBulkAssignStockSector()
   const updateAlias = useUpdateStockAlias()
   // 약칭 지정은 관리자 전용이다 — 관리자의 약칭은 MARKETRY로 올릴 내용에만 쓰이고, 다른 사용자의 데이터는 건드리지 않는다.
-  // 일반 사용자에게는 약칭 열 자체를 보여주지 않고(백엔드도 관리자만 허용한다), 그 너비는 종목명 열이 받는다.
+  // 일반 사용자에게는 약칭 값을 보여주지도 수정하게 하지도 않는다(백엔드도 관리자만 허용한다). 열 자리만 빈칸으로 두어 다른 시트와 열 위치를 맞춘다.
   const isAdmin = useSession().data?.role === 'ADMIN'
-  const columns = useMemo(
-    () =>
-      isAdmin
-        ? COLUMNS
-        : COLUMNS.filter(col => col.key !== 'alias').map(col =>
-            col.key === 'stockName'
-              ? { ...col, width: stockColumnPercentWidth(STOCK_COLUMN_PERCENT.stockName + STOCK_COLUMN_PERCENT.alias) }
-              : col,
-          ),
-    [isAdmin],
-  )
+  // 약칭 열은 일반 사용자에게도 자리를 둔다(값은 빈칸) — 마켓트리·거래소 표와 열 위치가 같아야 해서다.
+  const columns = COLUMNS
+  const columnKeys = useMemo(() => columns.map(col => col.columnKey), [columns])
   // handleAssign/runBulkAssign에서 "변경 전" 섹터를 읽어야 하는데, items를 그대로 의존성에 넣으면
   // 섹터가 바뀔 때마다(=매 변경마다) 콜백 identity가 바뀌어 AdminStockRow의 memo가 무력화된다 —
   // ref로 최신 값만 따라가게 해서 콜백은 그대로 안정적으로 유지한다.
@@ -1067,8 +1081,8 @@ export default function AdminStockTable({
   const sectorOptionsById = useMemo(() => new Map(sectorOptions.map(opt => [opt.id, opt])), [sectorOptions])
   // 필터/정렬/컬럼 표시에 쓰는 대분류·중분류·소분류 문자열을 종목마다 한 번씩만 미리 계산해둔다.
   const displayByStockCode = useMemo(
-    () => new Map(items.map(item => [item.stockCode, computeDisplayValues(item, sectorOptionsById)])),
-    [items, sectorOptionsById],
+    () => new Map(items.map(item => [item.stockCode, computeDisplayValues(item, sectorOptionsById, nxtStockCodes)])),
+    [items, sectorOptionsById, nxtStockCodes],
   )
   // 대분류/중분류/소분류는 이제 각각 별도로 assign 요청을 보내는 독립된 액션이라, 셀마다 따로 강조한다.
   const [hoveredRow, setHoveredRow] = useState<{
@@ -1421,15 +1435,17 @@ export default function AdminStockTable({
     })
   }, [filtered])
 
-  const sortedAscending = useMemo(
-    () => [...filtered].sort((a, b) => compareByKey(a, b, sortKey ?? DEFAULT_SORT_KEY, displayByStockCode)),
-    [filtered, sortKey, displayByStockCode],
-  )
-
-  const sorted = useMemo(
-    () => (sortKey && sortDirection === 'asc' ? sortedAscending : [...sortedAscending].reverse()),
-    [sortedAscending, sortDirection, sortKey],
-  )
+  // 정렬 방향은 비교 안에 넣는다. 같은 값끼리(예: 같은 마켓)는 방향과 상관없이 항상 시가총액이 큰 종목이 위에 온다.
+  // 정렬이 꺼진 상태(sortKey null)는 기본 순서인 시가총액 내림차순이다.
+  const sorted = useMemo(() => {
+    const key = sortKey ?? DEFAULT_SORT_KEY
+    const sign = sortKey && sortDirection === 'asc' ? 1 : -1
+    return [...filtered].sort((a, b) => {
+      const diff = compareByKey(a, b, key, displayByStockCode)
+      if (diff !== 0) return sign * diff
+      return (b.totalMarketValue ?? -Infinity) - (a.totalMarketValue ?? -Infinity) || compareKoreanText(a.stockCode, b.stockCode)
+    })
+  }, [filtered, sortKey, sortDirection, displayByStockCode])
   useEffect(() => {
     visibleItemsRef.current = sorted
   }, [sorted])
@@ -1447,11 +1463,13 @@ export default function AdminStockTable({
         종목명: item.stockName,
         ...(isAdmin ? { 약칭: item.alias ?? '' } : {}),
         시가총액: item.totalMarketValue ?? '',
+        '종목 크기': item.marketValueTier ?? '',
         마켓: display.market,
         '거래소 분류': display.originCategoryName,
         '대분류': display.parentSectorName,
         '중분류': display.midSectorName,
         '소분류': display.subSectorName,
+        NXT: display.isNxt ? 'O' : '-',
       }
     })
     exportRowsToExcel(filename, '종목관리', rows)
@@ -1654,9 +1672,10 @@ export default function AdminStockTable({
         )}
         <div ref={scrollContainerRef} className="relative h-full overflow-auto scrollbar-thin">
           {/* 표 글자는 드래그해도 파랗게 선택되지 않게 한다(줄 드래그 선택과 겹치기 때문). 입력창 안의 글자는 그대로 선택할 수 있다. */}
-          <table className="nes-table is-dark custom-page-table w-full select-none text-sm [&_input]:select-text [border-collapse:separate] [border-spacing:0] [&_td]:border-slate-700 [&_td]:py-1 [&_th]:border-white/15 [&_th]:border-b-0 [&_th]:py-1">
+          <table style={{ minWidth: stockTableMinWidthPx(columnKeys) }} className="nes-table is-dark custom-page-table w-full table-fixed select-none text-sm [&_input]:select-text [border-collapse:separate] [border-spacing:0] [&_td]:border-slate-700 [&_td]:py-1 [&_th]:border-white/15 [&_th]:border-b-0 [&_th]:py-1">
+          <StockTableColGroup keys={columnKeys} />
           <thead className="sticky top-0 z-10">
-            <tr>
+            <tr style={{ height: STOCK_HEADER_ROW_PX }}>
               <th
                 className="cursor-pointer bg-[#2b3a4f] px-0 text-center font-bold text-slate-100"
                 style={CHECKBOX_CELL_STYLE}
@@ -1670,19 +1689,7 @@ export default function AdminStockTable({
               </th>
               {columns.map(col => {
                 const label = (
-                  <span
-                    className={`cursor-pointer select-none text-slate-100 hover:text-slate-300 ${col.key === 'alias' ? 'inline-flex items-center align-middle' : ''}`}
-                    title={col.key === 'alias' ? '운영자 권한이 있는 사용자만 약칭을 보고 수정할 수 있습니다.' : undefined}
-                    onClick={() => handleSort(col.key)}
-                  >
-                    {col.key === 'alias' && (
-                      <span className="mr-2 inline-flex h-4 items-center bg-[#ff4d2e] px-1 text-[10px] font-extrabold leading-none text-white">ADMIN</span>
-                    )}
-                    {col.header}
-                    <span className={`ml-1 inline-flex align-middle ${sortKey === col.key ? 'text-[var(--brand)]' : 'text-slate-500'}`}>
-                      <SortIcon active={sortKey === col.key} direction={sortDirection} className="h-3.5 w-3.5" />
-                    </span>
-                  </span>
+                  <StockSortHeader label={col.header} state={sortKey === col.key ? sortDirection : null} />
                 )
                 return (
                   <th
@@ -1696,8 +1703,9 @@ export default function AdminStockTable({
                             ? subThRef
                             : undefined
                     }
-                    style={{ width: col.key === columns[columns.length - 1].key ? undefined : col.width }}
-                    className="whitespace-nowrap bg-[#2b3a4f] text-center font-bold text-slate-100"
+                    className="cursor-pointer whitespace-nowrap bg-[#2b3a4f] text-center align-middle font-bold text-slate-100"
+                    title={col.key === 'alias' && isAdmin ? '운영자 권한이 있는 사용자만 약칭을 보고 수정할 수 있습니다.' : undefined}
+                    onClick={() => handleSort(col.key)}
                   >
                     {col.key === 'totalMarketValue' ? (
                       <>
@@ -1753,6 +1761,7 @@ export default function AdminStockTable({
                     <AdminStockRow
                       key={item.stockCode}
                       showAlias={isAdmin}
+                      isNxt={nxtStockCodes.has(item.stockCode)}
                       item={item}
                       index={virtualRow.index}
                       isSelected={selectedStockCodes.has(item.stockCode)}

@@ -121,11 +121,12 @@ export default function CustomPage() {
   } = useMarketMap('ALL_STOCK', sheet, false, { enabled: canReadSheet })
 
   // 읽기 전용 시트의 NXT 여부·시장·거래소 분류명은 회원 데이터가 아니라 공통 종목 정보에서 받는다.
+  // 종목 표의 NXT 열은 세 시트(MARKETRY·거래소·내 분류)가 모두 쓰므로, 종목 화면에서는 시트와 상관없이 불러온다.
   const {
     data: stockCatalog,
     isLoading: isStockCatalogLoading,
     isError: isStockCatalogError,
-  } = useStockCatalog({ enabled: isReadOnlySheet })
+  } = useStockCatalog({ enabled: isReadOnlySheet || mode === 'stock' })
   const nxtStockCodes = useMemo(
     () => new Set((stockCatalog ?? []).filter(item => item.nxtEnabled).map(item => item.stockCode)),
     [stockCatalog],
@@ -254,7 +255,7 @@ export default function CustomPage() {
             <EmptyMessageAreaContext.Provider value={emptyMessageArea}>
             <div className="flex min-h-0 flex-1">
               <div
-                className={`flex min-h-0 flex-1 flex-col ${mode === 'sector' ? 'overflow-y-auto' : ''}`}
+                className={`flex min-h-0 min-w-0 flex-1 flex-col ${mode === 'sector' ? 'overflow-y-auto' : ''}`}
               >
                 {isReadOnlySheet ? (
                   <ReadOnlyTaxonomySheet
@@ -279,6 +280,7 @@ export default function CustomPage() {
                     toolbarContainer={toolbarContainer}
                     historyContainer={stockHistoryTarget}
                     onCountLabelChange={setCountLabel}
+                    nxtStockCodes={nxtStockCodes}
                   />
                 ) : (
                   <AdminSectorTable
