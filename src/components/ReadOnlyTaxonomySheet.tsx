@@ -319,7 +319,7 @@ function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { s
               <tr
                 key={row.name}
                 {...rowProps(index)}
-                className={`cursor-pointer text-gray-400 ${selectedNames.has(row.name) ? '[&>td]:bg-[var(--brand)]/28' : '[&:hover>td]:bg-[var(--brand)]/20'}`}
+                className={`cursor-pointer text-gray-400 ${selectedNames.has(row.name) ? '[&>td]:bg-[var(--brand)]/28 [&>td]:border-white/25!' : '[&:hover>td]:bg-[var(--brand)]/20 [&:hover>td]:border-white/25!'}`}
               >
                 {/* 업종 이름 시작 위치를 MARKETRY 업종 화면의 대분류 이름과 같게 한다 — 칸 왼쪽에서 8px(여백) + 손잡이 24px + 4px + 번호 칸 28px + 8px = 72px. */}
                 <td className={`${BODY_CELL} relative truncate text-left !pl-[72px]`}>
@@ -531,7 +531,7 @@ function StockTable({ showHierarchy, sectors, emptyMessage, nxtStockCodes, stock
               const row = visibleRows[virtualRow.index]
               const isKosdaq = row.market === 'KOSDAQ'
               return (
-                <tr key={row.stockCode} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} {...rowProps(virtualRow.index)} className={`cursor-pointer text-gray-400 ${selectedCodes.has(row.stockCode) ? '[&>td]:bg-[var(--brand)]/28' : '[&:hover>td]:bg-[var(--brand)]/20'}`}>
+                <tr key={row.stockCode} ref={rowVirtualizer.measureElement} data-index={virtualRow.index} {...rowProps(virtualRow.index)} className={`cursor-pointer text-gray-400 ${selectedCodes.has(row.stockCode) ? '[&>td]:bg-[var(--brand)]/28 [&>td]:border-white/25!' : '[&:hover>td]:bg-[var(--brand)]/20 [&:hover>td]:border-white/25!'}`}>
                   <td className={`${STOCK_BODY_CELL} text-center`} style={CHECKBOX_CELL_STYLE}>
                     <input
                       type="checkbox"

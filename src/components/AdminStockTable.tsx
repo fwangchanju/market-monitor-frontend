@@ -23,7 +23,7 @@ import { useStockNameRightEdge } from '@/hooks/useStockNameRightEdge'
 import ColumnFilterButton, { SectorOrderToggle } from '@/components/ColumnFilterButton'
 import { useStockColumnFilters, type StockFilterKey } from '@/hooks/useStockColumnFilters'
 import { useMarketValueTiers } from '@/hooks/useMarketValueTiers'
-import { ChevronDownIcon, ExcelIcon, RedoIcon, UndoIcon } from './icons/MarketMapIcons'
+import { ChevronDownIcon, ExcelIcon } from './icons/MarketMapIcons'
 
 interface Props {
   items: StockSectorListItem[]
@@ -258,6 +258,8 @@ interface PopupPosition {
   left: number
   openUpward: boolean
   alignRight: boolean
+  // 트리거 폭(px) — 트리거와 같은 폭으로 펼치는 팝업이 쓴다.
+  width: number
 }
 
 // 필터 팝업 목록 한 행의 높이(px) — 테이블 본문과 같은 text-sm(20px 줄높이) + py-0.5(위아래 2px씩) 기준.
@@ -291,6 +293,7 @@ function usePopupPosition(
         left: alignRight ? rect.right : rect.left,
         openUpward,
         alignRight,
+        width: rect.width,
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ref는 안정적이라 open 시점에만 반응하면 된다
@@ -355,8 +358,10 @@ function UndoRedoHistoryPopup({
   onPick: (id: string) => void
 }) {
   const popupRef = useRef<HTMLDivElement>(null)
-  // 툴바 왼쪽(종목수 옆)에 있는 버튼이라 오른쪽에 펼칠 공간이 넉넉함 — alignRight 없이 왼쪽 정렬로 연다.
+  // 되돌리기·다시 적용 두 칸을 묶은 줄과 같은 왼쪽 끝·같은 폭으로 펼친다 — 어느 쪽 목록이든 같은 자리에 뜨고 설정창 밖으로 나가지 않는다.
   const position = usePopupPosition(isOpen, setIsOpen, triggerRef, popupRef, undefined, 0.8, false)
+  // 마우스를 올린 줄까지 위에서부터 모두 강조해서, 누르면 어디까지 처리되는지 바로 보이게 한다.
+  const [hoverIndex, setHoverIndex] = useState(-1)
   const actionLabel = direction === 'undo' ? '실행취소' : '다시실행'
 
   if (!isOpen || !position) return null
@@ -368,34 +373,34 @@ function UndoRedoHistoryPopup({
       ref={popupRef}
       style={{
         position: 'fixed',
-        top: position.top,
+        // 버튼 바로 밑에 붙지 않게 6px 띄운다(위로 열릴 땐 위로 6px).
+        top: position.top + (position.openUpward ? -6 : 6),
         left: position.left,
+        width: position.width,
         transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
       }}
-      className="z-50 rounded-md border border-gray-500 bg-[#363639] p-2 text-sm text-white shadow-xl"
+      className="z-50 overflow-hidden rounded-none border border-gray-500 bg-[#363639] p-0 text-sm text-white shadow-xl"
       onClick={e => e.stopPropagation()}
     >
       {ordered.length === 0 ? (
         <p className="whitespace-nowrap px-1 text-gray-400">{actionLabel}할 변경 내역이 없습니다</p>
       ) : (
-        <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: FILTER_LIST_MAX_HEIGHT }}>
-          {ordered.map(action => (
-            <div
+        <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: FILTER_LIST_MAX_HEIGHT }} onMouseLeave={() => setHoverIndex(-1)}>
+          {ordered.map((action, index) => (
+            <button
               key={action.id}
-              className="group flex items-center justify-between gap-3 whitespace-nowrap rounded px-1 py-0.5 hover:bg-[var(--brand)]/10"
+              onMouseEnter={() => setHoverIndex(index)}
+              type="button"
+              onClick={() => {
+                onPick(action.id)
+                setIsOpen(false)
+              }}
+              title={`여기까지 ${index + 1}단계 ${actionLabel}`}
+              className={`flex w-full items-center gap-2 whitespace-nowrap rounded-none border-0 px-2 py-1 text-left text-sm font-normal text-white ${index > 0 ? 'border-t border-t-white/30' : ''} ${index <= hoverIndex ? 'bg-[var(--brand)]/20 border-white/25!' : 'bg-transparent'}`}
             >
-              <span className="text-white">{describeUndoableAction(action, items, sectorOptionsById)}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  onPick(action.id)
-                  setIsOpen(false)
-                }}
-                  className="hidden shrink-0 border-0 bg-transparent text-xs text-white hover:text-[var(--brand)] group-hover:inline-block"
-              >
-                {actionLabel}
-              </button>
-            </div>
+              <span className="w-6 shrink-0 text-right text-xs tabular-nums text-gray-400">{direction === 'undo' ? '-' : '+'}{index + 1}</span>
+              <span className="min-w-0 truncate">{describeUndoableAction(action, items, sectorOptionsById)}</span>
+            </button>
           ))}
         </div>
       )}
@@ -906,8 +911,8 @@ const AdminStockRow = memo(function AdminStockRow({
   // 호버는 20%, 선택은 28%로 칠해 서로 구분하고, 선택 + 호버면 한 단계 더 진하게(38%) 칠한다. 읽기 전용 표(ReadOnlyTaxonomySheet)와 같은 값이다.
   const rowHoverClass = isSelected
     ? isRowHovered
-      ? 'bg-[var(--brand)]/38'
-      : 'bg-[var(--brand)]/28'
+      ? 'bg-[var(--brand)]/38 border-white/25!'
+      : 'bg-[var(--brand)]/28 border-white/25!'
     : isRowHovered || editingCells.size > 0
       ? 'bg-[var(--brand)]/20'
       : ''
@@ -1089,27 +1094,28 @@ export default function AdminStockTable({
     setRedoStack(prev => prev.slice(0, -1))
     setUndoStack(prev => [...prev, action])
   }
-  // 목록에서 스택 위치와 무관하게 특정 항목 하나만 골라 되돌리거나 다시 적용 — 순서 상관없이
-  // 그 항목의 before/after 값으로 직접 바꿔버리고, 다른 항목들의 순서는 그대로 둔다.
+  // 목록에서 항목을 고르면 그 항목까지 순서대로 모두 적용한다 — 맨 위(다음 차례)부터 고른 항목까지 한 단계씩 되돌리거나 다시 적용해서,
+  // 건너뛴 항목이 남아 값이 꼬이지 않게 한다.
   const handleUndoItem = (id: string) => {
-    const action = undoStack.find(a => a.id === id)
-    if (!action) return
-    applySectorAction(action, 'before')
-    setUndoStack(prev => prev.filter(a => a.id !== id))
-    setRedoStack(prev => [...prev, action])
+    const index = undoStack.findIndex(a => a.id === id)
+    if (index < 0) return
+    const applied = undoStack.slice(index).reverse()
+    for (const action of applied) applySectorAction(action, 'before')
+    setUndoStack(prev => prev.slice(0, index))
+    setRedoStack(prev => [...prev, ...applied])
   }
   const handleRedoItem = (id: string) => {
-    const action = redoStack.find(a => a.id === id)
-    if (!action) return
-    applySectorAction(action, 'after')
-    setRedoStack(prev => prev.filter(a => a.id !== id))
-    setUndoStack(prev => [...prev, action])
+    const index = redoStack.findIndex(a => a.id === id)
+    if (index < 0) return
+    const applied = redoStack.slice(index).reverse()
+    for (const action of applied) applySectorAction(action, 'after')
+    setRedoStack(prev => prev.slice(0, index))
+    setUndoStack(prev => [...prev, ...applied])
   }
   const [isUndoListOpen, setIsUndoListOpen] = useState(false)
   const [isRedoListOpen, setIsRedoListOpen] = useState(false)
   // 목록 팝업 위치 기준은 화살표가 아니라 UNDO/REDO 버튼 전체(테두리) — 팝업 좌측이 버튼 좌측 테두리와 맞도록.
-  const undoGroupRef = useRef<HTMLDivElement>(null)
-  const redoGroupRef = useRef<HTMLDivElement>(null)
+  const historyRowRef = useRef<HTMLDivElement>(null)
   // 키보드 리스너는 마운트 시 한 번만 등록하고(=종목 탭에 있는 동안만, 언마운트되면 자동 해제),
   // 매번 최신 핸들러를 부르도록 ref로 우회한다.
   const undoRef = useRef(handleUndo)
@@ -1592,81 +1598,70 @@ export default function AdminStockTable({
     virtualRows.length > 0 ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end : 0
 
   // 툴바 버튼은 테두리·채운 배경 없이 아이콘/글자만 둔다 — 올리면 옅은 배경이 깔리고, 비활성이면 흐려진다.
-  const GHOST_BUTTON = 'flex h-6 items-center justify-center gap-1.5 rounded border-0 bg-transparent px-1.5 text-xs text-gray-300 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-300'
   // 세 번째 바(페이지 공통 상태/옵션 바) 높이(h-7=28px)에 맞춰야 해서, nes.css 기본 버튼 패딩(6px 8px)보다
   // 좁게 오버라이드한다 — 그 외 로직/상태는 전부 그대로다.
   // 실행취소·다시실행 아이콘 묶음.
+  // 설정창 "변경 내역" 항목 — 글자가 붙은 두 칸(되돌리기 / 다시 적용)이고, 왼쪽 ⌄는 같은 칸 안에서 변경 내역 목록을 연다.
+  const historyPill = (kind: 'undo' | 'redo') => {
+    const isUndo = kind === 'undo'
+    const stack = isUndo ? undoStack : redoStack
+    const isListOpen = isUndo ? isUndoListOpen : isRedoListOpen
+    const setListOpen = isUndo ? setIsUndoListOpen : setIsRedoListOpen
+    const isEmpty = stack.length === 0
+    const label = isUndo ? '되돌리기' : '다시 적용'
+    return (
+      <>
+        <div
+          className={`flex h-7 min-w-0 items-stretch overflow-hidden rounded-md border border-gray-600 bg-zinc-700 text-sm ${isEmpty ? 'opacity-50' : ''}`}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              if (isUndo) setIsRedoListOpen(false)
+              else setIsUndoListOpen(false)
+              setListOpen(prev => !prev)
+            }}
+            disabled={isEmpty}
+            className={`flex w-5 shrink-0 items-center justify-center border-0 border-r border-gray-600 bg-transparent p-0 text-gray-300 hover:bg-white/10 disabled:cursor-not-allowed disabled:hover:bg-transparent ${isListOpen ? '!bg-white/10 !text-white' : ''}`}
+            title={`${isUndo ? '실행취소' : '다시실행'} 목록`}
+            aria-label={`${isUndo ? '실행취소' : '다시실행'} 목록`}
+          >
+            <ChevronDownIcon className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={isUndo ? handleUndo : handleRedo}
+            disabled={isEmpty}
+            className="flex min-w-0 flex-1 items-center justify-center gap-1 border-0 bg-transparent px-1.5 text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            title={`${isUndo ? '실행취소' : '다시실행'} (${isUndo ? 'Ctrl+Z' : 'Ctrl+Y'})`}
+            aria-label={isUndo ? '실행취소' : '다시실행'}
+          >
+            <span className="truncate">{label}{isEmpty ? '' : ` (${stack.length})`}</span>
+          </button>
+        </div>
+        <UndoRedoHistoryPopup
+          isOpen={isListOpen}
+          setIsOpen={setListOpen}
+          triggerRef={historyRowRef}
+          actions={stack}
+          direction={kind}
+          items={items}
+          sectorOptionsById={sectorOptionsById}
+          onPick={isUndo ? handleUndoItem : handleRedoItem}
+        />
+      </>
+    )
+  }
   const historyControls = (
-          <div className="flex items-center gap-2">
-            <div
-              ref={undoGroupRef}
-              className="flex items-center gap-0.5"
-            >
-              <button
-                type="button"
-                onClick={handleUndo}
-                disabled={undoStack.length === 0}
-                className={GHOST_BUTTON}
-                title="실행취소 (Ctrl+Z)"
-                aria-label="실행취소"
-              >
-                <UndoIcon className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsUndoListOpen(prev => !prev)}
-                disabled={undoStack.length === 0}
-                className={`${GHOST_BUTTON} !px-1 ${isUndoListOpen ? '!bg-white/10 !text-white' : ''}`}
-                title="실행취소 목록"
-              >
-                <ChevronDownIcon className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <UndoRedoHistoryPopup
-              isOpen={isUndoListOpen}
-              setIsOpen={setIsUndoListOpen}
-              triggerRef={undoGroupRef}
-              actions={undoStack}
-              direction="undo"
-              items={items}
-              sectorOptionsById={sectorOptionsById}
-              onPick={handleUndoItem}
-            />
-            <div
-              ref={redoGroupRef}
-              className="flex items-center gap-0.5"
-            >
-              <button
-                type="button"
-                onClick={handleRedo}
-                disabled={redoStack.length === 0}
-                className={GHOST_BUTTON}
-                title="다시실행 (Ctrl+Y)"
-                aria-label="다시실행"
-              >
-                <RedoIcon className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsRedoListOpen(prev => !prev)}
-                disabled={redoStack.length === 0}
-                className={`${GHOST_BUTTON} !px-1 ${isRedoListOpen ? '!bg-white/10 !text-white' : ''}`}
-                title="다시실행 목록"
-              >
-                <ChevronDownIcon className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <UndoRedoHistoryPopup
-              isOpen={isRedoListOpen}
-              setIsOpen={setIsRedoListOpen}
-              triggerRef={redoGroupRef}
-              actions={redoStack}
-              direction="redo"
-              items={items}
-              sectorOptionsById={sectorOptionsById}
-              onPick={handleRedoItem}
-            />
-          </div>
+    <div className="max-w-[16rem]">
+      <p className="settings-description m-0 mt-1 text-xs text-gray-400">
+        변경 내역 되돌리기·다시 적용
+      </p>
+      <div ref={historyRowRef} className="mt-4 grid grid-cols-2 gap-2">
+        {historyPill('undo')}
+        {historyPill('redo')}
+      </div>
+    </div>
   )
 
   const toolbar = (
@@ -1716,7 +1711,7 @@ export default function AdminStockTable({
       {toolbarContainer && createPortal(toolbar, toolbarContainer)}
       {historyContainer && createPortal(
         <div>
-          <h2 className="settings-plain-title mb-3 text-[15px] font-medium leading-[22px] text-white">실행 취소</h2>
+          <h2 className="settings-plain-title m-0 text-[15px] font-medium leading-[22px] text-white">변경 내역</h2>
           {historyControls}
         </div>,
         historyContainer,
