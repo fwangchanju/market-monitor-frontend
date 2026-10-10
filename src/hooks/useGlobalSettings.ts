@@ -137,7 +137,8 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   const nxtOnly = nxtOnlyWindow !== null
   // 등락률 기준은 애프터 마켓 시작부터 다음 프리 마켓 개장 전까지 선택한다.
   // 표시 시간대가 아니거나 시간외 스냅샷이 아직 없으면 저장한 선택과 무관하게 누적으로 보인다.
-  const isAfterHoursControlsVisible = useAfterHoursControlsVisible()
+  const [afterHoursStart, setAfterHoursStart] = useState<string | null>(null)
+  const isAfterHoursControlsVisible = useAfterHoursControlsVisible(afterHoursStart)
   const [storedChangeRateChoice, setStoredChangeRateChoice] = usePersistedState<ChangeRateChoice>('marketMap.changeRateMode', 'daily')
   const requestedChoice: ChangeRateChoice = allowChangeRateMode && isAfterHoursControlsVisible ? storedChangeRateChoice : 'daily'
   const requestedBasis: ChangeRateMode = requestedChoice === 'afterHours' ? 'afterHours' : 'daily'
@@ -275,10 +276,13 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   })
   const dataSnapshotTime = data?.snapshotTime
   useEffect(() => {
+    if (data) setAfterHoursStart(data.afterHoursStart ?? null)
+  }, [data])
+  useEffect(() => {
     if (pinnedSnapshotTime === undefined && !isCloseActive && dataSnapshotTime) setLiveSnapshotTime(dataSnapshotTime)
   }, [pinnedSnapshotTime, isCloseActive, dataSnapshotTime])
   // 종가를 보는 동안에는 받은 지도가 정규장 종가라서, 별도가 열렸는지는 실시간 스냅샷으로 따진다.
-  const isAfterHoursSelectable = isAfterHoursControlsVisible && isAfterHoursSelectableAt(isCloseActive ? liveSnapshotTime : data?.snapshotTime)
+  const isAfterHoursSelectable = isAfterHoursControlsVisible && isAfterHoursSelectableAt(isCloseActive ? liveSnapshotTime : data?.snapshotTime, data?.afterHoursStart)
   const changeRateMode: ChangeRateMode = isAfterHoursSelectable ? requestedBasis : 'daily'
   const changeRateChoice: ChangeRateChoice = requestedChoice === 'close' && !isCloseUnavailable ? 'close' : changeRateMode
   const rawRootNodes = data?.items
