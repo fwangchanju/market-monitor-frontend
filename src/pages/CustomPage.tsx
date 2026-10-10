@@ -9,10 +9,10 @@ import AdminStockTable from '@/components/AdminStockTable'
 import Spinner from '@/components/Spinner'
 import NavBarPageActions from '@/components/NavBarPageActions'
 import SettingsSidebar from '@/components/SettingsSidebar'
+import MarketryPublishControls from '@/components/MarketryPublishControls'
 import { FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
 import ModeDropdown from '@/components/ModeDropdown'
 import ReadOnlyTaxonomySheet from '@/components/ReadOnlyTaxonomySheet'
-import MarketryPublishControls from '@/components/MarketryPublishControls'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSettingsSidebarSide } from '@/hooks/useSettingsSidebarSide'
 import { useTaxonomySelection, type TaxonomySelection } from '@/hooks/useTaxonomySelection'
@@ -58,6 +58,7 @@ export default function CustomPage() {
   const [sectorSettingsActionsTarget, setSectorSettingsActionsTarget] = useState<HTMLDivElement | null>(null)
   // 종목 화면의 실행취소·다시실행 아이콘이 들어갈 설정창 안의 자리.
   const [stockHistoryTarget, setStockHistoryTarget] = useState<HTMLDivElement | null>(null)
+  const [stockExcelTarget, setStockExcelTarget] = useState<HTMLDivElement | null>(null)
   // 비로그인이 내 분류를 누르면 로그인 안내만 띄우고, 보던 분류에 그대로 머문다.
   const handleSelectSheet = (next: TaxonomySelection) => {
     if (next === 'MINE' && isGuestKnown) {
@@ -246,14 +247,13 @@ export default function CustomPage() {
               </div>
               {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다. */}
               {!isReadOnlySheet && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 min-w-0 flex-1 items-center" />}
-              {/* 관리자만 — 내 분류를 MARKETRY로 올리고 이전 버전으로 되돌린다. */}
-              {session?.role === 'ADMIN' && !isReadOnlySheet && <MarketryPublishControls />}
               <div className={`${FONT_BAR_MODE_STATUS} ml-2 flex min-w-0 items-center justify-end text-gray-400`}>
                 <TaxonomyBadge taxonomy={sheet} />
               </div>
             </div>
             <EmptyMessageAreaContext.Provider value={emptyMessageArea}>
-            <div className="flex min-h-0 flex-1">
+            {/* 좌우 7px — 지도 페이지처럼 화면 왼쪽 끝·설정창과 본문 사이를 띄운다(위 바의 STOCK 드롭다운 시작점, 분류 배지와 설정창 사이 간격과 같다). */}
+            <div className="flex min-h-0 flex-1 px-[7px]">
               <div
                 className={`flex min-h-0 min-w-0 flex-1 flex-col ${mode === 'sector' ? 'overflow-y-auto' : ''}`}
               >
@@ -279,6 +279,7 @@ export default function CustomPage() {
                     snapshotTime={stockSectors?.snapshotTime ?? null}
                     toolbarContainer={toolbarContainer}
                     historyContainer={stockHistoryTarget}
+                    excelContainer={stockExcelTarget}
                     onCountLabelChange={setCountLabel}
                     nxtStockCodes={nxtStockCodes}
                   />
@@ -304,15 +305,27 @@ export default function CustomPage() {
               isOnLeft={isSettingsOnLeft}
               onToggleSide={toggleSettingsSide}
               onRequestLogin={() => requireLogin(pathname)}
-              plainContent={mode === 'sector' && !isReadOnlySheet ? (
-                <div>
-                  <div ref={setSectorSettingsActionsTarget} />
+              plainContent={!isReadOnlySheet ? (
+                <>
+                  {/* 관리자만 — 내 분류를 MARKETRY로 올리고 이전 버전으로 되돌린다. 그룹 페이지처럼 항목 높이는 127px로 고정하고(제목 간격 127px) 사이에 구분선이 그어진다. */}
+                  {session?.role === 'ADMIN' && (
+                    <div className="h-[127px] text-sm">
+                      <h2 className="settings-plain-title mb-3 text-[15px] font-medium leading-[22px] text-white">관리자</h2>
+                      <div className="max-w-[16rem]">
+                        <MarketryPublishControls />
+                      </div>
+                    </div>
+                  )}
+                  {/* 종목 화면은 위에서부터 관리자 → 간편 업종 분류 → 변경 내역 순서다. */}
+                  {mode === 'stock' && <div ref={setStockExcelTarget} />}
+                  <div ref={mode === 'sector' ? setSectorSettingsActionsTarget : setStockHistoryTarget} className={mode === 'stock' ? 'mt-6' : undefined} />
+                </>
+              ) : (
+                // 마켓트리·거래소 화면은 읽기 전용이라 설정할 항목이 없다 — 그 사실만 알린다.
+                <div className="text-sm">
+                  <h2 className="settings-plain-title m-0 text-[15px] font-medium leading-[22px] text-white">읽기 전용 · 쓰기 불가</h2>
                 </div>
-              ) : mode === 'stock' && !isReadOnlySheet ? (
-                <div>
-                  <div ref={setStockHistoryTarget} />
-                </div>
-              ) : null}
+              )}
               taxonomyAtBottom
               snapshotTime={taxonomyMap?.taxonomyUpdatedAt}
               taxonomy={sheet}

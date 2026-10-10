@@ -1,27 +1,33 @@
 import { HINT_BUBBLE_CLASS } from '@/components/hintBubbleStyle'
 import { compareKoreanText } from '@/utils/koreanSort'
+import { loadSectorOrder, sectorNamesByDepth, type SectorOrder } from '@/utils/sectorOrder'
 import { useReportCountLabel } from '@/hooks/useReportCountLabel'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { SectorItem, StockSectorListItem } from '@/types/api'
 import { toCount, toJoEokDecimal, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
-import { appAlert } from '@/utils/appDialogBus'
+import { appAlert, appConfirm } from '@/utils/appDialogBus'
+import { buildUploadPlan, pathKey, readClassificationFile } from '@/utils/classificationUpload'
 import { exportRowsToExcel } from '@/utils/exportExcel'
-import { useAssignStockSector, useBulkAssignStockSector, useUpdateStockAlias } from '@/hooks/useMarketMapCustom'
+import { fileTimestamp } from '@/utils/fileTimestamp'
+import { useAssignStockSector, useBulkAssignStockSector, useCreateSector, useUpdateStockAlias } from '@/hooks/useMarketMapCustom'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSession } from '@/hooks/useSession'
 import Spinner from './Spinner'
 import { SearchBar } from './ReadOnlyTaxonomySheet'
 import EmptyMessage, { EMPTY_DATA_MESSAGE, EMPTY_SEARCH_MESSAGE } from './EmptyMessage'
 import { STOCK_HEADER_ROW_PX, stockTableMinWidthPx, type StockColumnKey } from '@/utils/stockTableColumns'
+import { usePopupPosition, type PopupPosition } from '@/hooks/usePopupPosition'
+import ChangeHistoryControls from '@/components/ChangeHistoryControls'
 import StockTableColGroup from '@/components/StockTableColGroup'
 import StockSortHeader from '@/components/StockSortHeader'
 import SelectionHintBubble from '@/components/SelectionHintBubble'
-import ColumnFilterButton from '@/components/ColumnFilterButton'
+import { useStockNameRightEdge } from '@/hooks/useStockNameRightEdge'
+import ColumnFilterButton, { SectorOrderToggle } from '@/components/ColumnFilterButton'
 import { useStockColumnFilters, type StockFilterKey } from '@/hooks/useStockColumnFilters'
 import { useMarketValueTiers } from '@/hooks/useMarketValueTiers'
-import { ChevronDownIcon, ExcelIcon, RedoIcon, UndoIcon } from './icons/MarketMapIcons'
+import { DownloadIcon, UploadIcon } from './icons/MarketMapIcons'
 
 interface Props {
   items: StockSectorListItem[]
@@ -33,6 +39,8 @@ interface Props {
   toolbarContainer: HTMLElement | null
   // 실행취소·다시실행 아이콘을 그릴 설정창 안의 자리 — 없으면 상단 바 도구줄에 같이 그린다.
   historyContainer?: HTMLElement | null
+  // 설정창의 "엑셀" 항목 자리 — 있으면 다운로드 버튼을 이 안에 그린다.
+  excelContainer?: HTMLElement | null
   // 검색창 옆에 두던 "N/N종목" 개수를 받아 갈 곳 — 페이지가 설정창 머리글에 그려 준다.
   onCountLabelChange?: (label: string | undefined) => void
   // NXT에서도 거래되는 종목 코드 — NXT 열에 O/-로 보여준다(공개 종목 정보라 모든 사용자가 같다).
@@ -83,11 +91,11 @@ const COLUMNS: { key: SortKey; columnKey: StockColumnKey; header: string; align:
   { key: 'totalMarketValue', columnKey: 'totalMarketValue', header: '시가총액', align: 'right' },
   { key: 'sizeTier', columnKey: 'sizeTier', header: '종목 크기', align: 'center' },
   { key: 'market', columnKey: 'market', header: '마켓', align: 'center' },
+  { key: 'nxt', columnKey: 'nxt', header: 'NXT', align: 'center' },
   { key: 'originCategoryName', columnKey: 'industry', header: '거래소 분류', align: 'left' },
   { key: 'parentSectorName', columnKey: 'parentSector', header: '대분류', align: 'right' },
   { key: 'midSectorName', columnKey: 'midSector', header: '중분류', align: 'right' },
   { key: 'subSectorName', columnKey: 'subSector', header: '소분류', align: 'right' },
-  { key: 'nxt', columnKey: 'nxt', header: 'NXT', align: 'center' },
 ]
 
 const alignClass = (align: 'center' | 'left' | 'right') =>
@@ -251,13 +259,6 @@ function matchesSectorSearch(option: SectorOption, trimmed: string, byId: Map<nu
   return false
 }
 
-interface PopupPosition {
-  top: number
-  left: number
-  openUpward: boolean
-  alignRight: boolean
-}
-
 // 필터 팝업 목록 한 행의 높이(px) — 테이블 본문과 같은 text-sm(20px 줄높이) + py-0.5(위아래 2px씩) 기준.
 const FILTER_LIST_ROW_HEIGHT = 24
 // 필터 팝업을 한 화면에 몇 개 행까지 보여줄지 — 이보다 적으면 목록 실제 높이만큼만 차지하고,
@@ -265,141 +266,6 @@ const FILTER_LIST_ROW_HEIGHT = 24
 const FILTER_LIST_MAX_VISIBLE_ROWS = 15
 const FILTER_LIST_MAX_HEIGHT = FILTER_LIST_ROW_HEIGHT * FILTER_LIST_MAX_VISIBLE_ROWS
 
-// 팝업(섹터 검색창/필터 드롭다운) 공통 로직 — 트리거 기준 위치 계산 + 바깥 클릭/스크롤 시 닫기.
-function usePopupPosition(
-  isOpen: boolean,
-  setIsOpen: (open: boolean) => void,
-  triggerRef: React.RefObject<HTMLElement | null>,
-  popupRef: React.RefObject<HTMLElement | null>,
-  onOpen?: () => void,
-  // 팝업이 아래로 열렸을 때 화면 밖으로 잘리지 않게, 트리거가 화면 세로 기준 몇 % 아래부터 위로 뒤집을지.
-  // 팝업이 클수록(예: 섹터 검색 목록) 더 일찍(작은 값) 뒤집어야 한다.
-  flipThreshold = 0.8,
-  // 트리거가 화면 우측 끝에 붙어있으면(예: 일괄변경 버튼) 왼쪽으로 열어야 화면 밖으로 안 잘린다.
-  alignRight = false,
-) {
-  const [position, setPosition] = useState<PopupPosition | null>(null)
-
-  useLayoutEffect(() => {
-    if (isOpen && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect()
-      const openUpward = rect.bottom > window.innerHeight * flipThreshold
-      setPosition({
-        top: openUpward ? rect.top : rect.bottom,
-        left: alignRight ? rect.right : rect.left,
-        openUpward,
-        alignRight,
-      })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- ref는 안정적이라 open 시점에만 반응하면 된다
-  }, [isOpen])
-
-  // 처음 여는 순간엔 이 컴포넌트가 처음 렌더될 때라 position이 아직 null이라 팝업(및 입력창) 자체가
-  // DOM에 없다 — 그 상태에서 onOpen(주로 input.focus())을 호출하면 허공에 걸린다. position이 실제로
-  // 채워져서 팝업이 DOM에 나타난 뒤에 따로 포커스를 걸어야, 처음 여는 경우에도 커서가 제대로 간다.
-  useEffect(() => {
-    if (isOpen && position) onOpen?.()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onOpen은 매 렌더 새 함수라 deps에 넣으면 무한루프
-  }, [isOpen, position])
-
-  useEffect(() => {
-    if (!isOpen) return
-
-    const close = () => setIsOpen(false)
-    const handlePointerDown = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (popupRef.current?.contains(target) || triggerRef.current?.contains(target)) return
-      close()
-    }
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close()
-    }
-    // capture 없이 window 자체의 scroll(페이지 스크롤)만 감지 — capture:true였으면
-    // 팝업 내부 목록의 overflow-y-auto 스크롤까지 잡혀서 즉시 닫혀버림.
-    window.addEventListener('scroll', close)
-    document.addEventListener('mousedown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('scroll', close)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- ref/setIsOpen은 안정적이라 isOpen 변화에만 반응하면 됨
-  }, [isOpen])
-
-  return position
-}
-
-// 실행취소/다시실행 히스토리 목록 팝업 — 최신 항목이 위로 오도록 뒤집어서 보여주고, 텍스트는 항상
-// 고정("종목명: 이전 → 이후")이며 각 행에 마우스를 올렸을 때만 우측에 실행취소/다시실행 텍스트 버튼이
-// 나타난다. 클릭하면 스택 순서와 무관하게 그 항목 하나만 되돌리거나 다시 적용한다.
-function UndoRedoHistoryPopup({
-  isOpen,
-  setIsOpen,
-  triggerRef,
-  actions,
-  direction,
-  items,
-  sectorOptionsById,
-  onPick,
-}: {
-  isOpen: boolean
-  setIsOpen: (open: boolean) => void
-  triggerRef: React.RefObject<HTMLElement | null>
-  actions: UndoableAction[]
-  direction: 'undo' | 'redo'
-  items: StockSectorListItem[]
-  sectorOptionsById: Map<number, SectorOption>
-  onPick: (id: string) => void
-}) {
-  const popupRef = useRef<HTMLDivElement>(null)
-  // 툴바 왼쪽(종목수 옆)에 있는 버튼이라 오른쪽에 펼칠 공간이 넉넉함 — alignRight 없이 왼쪽 정렬로 연다.
-  const position = usePopupPosition(isOpen, setIsOpen, triggerRef, popupRef, undefined, 0.8, false)
-  const actionLabel = direction === 'undo' ? '실행취소' : '다시실행'
-
-  if (!isOpen || !position) return null
-
-  const ordered = [...actions].reverse()
-
-  return (
-    <div
-      ref={popupRef}
-      style={{
-        position: 'fixed',
-        top: position.top,
-        left: position.left,
-        transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
-      }}
-      className="z-50 rounded-md border border-gray-500 bg-[#363639] p-2 text-sm text-white shadow-xl"
-      onClick={e => e.stopPropagation()}
-    >
-      {ordered.length === 0 ? (
-        <p className="whitespace-nowrap px-1 text-gray-400">{actionLabel}할 변경 내역이 없습니다</p>
-      ) : (
-        <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: FILTER_LIST_MAX_HEIGHT }}>
-          {ordered.map(action => (
-            <div
-              key={action.id}
-              className="group flex items-center justify-between gap-3 whitespace-nowrap rounded px-1 py-0.5 hover:bg-[var(--brand)]/10"
-            >
-              <span className="text-white">{describeUndoableAction(action, items, sectorOptionsById)}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  onPick(action.id)
-                  setIsOpen(false)
-                }}
-                  className="hidden shrink-0 border-0 bg-transparent text-xs text-white hover:text-[var(--brand)] group-hover:inline-block"
-              >
-                {actionLabel}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 // 섹터 검색창의 검색어/방향키 탐색 상태 — AdminStockSectorCell과 BulkAssignButton이 공유.
 // isOpen이 false(팝업 닫힘)면 아무도 matches를 안 쓰므로 계산 자체를 건너뛴다 — 행이 수천 개라
@@ -446,7 +312,7 @@ function useSectorSearchState(options: SectorOption[], isOpen: boolean) {
   return { query, handleQueryChange, matches, highlightedIndex, setHighlightedIndex, handleArrowsAndEnter, reset }
 }
 
-// 섹터 검색 팝업(검색창 + 전체/필터링된 목록). 대분류·소분류 셀과 일괄변경 버튼이 트리거만 다르게 해서 같이 쓴다.
+// 섹터 검색 팝업(검색창 + 전체/필터링된 목록). 대분류·소분류 셀과 일괄 변경 버튼이 트리거만 다르게 해서 같이 쓴다.
 function SectorSearchPopup({
   popupRef,
   inputRef,
@@ -455,6 +321,8 @@ function SectorSearchPopup({
   onSelect,
   onEscape,
   contextLabel,
+  title,
+  orderMode,
 }: {
   popupRef: React.RefObject<HTMLDivElement | null>
   inputRef: React.RefObject<HTMLInputElement | null>
@@ -464,6 +332,9 @@ function SectorSearchPopup({
   onEscape: () => void
   // 소분류 팝업처럼 목록이 특정 대분류로 좁혀져 있을 때, 지금 어느 대분류 밑을 보고 있는지 알려주는 칩.
   contextLabel?: string
+  // 일괄 변경 팝업 — 제목과 "가나다 순 / 사용자 지정 순" 선택(고른 순서는 호출한 쪽이 options 순서로 반영한다).
+  title?: string
+  orderMode?: { value: 'alpha' | 'custom'; onChange: (value: 'alpha' | 'custom') => void }
 }) {
   // 방향키로 하이라이트가 화면 밖으로 나가면 스크롤이 안 따라가서 지금 뭐가 선택됐는지 안 보이는
   // 문제가 있었다 — 하이라이트된 항목의 DOM 노드를 등록해뒀다가, 바뀔 때마다 보이는 영역으로 스크롤한다.
@@ -471,6 +342,9 @@ function SectorSearchPopup({
   useEffect(() => {
     optionRefs.current.get(search.highlightedIndex)?.scrollIntoView({ block: 'nearest' })
   }, [search.highlightedIndex])
+
+  // 목록이 한 단계(같은 부모 아래)뿐이면 들여쓰기·"- " 표시 없이 이름만 보여준다.
+  const isSingleLevel = search.matches.every(opt => opt.parentId === search.matches[0]?.parentId)
 
   return (
     <div
@@ -481,48 +355,47 @@ function SectorSearchPopup({
         left: position.left,
         transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
       }}
-      className="z-50 w-64 rounded-md border border-gray-500 bg-[#363639] p-2 text-white shadow-xl"
+      className="z-50 w-56 rounded-md border border-gray-500 bg-[#363639] py-2 text-sm font-normal text-white shadow-xl"
       onClick={e => e.stopPropagation()}
     >
-      <input
-        ref={inputRef}
-        type="text"
-        autoFocus
-        value={search.query}
-        onChange={e => search.handleQueryChange(e.target.value)}
-        onKeyDown={e => (e.key === 'Escape' ? onEscape() : search.handleArrowsAndEnter(e, onSelect))}
-        placeholder="업종 검색"
-        className="nes-input is-dark w-full py-2 text-sm"
-      />
-      {contextLabel && (
-        <span className="mt-2 inline-block rounded bg-[var(--brand)]/25 px-2 py-0.5 text-xs text-white">
-          {contextLabel}
-        </span>
-      )}
-      <div className="mt-2 border-t border-gray-600 pt-2">
-        <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: FILTER_LIST_MAX_HEIGHT }}>
-          {search.matches.length === 0 ? (
-            <p className="px-2 py-1 text-sm text-gray-400">검색 결과가 없습니다</p>
-          ) : (
-            search.matches.map((opt, index) => (
-              <button
-                key={opt.id}
-                ref={el => {
-                  if (el) optionRefs.current.set(index, el)
-                  else optionRefs.current.delete(index)
-                }}
-                type="button"
-                onClick={() => onSelect(opt.id)}
-                onMouseEnter={() => search.setHighlightedIndex(index)}
-                className={`block w-full truncate rounded px-2 py-0.5 text-left text-sm text-white ${
-                  index === search.highlightedIndex ? 'bg-[var(--brand)]/25' : 'bg-transparent'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))
-          )}
-        </div>
+      {title && <div className="px-3 pb-2 text-xs font-bold text-[var(--brand)]">{title}</div>}
+      <div className="px-3 pb-2">
+        <input
+          ref={inputRef}
+          type="text"
+          autoFocus
+          value={search.query}
+          onChange={e => search.handleQueryChange(e.target.value)}
+          onKeyDown={e => (e.key === 'Escape' ? onEscape() : search.handleArrowsAndEnter(e, onSelect))}
+          placeholder="업종 검색"
+          aria-label="업종 검색"
+          className="h-7 w-full rounded border border-gray-600 bg-zinc-700 px-2 text-sm text-white outline-none focus:border-[var(--brand)]"
+        />
+        {contextLabel && <p className="m-0 mt-1.5 truncate text-xs text-gray-400">{contextLabel}</p>}
+      </div>
+      {title && orderMode && <SectorOrderToggle label={title} value={orderMode.value} onChange={orderMode.onChange} />}
+      <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: FILTER_LIST_MAX_HEIGHT }}>
+        {search.matches.length === 0 ? (
+          <p className="m-0 px-3 py-1 text-gray-400">검색 결과가 없습니다</p>
+        ) : (
+          search.matches.map((opt, index) => (
+            <button
+              key={opt.id}
+              ref={el => {
+                if (el) optionRefs.current.set(index, el)
+                else optionRefs.current.delete(index)
+              }}
+              type="button"
+              onClick={() => onSelect(opt.id)}
+              onMouseEnter={() => search.setHighlightedIndex(index)}
+              className={`block w-full truncate rounded-none border-0 px-3 py-1 text-left text-sm font-normal text-white shadow-none outline-none ${
+                index === search.highlightedIndex ? 'bg-white/10 text-[var(--brand)]' : 'bg-transparent'
+              }`}
+            >
+              {isSingleLevel ? opt.name : opt.label}
+            </button>
+          ))
+        )}
       </div>
     </div>
   )
@@ -542,6 +415,8 @@ function AdminStockSectorCell({
   contextLabel,
   disabled,
   disabledHint,
+  title,
+  orderMode,
 }: {
   value: string
   options: SectorOption[]
@@ -556,6 +431,9 @@ function AdminStockSectorCell({
   disabled?: boolean
   // disabled일 때 클릭하면 1.5초간 떴다가 자동으로 사라지는 안내 문구.
   disabledHint?: string
+  // 팝업 제목과 "가나다 순 / 사용자 지정 순" 선택(일괄 변경 팝업과 같은 모양).
+  title?: string
+  orderMode?: { value: 'alpha' | 'custom'; onChange: (value: 'alpha' | 'custom') => void }
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [showHint, setShowHint] = useState(false)
@@ -629,6 +507,8 @@ function AdminStockSectorCell({
           onSelect={handleSelect}
           onEscape={() => updateOpen(false)}
           contextLabel={contextLabel}
+          title={title}
+          orderMode={orderMode}
         />
       )}
       {disabled && showHint && (
@@ -651,11 +531,15 @@ function BulkAssignButton({
   alignRight = false,
   disabled = false,
   disabledHint,
+  title,
+  orderMode,
 }: {
   count: number
   options: SectorOption[]
   onAssign: (sectorId: number) => void
   alignRight?: boolean
+  title: string
+  orderMode: { value: 'alpha' | 'custom'; onChange: (value: 'alpha' | 'custom') => void }
   // 선행 단계(1차/2차)가 아직 적용 안 된 상태의 2차/3차 버튼 — 버튼 자체는 평소와 똑같이 보이되,
   // 클릭하면 팝업 대신 안내 문구만 잠깐 띄운다(AdminStockSectorCell의 disabled 셀과 동일한 패턴).
   disabled?: boolean
@@ -716,7 +600,7 @@ function BulkAssignButton({
           isIdle ? 'cursor-not-allowed border-gray-700 text-gray-600' : 'border-[var(--brand)]/60 text-[var(--brand)] hover:bg-white/10'
         }`}
       >
-        {isIdle ? '일괄변경' : `일괄변경 (${count})`}
+        {isIdle ? '일괄 변경' : `일괄 변경 (${count})`}
       </button>
       {isOpen && position && !disabled && (
         <SectorSearchPopup
@@ -726,6 +610,8 @@ function BulkAssignButton({
           search={search}
           onSelect={handleSelect}
           onEscape={() => setIsOpen(false)}
+          title={title}
+          orderMode={orderMode}
         />
       )}
       {disabled && showHint && disabledHint && (
@@ -840,6 +726,9 @@ const AdminStockRow = memo(function AdminStockRow({
   onUpdateAlias,
   showAlias,
   isNxt,
+  sectorOrderMode,
+  onSectorOrderModeChange,
+  savedSectorOrder,
 }: {
   item: StockSectorListItem
   index: number
@@ -858,6 +747,10 @@ const AdminStockRow = memo(function AdminStockRow({
   onUpdateAlias: (stockCode: string, alias: string | null) => void
   showAlias: boolean
   isNxt: boolean
+  // 섹터 선택 팝업의 보기 순서 — 가나다 순이거나 업종 화면에서 정한 사용자 지정 순서(savedSectorOrder).
+  sectorOrderMode: 'alpha' | 'custom'
+  onSectorOrderModeChange: (value: 'alpha' | 'custom') => void
+  savedSectorOrder: SectorOrder
 }) {
   // 행 어디에 마우스를 올려도(체크박스/#/시가총액 등 포함) 줄 전체가 옅게 강조되고, 대분류/소분류/약칭
   // 중 하나를 hover 중일 때는 그 열만 추가로 진하게 표시해서 어떤 걸 hover 중인지 구분되게 한다.
@@ -877,8 +770,8 @@ const AdminStockRow = memo(function AdminStockRow({
   // 호버는 20%, 선택은 28%로 칠해 서로 구분하고, 선택 + 호버면 한 단계 더 진하게(38%) 칠한다. 읽기 전용 표(ReadOnlyTaxonomySheet)와 같은 값이다.
   const rowHoverClass = isSelected
     ? isRowHovered
-      ? 'bg-[var(--brand)]/38'
-      : 'bg-[var(--brand)]/28'
+      ? 'bg-[var(--brand)]/38 border-white/25!'
+      : 'bg-[var(--brand)]/28 border-white/25!'
     : isRowHovered || editingCells.size > 0
       ? 'bg-[var(--brand)]/20'
       : ''
@@ -887,15 +780,20 @@ const AdminStockRow = memo(function AdminStockRow({
   // "지금 이 종목의 중분류"의 자식만 보여준다. sectorId(실제 배정된 섹터)를 parentId로 거슬러
   // 올라가서 전체 조상 체인을 구한 뒤, 뎁스별로 슬롯에 나눠 담는다.
   const chain = resolveSectorChain(sectorOptionsById, item.sectorId)
-  const parentSectorOptions = sectorOptions.filter(opt => opt.parentId === null)
+  const arrange = (options: SectorOption[], parentId: number | null) => {
+    if (sectorOrderMode === 'alpha') return options
+    const rank = new Map((savedSectorOrder[String(parentId)] ?? []).map((id, position) => [id, position]))
+    return [...options].sort((a, b) => (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER) || a.id - b.id)
+  }
+  const parentSectorOptions = arrange(sectorOptions.filter(opt => opt.parentId === null), null)
   // 이미 한 단계 위로 좁혀진 목록이라 "- " 들여쓰기 접두어가 필요 없다 — 그냥 이름 그대로 보여준다.
-  const midSectorOptions = sectorOptions
-    .filter(opt => opt.parentId === chain.rootId)
+  const midSectorOptions = arrange(sectorOptions.filter(opt => opt.parentId === chain.rootId), chain.rootId)
     .map(opt => ({ ...opt, label: opt.name }))
   const subSectorOptions =
     chain.midId != null
-      ? sectorOptions.filter(opt => opt.parentId === chain.midId).map(opt => ({ ...opt, label: opt.name }))
+      ? arrange(sectorOptions.filter(opt => opt.parentId === chain.midId), chain.midId).map(opt => ({ ...opt, label: opt.name }))
       : []
+  const cellOrderMode = { value: sectorOrderMode, onChange: onSectorOrderModeChange }
 
   // 체크박스를 정확히 조준하지 않아도, hover 강조가 뜨는 영역(약칭/대분류/소분류 제외 전체) 아무 곳이나
   // 클릭하면 체크가 토글되게 한다. 약칭/대분류/소분류 셀은 자기 클릭(stopPropagation)으로 배제된다.
@@ -946,6 +844,7 @@ const AdminStockRow = memo(function AdminStockRow({
       </td>
       <td className={`text-center text-gray-400 ${rowHoverClass}`}>{item.marketValueTier || '-'}</td>
       <td className={`text-center ${marketColorClass(item.market)} ${rowHoverClass}`}>{MARKET_LABEL[item.market]}</td>
+      <td className={`text-center ${isNxt ? 'text-gray-400' : 'text-gray-500'} ${rowHoverClass}`}>{isNxt ? 'O' : '-'}</td>
       <td className={`truncate pl-2 text-left text-gray-400 ${rowHoverClass}`}>{item.industryName ?? '-'}</td>
       <AdminStockSectorCell
         value={chain.rootName}
@@ -956,6 +855,8 @@ const AdminStockRow = memo(function AdminStockRow({
         onHoverStart={() => onParentSectorHoverStart(item.stockCode)}
         onHoverEnd={onHoverEnd}
         onEditingChange={editing => setCellEditing('sector1', editing)}
+        title="대분류 개별 변경"
+        orderMode={cellOrderMode}
       />
       <AdminStockSectorCell
         value={chain.midName ?? '-'}
@@ -967,6 +868,8 @@ const AdminStockRow = memo(function AdminStockRow({
         onHoverEnd={onHoverEnd}
         onEditingChange={editing => setCellEditing('sector2', editing)}
         contextLabel={chain.rootName}
+        title="중분류 개별 변경"
+        orderMode={cellOrderMode}
       />
       <AdminStockSectorCell
         value={chain.leafName ?? '-'}
@@ -980,8 +883,9 @@ const AdminStockRow = memo(function AdminStockRow({
         contextLabel={chain.midName ?? undefined}
         disabled={chain.midId == null}
         disabledHint="중분류를 먼저 지정하세요"
+        title="소분류 개별 변경"
+        orderMode={cellOrderMode}
       />
-      <td className={`text-center ${isNxt ? 'text-gray-400' : 'text-gray-500'} ${rowHoverClass}`}>{isNxt ? 'O' : '-'}</td>
     </tr>
   )
 })
@@ -992,6 +896,7 @@ export default function AdminStockTable({
   snapshotTime,
   toolbarContainer,
   historyContainer,
+  excelContainer,
   onCountLabelChange,
   nxtStockCodes = NO_NXT_CODES,
 }: Props) {
@@ -1004,6 +909,9 @@ export default function AdminStockTable({
 
   const assignStockSector = useAssignStockSector()
   const bulkAssignStockSector = useBulkAssignStockSector()
+  const createSectorMutation = useCreateSector()
+  const uploadInputRef = useRef<HTMLInputElement>(null)
+  const [isUploading, setIsUploading] = useState(false)
   const updateAlias = useUpdateStockAlias()
   // 약칭 지정은 관리자 전용이다 — 관리자의 약칭은 MARKETRY로 올릴 내용에만 쓰이고, 다른 사용자의 데이터는 건드리지 않는다.
   // 일반 사용자에게는 약칭 값을 보여주지도 수정하게 하지도 않는다(백엔드도 관리자만 허용한다). 열 자리만 빈칸으로 두어 다른 시트와 열 위치를 맞춘다.
@@ -1049,27 +957,25 @@ export default function AdminStockTable({
     setRedoStack(prev => prev.slice(0, -1))
     setUndoStack(prev => [...prev, action])
   }
-  // 목록에서 스택 위치와 무관하게 특정 항목 하나만 골라 되돌리거나 다시 적용 — 순서 상관없이
-  // 그 항목의 before/after 값으로 직접 바꿔버리고, 다른 항목들의 순서는 그대로 둔다.
+  // 목록에서 항목을 고르면 그 항목까지 순서대로 모두 적용한다 — 맨 위(다음 차례)부터 고른 항목까지 한 단계씩 되돌리거나 다시 적용해서,
+  // 건너뛴 항목이 남아 값이 꼬이지 않게 한다.
   const handleUndoItem = (id: string) => {
-    const action = undoStack.find(a => a.id === id)
-    if (!action) return
-    applySectorAction(action, 'before')
-    setUndoStack(prev => prev.filter(a => a.id !== id))
-    setRedoStack(prev => [...prev, action])
+    const index = undoStack.findIndex(a => a.id === id)
+    if (index < 0) return
+    const applied = undoStack.slice(index).reverse()
+    for (const action of applied) applySectorAction(action, 'before')
+    setUndoStack(prev => prev.slice(0, index))
+    setRedoStack(prev => [...prev, ...applied])
   }
   const handleRedoItem = (id: string) => {
-    const action = redoStack.find(a => a.id === id)
-    if (!action) return
-    applySectorAction(action, 'after')
-    setRedoStack(prev => prev.filter(a => a.id !== id))
-    setUndoStack(prev => [...prev, action])
+    const index = redoStack.findIndex(a => a.id === id)
+    if (index < 0) return
+    const applied = redoStack.slice(index).reverse()
+    for (const action of applied) applySectorAction(action, 'after')
+    setRedoStack(prev => prev.slice(0, index))
+    setUndoStack(prev => [...prev, ...applied])
   }
-  const [isUndoListOpen, setIsUndoListOpen] = useState(false)
-  const [isRedoListOpen, setIsRedoListOpen] = useState(false)
   // 목록 팝업 위치 기준은 화살표가 아니라 UNDO/REDO 버튼 전체(테두리) — 팝업 좌측이 버튼 좌측 테두리와 맞도록.
-  const undoGroupRef = useRef<HTMLDivElement>(null)
-  const redoGroupRef = useRef<HTMLDivElement>(null)
   // 키보드 리스너는 마운트 시 한 번만 등록하고(=종목 탭에 있는 동안만, 언마운트되면 자동 해제),
   // 매번 최신 핸들러를 부르도록 ref로 우회한다.
   const undoRef = useRef(handleUndo)
@@ -1098,6 +1004,14 @@ export default function AdminStockTable({
   // sectors가 안 바뀌면 참조를 유지해야 AdminStockRow의 React.memo가 제대로 스킵된다.
   const sectorOptions = useMemo(() => buildSectorOptions(sectors), [sectors])
   const sectorOptionsById = useMemo(() => new Map(sectorOptions.map(opt => [opt.id, opt])), [sectorOptions])
+  // 대·중·소분류 필터는 "가나다 순"과 업종 화면에서 정한 "사용자 지정 순" 순서 중 고른 대로 보여준다(기본 사용자 지정 순, 브라우저에 저장).
+  const [sectorFilterMode, setSectorFilterMode] = useState<'alpha' | 'custom'>(() => (localStorage.getItem('marketry:sector-filter-order') === 'alpha' ? 'alpha' : 'custom'))
+  const changeSectorFilterMode = useCallback((value: 'alpha' | 'custom') => {
+    localStorage.setItem('marketry:sector-filter-order', value)
+    setSectorFilterMode(value)
+  }, [])
+  const [savedSectorOrder] = useState(loadSectorOrder)
+  const sectorFilterOrder = useMemo(() => sectorNamesByDepth(sectors, savedSectorOrder), [sectors, savedSectorOrder])
   // 필터/정렬/컬럼 표시에 쓰는 대분류·중분류·소분류 문자열을 종목마다 한 번씩만 미리 계산해둔다.
   const displayByStockCode = useMemo(
     () => new Map(items.map(item => [item.stockCode, computeDisplayValues(item, sectorOptionsById, nxtStockCodes)])),
@@ -1397,9 +1311,31 @@ export default function AdminStockTable({
     runBulkAssign(sectorId)
   }
 
-  const bulkParentOptions = sectorOptions.filter(opt => opt.parentId === null)
-  const bulkMidOptions = bulkParentId != null ? sectorOptions.filter(opt => opt.parentId === bulkParentId) : []
-  const bulkSubOptions = bulkMidId != null ? sectorOptions.filter(opt => opt.parentId === bulkMidId) : []
+  // 선택한 종목들의 대분류(중분류)가 모두 같으면 그 아래 중분류(소분류)를 바로 일괄 변경할 수 있다. 서로 다르면 위 단계를 먼저 일괄적용한 값을 쓴다.
+  const selectedCommonChain = useMemo(() => {
+    let rootId: number | null | undefined
+    let midId: number | null | undefined
+    for (const item of items) {
+      if (!selectedStockCodes.has(item.stockCode)) continue
+      const chain = resolveSectorChain(sectorOptionsById, item.sectorId)
+      rootId = rootId === undefined || rootId === chain.rootId ? chain.rootId : null
+      midId = midId === undefined || midId === chain.midId ? chain.midId : null
+    }
+    return { rootId: rootId ?? null, midId: midId ?? null }
+  }, [items, selectedStockCodes, sectorOptionsById])
+  const effectiveParentId = selectedCommonChain.rootId ?? bulkParentId
+  const effectiveMidId = selectedCommonChain.midId ?? bulkMidId
+  // 일괄 변경 목록은 필터와 같은 "가나다 순 / 사용자 지정 순" 선택을 따른다.
+  const bulkOrderMode = { value: sectorFilterMode, onChange: changeSectorFilterMode }
+  const orderedChildren = (parentId: number | null) => {
+    const children = sectorOptions.filter(opt => opt.parentId === parentId)
+    if (sectorFilterMode === 'alpha') return children
+    const rank = new Map((savedSectorOrder[String(parentId)] ?? []).map((id, index) => [id, index]))
+    return [...children].sort((a, b) => (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER) || a.id - b.id)
+  }
+  const bulkParentOptions = orderedChildren(null)
+  const bulkMidOptions = effectiveParentId != null ? orderedChildren(effectiveParentId) : []
+  const bulkSubOptions = effectiveMidId != null ? orderedChildren(effectiveMidId) : []
 
   // 표 위 검색창 — 종목명·코드(관리자는 약칭도)만 찾는다. 업종은 머리글 필터로 거른다.
   const [searchQuery, setSearchQuery] = useState('')
@@ -1431,7 +1367,7 @@ export default function AdminStockTable({
   const { data: valueTiers } = useMarketValueTiers()
   const tierOrder = useMemo(() => [...(valueTiers ?? [])].sort((a, b) => b.thresholdValue - a.thresholdValue).map(tier => tier.label), [valueTiers])
 
-  // 필터에 걸려서 화면에서 사라진 종목은 선택도 같이 해제한다 — 안 보이는 종목이 일괄변경에
+  // 필터에 걸려서 화면에서 사라진 종목은 선택도 같이 해제한다 — 안 보이는 종목이 일괄 변경에
   // 딸려 들어가는 걸 막기 위함. filtered가 실제로 바뀔 때(=필터 조작 시)만 실행되므로 체크박스/hover
   // 같은 잦은 조작과는 무관하다.
   useEffect(() => {
@@ -1465,29 +1401,89 @@ export default function AdminStockTable({
     visibleItemsRef.current = sorted
   }, [sorted])
 
+  // 엑셀 업로드 — 파일의 대·중·소분류대로 종목 분류를 한 번에 바꾼다. 적용 전에 요약을 보여 주고, 없는 분류는 새로 만든다.
+  const handleUploadFile = async (file: File) => {
+    setIsUploading(true)
+    try {
+      const rows = await readClassificationFile(file)
+      if (rows.length === 0) {
+        appAlert('읽을 수 있는 줄이 없습니다.\n열 이름이 종목코드·대분류·중분류·소분류인지 확인해 주세요.')
+        return
+      }
+      const plan = buildUploadPlan(rows, sectors, new Map(itemsRef.current.map(item => [item.stockCode, item.sectorId])))
+      const notes = [
+        plan.unchangedCount > 0 && `이미 같은 분류 ${plan.unchangedCount}개`,
+        plan.blankCount > 0 && `분류가 비어 건너뜀 ${plan.blankCount}개`,
+        plan.invalidCount > 0 && `대분류 없이 중·소분류만 있어 건너뜀 ${plan.invalidCount}개`,
+        plan.unknownCodes.length > 0 && `목록에 없는 종목코드 ${plan.unknownCodes.length}개 (${plan.unknownCodes.slice(0, 3).join(', ')}${plan.unknownCodes.length > 3 ? ' …' : ''})`,
+      ].filter(Boolean)
+      if (plan.changedCount === 0) {
+        appAlert(`바뀌는 종목이 없습니다.${notes.length > 0 ? `\n${notes.join('\n')}` : ''}`)
+        return
+      }
+      const newNames = plan.newSectors.map(path => path.join(' > '))
+      const summary = [
+        `바뀌는 종목 ${plan.changedCount}개`,
+        newNames.length > 0 ? `새로 만들 분류 ${newNames.length}개\n  ${newNames.slice(0, 5).join('\n  ')}${newNames.length > 5 ? '\n  …' : ''}` : '새로 만들 분류 없음',
+        ...notes,
+        '적용할까요?',
+      ].join('\n')
+      if (!(await appConfirm(summary))) return
+
+      const idByPath = plan.existingIdByPath
+      for (const path of plan.newSectors) {
+        const parentId = path.length === 1 ? null : (idByPath.get(pathKey(path.slice(0, -1))) ?? null)
+        const created = await createSectorMutation.mutateAsync({ name: path[path.length - 1], parentId })
+        idByPath.set(pathKey(path), created.id)
+      }
+      const failed: string[] = []
+      let appliedCount = 0
+      for (const group of plan.assignments) {
+        const sectorId = idByPath.get(pathKey(group.path))
+        if (sectorId === undefined) continue
+        const before = new Map(itemsRef.current.map(item => [item.stockCode, item.sectorId]))
+        for (let start = 0; start < group.stockCodes.length; start += 500) {
+          const chunk = group.stockCodes.slice(start, start + 500)
+          const result = await bulkAssignStockSector.mutateAsync({ stockCodes: chunk, sectorId })
+          failed.push(...result.failedStockCodes)
+          const entries = chunk
+            .filter(stockCode => !result.failedStockCodes.includes(stockCode))
+            .map(stockCode => ({ stockCode, before: before.get(stockCode) }))
+            .filter((entry): entry is { stockCode: string; before: number } => entry.before != null && entry.before !== sectorId)
+          appliedCount += chunk.length - result.failedStockCodes.length
+          if (entries.length > 0) pushUndo({ type: 'bulkSector', sectorName: group.path.join(' > '), after: sectorId, entries })
+        }
+      }
+      appAlert(`엑셀 적용 완료\n바뀐 종목 ${appliedCount}개${failed.length > 0 ? `\n반영되지 않은 종목 ${failed.length}개` : ''}`)
+    } catch {
+      appAlert('엑셀을 적용하지 못했습니다.\n파일 형식과 분류 이름을 확인해 주세요.')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
   // 지금 화면에 필터/정렬 적용된 상태 그대로 내려받는다 — 전체를 받고 싶으면 필터를 먼저 풀면 된다.
   const handleExportExcel = () => {
-    const now = new Date()
-    const pad = (n: number) => String(n).padStart(2, '0')
-    const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
-    const filename = `MARKETRY_LIST_${timestamp}.xlsx`
+    const filename = `INDUSTRY-${fileTimestamp()}.xlsx`
     const rows = sorted.map(item => {
       const display = displayByStockCode.get(item.stockCode)!
       return {
         종목코드: item.stockCode,
         종목명: item.stockName,
-        ...(isAdmin ? { 약칭: item.alias ?? '' } : {}),
-        시가총액: item.totalMarketValue ?? '',
         '종목 크기': item.marketValueTier ?? '',
         마켓: display.market,
         '거래소 분류': display.originCategoryName,
         '대분류': display.parentSectorName,
         '중분류': display.midSectorName,
         '소분류': display.subSectorName,
-        NXT: display.isNxt ? 'O' : '-',
       }
     })
-    exportRowsToExcel(filename, '종목관리', rows)
+    void exportRowsToExcel(filename, '업종 분류', rows, {
+      alignByHeader: { 종목코드: 'center', '종목 크기': 'center', 마켓: 'center' },
+      fixedWidths: { 종목코드: 15, 종목명: 30, '종목 크기': 15, 마켓: 10, '거래소 분류': 20, 대분류: 20, 중분류: 20, 소분류: 20 },
+      // 업로드로 바꾸는 대·중·소분류만 수정할 수 있고 나머지 열은 잠근다.
+      editableHeaders: ['대분류', '중분류', '소분류'],
+    })
   }
 
   // 전체선택은 항상 "지금 필터링돼서 보이는" 종목만 대상으로 한다. 개별 체크는 필터가 바뀌어도 유지된다.
@@ -1509,7 +1505,6 @@ export default function AdminStockTable({
   // 실제 <table>/<tr> 구조는 유지한 채(NES.css 스타일이 table 요소를 대상으로 하므로), 보이는 행 앞뒤로
   // 스페이서 <tr>만 넣어서 스크롤 높이를 흉내내는 방식.
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  // eslint-disable-next-line react-hooks/incompatible-library -- 가상화 라이브러리의 함수는 메모하지 못한다는 경고 — 읽기 전용 종목 표와 같은 사용 방식이라 무시한다
   const rowVirtualizer = useVirtualizer({
     count: sorted.length,
     getScrollElement: () => scrollContainerRef.current,
@@ -1522,81 +1517,19 @@ export default function AdminStockTable({
     virtualRows.length > 0 ? rowVirtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end : 0
 
   // 툴바 버튼은 테두리·채운 배경 없이 아이콘/글자만 둔다 — 올리면 옅은 배경이 깔리고, 비활성이면 흐려진다.
-  const GHOST_BUTTON = 'flex h-6 items-center justify-center gap-1.5 rounded border-0 bg-transparent px-1.5 text-xs text-gray-300 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-300'
   // 세 번째 바(페이지 공통 상태/옵션 바) 높이(h-7=28px)에 맞춰야 해서, nes.css 기본 버튼 패딩(6px 8px)보다
   // 좁게 오버라이드한다 — 그 외 로직/상태는 전부 그대로다.
-  // 실행취소·다시실행 아이콘 묶음.
+  // 설정창 "변경 내역" 항목 — 종목 화면과 업종 화면이 같은 부품(ChangeHistoryControls)을 쓴다.
   const historyControls = (
-          <div className="flex items-center gap-2">
-            <div
-              ref={undoGroupRef}
-              className="flex items-center gap-0.5"
-            >
-              <button
-                type="button"
-                onClick={handleUndo}
-                disabled={undoStack.length === 0}
-                className={GHOST_BUTTON}
-                title="실행취소 (Ctrl+Z)"
-                aria-label="실행취소"
-              >
-                <UndoIcon className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsUndoListOpen(prev => !prev)}
-                disabled={undoStack.length === 0}
-                className={`${GHOST_BUTTON} !px-1 ${isUndoListOpen ? '!bg-white/10 !text-white' : ''}`}
-                title="실행취소 목록"
-              >
-                <ChevronDownIcon className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <UndoRedoHistoryPopup
-              isOpen={isUndoListOpen}
-              setIsOpen={setIsUndoListOpen}
-              triggerRef={undoGroupRef}
-              actions={undoStack}
-              direction="undo"
-              items={items}
-              sectorOptionsById={sectorOptionsById}
-              onPick={handleUndoItem}
-            />
-            <div
-              ref={redoGroupRef}
-              className="flex items-center gap-0.5"
-            >
-              <button
-                type="button"
-                onClick={handleRedo}
-                disabled={redoStack.length === 0}
-                className={GHOST_BUTTON}
-                title="다시실행 (Ctrl+Y)"
-                aria-label="다시실행"
-              >
-                <RedoIcon className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsRedoListOpen(prev => !prev)}
-                disabled={redoStack.length === 0}
-                className={`${GHOST_BUTTON} !px-1 ${isRedoListOpen ? '!bg-white/10 !text-white' : ''}`}
-                title="다시실행 목록"
-              >
-                <ChevronDownIcon className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <UndoRedoHistoryPopup
-              isOpen={isRedoListOpen}
-              setIsOpen={setIsRedoListOpen}
-              triggerRef={redoGroupRef}
-              actions={redoStack}
-              direction="redo"
-              items={items}
-              sectorOptionsById={sectorOptionsById}
-              onPick={handleRedoItem}
-            />
-          </div>
+    <ChangeHistoryControls
+      undoStack={undoStack}
+      redoStack={redoStack}
+      describe={action => describeUndoableAction(action, items, sectorOptionsById)}
+      onUndo={handleUndo}
+      onRedo={handleRedo}
+      onUndoItem={handleUndoItem}
+      onRedoItem={handleRedoItem}
+    />
   )
 
   const toolbar = (
@@ -1606,9 +1539,11 @@ export default function AdminStockTable({
     </div>
   )
 
-  // 일괄변경 버튼 — 검색창이 있는 줄 안에, 대·중·소분류 열 바로 위에 각 열과 같은 폭으로 얹는다(새 줄을 만들지 않아 표가 밀리지 않는다).
+  // 일괄 변경 버튼 — 검색창이 있는 줄 안에, 대·중·소분류 열 바로 위에 각 열과 같은 폭으로 얹는다(새 줄을 만들지 않아 표가 밀리지 않는다).
   // 열 위치는 머리글 칸(th)에서 직접 재서 따라가므로 열 폭이 바뀌거나 표가 옆으로 스크롤돼도 어긋나지 않는다.
   const rootRef = useRef<HTMLDivElement>(null)
+  // 검색창 오른쪽 끝을 아래 종목명 열의 오른쪽 줄에 맞춘다.
+  const nameRightEdge = useStockNameRightEdge(rootRef, scrollContainerRef)
   const [bulkColumns, setBulkColumns] = useState<Partial<Record<'parentSectorName' | 'midSectorName' | 'subSectorName', { left: number; width: number }>>>({})
   useLayoutEffect(() => {
     const root = rootRef.current
@@ -1644,47 +1579,81 @@ export default function AdminStockTable({
       {toolbarContainer && createPortal(toolbar, toolbarContainer)}
       {historyContainer && createPortal(
         <div>
-          <h2 className="mb-3 text-[15px] font-medium leading-[22px] text-white">실행 취소</h2>
+          <h2 className="settings-plain-title m-0 text-[15px] font-medium leading-[22px] text-white">변경 내역</h2>
           {historyControls}
         </div>,
         historyContainer,
       )}
+      {excelContainer && createPortal(
+        <div>
+          <h2 className="settings-plain-title m-0 text-[15px] font-medium leading-[22px] text-white">간편 업종 분류</h2>
+          <p className="settings-description m-0 mt-1 max-w-[16rem] text-xs text-gray-400">파일 다운 받아서 AI로 분류 후 업로드</p>
+          <div className="mt-4 grid max-w-[16rem] grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              className="flex h-7 items-center justify-center gap-1 rounded-md border border-gray-600 bg-zinc-700 text-xs font-medium text-white hover:bg-white/10"
+              title="지금 화면에 보이는(필터/정렬 적용된) 목록을 엑셀로 내려받습니다"
+              aria-label="엑셀 다운로드"
+            >
+              <DownloadIcon className="h-4 w-4 text-gray-400" />
+              다운로드
+            </button>
+            <button
+              type="button"
+              onClick={() => uploadInputRef.current?.click()}
+              disabled={isUploading}
+              className="flex h-7 items-center justify-center gap-1 rounded-md border border-gray-600 bg-zinc-700 text-xs font-medium text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+              title="엑셀의 대·중·소분류대로 종목 분류를 한 번에 바꿉니다(적용 전에 확인창이 뜹니다)"
+              aria-label="엑셀 업로드"
+            >
+              <UploadIcon className="h-4 w-4 text-gray-400" />
+              {isUploading ? '처리 중…' : '업로드'}
+            </button>
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={event => {
+                const file = event.target.files?.[0]
+                event.target.value = ''
+                if (file) void handleUploadFile(file)
+              }}
+            />
+          </div>
+        </div>,
+        excelContainer,
+      )}
       <SearchBar
         query={searchQuery}
         onChange={setSearchQuery}
+        inputRightEdgePx={nameRightEdge}
         placeholder={isAdmin ? '종목명·약칭·코드 검색' : '종목명·코드 검색'}
         ariaLabel="종목 검색"
-        extra={
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            // 버튼 폭을 상단 바의 설정(톱니) 버튼과 같은 28px로 맞춰서, 설정창을 닫았을 때 아이콘의 가로 위치가 톱니와 같게 한다.
-            className="-mr-[7px] flex h-6 w-7 items-center justify-center rounded border-0 bg-transparent p-0 transition-colors hover:bg-white/10"
-            title="지금 화면에 보이는(필터/정렬 적용된) 목록을 엑셀로 내려받습니다"
-            aria-label="엑셀 다운로드"
-          >
-            <ExcelIcon className="h-6 w-6" />
-          </button>
+        afterInput={
+          <>
+            {columnFilters.activeCount > 0 && (
+              <button
+                type="button"
+                onClick={columnFilters.clearAll}
+                className="flex h-7 items-center whitespace-nowrap border-0 bg-transparent p-0 text-xs text-[var(--brand)] hover:underline"
+              >
+                필터 {columnFilters.activeCount}개 적용 · 초기화
+              </button>
+            )}
+          </>
         }
       />
-      {/* 검색창 줄 위에 얹는 층 — 필터 요약은 검색창 오른쪽에, 일괄변경 버튼은 대·중·소분류 열 위에 둔다. 층 자체는 클릭을 막지 않는다. */}
+      {/* 검색창 줄 위에 얹는 층 — 일괄 변경 버튼은 대·중·소분류 열 위에 둔다. 층 자체는 클릭을 막지 않는다. */}
       <div className="pointer-events-none absolute left-0 top-0 h-7 w-full overflow-hidden">
-        {columnFilters.activeCount > 0 && (
-          <button
-            type="button"
-            onClick={columnFilters.clearAll}
-            className="pointer-events-auto absolute left-[17rem] top-0 flex h-7 items-center border-0 bg-transparent p-0 text-xs text-[var(--brand)] hover:underline"
-          >
-            필터 {columnFilters.activeCount}개 적용 · 초기화
-          </button>
-        )}
         {(['parentSectorName', 'midSectorName', 'subSectorName'] as const).map(key => {
           const layout = bulkColumns[key]
           if (!layout) return null
           return (
             <div key={key} className="pointer-events-auto absolute top-0.5 px-1" style={{ left: layout.left, width: layout.width }}>
               {key === 'parentSectorName' && (
-                <BulkAssignButton count={selectedStockCodes.size} options={bulkParentOptions} onAssign={handleBulkAssignParent} alignRight />
+                <BulkAssignButton count={selectedStockCodes.size} options={bulkParentOptions} onAssign={handleBulkAssignParent} alignRight title="대분류 일괄 변경" orderMode={bulkOrderMode} />
               )}
               {key === 'midSectorName' && (
                 <BulkAssignButton
@@ -1692,8 +1661,10 @@ export default function AdminStockTable({
                   options={bulkMidOptions}
                   onAssign={handleBulkAssignMid}
                   alignRight
-                  disabled={bulkParentId == null}
-                  disabledHint="대분류를 먼저 일괄적용하세요"
+                  title="중분류 일괄 변경"
+                  orderMode={bulkOrderMode}
+                  disabled={effectiveParentId == null}
+                  disabledHint="선택한 종목의 대분류가 같아야 합니다. 다르면 대분류를 먼저 일괄적용하세요"
                 />
               )}
               {key === 'subSectorName' && (
@@ -1702,16 +1673,18 @@ export default function AdminStockTable({
                   options={bulkSubOptions}
                   onAssign={handleBulkAssignSub}
                   alignRight
-                  disabled={bulkMidId == null}
-                  disabledHint="중분류를 먼저 일괄적용하세요"
+                  title="소분류 일괄 변경"
+                  orderMode={bulkOrderMode}
+                  disabled={effectiveMidId == null}
+                  disabledHint="선택한 종목의 중분류가 같아야 합니다. 다르면 중분류를 먼저 일괄적용하세요"
                 />
               )}
             </div>
           )
         })}
       </div>
-      {/* 바깥 테두리(외곽선)는 두지 않는다 — KRX·NXT 시트와 같은 모양이다. */}
-      <div className="relative min-h-0 flex-1">
+      {/* 표 둘레에 본문 줄과 같은 색의 바깥 테두리를 둔다 — 마켓트리·거래소 표와 같은 모양이다. */}
+      <div className="relative min-h-0 flex-1 border border-slate-700">
         {isSelectionHintOpen && <SelectionHintBubble onClose={() => setIsSelectionHintOpen(false)} />}
         <div ref={scrollContainerRef} className="relative h-full overflow-auto scrollbar-thin">
           {/* 표 글자는 드래그해도 파랗게 선택되지 않게 한다(줄 드래그 선택과 겹치기 때문). 입력창 안의 글자는 그대로 선택할 수 있다. */}
@@ -1745,7 +1718,8 @@ export default function AdminStockTable({
                           onToggle={value => columnFilters.toggle(filterKey, value)}
                           onSelectAll={() => columnFilters.selectAll(filterKey)}
                           onSelectNone={values => columnFilters.selectNone(filterKey, values)}
-                          optionOrder={filterKey === 'sizeTier' ? tierOrder : filterKey === 'market' ? ['코스피', '코스닥'] : filterKey === 'nxt' ? ['O', '-'] : undefined}
+                          optionOrder={filterKey === 'sizeTier' ? tierOrder : filterKey === 'market' ? ['코스피', '코스닥'] : filterKey === 'nxt' ? ['O', '-'] : filterKey === 'parentSector' ? sectorFilterOrder[0] : filterKey === 'midSector' ? sectorFilterOrder[1] : filterKey === 'subSector' ? sectorFilterOrder[2] : undefined}
+                          orderMode={filterKey === 'parentSector' || filterKey === 'midSector' || filterKey === 'subSector' ? { value: sectorFilterMode, onChange: changeSectorFilterMode } : undefined}
                           labelOf={filterKey === 'nxt' ? value => (value === 'O' ? 'NXT 거래' : 'NXT 미거래') : undefined}
                         />
                       ) : undefined
@@ -1831,6 +1805,9 @@ export default function AdminStockTable({
                       sectorOptionsById={sectorOptionsById}
                       onAssign={handleAssign}
                       onUpdateAlias={handleUpdateAlias}
+                      sectorOrderMode={sectorFilterMode}
+                      onSectorOrderModeChange={changeSectorFilterMode}
+                      savedSectorOrder={savedSectorOrder}
                     />
                   )
                 })}

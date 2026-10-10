@@ -1,5 +1,5 @@
 // 커스텀 종목 표 열 폭 — MARKETRY·거래소·내 분류 세 종목 표가 같은 열 순서와 폭을 쓰도록 한곳에 둔다.
-// 열 순서(체크박스 다음): 종목코드, 종목명, 약칭, 시가총액, 종목 크기, 마켓, 거래소 분류, 대분류, 중분류, 소분류, NXT.
+// 열 순서(체크박스 다음): 종목코드, 종목명, 약칭, 시가총액, 종목 크기, 마켓, NXT, 거래소 분류, 대분류, 중분류, 소분류.
 //
 // 글자 폭이 정해진 열은 px로 고정하고(머리글의 정렬·필터 아이콘 자리까지 포함), 글자가 길어질 수 있는 열(종목명·약칭·거래소 분류·
 // 대/중/소분류)은 남는 폭을 같게 나눠 갖는다(표를 table-fixed로 두고 폭을 안 준 열이 나눠 갖는다).
@@ -10,11 +10,11 @@ export type StockColumnKey =
   | 'totalMarketValue'
   | 'sizeTier'
   | 'market'
+  | 'nxt'
   | 'industry'
   | 'parentSector'
   | 'midSector'
   | 'subSector'
-  | 'nxt'
 
 // 맨 왼쪽 체크박스 칸 폭(px).
 export const STOCK_CHECKBOX_COLUMN_PX = 29

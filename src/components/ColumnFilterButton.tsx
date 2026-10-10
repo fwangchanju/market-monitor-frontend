@@ -13,6 +13,26 @@ function FunnelIcon({ className }: { className?: string }) {
   )
 }
 
+// "가나다 순 / 사용자 지정 순" 두 칸 — 대·중·소분류 필터와 일괄 변경 팝업이 같이 쓴다.
+export function SectorOrderToggle({ label, value, onChange }: { label: string; value: 'alpha' | 'custom'; onChange: (value: 'alpha' | 'custom') => void }) {
+  return (
+    <div className="flex gap-1 px-3 pb-2" role="radiogroup" aria-label={`${label} 보기 순서`}>
+      {([['alpha', '가나다 순'], ['custom', '사용자 지정 순']] as const).map(([option, text]) => (
+        <button
+          key={option}
+          type="button"
+          role="radio"
+          aria-checked={value === option}
+          onClick={() => onChange(option)}
+          className={`h-6 flex-1 rounded border p-0 text-xs font-medium leading-none shadow-none outline-none focus:outline-none focus-visible:outline-none ${value === option ? 'border-[var(--brand)] bg-transparent text-[var(--brand)]' : 'border-gray-600 bg-transparent text-gray-300 hover:text-[var(--brand)]'}`}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 interface Props {
   // 머리글 이름(접근성 이름과 팝업 제목에 쓴다).
   label: string
@@ -25,6 +45,8 @@ interface Props {
   onToggle: (value: string) => void
   onSelectAll: () => void
   onSelectNone: (values: readonly string[]) => void
+  // 보기 순서 선택 — 있으면 목록 위에 "가나다 순 / 사용자 지정 순" 두 칸이 생긴다. 'custom'이면 optionOrder, 'alpha'면 가나다 순으로 보인다.
+  orderMode?: { value: 'alpha' | 'custom'; onChange: (value: 'alpha' | 'custom') => void }
 }
 
 const NO_OPTIONS: readonly string[] = []
@@ -32,7 +54,7 @@ const defaultLabelOf = (value: string) => (value === '-' ? '(없음)' : value)
 
 // 머리글 오른쪽의 필터 아이콘 — 누르면 아래에 체크 목록이 뜬다. 체크를 풀면 그 값의 종목이 표에서 빠지고, 걸려 있으면 아이콘이 청록색이다.
 // 머리글 칸을 누르면 정렬이 바뀌므로, 아이콘 누름은 칸까지 전달하지 않는다.
-export default function ColumnFilterButton({ label, getOptions, optionOrder, labelOf = defaultLabelOf, excluded, onToggle, onSelectAll, onSelectNone }: Props) {
+export default function ColumnFilterButton({ label, getOptions, optionOrder, labelOf = defaultLabelOf, excluded, onToggle, onSelectAll, onSelectNone, orderMode }: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
   const [query, setQuery] = useState('')
@@ -42,7 +64,7 @@ export default function ColumnFilterButton({ label, getOptions, optionOrder, lab
 
   const options = isOpen ? getOptions() : NO_OPTIONS
   const sortedOptions = useMemo(() => {
-    const order = new Map((optionOrder ?? []).map((value, index) => [value, index]))
+    const order = new Map((orderMode?.value === 'alpha' ? [] : optionOrder ?? []).map((value, index) => [value, index]))
     return [...options].sort((a, b) => {
       const ia = order.get(a)
       const ib = order.get(b)
@@ -51,7 +73,7 @@ export default function ColumnFilterButton({ label, getOptions, optionOrder, lab
       if (a === '-' || b === '-') return a === '-' ? 1 : -1
       return compareKoreanText(a, b)
     })
-  }, [options, optionOrder])
+  }, [options, optionOrder, orderMode?.value])
 
   const trimmed = query.trim()
   const shownOptions = trimmed ? sortedOptions.filter(value => labelOf(value).includes(trimmed)) : sortedOptions
@@ -115,10 +137,10 @@ export default function ColumnFilterButton({ label, getOptions, optionOrder, lab
           onClick={event => event.stopPropagation()}
         >
           <div className="flex items-center justify-between px-3 pb-2 text-xs text-gray-400">
-            <span>{label}</span>
+            <span className="font-bold text-[var(--brand)]">{label}</span>
             <span className="flex gap-3">
-              <button type="button" className="border-0 bg-transparent p-0 text-xs text-gray-300 hover:text-[var(--brand)]" onClick={onSelectAll}>전체 선택</button>
-              <button type="button" className="border-0 bg-transparent p-0 text-xs text-gray-300 hover:text-[var(--brand)]" onClick={() => onSelectNone(sortedOptions)}>전체 해제</button>
+              <button type="button" className="border-0 bg-transparent p-0 text-xs font-medium text-gray-300 hover:text-[var(--brand)]" onClick={onSelectAll}>전체 선택</button>
+              <button type="button" className="border-0 bg-transparent p-0 text-xs font-medium text-gray-300 hover:text-[var(--brand)]" onClick={() => onSelectNone(sortedOptions)}>전체 해제</button>
             </span>
           </div>
           {sortedOptions.length >= SEARCH_MIN_OPTIONS && (
@@ -134,6 +156,7 @@ export default function ColumnFilterButton({ label, getOptions, optionOrder, lab
               />
             </div>
           )}
+          {orderMode && <SectorOrderToggle label={label} value={orderMode.value} onChange={orderMode.onChange} />}
           <ul className="m-0 max-h-64 list-none overflow-y-auto p-0">
             {shownOptions.length === 0 && <li className="px-3 py-1 text-gray-400">결과가 없습니다</li>}
             {shownOptions.map(value => (
