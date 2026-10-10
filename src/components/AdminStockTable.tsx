@@ -7,9 +7,11 @@ import { createPortal } from 'react-dom'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { SectorItem, StockSectorListItem } from '@/types/api'
 import { toCount, toJoEokDecimal, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
-import { appAlert } from '@/utils/appDialogBus'
+import { appAlert, appConfirm } from '@/utils/appDialogBus'
+import { buildUploadPlan, pathKey, readClassificationFile } from '@/utils/classificationUpload'
 import { exportRowsToExcel } from '@/utils/exportExcel'
-import { useAssignStockSector, useBulkAssignStockSector, useUpdateStockAlias } from '@/hooks/useMarketMapCustom'
+import { fileTimestamp } from '@/utils/fileTimestamp'
+import { useAssignStockSector, useBulkAssignStockSector, useCreateSector, useUpdateStockAlias } from '@/hooks/useMarketMapCustom'
 import { usePersistedState } from '@/hooks/usePersistedState'
 import { useSession } from '@/hooks/useSession'
 import Spinner from './Spinner'
@@ -35,6 +37,8 @@ interface Props {
   toolbarContainer: HTMLElement | null
   // 실행취소·다시실행 아이콘을 그릴 설정창 안의 자리 — 없으면 상단 바 도구줄에 같이 그린다.
   historyContainer?: HTMLElement | null
+  // 설정창의 "엑셀" 항목 자리 — 있으면 다운로드 버튼을 이 안에 그린다.
+  excelContainer?: HTMLElement | null
   // 검색창 옆에 두던 "N/N종목" 개수를 받아 갈 곳 — 페이지가 설정창 머리글에 그려 준다.
   onCountLabelChange?: (label: string | undefined) => void
   // NXT에서도 거래되는 종목 코드 — NXT 열에 O/-로 보여준다(공개 종목 정보라 모든 사용자가 같다).
@@ -1037,6 +1041,7 @@ export default function AdminStockTable({
   snapshotTime,
   toolbarContainer,
   historyContainer,
+  excelContainer,
   onCountLabelChange,
   nxtStockCodes = NO_NXT_CODES,
 }: Props) {
@@ -1049,6 +1054,9 @@ export default function AdminStockTable({
 
   const assignStockSector = useAssignStockSector()
   const bulkAssignStockSector = useBulkAssignStockSector()
+  const createSectorMutation = useCreateSector()
+  const uploadInputRef = useRef<HTMLInputElement>(null)
+  const [isUploading, setIsUploading] = useState(false)
   const updateAlias = useUpdateStockAlias()
   // 약칭 지정은 관리자 전용이다 — 관리자의 약칭은 MARKETRY로 올릴 내용에만 쓰이고, 다른 사용자의 데이터는 건드리지 않는다.
   // 일반 사용자에게는 약칭 값을 보여주지도 수정하게 하지도 않는다(백엔드도 관리자만 허용한다). 열 자리만 빈칸으로 두어 다른 시트와 열 위치를 맞춘다.
@@ -1541,29 +1549,89 @@ export default function AdminStockTable({
     visibleItemsRef.current = sorted
   }, [sorted])
 
+  // 엑셀 업로드 — 파일의 대·중·소분류대로 종목 분류를 한 번에 바꾼다. 적용 전에 요약을 보여 주고, 없는 분류는 새로 만든다.
+  const handleUploadFile = async (file: File) => {
+    setIsUploading(true)
+    try {
+      const rows = await readClassificationFile(file)
+      if (rows.length === 0) {
+        appAlert('읽을 수 있는 줄이 없습니다.\n열 이름이 종목코드·대분류·중분류·소분류인지 확인해 주세요.')
+        return
+      }
+      const plan = buildUploadPlan(rows, sectors, new Map(itemsRef.current.map(item => [item.stockCode, item.sectorId])))
+      const notes = [
+        plan.unchangedCount > 0 && `이미 같은 분류 ${plan.unchangedCount}개`,
+        plan.blankCount > 0 && `분류가 비어 건너뜀 ${plan.blankCount}개`,
+        plan.invalidCount > 0 && `대분류 없이 중·소분류만 있어 건너뜀 ${plan.invalidCount}개`,
+        plan.unknownCodes.length > 0 && `목록에 없는 종목코드 ${plan.unknownCodes.length}개 (${plan.unknownCodes.slice(0, 3).join(', ')}${plan.unknownCodes.length > 3 ? ' …' : ''})`,
+      ].filter(Boolean)
+      if (plan.changedCount === 0) {
+        appAlert(`바뀌는 종목이 없습니다.${notes.length > 0 ? `\n${notes.join('\n')}` : ''}`)
+        return
+      }
+      const newNames = plan.newSectors.map(path => path.join(' > '))
+      const summary = [
+        `바뀌는 종목 ${plan.changedCount}개`,
+        newNames.length > 0 ? `새로 만들 분류 ${newNames.length}개\n  ${newNames.slice(0, 5).join('\n  ')}${newNames.length > 5 ? '\n  …' : ''}` : '새로 만들 분류 없음',
+        ...notes,
+        '적용할까요?',
+      ].join('\n')
+      if (!(await appConfirm(summary))) return
+
+      const idByPath = plan.existingIdByPath
+      for (const path of plan.newSectors) {
+        const parentId = path.length === 1 ? null : (idByPath.get(pathKey(path.slice(0, -1))) ?? null)
+        const created = await createSectorMutation.mutateAsync({ name: path[path.length - 1], parentId })
+        idByPath.set(pathKey(path), created.id)
+      }
+      const failed: string[] = []
+      let appliedCount = 0
+      for (const group of plan.assignments) {
+        const sectorId = idByPath.get(pathKey(group.path))
+        if (sectorId === undefined) continue
+        const before = new Map(itemsRef.current.map(item => [item.stockCode, item.sectorId]))
+        for (let start = 0; start < group.stockCodes.length; start += 500) {
+          const chunk = group.stockCodes.slice(start, start + 500)
+          const result = await bulkAssignStockSector.mutateAsync({ stockCodes: chunk, sectorId })
+          failed.push(...result.failedStockCodes)
+          const entries = chunk
+            .filter(stockCode => !result.failedStockCodes.includes(stockCode))
+            .map(stockCode => ({ stockCode, before: before.get(stockCode) }))
+            .filter((entry): entry is { stockCode: string; before: number } => entry.before != null && entry.before !== sectorId)
+          appliedCount += chunk.length - result.failedStockCodes.length
+          if (entries.length > 0) pushUndo({ type: 'bulkSector', sectorName: group.path.join(' > '), after: sectorId, entries })
+        }
+      }
+      appAlert(`엑셀 적용 완료\n바뀐 종목 ${appliedCount}개${failed.length > 0 ? `\n반영되지 않은 종목 ${failed.length}개` : ''}`)
+    } catch {
+      appAlert('엑셀을 적용하지 못했습니다.\n파일 형식과 분류 이름을 확인해 주세요.')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
   // 지금 화면에 필터/정렬 적용된 상태 그대로 내려받는다 — 전체를 받고 싶으면 필터를 먼저 풀면 된다.
   const handleExportExcel = () => {
-    const now = new Date()
-    const pad = (n: number) => String(n).padStart(2, '0')
-    const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
-    const filename = `MARKETRY_LIST_${timestamp}.xlsx`
+    const filename = `업종분류-${fileTimestamp()}.xlsx`
     const rows = sorted.map(item => {
       const display = displayByStockCode.get(item.stockCode)!
       return {
         종목코드: item.stockCode,
         종목명: item.stockName,
-        ...(isAdmin ? { 약칭: item.alias ?? '' } : {}),
-        시가총액: item.totalMarketValue ?? '',
         '종목 크기': item.marketValueTier ?? '',
         마켓: display.market,
-        NXT: display.isNxt ? 'O' : '-',
         '거래소 분류': display.originCategoryName,
         '대분류': display.parentSectorName,
         '중분류': display.midSectorName,
         '소분류': display.subSectorName,
       }
     })
-    exportRowsToExcel(filename, '종목관리', rows)
+    void exportRowsToExcel(filename, '업종 분류', rows, {
+      alignByHeader: { 종목코드: 'center', '종목 크기': 'center', 마켓: 'center' },
+      fixedWidths: { 종목코드: 15, 종목명: 30, '종목 크기': 15, 마켓: 10, '거래소 분류': 20, 대분류: 20, 중분류: 20, 소분류: 20 },
+      // 업로드로 바꾸는 대·중·소분류만 수정할 수 있고 나머지 열은 잠근다.
+      editableHeaders: ['대분류', '중분류', '소분류'],
+    })
   }
 
   // 전체선택은 항상 "지금 필터링돼서 보이는" 종목만 대상으로 한다. 개별 체크는 필터가 바뀌어도 유지된다.
@@ -1585,7 +1653,6 @@ export default function AdminStockTable({
   // 실제 <table>/<tr> 구조는 유지한 채(NES.css 스타일이 table 요소를 대상으로 하므로), 보이는 행 앞뒤로
   // 스페이서 <tr>만 넣어서 스크롤 높이를 흉내내는 방식.
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  // eslint-disable-next-line react-hooks/incompatible-library -- 가상화 라이브러리의 함수는 메모하지 못한다는 경고 — 읽기 전용 종목 표와 같은 사용 방식이라 무시한다
   const rowVirtualizer = useVirtualizer({
     count: sorted.length,
     getScrollElement: () => scrollContainerRef.current,
@@ -1716,6 +1783,46 @@ export default function AdminStockTable({
         </div>,
         historyContainer,
       )}
+      {excelContainer && createPortal(
+        <div>
+          <h2 className="settings-plain-title m-0 text-[15px] font-medium leading-[22px] text-white">간편 업종 분류</h2>
+          <p className="settings-description m-0 mt-1 max-w-[16rem] text-xs text-gray-400">내려 받아서 AI로 분류 후 업로드</p>
+          <div className="mt-4 grid max-w-[16rem] grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              className="flex h-7 items-center justify-center gap-1 rounded-md border border-gray-600 bg-zinc-700 text-sm font-normal text-white hover:bg-white/10"
+              title="지금 화면에 보이는(필터/정렬 적용된) 목록을 엑셀로 내려받습니다"
+              aria-label="엑셀 다운로드"
+            >
+              <ExcelIcon className="h-5 w-5" />
+              다운로드
+            </button>
+            <button
+              type="button"
+              onClick={() => uploadInputRef.current?.click()}
+              disabled={isUploading}
+              className="flex h-7 items-center justify-center gap-1 rounded-md border border-gray-600 bg-zinc-700 text-sm font-normal text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+              title="엑셀의 대·중·소분류대로 종목 분류를 한 번에 바꿉니다(적용 전에 확인창이 뜹니다)"
+              aria-label="엑셀 업로드"
+            >
+              {isUploading ? '처리 중…' : '업로드'}
+            </button>
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={event => {
+                const file = event.target.files?.[0]
+                event.target.value = ''
+                if (file) void handleUploadFile(file)
+              }}
+            />
+          </div>
+        </div>,
+        excelContainer,
+      )}
       <SearchBar
         query={searchQuery}
         onChange={setSearchQuery}
@@ -1724,15 +1831,6 @@ export default function AdminStockTable({
         ariaLabel="종목 검색"
         afterInput={
           <>
-            <button
-              type="button"
-              onClick={handleExportExcel}
-              className="flex h-6 w-7 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 transition-colors hover:bg-white/10"
-              title="지금 화면에 보이는(필터/정렬 적용된) 목록을 엑셀로 내려받습니다"
-              aria-label="엑셀 다운로드"
-            >
-              <ExcelIcon className="h-6 w-6" />
-            </button>
             {columnFilters.activeCount > 0 && (
               <button
                 type="button"

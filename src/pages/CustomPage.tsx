@@ -58,6 +58,7 @@ export default function CustomPage() {
   const [sectorSettingsActionsTarget, setSectorSettingsActionsTarget] = useState<HTMLDivElement | null>(null)
   // 종목 화면의 실행취소·다시실행 아이콘이 들어갈 설정창 안의 자리.
   const [stockHistoryTarget, setStockHistoryTarget] = useState<HTMLDivElement | null>(null)
+  const [stockExcelTarget, setStockExcelTarget] = useState<HTMLDivElement | null>(null)
   // 비로그인이 내 분류를 누르면 로그인 안내만 띄우고, 보던 분류에 그대로 머문다.
   const handleSelectSheet = (next: TaxonomySelection) => {
     if (next === 'MINE' && isGuestKnown) {
@@ -278,6 +279,7 @@ export default function CustomPage() {
                     snapshotTime={stockSectors?.snapshotTime ?? null}
                     toolbarContainer={toolbarContainer}
                     historyContainer={stockHistoryTarget}
+                    excelContainer={stockExcelTarget}
                     onCountLabelChange={setCountLabel}
                     nxtStockCodes={nxtStockCodes}
                   />
@@ -315,6 +317,7 @@ export default function CustomPage() {
                     </div>
                   )}
                   <div ref={mode === 'sector' ? setSectorSettingsActionsTarget : setStockHistoryTarget} />
+                  {mode === 'stock' && <div ref={setStockExcelTarget} className="mt-6" />}
                 </>
               ) : null}
               taxonomyAtBottom
