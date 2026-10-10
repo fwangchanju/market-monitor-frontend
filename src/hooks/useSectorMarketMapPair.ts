@@ -46,7 +46,7 @@ export function useSectorMarketMapPair(
   const nowSnapshotTime = now?.snapshotTime ?? null
 
   return useQuery({
-    queryKey: marketMapKeys.sectorPair(market, source, nxtOnly, beforeMinutes, nowSnapshotTime, basis),
+    queryKey: marketMapKeys.sectorPair(market, source, nxtOnly, beforeMinutes, nowSnapshotTime, basis, now?.afterHoursStart),
     queryFn: async (): Promise<SectorMarketMapPair> => {
       if (!now || now.snapshotTime === null) {
         // enabled가 이 경로를 막지만, TypeScript는 그걸 모른다 — 방어적으로 명시한다.
@@ -55,7 +55,7 @@ export function useSectorMarketMapPair(
       const beforeSnapshotTime = subtractMinutesFromSnapshotTime(now.snapshotTime, beforeMinutes)
       // 애프터 마켓 시작 이전에는 당일 종가 대비 값이 없다. 누적 값과 섞어 변화율을 계산하지 않는다.
       if (basis === 'afterHours' && (
-        !isAfterHoursSelectable(beforeSnapshotTime) || beforeSnapshotTime.slice(0, 10) !== now.snapshotTime.slice(0, 10)
+        !isAfterHoursSelectable(beforeSnapshotTime, now.afterHoursStart) || beforeSnapshotTime.slice(0, 10) !== now.snapshotTime.slice(0, 10)
       )) {
         return { now, before: null }
       }
@@ -72,13 +72,14 @@ export function useSectorMarketMapPair(
     placeholderData: (previousData, previousQuery) => {
       const previousKey = previousQuery?.queryKey
       if (!previousKey) return undefined
-      const [, , previousMarket, previousSource, previousNxtOnly, previousBeforeMinutes, , previousBasis] = previousKey
+      const [, , previousMarket, previousSource, previousNxtOnly, previousBeforeMinutes, , previousBasis, previousAfterHoursStart] = previousKey
       const sameParams =
         previousMarket === market &&
         previousSource === source &&
         previousNxtOnly === nxtOnly &&
         previousBeforeMinutes === beforeMinutes &&
-        previousBasis === basis
+        previousBasis === basis &&
+        previousAfterHoursStart === now?.afterHoursStart
       return sameParams ? previousData : undefined
     },
   })

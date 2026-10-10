@@ -11,10 +11,10 @@ export function useTradingSession(): TradingSession {
   return session
 }
 
-export function useAfterHoursControlsVisible(): boolean {
-  const [visible, setVisible] = useState(() => shouldShowAfterHoursControls(new Date()))
+export function useAfterHoursControlsVisible(afterHoursStart?: string | null): boolean {
+  const [now, setNow] = useState(() => new Date())
   useEffect(() => {
-    const update = () => setVisible(shouldShowAfterHoursControls(new Date()))
+    const update = () => setNow(new Date())
     const timer = window.setInterval(update, 30_000)
     window.addEventListener('focus', update)
     return () => {
@@ -22,5 +22,5 @@ export function useAfterHoursControlsVisible(): boolean {
       window.removeEventListener('focus', update)
     }
   }, [])
-  return visible
+  return shouldShowAfterHoursControls(now, afterHoursStart)
 }

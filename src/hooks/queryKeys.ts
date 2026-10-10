@@ -65,7 +65,8 @@ export const marketMapKeys = {
     beforeMinutes: number,
     nowSnapshotTime: string | null,
     basis: ChangeRateMode = 'daily',
-  ) => [...marketMapKeys.all, 'sectorPair', market, source, nxtOnly, beforeMinutes, nowSnapshotTime, basis] as const,
+    afterHoursStart?: string | null,
+  ) => [...marketMapKeys.all, 'sectorPair', market, source, nxtOnly, beforeMinutes, nowSnapshotTime, basis, afterHoursStart] as const,
 }
 
 export const authKeys = {
