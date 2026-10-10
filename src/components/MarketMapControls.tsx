@@ -270,14 +270,39 @@ export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
     }
   }, [popup])
 
+  // 선택 칸의 주황 채움은 버튼 뒤의 막대 하나가 옆으로 미끄러져 옮긴다. 버튼은 외곽선(border)만 갖고 있어서 선은 그대로다.
+  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const [highlight, setHighlight] = useState<{ left: number; width: number } | null>(null)
+  const selectedIndex = options.findIndex(option => option.value === basis)
+  useLayoutEffect(() => {
+    const button = buttonRefs.current[selectedIndex]
+    if (!visible || !button) return
+    setHighlight(previous =>
+      previous?.left === button.offsetLeft && previous.width === button.offsetWidth
+        ? previous
+        : { left: button.offsetLeft, width: button.offsetWidth })
+  }, [visible, selectedIndex])
+
   return (
     <div className="-mr-[5px] flex shrink-0 items-center gap-2 whitespace-nowrap" data-basis-toggle>
       <TradingSessionIndicator />
       {visible && <div
         role="radiogroup"
         aria-label="등락률 기준"
-        className="inline-flex h-6 w-24 shrink-0 items-center overflow-visible rounded-none bg-[#202020] p-0.5"
+        className="relative inline-flex h-6 w-24 shrink-0 items-center overflow-visible rounded-none bg-[#202020] p-0.5"
       >
+        {highlight && (
+          <span
+            aria-hidden="true"
+            className="absolute bottom-0.5 top-0.5 transition-[left,width] duration-[400ms] ease-out"
+            style={{
+              left: highlight.left,
+              width: highlight.width,
+              backgroundColor: SESSION_DOT_COLOR['애프터 마켓'],
+              boxShadow: 'inset 0 1px 1px rgb(255 255 255 / 45%), inset 0 -1px 1px rgb(0 0 0 / 18%)',
+            }}
+          />
+        )}
         {options.map((option, index) => (
           // disabled를 쓰지 않는다 — 비활성 버튼은 클릭 이벤트가 없어서 잠긴 따로의 설명을 볼 수 없다. 잠긴 동안은 값만 안 바꾼다.
           <button
@@ -286,29 +311,25 @@ export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
             role="radio"
             aria-checked={basis === option.value}
             aria-disabled={option.locked}
-            style={basis === option.value
-              ? {
-                  marginLeft: index > 0 ? -1 : 0,
-                  color: '#111827',
-                  backgroundColor: SESSION_DOT_COLOR['애프터 마켓'],
-                  borderRadius: 0,
-                  boxShadow: 'inset 0 1px 1px rgb(255 255 255 / 45%), inset 0 -1px 1px rgb(0 0 0 / 18%)',
-                }
-              : {
-                  // 이웃한 안 선택 버튼끼리 테두리가 겹치도록 1px 당겨서 사이 선이 한 줄만 보이게 한다.
-                  marginLeft: index > 0 ? -1 : 0,
-                  color: option.locked ? '#737373' : '#d1d5db',
-                  backgroundColor: 'transparent',
-                  borderRadius: 0,
-                  outline: `1px solid ${SESSION_DOT_COLOR['애프터 마켓']}`,
-                  outlineOffset: '-1px',
-                  boxShadow: 'inset 0 1px 2px rgb(0 0 0 / 48%), inset 0 -1px 1px rgb(255 255 255 / 12%)',
-                }}
+            ref={element => {
+              buttonRefs.current[index] = element
+            }}
+            style={{
+              // 이웃한 버튼끼리 테두리가 겹치도록 1px 당겨서 사이 선이 한 줄만 보이게 한다.
+              marginLeft: index > 0 ? -1 : 0,
+              // 외곽선은 outline·box-shadow가 아니라 border로 그린다 — 눌러서 포커스가 가면 전역 규칙이 outline과 box-shadow를 지운다.
+              border: `1px solid ${SESSION_DOT_COLOR['애프터 마켓']}`,
+              // 안 선택 글자는 옆 거래 세션 글자(text-gray-400)와 같은 회색이다.
+              color: basis === option.value ? '#111827' : '#9ca3af',
+              backgroundColor: 'transparent',
+              borderRadius: 0,
+              boxShadow: basis === option.value ? 'none' : 'inset 0 1px 2px rgb(0 0 0 / 48%), inset 0 -1px 1px rgb(255 255 255 / 12%)',
+            }}
             onClick={event => {
               if (!option.locked && basis !== option.value) onChange(option.value)
               setPopup({ text: option.help, anchor: event.currentTarget.getBoundingClientRect() })
             }}
-            className={`h-5 min-w-0 flex-1 rounded-none border-0 px-0 text-sm font-bold leading-none transition-all ${
+            className={`h-5 min-w-0 flex-1 relative z-10 rounded-none border-0 px-0 text-sm font-bold leading-none transition-colors duration-[400ms] ${
               basis !== option.value && option.locked ? 'cursor-not-allowed' : ''
             }`}
           >
