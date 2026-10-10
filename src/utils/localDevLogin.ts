@@ -29,3 +29,24 @@ export function isLocalGuestMode(): boolean {
 export function isLocalAutoLoginEnabled(): boolean {
   return isLocalAutoLoginConfigured() && !isLocalGuestMode()
 }
+
+// 로컬 개발 전용 — 지금 접속한 계정이 상단바 "테스트 회원" 버튼으로 바꾼 테스트 회원인지. 이 브라우저에만 남기고,
+// 자동 로그인(원래 계정)이 일어나면 꺼진다. 버튼이 "테스트 회원으로 바꾸기"와 "원래 계정으로 돌아가기" 중 무엇을 할지 정하는 데 쓴다.
+const TEST_MEMBER_STORAGE_KEY = 'dev.testMemberActive'
+
+export function isTestMemberActive(): boolean {
+  try {
+    return localStorage.getItem(TEST_MEMBER_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function setTestMemberActive(active: boolean): void {
+  try {
+    if (active) localStorage.setItem(TEST_MEMBER_STORAGE_KEY, '1')
+    else localStorage.removeItem(TEST_MEMBER_STORAGE_KEY)
+  } catch {
+    // 저장이 막혀도 화면 동작은 계속되게 조용히 무시
+  }
+}

@@ -4,10 +4,10 @@ import { useSession, useLogout, useSessionKeepAlive, useLocalDevLogin } from '@/
 import { useLoginGate } from '@/hooks/useLoginGate'
 import ProfileAvatar from '@/components/ProfileAvatar'
 import MarketryLogo from '@/components/MarketryLogo'
-import { devSignup } from '@/api/auth'
+import { devLogin, devSignup } from '@/api/auth'
 import { settleSessionRefresh } from '@/api/client'
 import { cancelPendingPreferenceSave } from '@/hooks/useCustomPreferences'
-import { isLocalSignupEnabled } from '@/utils/localDevLogin'
+import { isLocalSignupEnabled, isTestMemberActive, setTestMemberActive } from '@/utils/localDevLogin'
 
 // 모든 페이지에서 항상 똑같이 고정되는 최상단 바 — 홈 이동과 로그인 상태/프로필 메뉴를 담당한다.
 // 로그인 버튼은 NavSubBar 우측 "일괄변경"류 accent 버튼(nes-btn + var(--accent))과 같은 톤을 쓰고,
@@ -22,6 +22,8 @@ export default function NavBar({ hideAccount = false }: { hideAccount?: boolean 
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [isDevSignupPending, setIsDevSignupPending] = useState(false)
   const [devSignupError, setDevSignupError] = useState<string | null>(null)
+  // 로컬 전용 "테스트 회원" 버튼 — 눌러서 테스트 회원으로 바꾸고, 다시 누르면 로그아웃 없이 원래 계정으로 돌아온다.
+  const [isTestMember] = useState(isTestMemberActive)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const profileButtonRef = useRef<HTMLButtonElement>(null)
   useLocalDevLogin()
@@ -31,19 +33,25 @@ export default function NavBar({ hideAccount = false }: { hideAccount?: boolean 
   // 로그인 상태면 동일하게 선제 갱신한다.
   useSessionKeepAlive((session?.authenticated ?? false) && !isDevSignupPending)
 
-  const handleDevSignup = async () => {
+  const handleToggleTestMember = async () => {
     setIsDevSignupPending(true)
     setDevSignupError(null)
     cancelPendingPreferenceSave()
     try {
       await settleSessionRefresh()
-      await devSignup()
+      if (isTestMember) {
+        await devLogin()
+        setTestMemberActive(false)
+      } else {
+        await devSignup()
+        setTestMemberActive(true)
+      }
       // 현재 화면을 다시 열어 이전 회원의 캐시를 비우고, 비회원 확인 모드만 해제한다.
       const currentUrl = new URL(window.location.href)
       currentUrl.searchParams.set('guest', '0')
       window.location.assign(currentUrl.href)
     } catch {
-      setDevSignupError('생성 실패: 백엔드 local 프로필을 확인하세요.')
+      setDevSignupError(isTestMember ? '전환 실패: 원래 계정으로 돌아가지 못했습니다.' : '생성 실패: 백엔드 local 프로필을 확인하세요.')
       setIsDevSignupPending(false)
     }
   }
@@ -84,12 +92,13 @@ export default function NavBar({ hideAccount = false }: { hideAccount?: boolean 
         <div className="flex flex-col items-end gap-1">
           <button
             type="button"
-            onClick={handleDevSignup}
+            onClick={handleToggleTestMember}
             disabled={isLoading || isDevSignupPending}
-            className="nes-btn border-gray-600 bg-black px-3 py-1 text-xs text-white hover:bg-zinc-700 disabled:opacity-50"
-            title="로컬 DB에 새 USER 계정을 만들고 내 분류 STOCK 화면으로 이동합니다."
+            aria-pressed={isTestMember}
+            className={`nes-btn bg-black px-3 py-1 text-xs hover:bg-zinc-700 disabled:opacity-50 ${isTestMember ? 'border-[var(--brand)] text-[var(--brand)]' : 'border-gray-600 text-white'}`}
+            title={isTestMember ? '지금 테스트 회원입니다. 누르면 로그아웃 없이 원래 계정으로 돌아갑니다.' : '누르면 로컬 DB에 새 USER 계정(테스트 회원)을 만들어 그 계정으로 바꿉니다.'}
           >
-            {isDevSignupPending ? '테스트 회원 생성 중…' : '새 테스트 회원'}
+            {isDevSignupPending ? '전환 중…' : '테스트 회원'}
           </button>
           {devSignupError && <span role="alert" className="text-xs text-[var(--accent)]">{devSignupError}</span>}
         </div>

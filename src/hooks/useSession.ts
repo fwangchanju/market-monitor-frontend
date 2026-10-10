@@ -6,7 +6,7 @@ import { getLastRefreshAt, markSessionAnonymous, refreshSessionOnce } from '@/ap
 import { authKeys } from './queryKeys'
 import { STATIC_REFERENCE_CACHE } from './cacheConfig'
 import { cancelPendingPreferenceSave } from './useCustomPreferences'
-import { isLocalAutoLoginEnabled, isLocalGuestMode } from '@/utils/localDevLogin'
+import { isLocalAutoLoginEnabled, isLocalGuestMode, setTestMemberActive } from '@/utils/localDevLogin'
 import type { AuthSessionResponse } from '@/types/api'
 
 const KEEP_ALIVE_REFRESH_MS = 10 * 60_000
@@ -91,7 +91,11 @@ export function useLocalDevLogin() {
     devLoginAttempted = true
 
     devLogin()
-      .then(parsed => queryClient.setQueryData(authKeys.session(), parsed))
+      .then(parsed => {
+        // 자동 로그인은 원래 계정이다 — 테스트 회원으로 바꿔 둔 표시를 끈다.
+        setTestMemberActive(false)
+        queryClient.setQueryData(authKeys.session(), parsed)
+      })
       .catch(error => {
         const status = isAxiosError(error) ? error.response?.status : undefined
         console.warn(

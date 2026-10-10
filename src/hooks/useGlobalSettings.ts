@@ -1,3 +1,4 @@
+import { compareKoreanText } from '@/utils/koreanSort'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { usePersistedState } from './usePersistedState'
@@ -714,7 +715,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     // 제외 업종 목록은 이름순으로 보여준다 — 서버가 내려주는 트리 순서는 업종을 만든 순서를 따라서, 같은 분류라도
     // MARKETRY와 내 분류에서 순서가 다르게 나왔다.
     excludedSectors: Array.from(excludedSectorNames, ([sectorId, sectorName]) => ({ sectorId, sectorName })).sort((a, b) =>
-      a.sectorName.localeCompare(b.sectorName, 'ko'),
+      compareKoreanText(a.sectorName, b.sectorName),
     ),
     onRemoveExcludedSector: handleRemoveExcludedSector,
     colorScaleDraft,

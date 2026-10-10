@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type Dispatch, type MouseEvent, type RefObject, type SetStateAction } from 'react'
+import { useCallback, useEffect, useRef, useState, type Dispatch, type MouseEvent, type RefObject, type SetStateAction } from 'react'
 
 // 표 줄 선택 — 줄을 누르면 토글하고, Shift+클릭으로 직전에 누른 줄부터 범위를 선택하고, 줄을 누른 채 끌면 지나간 줄들을
 // 한 번에 선택(또는 해제)한다. 표 위·아래 가장자리에 닿으면 그쪽으로 자동 스크롤한다. MARKETRY 종목 표(AdminStockTable)와
@@ -7,6 +7,10 @@ import { useCallback, useEffect, useRef, type Dispatch, type MouseEvent, type Re
 // keys는 화면에 보이는 순서대로의 줄 키 목록이고, 각 <tr>에는 rowProps(index)를 펼쳐 준다(data-row-index가 좌표로 줄을
 // 찾는 데 쓰인다).
 const EDGE_PX = 40
+// 여러 줄 선택 안내 — 드래그나 Shift+클릭을 모른 채 줄을 하나씩 계속 누르는 사용자에게 한 번 알려준다. 페이지를 새로 열 때마다 처음부터 다시 센다(저장하지 않는다).
+// 한 번 보여주거나 드래그·Shift를 쓰면 그 표에서는 다시 띄우지 않는다.
+const HINT_CLICK_COUNT = 3
+const HINT_DURATION_MS = 6000
 const MAX_SCROLL_PX = 24
 
 interface DragState {
@@ -36,6 +40,19 @@ export function useRowRangeSelection(
   const suppressClickRef = useRef(false)
   const lastClickedKeyRef = useRef<string | null>(null)
   const dragFrameRef = useRef<number | null>(null)
+
+  const [isHintOpen, setIsHintOpen] = useState(false)
+  const plainClickCountRef = useRef(0)
+  const hintShownRef = useRef(false)
+  const noteMultiSelectUsed = useCallback(() => {
+    hintShownRef.current = true
+    setIsHintOpen(false)
+  }, [])
+  useEffect(() => {
+    if (!isHintOpen) return
+    const timer = setTimeout(() => setIsHintOpen(false), HINT_DURATION_MS)
+    return () => clearTimeout(timer)
+  }, [isHintOpen])
 
   // 마우스 아래의 줄을 좌표로 찾아 선택 범위를 갱신한다. 표가 보이는 줄만 그려서 자동 스크롤 중에는 mouseenter보다
   // 좌표로 찾는 편이 확실하고, 마우스가 표 밖(위·아래)에 있어도 가장자리 줄로 본다.
@@ -108,6 +125,7 @@ export function useRowRangeSelection(
         dragFrameRef.current = null
       }
       if (drag.moved) {
+        noteMultiSelectUsed()
         // 끌기가 끝난 직후의 click(같은 줄에서 뗀 경우)은 선택을 다시 뒤집지 않도록 한 번만 무시한다.
         suppressClickRef.current = true
         setTimeout(() => {
@@ -122,11 +140,21 @@ export function useRowRangeSelection(
       window.removeEventListener('mouseup', stopDrag)
       stopDrag()
     }
-  }, [applyDragAtPointer, scrollContainerRef])
+  }, [applyDragAtPointer, scrollContainerRef, noteMultiSelectUsed])
 
   const toggle = useCallback(
     (key: string, shiftKey: boolean) => {
       if (suppressClickRef.current) return
+      if (shiftKey) {
+        noteMultiSelectUsed()
+      } else if (!selectedRef.current.has(key)) {
+        // 하나씩 눌러서 선택을 늘리는 횟수만 센다(해제는 세지 않는다).
+        plainClickCountRef.current += 1
+        if (plainClickCountRef.current >= HINT_CLICK_COUNT && !hintShownRef.current) {
+          hintShownRef.current = true
+          setIsHintOpen(true)
+        }
+      }
       const anchorKey = lastClickedKeyRef.current
       lastClickedKeyRef.current = key
       setSelected(previous => {
@@ -152,7 +180,7 @@ export function useRowRangeSelection(
         return next
       })
     },
-    [setSelected],
+    [setSelected, noteMultiSelectUsed],
   )
 
   const rowProps = (index: number) => {
@@ -181,5 +209,5 @@ export function useRowRangeSelection(
     }
   }
 
-  return { rowProps }
+  return { rowProps, selectionHint: { isOpen: isHintOpen, close: () => setIsHintOpen(false) } }
 }
