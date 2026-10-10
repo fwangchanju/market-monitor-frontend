@@ -99,7 +99,7 @@ export default function MarketryPublishControls() {
   }
 
   return (
-    <div ref={rootRef} className="relative ml-auto flex shrink-0 items-center gap-1 pr-2">
+    <div ref={rootRef} className="relative flex shrink-0 items-center gap-1">
       <span className="inline-flex h-6 items-center bg-[#ff4d2e] px-2 text-xs font-extrabold text-white">⚠ ADMIN</span>
       <button type="button" onClick={handlePublish} disabled={isBusy} className={BUTTON_CLASS}>
         UPDATE

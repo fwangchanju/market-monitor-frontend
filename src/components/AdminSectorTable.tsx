@@ -7,6 +7,7 @@ import { useCreateSector, useRenameSector, useReparentSector } from '@/hooks/use
 import { useSectorDeleteFlow } from '@/hooks/useSectorDeleteFlow'
 import { halfOverlapCollisionDetection } from '@/utils/dndCollision'
 import { toCount } from '@/utils/format'
+import { loadSectorOrder, orderSectors, SECTOR_ORDER_STORAGE_KEY, type SectorOrder } from '@/utils/sectorOrder'
 import { appAlert, appConfirm } from '@/utils/appDialogBus'
 import { SearchBar } from '@/components/ReadOnlyTaxonomySheet'
 import EmptyMessage, { EMPTY_DATA_MESSAGE, EMPTY_SEARCH_MESSAGE } from '@/components/EmptyMessage'
@@ -39,17 +40,9 @@ const MAX_SECTOR_NAME_LENGTH = 12
 const ICON_BUTTON_CLASS =
   'flex h-7 w-7 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-gray-400 outline-none hover:text-[var(--brand)]'
 
-type SectorOrder = Record<string, number[]>
-
 type Row =
   | { type: 'sector'; item: SectorItem; siblingIndex: number }
   | { type: 'add-child'; parentId: number; parentPath: string[]; depth: number }
-
-function orderSectors(items: SectorItem[], parentId: number | null, order: SectorOrder): SectorItem[] {
-  const saved = order[String(parentId)] ?? []
-  const rank = new Map(saved.map((id, index) => [id, index]))
-  return items.sort((a, b) => (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER) || a.id - b.id)
-}
 
 function DraggableSectorHandle({
   sectorId,
@@ -93,9 +86,7 @@ function DroppableSectorRow({
 
 export default function AdminSectorTable({ sectors, settingsActionsTarget, onCountLabelChange }: Props) {
   const [query, setQuery] = useState('')
-  const [sectorOrder, setSectorOrder] = useState<SectorOrder>(() => {
-    try { return JSON.parse(localStorage.getItem('marketry:custom-sector-order') ?? '{}') as SectorOrder } catch { return {} }
-  })
+  const [sectorOrder, setSectorOrder] = useState<SectorOrder>(loadSectorOrder)
   const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null)
   const [selectedMiddleId, setSelectedMiddleId] = useState<number | null>(null)
   const [selectedSectorId, setSelectedSectorId] = useState<number | null>(null)
@@ -187,7 +178,7 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget, onCou
   const updateSiblingOrder = (parentId: number | null, nextSiblings: SectorItem[]) => {
     setSectorOrder(previous => {
       const next = { ...previous, [String(parentId)]: nextSiblings.map(item => item.id) }
-      localStorage.setItem('marketry:custom-sector-order', JSON.stringify(next))
+      localStorage.setItem(SECTOR_ORDER_STORAGE_KEY, JSON.stringify(next))
       return next
     })
   }

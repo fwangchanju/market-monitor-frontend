@@ -1,5 +1,6 @@
 import { HINT_BUBBLE_CLASS } from '@/components/hintBubbleStyle'
 import { compareKoreanText } from '@/utils/koreanSort'
+import { loadSectorOrder, sectorNamesByDepth } from '@/utils/sectorOrder'
 import { useReportCountLabel } from '@/hooks/useReportCountLabel'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
@@ -18,7 +19,9 @@ import { STOCK_HEADER_ROW_PX, stockTableMinWidthPx, type StockColumnKey } from '
 import StockTableColGroup from '@/components/StockTableColGroup'
 import StockSortHeader from '@/components/StockSortHeader'
 import SelectionHintBubble from '@/components/SelectionHintBubble'
-import ColumnFilterButton from '@/components/ColumnFilterButton'
+import { useStockNameRightEdge } from '@/hooks/useStockNameRightEdge'
+import MarketryPublishControls from '@/components/MarketryPublishControls'
+import ColumnFilterButton, { SectorOrderToggle } from '@/components/ColumnFilterButton'
 import { useStockColumnFilters, type StockFilterKey } from '@/hooks/useStockColumnFilters'
 import { useMarketValueTiers } from '@/hooks/useMarketValueTiers'
 import { ChevronDownIcon, ExcelIcon, RedoIcon, UndoIcon } from './icons/MarketMapIcons'
@@ -83,11 +86,11 @@ const COLUMNS: { key: SortKey; columnKey: StockColumnKey; header: string; align:
   { key: 'totalMarketValue', columnKey: 'totalMarketValue', header: '시가총액', align: 'right' },
   { key: 'sizeTier', columnKey: 'sizeTier', header: '종목 크기', align: 'center' },
   { key: 'market', columnKey: 'market', header: '마켓', align: 'center' },
+  { key: 'nxt', columnKey: 'nxt', header: 'NXT', align: 'center' },
   { key: 'originCategoryName', columnKey: 'industry', header: '거래소 분류', align: 'left' },
   { key: 'parentSectorName', columnKey: 'parentSector', header: '대분류', align: 'right' },
   { key: 'midSectorName', columnKey: 'midSector', header: '중분류', align: 'right' },
   { key: 'subSectorName', columnKey: 'subSector', header: '소분류', align: 'right' },
-  { key: 'nxt', columnKey: 'nxt', header: 'NXT', align: 'center' },
 ]
 
 const alignClass = (align: 'center' | 'left' | 'right') =>
@@ -455,6 +458,8 @@ function SectorSearchPopup({
   onSelect,
   onEscape,
   contextLabel,
+  title,
+  orderMode,
 }: {
   popupRef: React.RefObject<HTMLDivElement | null>
   inputRef: React.RefObject<HTMLInputElement | null>
@@ -464,6 +469,9 @@ function SectorSearchPopup({
   onEscape: () => void
   // 소분류 팝업처럼 목록이 특정 대분류로 좁혀져 있을 때, 지금 어느 대분류 밑을 보고 있는지 알려주는 칩.
   contextLabel?: string
+  // 일괄변경 팝업 — 제목과 "가나다 순 / 사용자 지정" 선택(고른 순서는 호출한 쪽이 options 순서로 반영한다).
+  title?: string
+  orderMode?: { value: 'alpha' | 'custom'; onChange: (value: 'alpha' | 'custom') => void }
 }) {
   // 방향키로 하이라이트가 화면 밖으로 나가면 스크롤이 안 따라가서 지금 뭐가 선택됐는지 안 보이는
   // 문제가 있었다 — 하이라이트된 항목의 DOM 노드를 등록해뒀다가, 바뀔 때마다 보이는 영역으로 스크롤한다.
@@ -471,6 +479,9 @@ function SectorSearchPopup({
   useEffect(() => {
     optionRefs.current.get(search.highlightedIndex)?.scrollIntoView({ block: 'nearest' })
   }, [search.highlightedIndex])
+
+  // 목록이 한 단계(같은 부모 아래)뿐이면 들여쓰기·"- " 표시 없이 이름만 보여준다.
+  const isSingleLevel = search.matches.every(opt => opt.parentId === search.matches[0]?.parentId)
 
   return (
     <div
@@ -481,48 +492,47 @@ function SectorSearchPopup({
         left: position.left,
         transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
       }}
-      className="z-50 w-64 rounded-md border border-gray-500 bg-[#363639] p-2 text-white shadow-xl"
+      className="z-50 w-56 rounded-md border border-gray-500 bg-[#363639] py-2 text-sm font-normal text-white shadow-xl"
       onClick={e => e.stopPropagation()}
     >
-      <input
-        ref={inputRef}
-        type="text"
-        autoFocus
-        value={search.query}
-        onChange={e => search.handleQueryChange(e.target.value)}
-        onKeyDown={e => (e.key === 'Escape' ? onEscape() : search.handleArrowsAndEnter(e, onSelect))}
-        placeholder="업종 검색"
-        className="nes-input is-dark w-full py-2 text-sm"
-      />
-      {contextLabel && (
-        <span className="mt-2 inline-block rounded bg-[var(--brand)]/25 px-2 py-0.5 text-xs text-white">
-          {contextLabel}
-        </span>
-      )}
-      <div className="mt-2 border-t border-gray-600 pt-2">
-        <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: FILTER_LIST_MAX_HEIGHT }}>
-          {search.matches.length === 0 ? (
-            <p className="px-2 py-1 text-sm text-gray-400">검색 결과가 없습니다</p>
-          ) : (
-            search.matches.map((opt, index) => (
-              <button
-                key={opt.id}
-                ref={el => {
-                  if (el) optionRefs.current.set(index, el)
-                  else optionRefs.current.delete(index)
-                }}
-                type="button"
-                onClick={() => onSelect(opt.id)}
-                onMouseEnter={() => search.setHighlightedIndex(index)}
-                className={`block w-full truncate rounded px-2 py-0.5 text-left text-sm text-white ${
-                  index === search.highlightedIndex ? 'bg-[var(--brand)]/25' : 'bg-transparent'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))
-          )}
-        </div>
+      {title && <div className="px-3 pb-2 text-xs font-bold text-[var(--brand)]">{title}</div>}
+      <div className="px-3 pb-2">
+        <input
+          ref={inputRef}
+          type="text"
+          autoFocus
+          value={search.query}
+          onChange={e => search.handleQueryChange(e.target.value)}
+          onKeyDown={e => (e.key === 'Escape' ? onEscape() : search.handleArrowsAndEnter(e, onSelect))}
+          placeholder="업종 검색"
+          aria-label="업종 검색"
+          className="h-7 w-full rounded border border-gray-600 bg-zinc-700 px-2 text-sm text-white outline-none focus:border-[var(--brand)]"
+        />
+        {contextLabel && <p className="m-0 mt-1.5 truncate text-xs text-gray-400">{contextLabel}</p>}
+      </div>
+      {title && orderMode && <SectorOrderToggle label={title} value={orderMode.value} onChange={orderMode.onChange} />}
+      <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: FILTER_LIST_MAX_HEIGHT }}>
+        {search.matches.length === 0 ? (
+          <p className="m-0 px-3 py-1 text-gray-400">검색 결과가 없습니다</p>
+        ) : (
+          search.matches.map((opt, index) => (
+            <button
+              key={opt.id}
+              ref={el => {
+                if (el) optionRefs.current.set(index, el)
+                else optionRefs.current.delete(index)
+              }}
+              type="button"
+              onClick={() => onSelect(opt.id)}
+              onMouseEnter={() => search.setHighlightedIndex(index)}
+              className={`block w-full truncate rounded-none border-0 px-3 py-1 text-left text-sm font-normal text-white shadow-none outline-none ${
+                index === search.highlightedIndex ? 'bg-white/10 text-[var(--brand)]' : 'bg-transparent'
+              }`}
+            >
+              {isSingleLevel ? opt.name : opt.label}
+            </button>
+          ))
+        )}
       </div>
     </div>
   )
@@ -651,11 +661,15 @@ function BulkAssignButton({
   alignRight = false,
   disabled = false,
   disabledHint,
+  title,
+  orderMode,
 }: {
   count: number
   options: SectorOption[]
   onAssign: (sectorId: number) => void
   alignRight?: boolean
+  title: string
+  orderMode: { value: 'alpha' | 'custom'; onChange: (value: 'alpha' | 'custom') => void }
   // 선행 단계(1차/2차)가 아직 적용 안 된 상태의 2차/3차 버튼 — 버튼 자체는 평소와 똑같이 보이되,
   // 클릭하면 팝업 대신 안내 문구만 잠깐 띄운다(AdminStockSectorCell의 disabled 셀과 동일한 패턴).
   disabled?: boolean
@@ -726,6 +740,8 @@ function BulkAssignButton({
           search={search}
           onSelect={handleSelect}
           onEscape={() => setIsOpen(false)}
+          title={title}
+          orderMode={orderMode}
         />
       )}
       {disabled && showHint && disabledHint && (
@@ -946,6 +962,7 @@ const AdminStockRow = memo(function AdminStockRow({
       </td>
       <td className={`text-center text-gray-400 ${rowHoverClass}`}>{item.marketValueTier || '-'}</td>
       <td className={`text-center ${marketColorClass(item.market)} ${rowHoverClass}`}>{MARKET_LABEL[item.market]}</td>
+      <td className={`text-center ${isNxt ? 'text-gray-400' : 'text-gray-500'} ${rowHoverClass}`}>{isNxt ? 'O' : '-'}</td>
       <td className={`truncate pl-2 text-left text-gray-400 ${rowHoverClass}`}>{item.industryName ?? '-'}</td>
       <AdminStockSectorCell
         value={chain.rootName}
@@ -981,7 +998,6 @@ const AdminStockRow = memo(function AdminStockRow({
         disabled={chain.midId == null}
         disabledHint="중분류를 먼저 지정하세요"
       />
-      <td className={`text-center ${isNxt ? 'text-gray-400' : 'text-gray-500'} ${rowHoverClass}`}>{isNxt ? 'O' : '-'}</td>
     </tr>
   )
 })
@@ -1098,6 +1114,13 @@ export default function AdminStockTable({
   // sectors가 안 바뀌면 참조를 유지해야 AdminStockRow의 React.memo가 제대로 스킵된다.
   const sectorOptions = useMemo(() => buildSectorOptions(sectors), [sectors])
   const sectorOptionsById = useMemo(() => new Map(sectorOptions.map(opt => [opt.id, opt])), [sectorOptions])
+  // 대·중·소분류 필터는 "가나다 순"과 업종 화면에서 정한 "사용자 지정" 순서 중 고른 대로 보여준다(기본 사용자 지정, 브라우저에 저장).
+  const [sectorFilterMode, setSectorFilterMode] = useState<'alpha' | 'custom'>(() => (localStorage.getItem('marketry:sector-filter-order') === 'alpha' ? 'alpha' : 'custom'))
+  const changeSectorFilterMode = useCallback((value: 'alpha' | 'custom') => {
+    localStorage.setItem('marketry:sector-filter-order', value)
+    setSectorFilterMode(value)
+  }, [])
+  const sectorFilterOrder = useMemo(() => sectorNamesByDepth(sectors, loadSectorOrder()), [sectors])
   // 필터/정렬/컬럼 표시에 쓰는 대분류·중분류·소분류 문자열을 종목마다 한 번씩만 미리 계산해둔다.
   const displayByStockCode = useMemo(
     () => new Map(items.map(item => [item.stockCode, computeDisplayValues(item, sectorOptionsById, nxtStockCodes)])),
@@ -1397,9 +1420,31 @@ export default function AdminStockTable({
     runBulkAssign(sectorId)
   }
 
-  const bulkParentOptions = sectorOptions.filter(opt => opt.parentId === null)
-  const bulkMidOptions = bulkParentId != null ? sectorOptions.filter(opt => opt.parentId === bulkParentId) : []
-  const bulkSubOptions = bulkMidId != null ? sectorOptions.filter(opt => opt.parentId === bulkMidId) : []
+  // 선택한 종목들의 대분류(중분류)가 모두 같으면 그 아래 중분류(소분류)를 바로 일괄변경할 수 있다. 서로 다르면 위 단계를 먼저 일괄적용한 값을 쓴다.
+  const selectedCommonChain = useMemo(() => {
+    let rootId: number | null | undefined
+    let midId: number | null | undefined
+    for (const item of items) {
+      if (!selectedStockCodes.has(item.stockCode)) continue
+      const chain = resolveSectorChain(sectorOptionsById, item.sectorId)
+      rootId = rootId === undefined || rootId === chain.rootId ? chain.rootId : null
+      midId = midId === undefined || midId === chain.midId ? chain.midId : null
+    }
+    return { rootId: rootId ?? null, midId: midId ?? null }
+  }, [items, selectedStockCodes, sectorOptionsById])
+  const effectiveParentId = selectedCommonChain.rootId ?? bulkParentId
+  const effectiveMidId = selectedCommonChain.midId ?? bulkMidId
+  // 일괄변경 목록은 필터와 같은 "가나다 순 / 사용자 지정" 선택을 따른다.
+  const bulkOrderMode = { value: sectorFilterMode, onChange: changeSectorFilterMode }
+  const orderedChildren = (parentId: number | null) => {
+    const children = sectorOptions.filter(opt => opt.parentId === parentId)
+    if (sectorFilterMode === 'alpha') return children
+    const rank = new Map((loadSectorOrder()[String(parentId)] ?? []).map((id, index) => [id, index]))
+    return [...children].sort((a, b) => (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER) || a.id - b.id)
+  }
+  const bulkParentOptions = orderedChildren(null)
+  const bulkMidOptions = effectiveParentId != null ? orderedChildren(effectiveParentId) : []
+  const bulkSubOptions = effectiveMidId != null ? orderedChildren(effectiveMidId) : []
 
   // 표 위 검색창 — 종목명·코드(관리자는 약칭도)만 찾는다. 업종은 머리글 필터로 거른다.
   const [searchQuery, setSearchQuery] = useState('')
@@ -1480,11 +1525,11 @@ export default function AdminStockTable({
         시가총액: item.totalMarketValue ?? '',
         '종목 크기': item.marketValueTier ?? '',
         마켓: display.market,
+        NXT: display.isNxt ? 'O' : '-',
         '거래소 분류': display.originCategoryName,
         '대분류': display.parentSectorName,
         '중분류': display.midSectorName,
         '소분류': display.subSectorName,
-        NXT: display.isNxt ? 'O' : '-',
       }
     })
     exportRowsToExcel(filename, '종목관리', rows)
@@ -1609,7 +1654,10 @@ export default function AdminStockTable({
   // 일괄변경 버튼 — 검색창이 있는 줄 안에, 대·중·소분류 열 바로 위에 각 열과 같은 폭으로 얹는다(새 줄을 만들지 않아 표가 밀리지 않는다).
   // 열 위치는 머리글 칸(th)에서 직접 재서 따라가므로 열 폭이 바뀌거나 표가 옆으로 스크롤돼도 어긋나지 않는다.
   const rootRef = useRef<HTMLDivElement>(null)
+  // 검색창 오른쪽 끝을 아래 종목명 열의 오른쪽 줄에 맞춘다.
+  const nameRightEdge = useStockNameRightEdge(rootRef, scrollContainerRef)
   const [bulkColumns, setBulkColumns] = useState<Partial<Record<'parentSectorName' | 'midSectorName' | 'subSectorName', { left: number; width: number }>>>({})
+  const [publishCenterPx, setPublishCenterPx] = useState<number | null>(null)
   useLayoutEffect(() => {
     const root = rootRef.current
     const scroller = scrollContainerRef.current
@@ -1624,6 +1672,9 @@ export default function AdminStockTable({
         next[key] = { left: Math.round(rect.left - rootLeft), width: Math.round(rect.width) }
       }
       setBulkColumns(prev => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
+      // 관리자 버튼은 맨 윗줄(toolbarContainer의 부모 바) 가로 가운데 — 화면 왼쪽 끝에서 설정창 시작점까지의 가운데 — 에 둔다.
+      const bar = toolbarContainer?.parentElement
+      setPublishCenterPx(bar && toolbarContainer ? Math.round(bar.getBoundingClientRect().left + bar.getBoundingClientRect().width / 2 - toolbarContainer.getBoundingClientRect().left) : null)
     }
     measure()
     scroller.addEventListener('scroll', measure, { passive: true })
@@ -1636,12 +1687,19 @@ export default function AdminStockTable({
       observer.disconnect()
       window.removeEventListener('resize', measure)
     }
-  }, [columns])
+  }, [columns, toolbarContainer])
 
   useReportCountLabel(`${toCount(sorted.length)}/${toCount(items.length)}종목`, onCountLabelChange)
   return (
     <div ref={rootRef} className="relative flex h-full min-h-0 flex-col">
       {toolbarContainer && createPortal(toolbar, toolbarContainer)}
+      {/* 관리자 버튼 — 맨 윗줄에서 대분류 열의 가로 가운데에 둔다. */}
+      {isAdmin && toolbarContainer && publishCenterPx != null && createPortal(
+        <div className="absolute top-0 flex h-full items-center" style={{ left: publishCenterPx, transform: 'translateX(-50%)' }}>
+          <MarketryPublishControls />
+        </div>,
+        toolbarContainer,
+      )}
       {historyContainer && createPortal(
         <div>
           <h2 className="mb-3 text-[15px] font-medium leading-[22px] text-white">실행 취소</h2>
@@ -1652,39 +1710,41 @@ export default function AdminStockTable({
       <SearchBar
         query={searchQuery}
         onChange={setSearchQuery}
+        inputRightEdgePx={nameRightEdge}
         placeholder={isAdmin ? '종목명·약칭·코드 검색' : '종목명·코드 검색'}
         ariaLabel="종목 검색"
-        extra={
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            // 버튼 폭을 상단 바의 설정(톱니) 버튼과 같은 28px로 맞춰서, 설정창을 닫았을 때 아이콘의 가로 위치가 톱니와 같게 한다.
-            className="-mr-[7px] flex h-6 w-7 items-center justify-center rounded border-0 bg-transparent p-0 transition-colors hover:bg-white/10"
-            title="지금 화면에 보이는(필터/정렬 적용된) 목록을 엑셀로 내려받습니다"
-            aria-label="엑셀 다운로드"
-          >
-            <ExcelIcon className="h-6 w-6" />
-          </button>
+        afterInput={
+          <>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              className="flex h-6 w-7 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 transition-colors hover:bg-white/10"
+              title="지금 화면에 보이는(필터/정렬 적용된) 목록을 엑셀로 내려받습니다"
+              aria-label="엑셀 다운로드"
+            >
+              <ExcelIcon className="h-6 w-6" />
+            </button>
+            {columnFilters.activeCount > 0 && (
+              <button
+                type="button"
+                onClick={columnFilters.clearAll}
+                className="flex h-7 items-center whitespace-nowrap border-0 bg-transparent p-0 text-xs text-[var(--brand)] hover:underline"
+              >
+                필터 {columnFilters.activeCount}개 적용 · 초기화
+              </button>
+            )}
+          </>
         }
       />
-      {/* 검색창 줄 위에 얹는 층 — 필터 요약은 검색창 오른쪽에, 일괄변경 버튼은 대·중·소분류 열 위에 둔다. 층 자체는 클릭을 막지 않는다. */}
+      {/* 검색창 줄 위에 얹는 층 — 일괄변경 버튼은 대·중·소분류 열 위에 둔다. 층 자체는 클릭을 막지 않는다. */}
       <div className="pointer-events-none absolute left-0 top-0 h-7 w-full overflow-hidden">
-        {columnFilters.activeCount > 0 && (
-          <button
-            type="button"
-            onClick={columnFilters.clearAll}
-            className="pointer-events-auto absolute left-[17rem] top-0 flex h-7 items-center border-0 bg-transparent p-0 text-xs text-[var(--brand)] hover:underline"
-          >
-            필터 {columnFilters.activeCount}개 적용 · 초기화
-          </button>
-        )}
         {(['parentSectorName', 'midSectorName', 'subSectorName'] as const).map(key => {
           const layout = bulkColumns[key]
           if (!layout) return null
           return (
             <div key={key} className="pointer-events-auto absolute top-0.5 px-1" style={{ left: layout.left, width: layout.width }}>
               {key === 'parentSectorName' && (
-                <BulkAssignButton count={selectedStockCodes.size} options={bulkParentOptions} onAssign={handleBulkAssignParent} alignRight />
+                <BulkAssignButton count={selectedStockCodes.size} options={bulkParentOptions} onAssign={handleBulkAssignParent} alignRight title="대분류 일괄변경" orderMode={bulkOrderMode} />
               )}
               {key === 'midSectorName' && (
                 <BulkAssignButton
@@ -1692,8 +1752,10 @@ export default function AdminStockTable({
                   options={bulkMidOptions}
                   onAssign={handleBulkAssignMid}
                   alignRight
-                  disabled={bulkParentId == null}
-                  disabledHint="대분류를 먼저 일괄적용하세요"
+                  title="중분류 일괄변경"
+                  orderMode={bulkOrderMode}
+                  disabled={effectiveParentId == null}
+                  disabledHint="선택한 종목의 대분류가 같아야 합니다. 다르면 대분류를 먼저 일괄적용하세요"
                 />
               )}
               {key === 'subSectorName' && (
@@ -1702,8 +1764,10 @@ export default function AdminStockTable({
                   options={bulkSubOptions}
                   onAssign={handleBulkAssignSub}
                   alignRight
-                  disabled={bulkMidId == null}
-                  disabledHint="중분류를 먼저 일괄적용하세요"
+                  title="소분류 일괄변경"
+                  orderMode={bulkOrderMode}
+                  disabled={effectiveMidId == null}
+                  disabledHint="선택한 종목의 중분류가 같아야 합니다. 다르면 중분류를 먼저 일괄적용하세요"
                 />
               )}
             </div>
@@ -1745,7 +1809,8 @@ export default function AdminStockTable({
                           onToggle={value => columnFilters.toggle(filterKey, value)}
                           onSelectAll={() => columnFilters.selectAll(filterKey)}
                           onSelectNone={values => columnFilters.selectNone(filterKey, values)}
-                          optionOrder={filterKey === 'sizeTier' ? tierOrder : filterKey === 'market' ? ['코스피', '코스닥'] : filterKey === 'nxt' ? ['O', '-'] : undefined}
+                          optionOrder={filterKey === 'sizeTier' ? tierOrder : filterKey === 'market' ? ['코스피', '코스닥'] : filterKey === 'nxt' ? ['O', '-'] : filterKey === 'parentSector' ? sectorFilterOrder[0] : filterKey === 'midSector' ? sectorFilterOrder[1] : filterKey === 'subSector' ? sectorFilterOrder[2] : undefined}
+                          orderMode={filterKey === 'parentSector' || filterKey === 'midSector' || filterKey === 'subSector' ? { value: sectorFilterMode, onChange: changeSectorFilterMode } : undefined}
                           labelOf={filterKey === 'nxt' ? value => (value === 'O' ? 'NXT 거래' : 'NXT 미거래') : undefined}
                         />
                       ) : undefined
