@@ -22,6 +22,11 @@ const HUE_PRESETS: HuePreset[] = [
 ]
 
 // 색상 줄에는 어두운 배경에서도 잘 보이는 중간 밝기의 대표색만 보여주고, 밝기는 아래 슬라이더로 정한다.
+// 색상 줄 동그라미 한 개의 지름(h-6 w-6)과 개수(회색 + 색 7개). 위 등락률 줄의 색상 칸 너비를 이 값으로 맞춘다.
+const SWATCH_SIZE_PX = 24
+const SWATCH_COUNT = 8
+// 등락률 줄의 입력칸과 색상 칸의 너비 — 아래 색상 줄 맨 오른쪽 두 동그라미의 바깥 두 끝선에 맞춘 값이다(둘이 같은 너비).
+const THRESHOLD_BOX_WIDTH = `calc(${SWATCH_SIZE_PX * 2}px + (100% - ${SWATCH_SIZE_PX * SWATCH_COUNT}px) / ${SWATCH_COUNT - 1})`
 const SWATCH_LIGHTNESS = 55
 const MIN_LIGHTNESS = 8
 const MAX_LIGHTNESS = 92
@@ -74,10 +79,15 @@ function ThresholdRow({ threshold, locked, onChangeThreshold }: ThresholdRowProp
         onChange={e => setText(e.target.value)}
         onBlur={commit}
         onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
-        className="h-7 w-20 rounded border border-gray-600 bg-zinc-700 px-2 text-right text-sm text-white outline-none [appearance:textfield] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] disabled:opacity-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        style={{ width: THRESHOLD_BOX_WIDTH }}
+        className="h-7 shrink-0 rounded border border-gray-600 bg-zinc-700 px-2 text-right text-sm text-white outline-none [appearance:textfield] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] disabled:opacity-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
       <span className="text-xs text-gray-400">%</span>
-      <span className="ml-auto h-7 w-16 shrink-0 rounded border border-gray-600" style={{ backgroundColor: threshold.color }} />
+      {/* 색상 칸 — 아래 색상 줄 맨 오른쪽 두 동그라미(24px, 사이 간격은 8칸을 양끝 맞춤으로 나눈 값)의 바깥 두 끝선에 이 칸의 양 끝을 맞춘다. 입력칸과 같은 너비다. */}
+      <span
+        className="ml-auto h-7 shrink-0 rounded border border-gray-600"
+        style={{ backgroundColor: threshold.color, width: THRESHOLD_BOX_WIDTH }}
+      />
     </div>
   )
 }

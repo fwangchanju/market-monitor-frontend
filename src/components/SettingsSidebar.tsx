@@ -499,6 +499,9 @@ function RangeSlider({
   const trackRef = useRef<HTMLDivElement>(null)
   const [limitHintVisible, setLimitHintVisible] = useState(false)
   const [hintPos, setHintPos] = useState<CursorHint | null>(null)
+  // 끌고 있는 동안은 핸들이 손을 늦게 따라오지 않도록 아주 짧게, 눌러서 옮길 때는 0.3초 동안 미끄러진다.
+  const [isDragging, setIsDragging] = useState(false)
+  const slideTransition = `left ${isDragging ? 150 : 300}ms ease-out, width ${isDragging ? 150 : 300}ms ease-out`
   const sliderSteps = Math.max(steps, 1)
   const selectableMaxIndex = Math.min(sliderSteps, maxSelectableIndex ?? sliderSteps)
 
@@ -535,6 +538,7 @@ function RangeSlider({
     let dragged = false
     const handleMove = (ev: PointerEvent) => {
       if (!dragged && Math.abs(ev.clientX - startX) < CLICK_MOVE_THRESHOLD) return
+      if (!dragged) setIsDragging(true)
       dragged = true
       const index = dragIndexFromClientX(ev.clientX)
       if (which === 'min') onChange(Math.min(index, maxIndex), maxIndex)
@@ -543,6 +547,7 @@ function RangeSlider({
     const handleUp = (ev: PointerEvent) => {
       document.removeEventListener('pointermove', handleMove)
       document.removeEventListener('pointerup', handleUp)
+      setIsDragging(false)
       if (dragged) return
       // 움직이지 않고 뗐다 = 클릭. 가까운 핸들을 그 자리로 옮긴다.
       const index = dragIndexFromClientX(ev.clientX)
@@ -579,7 +584,7 @@ function RangeSlider({
         <div className="absolute inset-x-2 top-1/2 h-1 -translate-y-1/2 rounded bg-gray-600" />
         <div
           className="absolute top-1/2 h-1 -translate-y-1/2 rounded bg-[var(--accent)]"
-          style={{ left: `calc(8px + ${minPct}% - ${minPct * 0.16}px)`, width: `calc(${maxPct - minPct}% - ${(maxPct - minPct) * 0.16}px)` }}
+          style={{ left: `calc(8px + ${minPct}% - ${minPct * 0.16}px)`, width: `calc(${maxPct - minPct}% - ${(maxPct - minPct) * 0.16}px)`, transition: slideTransition }}
         />
         {/* 두 핸들이 같은 칸에 모이면 원 두 개가 겹쳐 화살표가 뭉개진다. 그때는 바깥으로 벌어지는
             화살표 둘을 담은 알약 하나로 그려서, 모여 있어도 양방향으로 벌릴 수 있는 핸들임이 보이게 한다. */}
@@ -587,17 +592,17 @@ function RangeSlider({
           <div
             aria-label={`${minAriaLabel} / ${maxAriaLabel}`}
             className={`${RANGE_HANDLE_CLASS} z-10 w-7 justify-between px-1`}
-            style={{ left: `calc(8px + ${minPct}% - ${minPct * 0.16}px)` }}
+            style={{ left: `calc(8px + ${minPct}% - ${minPct * 0.16}px)`, transition: slideTransition }}
           >
             <ChevronGlyph direction="left" />
             <ChevronGlyph direction="right" />
           </div>
         ) : (
           <>
-            <div aria-label={minAriaLabel} className={`${RANGE_HANDLE_CLASS} z-10 w-4`} style={{ left: `calc(8px + ${minPct}% - ${minPct * 0.16}px)` }}>
+            <div aria-label={minAriaLabel} className={`${RANGE_HANDLE_CLASS} z-10 w-4`} style={{ left: `calc(8px + ${minPct}% - ${minPct * 0.16}px)`, transition: slideTransition }}>
               <ChevronGlyph direction="left" outward />
             </div>
-            <div aria-label={maxAriaLabel} className={`${RANGE_HANDLE_CLASS} z-20 w-4`} style={{ left: `calc(8px + ${maxPct}% - ${maxPct * 0.16}px)` }}>
+            <div aria-label={maxAriaLabel} className={`${RANGE_HANDLE_CLASS} z-20 w-4`} style={{ left: `calc(8px + ${maxPct}% - ${maxPct * 0.16}px)`, transition: slideTransition }}>
               <ChevronGlyph direction="right" outward />
             </div>
           </>
@@ -665,7 +670,7 @@ function SliderTickLabels({
         return (
           <span
             key={index}
-            className={`absolute whitespace-nowrap ${blocked ? 'cursor-not-allowed text-gray-600' : highlighted ? 'font-medium text-white' : 'text-gray-400'} ${
+            className={`absolute whitespace-nowrap transition-colors duration-300 ${blocked ? 'cursor-not-allowed text-gray-600' : highlighted ? 'font-medium text-white' : 'text-gray-400'} ${
               '-translate-x-1/2'
             }`}
             style={{ left: `${(index / steps) * 100}%` }}
@@ -691,6 +696,7 @@ function SingleRangeInput({
   onChange,
   disabled = false,
   ariaValueText,
+  smooth = true,
 }: {
   value: number
   min: number
@@ -700,16 +706,30 @@ function SingleRangeInput({
   onChange: (value: number) => void
   disabled?: boolean
   ariaValueText?: string
+  // false면 손잡이를 미끄러뜨리지 않고 브라우저 기본 손잡이를 그대로 쓴다 — 값이 끊김 없이 이어지는 슬라이더(박스 크기, 텍스트 표시 기준)는 끌 때 손잡이가 늦게 따라오지 않게 이렇게 둔다.
+  smooth?: boolean
 }) {
   const pct = max === min ? 0 : ((value - min) / (max - min)) * 100
+  // 끌고 있는 동안(누른 채 움직일 때)은 손잡이가 손을 늦게 따라오지 않도록 아주 짧게, 눌러서 옮기거나 키보드로 옮길 때는 0.3초 동안 미끄러진다.
+  const [isDragging, setIsDragging] = useState(false)
+  const slide = `${isDragging ? 150 : 300}ms ease-out`
+  const barTransition = smooth ? `width ${slide}` : undefined
   return (
     <div className={`relative h-4 ${disabled ? 'opacity-40' : ''}`}>
       <span aria-hidden="true" className="absolute inset-x-2 top-1/2 h-1 -translate-y-1/2 rounded bg-gray-600" />
       <span
         aria-hidden="true"
         className="absolute left-2 top-1/2 h-1 -translate-y-1/2 rounded bg-[var(--accent)]"
-        style={{ width: `calc(${pct}% - ${pct * 0.16}px)` }}
+        style={{ width: `calc(${pct}% - ${pct * 0.16}px)`, transition: barTransition }}
       />
+      {/* 눈에 보이는 손잡이 — 아래 input의 기본 손잡이는 투명하게 두고, 이 손잡이가 값 위치로 미끄러진다. */}
+      {smooth && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent)]"
+          style={{ left: `calc(8px + ${pct}% - ${pct * 0.16}px)`, transition: `left ${slide}` }}
+        />
+      )}
       <input
         type="range"
         min={min}
@@ -719,8 +739,12 @@ function SingleRangeInput({
         aria-label={ariaLabel}
         aria-valuetext={ariaValueText}
         onChange={e => onChange(Number(e.target.value))}
+        onPointerMove={e => { if (e.buttons === 1) setIsDragging(true) }}
+        onPointerUp={() => setIsDragging(false)}
+        onPointerCancel={() => setIsDragging(false)}
+        onBlur={() => setIsDragging(false)}
         disabled={disabled}
-        className="settings-single-slider absolute inset-0 block h-4 w-full disabled:cursor-not-allowed"
+        className={`settings-single-slider absolute inset-0 block h-4 w-full disabled:cursor-not-allowed ${smooth ? '' : 'is-native-thumb'}`}
       />
     </div>
   )
@@ -1145,6 +1169,7 @@ export function SettingsStockSizeSelector({
           max={100}
           step={1}
           value={marketCapRatio}
+          smooth={false}
           ariaLabel="박스 크기 시가총액 비율"
           ariaValueText={`${marketCapRatio}%`}
           onChange={onChangeMarketCapRatio}
@@ -1542,6 +1567,7 @@ export function SettingsSectorLevelSection({
                 max={0.3}
                 step={0.01}
                 value={boxLabelMinAreaPercent}
+                smooth={false}
                 ariaLabel="텍스트 표시 기준"
                 onChange={onChangeBoxLabelMinAreaPercent}
                 disabled={!stockLabelEnabled}

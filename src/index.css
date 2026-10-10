@@ -594,7 +594,8 @@ a { color: var(--accent-light); text-decoration: none; }
   margin-top: -6px;
   border-radius: 50%;
   border: none;
-  background: var(--accent);
+  /* 눈에 보이는 손잡이는 SingleRangeInput가 따로 그려서 미끄러뜨린다. 이 기본 손잡이는 누르고 끄는 자리로만 남긴다. */
+  background: transparent;
 }
 
 .settings-single-slider::-moz-range-track {
@@ -614,7 +615,38 @@ a { color: var(--accent-light); text-decoration: none; }
   height: 16px;
   border-radius: 50%;
   border: none;
+  background: transparent;
+}
+
+/* smooth가 꺼진 슬라이더(값이 끊김 없이 이어지는 것)는 기본 손잡이를 그대로 보인다. */
+.settings-single-slider.is-native-thumb::-webkit-slider-thumb {
   background: var(--accent);
+}
+
+.settings-single-slider.is-native-thumb::-moz-range-thumb {
+  background: var(--accent);
+}
+
+/* 체크박스 — 브라우저 기본 체크박스와 같은 색이지만 안쪽 체크 표시를 가늘게 직접 그리고, 크기는 옆 글자만큼이다. */
+.thin-check {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  /* 크기는 바로 옆 글자와 같다(글자 크기 1em) — 표 안이면 표 글자(text-sm, 14px)만큼이다. */
+  font-size: inherit;
+  width: 1em;
+  height: 1em;
+  /* margin은 일부러 정하지 않는다 — 여기(레이어 밖)에 적으면 mx-auto 같은 유틸리티 클래스를 덮어써서 체크박스가 가운데에서 밀린다. */
+  border: 1px solid #767676;
+  border-radius: 3px;
+  background: #fff center / 100% 100% no-repeat;
+  cursor: pointer;
+}
+
+.thin-check:checked {
+  border-color: var(--brand);
+  background-color: var(--brand);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23404040' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 10.5l3.6 3.6L15 6.2'/%3E%3C/svg%3E");
 }
 
 @layer utilities {

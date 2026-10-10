@@ -213,7 +213,7 @@ export default function MapPage() {
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
   // NXT 안내 알림을 닫았는지 — 다른 분류으로 바꾸면 초기화돼서, NXT를 다시 고를 때 또 보인다.
   const [isNxtNoticeDismissed, setIsNxtNoticeDismissed] = useState(false)
-  const { isOnLeft: isSettingsOnLeft, toggleSide: toggleSettingsSide } = useSettingsSidebarSide()
+  const { isOnLeft: isSettingsOnLeft, toggleSide: toggleSettingsSide, rowRef: settingsRowRef } = useSettingsSidebarSide()
   useEffect(() => {
     if (!nxtOnly) setIsNxtNoticeDismissed(false)
   }, [nxtOnly])
@@ -457,6 +457,7 @@ export default function MapPage() {
       <div className="flex min-h-0 flex-1">
         {/* 공유·텔레그램 모두 [세 번째 바+본문] 열만 캡처해 설정창을 제외한다. */}
         <div
+          ref={settingsRowRef}
           className="relative z-10 -mt-[10.5px] flex min-h-0 min-w-0 flex-1 bg-black"
         >
           {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서(overflow: visible이면 내부 콘텐츠의

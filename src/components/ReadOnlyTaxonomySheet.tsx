@@ -60,7 +60,7 @@ function useSort<K extends string>(initialKey: K, initialDirection: SortDirectio
   return { sortKey, direction, toggle }
 }
 
-function SortableHeader({ label, active, direction, onClick, className, width, inlineLabel }: {
+function SortableHeader({ label, active, direction, onClick, className, width, inlineLabel, leading }: {
   label: string
   active: boolean
   direction: SortDirection
@@ -68,9 +68,12 @@ function SortableHeader({ label, active, direction, onClick, className, width, i
   className?: string
   width?: string
   inlineLabel?: boolean
+  // 머리글 칸 왼쪽 끝에 얹는 것(전체 선택 체크박스) — 글자 자리는 그대로 두고 겹쳐 둔다.
+  leading?: ReactNode
 }) {
   return (
-    <th className={className ?? HEADER_CELL} style={width ? { width } : undefined}>
+    <th className={`${className ?? HEADER_CELL}${leading ? ' relative' : ''}`} style={width ? { width } : undefined}>
+      {leading}
       <span className={`cursor-pointer select-none ${COLOR.sortHover}${inlineLabel ? ' inline-flex items-center align-middle' : ''}`} onClick={onClick}>
         {label}
         <span className={`ml-1 inline-flex align-middle ${active ? COLOR.sortActive : COLOR.sortInactive}`}>
@@ -174,7 +177,7 @@ export default function ReadOnlyTaxonomySheet({ mode, data, isLoading, isError, 
     <label className="flex cursor-pointer items-center gap-1.5 text-sm text-white">
       <input
         type="checkbox"
-        className="m-0 h-4 w-4 cursor-pointer accent-[var(--brand)]"
+        className="thin-check m-0"
         checked={nxtOnly}
         onChange={event => onNxtOnlyChange(event.target.checked)}
       />
@@ -240,12 +243,48 @@ function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { s
         return diff === 0 ? compareName(a.name, b.name) : sign * diff
       })
   }, [sectors, sortKey, direction])
-  const header = (key: CategorySortKey, label: string) => (
-    <SortableHeader label={label} active={sortKey === key} direction={direction} onClick={() => toggle(key)} />
-  )
   const trimmed = query.trim()
-  const visibleRows = trimmed ? rows.filter(row => row.name.includes(trimmed)) : rows
+  const visibleRows = useMemo(() => (trimmed ? rows.filter(row => row.name.includes(trimmed)) : rows), [rows, trimmed])
   useReportCountLabel(`${toCount(visibleRows.length)}/${toCount(rows.length)}업종`, onCountLabelChange)
+  // 업종 줄 선택 — 종목 표와 같다(줄 누르기·Shift+클릭 범위·끌어서 연속 선택, 맨 위 체크박스로 전체 선택). 읽기 전용 시트라 고른 업종으로 할 수 있는 작업은 아직 없고, 표시만 한다.
+  const [selectedNames, setSelectedNames] = useState<ReadonlySet<string>>(new Set())
+  const isAllVisibleSelected = visibleRows.length > 0 && visibleRows.every(row => selectedNames.has(row.name))
+  const toggleSelectAllVisible = () =>
+    setSelectedNames(isAllVisibleSelected ? new Set() : new Set(visibleRows.map(row => row.name)))
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const { rowProps } = useRowRangeSelection(
+    useMemo(() => visibleRows.map(row => row.name), [visibleRows]),
+    scrollContainerRef,
+    selectedNames,
+    setSelectedNames,
+  )
+  // 체크박스는 업종 이름 앞 빈 자리(왼쪽 여백 72px 안)에 겹쳐 두고, 종목 표의 체크박스 칸(29px)처럼 그 오른쪽에 세로 구분선을 긋는다 — 세 칸 폭과 이름 시작 위치는 그대로다.
+  const CHECKBOX_CLASS = 'thin-check absolute top-1/2 m-0 -translate-y-1/2'
+  // 종목 표의 체크박스 칸(29px) 가운데에 오게 한다.
+  const checkboxStyle = { left: `round(down, calc((${CHECKBOX_COLUMN_WIDTH} - 1em) / 2), 1px)` }
+  const dividerClass = (color: string) => `pointer-events-none absolute inset-y-0 w-px ${color}`
+  const dividerStyle = { left: `calc(${CHECKBOX_COLUMN_WIDTH} - 1px)` } // 종목 표 체크박스 칸의 오른쪽 테두리와 같은 자리
+  const header = (key: CategorySortKey, label: string) => (
+    <SortableHeader
+      label={label}
+      active={sortKey === key}
+      direction={direction}
+      onClick={() => toggle(key)}
+      leading={key === 'name' ? (
+        <>
+          <input
+            type="checkbox"
+            aria-label="보이는 업종 전체 선택"
+            className={CHECKBOX_CLASS}
+            style={checkboxStyle}
+            checked={isAllVisibleSelected}
+            onChange={toggleSelectAllVisible}
+          />
+          <span aria-hidden="true" className={dividerClass('bg-white/15')} style={dividerStyle} />
+        </>
+      ) : undefined}
+    />
+  )
   return (
     <div className="flex min-h-0 flex-1 flex-col text-white">
       <SearchBar
@@ -255,7 +294,7 @@ function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { s
         ariaLabel="업종 검색"
         extra={extra}
       />
-      <div className="relative min-h-0 flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} className="relative min-h-0 flex-1 overflow-y-auto">
         {/* 업종·업종 시가총액·종목 수 세 칸을 같은 폭(삼등분)으로 나눈다 — MARKETRY 업종 화면의 대·중·소분류 칸과 같은 모양이다. */}
         <table className={`${TABLE_CLASS} table-fixed select-none`}>
           <thead>
@@ -266,10 +305,25 @@ function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { s
             </tr>
           </thead>
           <tbody>
-            {visibleRows.map(row => (
-              <tr key={row.name} className="text-gray-400">
+            {visibleRows.map((row, index) => (
+              <tr
+                key={row.name}
+                {...rowProps(index)}
+                className={`cursor-pointer text-gray-400 ${selectedNames.has(row.name) ? '[&>td]:bg-[var(--brand)]/35' : '[&:hover>td]:bg-[var(--brand)]/10'}`}
+              >
                 {/* 업종 이름 시작 위치를 MARKETRY 업종 화면의 대분류 이름과 같게 한다 — 칸 왼쪽에서 8px(여백) + 손잡이 24px + 4px + 번호 칸 28px + 8px = 72px. */}
-                <td className={`${BODY_CELL} truncate text-left !pl-[72px]`}>{row.name}</td>
+                <td className={`${BODY_CELL} relative truncate text-left !pl-[72px]`}>
+                  <input
+                    type="checkbox"
+                    aria-label={`${row.name} 선택`}
+                    className={CHECKBOX_CLASS}
+                    style={checkboxStyle}
+                    checked={selectedNames.has(row.name)}
+                    onChange={() => {}}
+                  />
+                  <span aria-hidden="true" className={dividerClass('bg-slate-700')} style={dividerStyle} />
+                  {row.name}
+                </td>
                 {/* 종목 표와 같은 시가총액 표기('137조 2,762억' 대신 '137.3조')와 오른쪽 정렬이다. */}
                 {/* 업종명 왼쪽 여백과 같은 72px를 시가총액 오른쪽에 둔다. */}
                 <td className={`${BODY_CELL} text-right !pr-[72px] text-gray-400`}>{toJoEokDecimal(row.marketValue / 100_000_000)}</td>
@@ -378,7 +432,7 @@ function StockTable({ showHierarchy, sectors, emptyMessage, nxtStockCodes, stock
                 <input
                   type="checkbox"
                   aria-label="보이는 종목 전체 선택"
-                  className="mx-auto my-0 block h-5 w-5 cursor-pointer accent-[var(--brand)]"
+                  className="mx-auto my-0 block thin-check"
                   checked={isAllVisibleSelected}
                   onChange={toggleSelectAllVisible}
                   onClick={event => event.stopPropagation()}
@@ -415,7 +469,7 @@ function StockTable({ showHierarchy, sectors, emptyMessage, nxtStockCodes, stock
                     <input
                       type="checkbox"
                       aria-label={`${row.stockName} 선택`}
-                      className="mx-auto my-0 block h-5 w-5 cursor-pointer accent-[var(--brand)]"
+                      className="mx-auto my-0 block thin-check"
                       checked={selectedCodes.has(row.stockCode)}
                       onChange={() => {}}
                     />
