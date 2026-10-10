@@ -15,6 +15,9 @@ const excludedStockListResponseSchema = z.array(ExcludedStockItemSchema)
 // 등락률 기준 — daily는 전일 종가 대비 누적(기본), afterHours는 그날 정규장 종가 대비(15:40 이후 오늘 스냅샷에서만 적용된다).
 export type ChangeRateMode = 'daily' | 'afterHours'
 
+// 화면 토글의 선택 — 종가는 서버 기준이 아니라 그날 정규장 종가 스냅샷을 골라 보는 것이라 요청에는 daily로 나간다.
+export type ChangeRateChoice = ChangeRateMode | 'close'
+
 // source는 어떤 분류로 그릴지다 — krx(거래소), marketry(올린 분류, 로그인 없이 읽는다), mine(내 분류, 로그인 필요).
 // nxtOnly는 NXT 거래 종목만 받는다. false일 때는 요청에 싣지 않는다. basis도 afterHours일 때만 요청에 싣는다.
 export const getMarketMap = (

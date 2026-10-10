@@ -7,12 +7,12 @@ import type { TaxonomySource, TaxonomyKey } from '@/utils/taxonomyNames'
 import { useNxtOnlyWindow } from '@/hooks/useNxtOnlyWindow'
 import { useAfterHoursControlsVisible } from '@/hooks/useTradingSession'
 import { isAfterHoursSelectable as isAfterHoursSelectableAt } from '@/utils/tradingWindow'
-import type { ChangeRateMode } from '@/api/marketMap'
+import type { ChangeRateChoice, ChangeRateMode } from '@/api/marketMap'
 import { usePageSetting } from './usePageSetting'
 import { useRouteAwareMarket } from './useRouteAwareMarket'
 import { useIsLoggedIn, useSession } from './useSession'
 import { useLoginGate } from './useLoginGate'
-import { useMarketMap } from './useMarketMap'
+import { useMarketMap, useMarketMapSnapshotDays } from './useMarketMap'
 import { useMarketMapColorScale } from './useMarketMapColorScale'
 import {
   useCreateCustomScaleThreshold as useCreateMarketMapScaleThreshold,
@@ -138,8 +138,9 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   // 등락률 기준은 애프터 마켓 시작부터 다음 프리 마켓 개장 전까지 선택한다.
   // 표시 시간대가 아니거나 시간외 스냅샷이 아직 없으면 저장한 선택과 무관하게 누적으로 보인다.
   const isAfterHoursControlsVisible = useAfterHoursControlsVisible()
-  const [storedChangeRateMode, setStoredChangeRateMode] = usePersistedState<ChangeRateMode>('marketMap.changeRateMode', 'daily')
-  const requestedBasis: ChangeRateMode = allowChangeRateMode && isAfterHoursControlsVisible ? storedChangeRateMode : 'daily'
+  const [storedChangeRateChoice, setStoredChangeRateChoice] = usePersistedState<ChangeRateChoice>('marketMap.changeRateMode', 'daily')
+  const requestedChoice: ChangeRateChoice = allowChangeRateMode && isAfterHoursControlsVisible ? storedChangeRateChoice : 'daily'
+  const requestedBasis: ChangeRateMode = requestedChoice === 'afterHours' ? 'afterHours' : 'daily'
   const taxonomy: TaxonomyKey = isMarketry ? 'MARKETRY' : isCustom ? 'MINE' : nxtOnly ? 'NXT' : 'KRX'
   // 섹터 랭킹/강세 업종 계산에 쓰는 평균 방식은 박스 크기 비율과 별도로 저장한다.
   const [avgChangeRateUseSimple, setAvgChangeRateUseSimple] = usePageSetting('marketMap.avgChangeRateUseSimple', defaults.avgChangeRateUseSimple)
@@ -246,6 +247,20 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   // 달력이 "오늘(실시간)"을 알아보려면 지난 날짜를 보는 동안에도 최신 스냅샷 시각을 기억해야 한다.
   const [liveSnapshotTime, setLiveSnapshotTime] = useState<string | null>(null)
 
+  // 종가 선택 — 지금 보는 날짜(실시간 스냅샷의 날짜)의 정규장 종가 스냅샷 시각을 달력과 같은 목록에서 찾아 그 지도를 받는다.
+  // 실시간 날짜는 한 번이라도 실시간 지도를 받아야 알 수 있어서, 처음 한 번은 실시간 지도를 받고 그 뒤에 종가로 옮겨 간다.
+  const wantsClose = requestedChoice === 'close' && pinnedSnapshotTime === undefined
+  const liveDate = liveSnapshotTime?.slice(0, 10)
+  const { data: closeDays, isSuccess: isCloseDaysSuccess } = useMarketMapSnapshotDays(
+    market,
+    liveDate?.slice(0, 7) ?? '',
+    { enabled: wantsClose && liveDate !== undefined },
+  )
+  const closeSnapshotTime = wantsClose ? closeDays?.find(day => day.date === liveDate)?.snapshotTime : undefined
+  const isCloseActive = closeSnapshotTime !== undefined
+  // 종가 지도가 없는 날(휴장 등)이면 종가 선택을 누적으로 보여 준다.
+  const isCloseUnavailable = wantsClose && isCloseDaysSuccess && !isCloseActive
+
   const {
     data,
     isLoading: isMarketMapLoading,
@@ -256,14 +271,16 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   } = useMarketMap(market, source, nxtOnly, {
     enabled: needsTree && !isWaitingForSession,
     basis: requestedBasis,
-    snapshotTime: pinnedSnapshotTime,
+    snapshotTime: pinnedSnapshotTime ?? closeSnapshotTime,
   })
   const dataSnapshotTime = data?.snapshotTime
   useEffect(() => {
-    if (pinnedSnapshotTime === undefined && dataSnapshotTime) setLiveSnapshotTime(dataSnapshotTime)
-  }, [pinnedSnapshotTime, dataSnapshotTime])
-  const isAfterHoursSelectable = isAfterHoursControlsVisible && isAfterHoursSelectableAt(data?.snapshotTime)
+    if (pinnedSnapshotTime === undefined && !isCloseActive && dataSnapshotTime) setLiveSnapshotTime(dataSnapshotTime)
+  }, [pinnedSnapshotTime, isCloseActive, dataSnapshotTime])
+  // 종가를 보는 동안에는 받은 지도가 정규장 종가라서, 따로가 열렸는지는 실시간 스냅샷으로 따진다.
+  const isAfterHoursSelectable = isAfterHoursControlsVisible && isAfterHoursSelectableAt(isCloseActive ? liveSnapshotTime : data?.snapshotTime)
   const changeRateMode: ChangeRateMode = isAfterHoursSelectable ? requestedBasis : 'daily'
+  const changeRateChoice: ChangeRateChoice = requestedChoice === 'close' && !isCloseUnavailable ? 'close' : changeRateMode
   const rawRootNodes = data?.items
   // 비로그인의 거래소 분류는 업종 id가 모두 0이라, 제외 기능이 동작하도록 이름 기반 고유 id를 붙인다.
   // MARKETRY는 비로그인도 진짜 업종 id를 받으므로 그대로 쓴다.
@@ -736,9 +753,10 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
     nxtOnly,
     nxtOnlyWindow,
     changeRateMode,
+    changeRateChoice,
     isAfterHoursControlsVisible,
     isAfterHoursSelectable,
-    onChangeChangeRateMode: setStoredChangeRateMode,
+    onChangeChangeRateMode: setStoredChangeRateChoice,
     taxonomy,
     data,
     pinnedSnapshotTime,

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { MarketQuery } from '@/types/api'
+import type { ChangeRateChoice } from '@/api/marketMap'
 import { accentColor } from '@/utils/accentPalette'
 import { LONGEST_TRADING_SESSION, type TradingSession } from '@/utils/tradingWindow'
 import { useTradingSession } from '@/hooks/useTradingSession'
@@ -170,25 +171,59 @@ export function TradingSessionIndicator() {
   )
 }
 
-// 등락률 기준 토글 — 누적(전일 종가 대비) / 따로(당일 종가 대비). 애프터 마켓 시작부터 다음 프리 마켓 개장 전까지만 보인다.
+// 등락률 기준 토글 — 종가(그날 정규장 종가 지도) / 누적(전일 종가 대비) / 따로(당일 종가 대비). 애프터 마켓 시작부터 다음 프리 마켓 개장 전까지만 보인다.
 // 시간외 스냅샷이 아직 없으면 따로는 잠긴다. 시장 시간대 말머리는 버튼의 표시 여부와 무관하게 유지한다.
 // 버튼을 누르면 그 버튼 아래에 설명 팝업이 뜬다(새로고침 버튼의 설명창과 같은 모양). 잠긴 따로도 눌러서 설명을 볼 수 있다.
 export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
-  basis: 'daily' | 'afterHours'
+  basis: ChangeRateChoice
   visible: boolean
   selectable: boolean
-  onChange: (basis: 'daily' | 'afterHours') => void
+  onChange: (basis: ChangeRateChoice) => void
 }) {
+  const closeNote = <>*당일 종가 15:30</>
+  const red = (text: string) => <span className="text-red-600">{text}</span>
   const options = [
-    { value: 'daily' as const, label: '누적', help: <><b className="text-red-600">전일</b> 종가 대비</>, locked: false },
+    {
+      value: 'close' as const,
+      label: '종가',
+      help: (
+        <>
+          <b>메인 마켓 종가</b>
+          <br />
+          ({red('전일 종가')} 대비 {red('당일 종가')})
+          <br />
+          <br />
+          {closeNote}
+        </>
+      ),
+      locked: false,
+    },
+    {
+      value: 'daily' as const,
+      label: '누적',
+      help: (
+        <>
+          <b>애프터 마켓 누적</b>
+          <br />
+          ({red('전일 종가')} 대비 {red('현재가')})
+          <br />
+          <br />
+          {closeNote}
+        </>
+      ),
+      locked: false,
+    },
     {
       value: 'afterHours' as const,
       label: '따로',
       help: (
         <>
-          <b className="text-red-600">당일</b> 종가 대비
+          <b>애프터 마켓 따로</b>
           <br />
-          15:40 부터
+          ({red('당일 종가')} 대비 {red('현재가')})
+          <br />
+          <br />
+          {closeNote}
         </>
       ),
       locked: !selectable,
@@ -241,9 +276,9 @@ export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
       {visible && <div
         role="radiogroup"
         aria-label="등락률 기준"
-        className="inline-flex h-6 w-16 shrink-0 items-center overflow-visible rounded-none bg-[#202020] p-0.5"
+        className="inline-flex h-6 w-24 shrink-0 items-center overflow-visible rounded-none bg-[#202020] p-0.5"
       >
-        {options.map(option => (
+        {options.map((option, index) => (
           // disabled를 쓰지 않는다 — 비활성 버튼은 클릭 이벤트가 없어서 잠긴 따로의 설명을 볼 수 없다. 잠긴 동안은 값만 안 바꾼다.
           <button
             key={option.value}
@@ -253,12 +288,15 @@ export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
             aria-disabled={option.locked}
             style={basis === option.value
               ? {
+                  marginLeft: index > 0 ? -1 : 0,
                   color: '#111827',
                   backgroundColor: SESSION_DOT_COLOR['애프터 마켓'],
                   borderRadius: 0,
                   boxShadow: 'inset 0 1px 1px rgb(255 255 255 / 45%), inset 0 -1px 1px rgb(0 0 0 / 18%)',
                 }
               : {
+                  // 이웃한 안 선택 버튼끼리 테두리가 겹치도록 1px 당겨서 사이 선이 한 줄만 보이게 한다.
+                  marginLeft: index > 0 ? -1 : 0,
                   color: option.locked ? '#737373' : '#d1d5db',
                   backgroundColor: 'transparent',
                   borderRadius: 0,
