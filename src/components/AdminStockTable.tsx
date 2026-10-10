@@ -18,6 +18,8 @@ import Spinner from './Spinner'
 import { SearchBar } from './ReadOnlyTaxonomySheet'
 import EmptyMessage, { EMPTY_DATA_MESSAGE, EMPTY_SEARCH_MESSAGE } from './EmptyMessage'
 import { STOCK_HEADER_ROW_PX, stockTableMinWidthPx, type StockColumnKey } from '@/utils/stockTableColumns'
+import { usePopupPosition, type PopupPosition } from '@/hooks/usePopupPosition'
+import ChangeHistoryControls from '@/components/ChangeHistoryControls'
 import StockTableColGroup from '@/components/StockTableColGroup'
 import StockSortHeader from '@/components/StockSortHeader'
 import SelectionHintBubble from '@/components/SelectionHintBubble'
@@ -25,7 +27,7 @@ import { useStockNameRightEdge } from '@/hooks/useStockNameRightEdge'
 import ColumnFilterButton, { SectorOrderToggle } from '@/components/ColumnFilterButton'
 import { useStockColumnFilters, type StockFilterKey } from '@/hooks/useStockColumnFilters'
 import { useMarketValueTiers } from '@/hooks/useMarketValueTiers'
-import { ChevronDownIcon, ExcelIcon } from './icons/MarketMapIcons'
+import { DownloadIcon, UploadIcon } from './icons/MarketMapIcons'
 
 interface Props {
   items: StockSectorListItem[]
@@ -257,15 +259,6 @@ function matchesSectorSearch(option: SectorOption, trimmed: string, byId: Map<nu
   return false
 }
 
-interface PopupPosition {
-  top: number
-  left: number
-  openUpward: boolean
-  alignRight: boolean
-  // 트리거 폭(px) — 트리거와 같은 폭으로 펼치는 팝업이 쓴다.
-  width: number
-}
-
 // 필터 팝업 목록 한 행의 높이(px) — 테이블 본문과 같은 text-sm(20px 줄높이) + py-0.5(위아래 2px씩) 기준.
 const FILTER_LIST_ROW_HEIGHT = 24
 // 필터 팝업을 한 화면에 몇 개 행까지 보여줄지 — 이보다 적으면 목록 실제 높이만큼만 차지하고,
@@ -273,144 +266,6 @@ const FILTER_LIST_ROW_HEIGHT = 24
 const FILTER_LIST_MAX_VISIBLE_ROWS = 15
 const FILTER_LIST_MAX_HEIGHT = FILTER_LIST_ROW_HEIGHT * FILTER_LIST_MAX_VISIBLE_ROWS
 
-// 팝업(섹터 검색창/필터 드롭다운) 공통 로직 — 트리거 기준 위치 계산 + 바깥 클릭/스크롤 시 닫기.
-function usePopupPosition(
-  isOpen: boolean,
-  setIsOpen: (open: boolean) => void,
-  triggerRef: React.RefObject<HTMLElement | null>,
-  popupRef: React.RefObject<HTMLElement | null>,
-  onOpen?: () => void,
-  // 팝업이 아래로 열렸을 때 화면 밖으로 잘리지 않게, 트리거가 화면 세로 기준 몇 % 아래부터 위로 뒤집을지.
-  // 팝업이 클수록(예: 섹터 검색 목록) 더 일찍(작은 값) 뒤집어야 한다.
-  flipThreshold = 0.8,
-  // 트리거가 화면 우측 끝에 붙어있으면(예: 일괄 변경 버튼) 왼쪽으로 열어야 화면 밖으로 안 잘린다.
-  alignRight = false,
-) {
-  const [position, setPosition] = useState<PopupPosition | null>(null)
-
-  useLayoutEffect(() => {
-    if (isOpen && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect()
-      const openUpward = rect.bottom > window.innerHeight * flipThreshold
-      setPosition({
-        top: openUpward ? rect.top : rect.bottom,
-        left: alignRight ? rect.right : rect.left,
-        openUpward,
-        alignRight,
-        width: rect.width,
-      })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- ref는 안정적이라 open 시점에만 반응하면 된다
-  }, [isOpen])
-
-  // 처음 여는 순간엔 이 컴포넌트가 처음 렌더될 때라 position이 아직 null이라 팝업(및 입력창) 자체가
-  // DOM에 없다 — 그 상태에서 onOpen(주로 input.focus())을 호출하면 허공에 걸린다. position이 실제로
-  // 채워져서 팝업이 DOM에 나타난 뒤에 따로 포커스를 걸어야, 처음 여는 경우에도 커서가 제대로 간다.
-  useEffect(() => {
-    if (isOpen && position) onOpen?.()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onOpen은 매 렌더 새 함수라 deps에 넣으면 무한루프
-  }, [isOpen, position])
-
-  useEffect(() => {
-    if (!isOpen) return
-
-    const close = () => setIsOpen(false)
-    const handlePointerDown = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (popupRef.current?.contains(target) || triggerRef.current?.contains(target)) return
-      close()
-    }
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close()
-    }
-    // capture 없이 window 자체의 scroll(페이지 스크롤)만 감지 — capture:true였으면
-    // 팝업 내부 목록의 overflow-y-auto 스크롤까지 잡혀서 즉시 닫혀버림.
-    window.addEventListener('scroll', close)
-    document.addEventListener('mousedown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('scroll', close)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- ref/setIsOpen은 안정적이라 isOpen 변화에만 반응하면 됨
-  }, [isOpen])
-
-  return position
-}
-
-// 실행취소/다시실행 히스토리 목록 팝업 — 최신 항목이 위로 오도록 뒤집어서 보여주고, 텍스트는 항상
-// 고정("종목명: 이전 → 이후")이며 각 행에 마우스를 올렸을 때만 우측에 실행취소/다시실행 텍스트 버튼이
-// 나타난다. 클릭하면 스택 순서와 무관하게 그 항목 하나만 되돌리거나 다시 적용한다.
-function UndoRedoHistoryPopup({
-  isOpen,
-  setIsOpen,
-  triggerRef,
-  actions,
-  direction,
-  items,
-  sectorOptionsById,
-  onPick,
-}: {
-  isOpen: boolean
-  setIsOpen: (open: boolean) => void
-  triggerRef: React.RefObject<HTMLElement | null>
-  actions: UndoableAction[]
-  direction: 'undo' | 'redo'
-  items: StockSectorListItem[]
-  sectorOptionsById: Map<number, SectorOption>
-  onPick: (id: string) => void
-}) {
-  const popupRef = useRef<HTMLDivElement>(null)
-  // 되돌리기·다시 적용 두 칸을 묶은 줄과 같은 왼쪽 끝·같은 폭으로 펼친다 — 어느 쪽 목록이든 같은 자리에 뜨고 설정창 밖으로 나가지 않는다.
-  const position = usePopupPosition(isOpen, setIsOpen, triggerRef, popupRef, undefined, 0.8, false)
-  // 마우스를 올린 줄까지 위에서부터 모두 강조해서, 누르면 어디까지 처리되는지 바로 보이게 한다.
-  const [hoverIndex, setHoverIndex] = useState(-1)
-  const actionLabel = direction === 'undo' ? '실행취소' : '다시실행'
-
-  if (!isOpen || !position) return null
-
-  const ordered = [...actions].reverse()
-
-  return (
-    <div
-      ref={popupRef}
-      style={{
-        position: 'fixed',
-        // 버튼 바로 밑에 붙지 않게 6px 띄운다(위로 열릴 땐 위로 6px).
-        top: position.top + (position.openUpward ? -6 : 6),
-        left: position.left,
-        width: position.width,
-        transform: `translate(${position.alignRight ? '-100%' : '0'}, ${position.openUpward ? '-100%' : '0'})`,
-      }}
-      className="z-50 overflow-hidden rounded-none border border-gray-500 bg-[#363639] p-0 text-sm text-white shadow-xl"
-      onClick={e => e.stopPropagation()}
-    >
-      {ordered.length === 0 ? (
-        <p className="whitespace-nowrap px-1 text-gray-400">{actionLabel}할 변경 내역이 없습니다</p>
-      ) : (
-        <div className="overflow-y-auto scrollbar-thin" style={{ maxHeight: FILTER_LIST_MAX_HEIGHT }} onMouseLeave={() => setHoverIndex(-1)}>
-          {ordered.map((action, index) => (
-            <button
-              key={action.id}
-              onMouseEnter={() => setHoverIndex(index)}
-              type="button"
-              onClick={() => {
-                onPick(action.id)
-                setIsOpen(false)
-              }}
-              title={`여기까지 ${index + 1}단계 ${actionLabel}`}
-              className={`flex w-full items-center gap-2 whitespace-nowrap rounded-none border-0 px-2 py-1 text-left text-sm font-normal text-white ${index > 0 ? 'border-t border-t-white/30' : ''} ${index <= hoverIndex ? 'bg-[var(--brand)]/20 border-white/25!' : 'bg-transparent'}`}
-            >
-              <span className="w-6 shrink-0 text-right text-xs tabular-nums text-gray-400">{direction === 'undo' ? '-' : '+'}{index + 1}</span>
-              <span className="min-w-0 truncate">{describeUndoableAction(action, items, sectorOptionsById)}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 // 섹터 검색창의 검색어/방향키 탐색 상태 — AdminStockSectorCell과 BulkAssignButton이 공유.
 // isOpen이 false(팝업 닫힘)면 아무도 matches를 안 쓰므로 계산 자체를 건너뛴다 — 행이 수천 개라
@@ -1120,10 +975,7 @@ export default function AdminStockTable({
     setRedoStack(prev => prev.slice(0, index))
     setUndoStack(prev => [...prev, ...applied])
   }
-  const [isUndoListOpen, setIsUndoListOpen] = useState(false)
-  const [isRedoListOpen, setIsRedoListOpen] = useState(false)
   // 목록 팝업 위치 기준은 화살표가 아니라 UNDO/REDO 버튼 전체(테두리) — 팝업 좌측이 버튼 좌측 테두리와 맞도록.
-  const historyRowRef = useRef<HTMLDivElement>(null)
   // 키보드 리스너는 마운트 시 한 번만 등록하고(=종목 탭에 있는 동안만, 언마운트되면 자동 해제),
   // 매번 최신 핸들러를 부르도록 ref로 우회한다.
   const undoRef = useRef(handleUndo)
@@ -1612,7 +1464,7 @@ export default function AdminStockTable({
 
   // 지금 화면에 필터/정렬 적용된 상태 그대로 내려받는다 — 전체를 받고 싶으면 필터를 먼저 풀면 된다.
   const handleExportExcel = () => {
-    const filename = `업종분류-${fileTimestamp()}.xlsx`
+    const filename = `INDUSTRY-${fileTimestamp()}.xlsx`
     const rows = sorted.map(item => {
       const display = displayByStockCode.get(item.stockCode)!
       return {
@@ -1667,68 +1519,17 @@ export default function AdminStockTable({
   // 툴바 버튼은 테두리·채운 배경 없이 아이콘/글자만 둔다 — 올리면 옅은 배경이 깔리고, 비활성이면 흐려진다.
   // 세 번째 바(페이지 공통 상태/옵션 바) 높이(h-7=28px)에 맞춰야 해서, nes.css 기본 버튼 패딩(6px 8px)보다
   // 좁게 오버라이드한다 — 그 외 로직/상태는 전부 그대로다.
-  // 실행취소·다시실행 아이콘 묶음.
-  // 설정창 "변경 내역" 항목 — 글자가 붙은 두 칸(되돌리기 / 다시 적용)이고, 왼쪽 ⌄는 같은 칸 안에서 변경 내역 목록을 연다.
-  const historyPill = (kind: 'undo' | 'redo') => {
-    const isUndo = kind === 'undo'
-    const stack = isUndo ? undoStack : redoStack
-    const isListOpen = isUndo ? isUndoListOpen : isRedoListOpen
-    const setListOpen = isUndo ? setIsUndoListOpen : setIsRedoListOpen
-    const isEmpty = stack.length === 0
-    const label = isUndo ? '되돌리기' : '다시 적용'
-    return (
-      <>
-        <div
-          className={`flex h-7 min-w-0 items-stretch overflow-hidden rounded-md border border-gray-600 bg-zinc-700 text-sm ${isEmpty ? 'opacity-50' : ''}`}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              if (isUndo) setIsRedoListOpen(false)
-              else setIsUndoListOpen(false)
-              setListOpen(prev => !prev)
-            }}
-            disabled={isEmpty}
-            className={`flex w-5 shrink-0 items-center justify-center border-0 border-r border-gray-600 bg-transparent p-0 text-gray-300 hover:bg-white/10 disabled:cursor-not-allowed disabled:hover:bg-transparent ${isListOpen ? '!bg-white/10 !text-white' : ''}`}
-            title={`${isUndo ? '실행취소' : '다시실행'} 목록`}
-            aria-label={`${isUndo ? '실행취소' : '다시실행'} 목록`}
-          >
-            <ChevronDownIcon className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={isUndo ? handleUndo : handleRedo}
-            disabled={isEmpty}
-            className="flex min-w-0 flex-1 items-center justify-center gap-1 border-0 bg-transparent px-1.5 text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-            title={`${isUndo ? '실행취소' : '다시실행'} (${isUndo ? 'Ctrl+Z' : 'Ctrl+Y'})`}
-            aria-label={isUndo ? '실행취소' : '다시실행'}
-          >
-            <span className="truncate">{label}{isEmpty ? '' : ` (${stack.length})`}</span>
-          </button>
-        </div>
-        <UndoRedoHistoryPopup
-          isOpen={isListOpen}
-          setIsOpen={setListOpen}
-          triggerRef={historyRowRef}
-          actions={stack}
-          direction={kind}
-          items={items}
-          sectorOptionsById={sectorOptionsById}
-          onPick={isUndo ? handleUndoItem : handleRedoItem}
-        />
-      </>
-    )
-  }
+  // 설정창 "변경 내역" 항목 — 종목 화면과 업종 화면이 같은 부품(ChangeHistoryControls)을 쓴다.
   const historyControls = (
-    <div className="max-w-[16rem]">
-      <p className="settings-description m-0 mt-1 text-xs text-gray-400">
-        변경 내역 되돌리기·다시 적용
-      </p>
-      <div ref={historyRowRef} className="mt-4 grid grid-cols-2 gap-2">
-        {historyPill('undo')}
-        {historyPill('redo')}
-      </div>
-    </div>
+    <ChangeHistoryControls
+      undoStack={undoStack}
+      redoStack={redoStack}
+      describe={action => describeUndoableAction(action, items, sectorOptionsById)}
+      onUndo={handleUndo}
+      onRedo={handleRedo}
+      onUndoItem={handleUndoItem}
+      onRedoItem={handleRedoItem}
+    />
   )
 
   const toolbar = (
@@ -1786,26 +1587,27 @@ export default function AdminStockTable({
       {excelContainer && createPortal(
         <div>
           <h2 className="settings-plain-title m-0 text-[15px] font-medium leading-[22px] text-white">간편 업종 분류</h2>
-          <p className="settings-description m-0 mt-1 max-w-[16rem] text-xs text-gray-400">내려 받아서 AI로 분류 후 업로드</p>
+          <p className="settings-description m-0 mt-1 max-w-[16rem] text-xs text-gray-400">파일 다운 받아서 AI로 분류 후 업로드</p>
           <div className="mt-4 grid max-w-[16rem] grid-cols-2 gap-2">
             <button
               type="button"
               onClick={handleExportExcel}
-              className="flex h-7 items-center justify-center gap-1 rounded-md border border-gray-600 bg-zinc-700 text-sm font-normal text-white hover:bg-white/10"
+              className="flex h-7 items-center justify-center gap-1 rounded-md border border-gray-600 bg-zinc-700 text-xs font-medium text-white hover:bg-white/10"
               title="지금 화면에 보이는(필터/정렬 적용된) 목록을 엑셀로 내려받습니다"
               aria-label="엑셀 다운로드"
             >
-              <ExcelIcon className="h-5 w-5" />
+              <DownloadIcon className="h-4 w-4 text-gray-400" />
               다운로드
             </button>
             <button
               type="button"
               onClick={() => uploadInputRef.current?.click()}
               disabled={isUploading}
-              className="flex h-7 items-center justify-center gap-1 rounded-md border border-gray-600 bg-zinc-700 text-sm font-normal text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-7 items-center justify-center gap-1 rounded-md border border-gray-600 bg-zinc-700 text-xs font-medium text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
               title="엑셀의 대·중·소분류대로 종목 분류를 한 번에 바꿉니다(적용 전에 확인창이 뜹니다)"
               aria-label="엑셀 업로드"
             >
+              <UploadIcon className="h-4 w-4 text-gray-400" />
               {isUploading ? '처리 중…' : '업로드'}
             </button>
             <input

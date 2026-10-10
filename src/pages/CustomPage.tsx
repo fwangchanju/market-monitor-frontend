@@ -316,10 +316,16 @@ export default function CustomPage() {
                       </div>
                     </div>
                   )}
-                  <div ref={mode === 'sector' ? setSectorSettingsActionsTarget : setStockHistoryTarget} />
-                  {mode === 'stock' && <div ref={setStockExcelTarget} className="mt-6" />}
+                  {/* 종목 화면은 위에서부터 관리자 → 간편 업종 분류 → 변경 내역 순서다. */}
+                  {mode === 'stock' && <div ref={setStockExcelTarget} />}
+                  <div ref={mode === 'sector' ? setSectorSettingsActionsTarget : setStockHistoryTarget} className={mode === 'stock' ? 'mt-6' : undefined} />
                 </>
-              ) : null}
+              ) : (
+                // 마켓트리·거래소 화면은 읽기 전용이라 설정할 항목이 없다 — 그 사실만 알린다.
+                <div className="text-sm">
+                  <h2 className="settings-plain-title m-0 text-[15px] font-medium leading-[22px] text-white">읽기 전용 · 쓰기 불가</h2>
+                </div>
+              )}
               taxonomyAtBottom
               snapshotTime={taxonomyMap?.taxonomyUpdatedAt}
               taxonomy={sheet}
