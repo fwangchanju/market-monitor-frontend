@@ -1,3 +1,4 @@
+import AnimatedClockLabel from '@/components/AnimatedClockLabel'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
@@ -34,7 +35,7 @@ import { FONT_BAR_MODE_STATUS, FONT_BAR_TIME } from '@/components/FontStyle'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
 import { captureElementToDownload, downloadDataUrl, captureFileName } from '@/utils/captureToDownload'
-import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toCount, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
+import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toCount, toMarketMapSnapshotDateLabel } from '@/utils/format'
 import { marketRoute } from '@/utils/marketRoute'
 import {
   resolveMarketMapColor,
@@ -200,7 +201,7 @@ export default function GroupPage() {
     excludedSectorIds,
     colorScale,
   } = useGlobalSettings({ allowChangeRateMode: true })
-  // 달력에서 지난 날짜를 골라 보는 중이면 시각·시간대·누적/따로 표시는 숨긴다(실시간 정보라서).
+  // 달력에서 지난 날짜를 골라 보는 중이면 시각·시간대·누적/별도 표시는 숨긴다(실시간 정보라서).
   const isPastSnapshot = pinnedSnapshotTime !== undefined
 
   // 집계 대상 종목: 맵 페이지면 지도 설정창의 제외 기준을 따르고, 전체 포함이면 제외 설정 없이 전체 종목으로 계산한다.
@@ -364,7 +365,7 @@ export default function GroupPage() {
     }
 
     // marketOverview는 단일 마켓 조회에만 온다(ALL_STOCK이면 단일 지수값이 없어 null) — 지도 페이지와
-    // 동일하게 ALL_STOCK이면 지수 막대를 아예 안 보여준다. 지수 참조 값은 누적 등락률이므로 따로에서는 표시하지 않는다.
+    // 동일하게 ALL_STOCK이면 지수 막대를 아예 안 보여준다. 지수 참조 값은 누적 등락률이므로 별도에서는 표시하지 않는다.
     const nowOverview = displayNow.marketOverview
     if (nowOverview && changeRateMode === 'daily') {
       currentEntries.push({
@@ -424,7 +425,7 @@ export default function GroupPage() {
                   }}
                 />
                 <PeriodDropdown />
-                {/* 로딩 원이나 오류 문구가 보이는 동안에도 시계·시간대·누적/따로·분류명을 제자리에 둔다. 데이터가 없으면 시각 글자만 비어 있다. */}
+                {/* 로딩 원이나 오류 문구가 보이는 동안에도 시계·시간대·누적/별도·분류명을 제자리에 둔다. 데이터가 없으면 시각 글자만 비어 있다. */}
                   <>
                 <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap ${isPastSnapshot ? 'text-[var(--brand)]' : 'text-gray-400'}`}>
                   {/* 데이터가 없어도 날짜·시각 자리는 같은 폭으로 잡아 둬서 뒤의 시장 시간대 표시가 당겨지지 않게 한다. */}
@@ -448,7 +449,7 @@ export default function GroupPage() {
                         helpText={SNAPSHOT_REFRESH_HELP}
                         minSpinDurationMs={REFRESH_FEEDBACK_MIN_DURATION_MS}
                       >
-                        <span className={displayNow?.snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotTimeOnlyLabel(displayNow?.snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
+                        <AnimatedClockLabel snapshotTime={displayNow?.snapshotTime ?? null} />
                       </PageRefreshButton>
                     </>
                   )}

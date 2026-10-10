@@ -37,7 +37,7 @@
 | 기간 선택 드롭다운 (Map·Group 공용) | `PeriodDropdown` | 기간 드롭다운 |
 | Custom 페이지의 업종·종목 전환 드롭다운 | `ModeDropdown` | 업종·종목 전환 드롭다운 |
 | 시계 옆 "● 메인 마켓" 표시 (프리 마켓 · 메인 마켓 · 애프터 마켓 · 마켓 종료) | `TradingSession`, `TradingSessionIndicator` | 거래 세션 |
-| 종가 / 일간(누적) / 시간외(따로) 등락률 전환 스위치 | `ChangeRateChoice`, `ChangeRateMode`, `ChangeRateModeToggle` | 애프터 버튼 · 애프터 토글 (종가/누적/따로 세 칸) |
+| 종가 / 일간(누적) / 시간외(별도) 등락률 전환 스위치 | `ChangeRateChoice`, `ChangeRateMode`, `ChangeRateModeToggle` | 애프터 버튼 · 애프터 토글 (종가/누적/별도 세 칸) |
 
 - 화면의 **Basis**(설정창 맨 아래)는 코드에서 `Taxonomy`(분류 선택)다. 코드의 `basis`는 이것이 아니라 일간/시간외 등락률 기준이며, 서버에 보내는 요청 항목 이름(`basis=afterHours`)으로만 남아 있고 코드 안에서는 `ChangeRateMode`라고 부른다.
 - "히트맵", "콤보박스"라는 말은 화면과 코드에서 쓰지 않는다. 드롭다운이라고 부른다.

@@ -6,7 +6,7 @@ export function SlidingHighlight({ count, index, className }: { count: number; i
   return (
     <span
       aria-hidden="true"
-      className={`absolute bottom-0.5 left-0.5 top-0.5 transition-transform duration-[400ms] ease-out ${className}`}
+      className={`absolute bottom-0.5 left-0.5 top-0.5 transition-transform duration-[500ms] ease-out ${className}`}
       style={{ width: `calc((100% - 4px) / ${count})`, transform: `translateX(${index * 100}%)` }}
     />
   )

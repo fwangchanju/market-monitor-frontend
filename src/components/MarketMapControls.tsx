@@ -157,8 +157,10 @@ const SESSION_DOT_COLOR: Record<TradingSession, string> = {
 }
 
 // 지도·그룹 페이지가 같은 시간대 문구와 강조 색상을 사용한다.
-export function TradingSessionIndicator() {
-  const session = useTradingSession()
+// session을 주면 지금 시간대 대신 그 시간대를 보여준다(종가 지도를 보는 동안은 "마켓 종료").
+export function TradingSessionIndicator({ session: sessionOverride }: { session?: TradingSession }) {
+  const currentSession = useTradingSession()
+  const session = sessionOverride ?? currentSession
   return (
     <span className={`${FONT_BAR_TIME} flex items-center text-gray-400`}>
       <span aria-hidden="true" className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: SESSION_DOT_COLOR[session] }} />
@@ -171,9 +173,9 @@ export function TradingSessionIndicator() {
   )
 }
 
-// 등락률 기준 토글 — 종가(그날 정규장 종가 지도) / 누적(전일 종가 대비) / 따로(당일 종가 대비). 애프터 마켓 시작부터 다음 프리 마켓 개장 전까지만 보인다.
-// 시간외 스냅샷이 아직 없으면 따로는 잠긴다. 시장 시간대 말머리는 버튼의 표시 여부와 무관하게 유지한다.
-// 버튼을 누르면 그 버튼 아래에 설명 팝업이 뜬다(새로고침 버튼의 설명창과 같은 모양). 잠긴 따로도 눌러서 설명을 볼 수 있다.
+// 등락률 기준 토글 — 종가(그날 정규장 종가 지도) / 누적(전일 종가 대비) / 별도(당일 종가 대비). 애프터 마켓 시작부터 다음 프리 마켓 개장 전까지만 보인다.
+// 시간외 스냅샷이 아직 없으면 별도는 잠긴다. 시장 시간대 말머리는 버튼의 표시 여부와 무관하게 유지한다.
+// 버튼을 누르면 그 버튼 아래에 설명 팝업이 뜬다(새로고침 버튼의 설명창과 같은 모양). 잠긴 별도도 눌러서 설명을 볼 수 있다.
 export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
   basis: ChangeRateChoice
   visible: boolean
@@ -215,10 +217,10 @@ export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
     },
     {
       value: 'afterHours' as const,
-      label: '따로',
+      label: '별도',
       help: (
         <>
-          <b>애프터 마켓 따로</b>
+          <b>애프터 마켓 별도</b>
           <br />
           ({red('당일 종가')} 대비 {red('현재가')})
           <br />
@@ -285,7 +287,8 @@ export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
 
   return (
     <div className="-mr-[5px] flex shrink-0 items-center gap-2 whitespace-nowrap" data-basis-toggle>
-      <TradingSessionIndicator />
+      {/* 종가 지도는 정규장이 끝난 시점의 지도라서, 지금이 애프터 마켓이어도 시간대 글자는 "마켓 종료"로 둔다. 시각으로 계산하지 않아 개장·마감이 달라지는 날에도 맞다. */}
+      <TradingSessionIndicator session={basis === 'close' ? '마켓 종료' : undefined} />
       {visible && <div
         role="radiogroup"
         aria-label="등락률 기준"
@@ -294,7 +297,7 @@ export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
         {highlight && (
           <span
             aria-hidden="true"
-            className="absolute bottom-0.5 top-0.5 transition-[left,width] duration-[400ms] ease-out"
+            className="absolute bottom-0.5 top-0.5 transition-[left,width] duration-[500ms] ease-out"
             style={{
               left: highlight.left,
               width: highlight.width,
@@ -304,7 +307,7 @@ export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
           />
         )}
         {options.map((option, index) => (
-          // disabled를 쓰지 않는다 — 비활성 버튼은 클릭 이벤트가 없어서 잠긴 따로의 설명을 볼 수 없다. 잠긴 동안은 값만 안 바꾼다.
+          // disabled를 쓰지 않는다 — 비활성 버튼은 클릭 이벤트가 없어서 잠긴 별도의 설명을 볼 수 없다. 잠긴 동안은 값만 안 바꾼다.
           <button
             key={option.value}
             type="button"
@@ -329,7 +332,7 @@ export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
               if (!option.locked && basis !== option.value) onChange(option.value)
               setPopup({ text: option.help, anchor: event.currentTarget.getBoundingClientRect() })
             }}
-            className={`h-5 min-w-0 flex-1 relative z-10 rounded-none border-0 px-0 text-sm font-bold leading-none transition-colors duration-[400ms] ${
+            className={`h-5 min-w-0 flex-1 relative z-10 rounded-none border-0 px-0 text-sm font-bold leading-none transition-colors duration-[500ms] ${
               basis !== option.value && option.locked ? 'cursor-not-allowed' : ''
             }`}
           >
