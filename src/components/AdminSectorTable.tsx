@@ -478,7 +478,7 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget, onCou
           placeholder="업종 검색"
           ariaLabel="업종 검색"
         />
-        <div className="relative grid min-h-0 flex-1 grid-cols-3 overflow-hidden select-none [&_input]:select-text">
+        <div className="relative grid min-h-0 flex-1 grid-cols-3 overflow-hidden border border-slate-700 select-none [&_input]:select-text">
           {(['대분류', '중분류', '소분류'] as const).map((label, index) => (
             <div key={label} className="flex min-h-0 min-w-0 flex-col">
               <div className={`flex h-7 shrink-0 items-center justify-center gap-2 bg-[#2b3a4f] text-sm font-bold ${index < 2 ? 'border-r border-white/15' : ''} ${index === activeColumn ? 'text-[var(--brand)]' : 'text-slate-100'}`}>

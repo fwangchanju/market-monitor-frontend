@@ -1774,8 +1774,8 @@ export default function AdminStockTable({
           )
         })}
       </div>
-      {/* 바깥 테두리(외곽선)는 두지 않는다 — KRX·NXT 시트와 같은 모양이다. */}
-      <div className="relative min-h-0 flex-1">
+      {/* 표 둘레에 본문 줄과 같은 색의 바깥 테두리를 둔다 — 마켓트리·거래소 표와 같은 모양이다. */}
+      <div className="relative min-h-0 flex-1 border border-slate-700">
         {isSelectionHintOpen && <SelectionHintBubble onClose={() => setIsSelectionHintOpen(false)} />}
         <div ref={scrollContainerRef} className="relative h-full overflow-auto scrollbar-thin">
           {/* 표 글자는 드래그해도 파랗게 선택되지 않게 한다(줄 드래그 선택과 겹치기 때문). 입력창 안의 글자는 그대로 선택할 수 있다. */}

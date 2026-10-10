@@ -211,7 +211,7 @@ export function SearchBar({ query, onChange, placeholder, ariaLabel, countLabel,
   afterInput?: ReactNode
 }) {
   return (
-    <div className={settingsLayout ? 'mb-6 flex min-w-0 flex-col gap-2' : 'flex shrink-0 items-center pl-2 pr-[18px] pb-2'}>
+    <div className={settingsLayout ? 'mb-6 flex min-w-0 flex-col gap-2' : 'flex shrink-0 items-center pr-[18px] pb-2'}>
       <input
         type="text"
         value={query}
@@ -221,7 +221,7 @@ export function SearchBar({ query, onChange, placeholder, ariaLabel, countLabel,
         className={`nes-input is-dark ${settingsLayout ? 'h-8 w-full text-sm' : 'h-7 w-[15.5rem] text-sm'}`}
         // 안내 문구와 입력 글자가 위 드롭박스의 글자와 같은 선에서 시작하게 한다: 드롭박스 안쪽 여백(0.5rem)에서
         // 이 입력창의 테두리(1px)만큼 뺀다. 유틸리티 클래스는 nes.css보다 약해서 인라인으로 준다.
-        style={{ paddingLeft: 'calc(0.5rem - 1px)', ...(!settingsLayout && inputRightEdgePx ? { width: Math.max(120, inputRightEdgePx - 8) } : {}) }}
+        style={{ paddingLeft: 'calc(0.5rem - 1px)', ...(!settingsLayout && inputRightEdgePx ? { width: Math.max(120, inputRightEdgePx) } : {}) }}
       />
       {afterInput && <div className="ml-2 flex shrink-0 items-center gap-3">{afterInput}</div>}
       {/* 개수는 위 헤더의 "읽기 전용"과 같은 위치에서 시작한다: 드롭박스 둘(15.5rem) + 간격(0.5rem) + "읽기 전용"의 왼쪽 여백(0.75rem)
@@ -304,7 +304,7 @@ function CategoryTable({ sectors, emptyMessage, extra, onCountLabelChange }: { s
         ariaLabel="업종 검색"
         extra={extra}
       />
-      <div ref={scrollContainerRef} className="relative min-h-0 flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} className="relative min-h-0 flex-1 overflow-y-auto border border-slate-700">
         {/* 업종·업종 시가총액·종목 수 세 칸을 같은 폭(삼등분)으로 나눈다 — MARKETRY 업종 화면의 대·중·소분류 칸과 같은 모양이다. */}
         <table className={`${TABLE_CLASS} table-fixed select-none`}>
           <thead>
@@ -490,7 +490,7 @@ function StockTable({ showHierarchy, sectors, emptyMessage, nxtStockCodes, stock
           </>
         }
       />
-      <div className="relative min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1 border border-slate-700">
       {selectionHint.isOpen && <SelectionHintBubble onClose={selectionHint.close} />}
       <div ref={scrollContainerRef} className="relative h-full overflow-auto scrollbar-thin">
         {/* 내 분류와 같은 표·테두리·스크롤 규칙을 쓴다. 마지막 열은 남는 폭을 받아 KRX의 NXT가 대·중·소분류 합계 폭과 일치한다. */}

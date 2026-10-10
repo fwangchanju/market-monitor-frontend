@@ -250,7 +250,8 @@ export default function CustomPage() {
               </div>
             </div>
             <EmptyMessageAreaContext.Provider value={emptyMessageArea}>
-            <div className="flex min-h-0 flex-1">
+            {/* 좌우 7px — 지도 페이지처럼 화면 왼쪽 끝·설정창과 본문 사이를 띄운다(위 바의 STOCK 드롭다운 시작점, 분류 배지와 설정창 사이 간격과 같다). */}
+            <div className="flex min-h-0 flex-1 px-[7px]">
               <div
                 className={`flex min-h-0 min-w-0 flex-1 flex-col ${mode === 'sector' ? 'overflow-y-auto' : ''}`}
               >
