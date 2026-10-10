@@ -1,3 +1,4 @@
+import AnimatedClockLabel from '@/components/AnimatedClockLabel'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import NavBar from '@/components/NavBar'
@@ -36,7 +37,7 @@ import { useIsLoggedIn } from '@/hooks/useSession'
 import { useLoginGate } from '@/hooks/useLoginGate'
 import { useNativeFullscreen } from '@/hooks/useNativeFullscreen'
 import type { DisplayGroup } from '@/hooks/useMarketMapLayout'
-import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toCount, toMarketMapSnapshotDateLabel, toMarketMapSnapshotTimeOnlyLabel } from '@/utils/format'
+import { MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO, toCount, toMarketMapSnapshotDateLabel } from '@/utils/format'
 import { captureElementToClipboard, copyDataUrlToClipboard } from '@/utils/captureToClipboard'
 import { CAPTURE_ID } from '@/utils/captureIds'
 import { ClockIcon, ReturnArrowIcon } from '@/components/icons/MarketMapIcons'
@@ -498,7 +499,7 @@ export default function MapPage() {
                         helpText={SNAPSHOT_REFRESH_HELP}
                         minSpinDurationMs={REFRESH_FEEDBACK_MIN_DURATION_MS}
                       >
-                        <span className={data?.snapshotTime ? undefined : 'invisible'}>{toMarketMapSnapshotTimeOnlyLabel(data?.snapshotTime ?? MARKET_MAP_SNAPSHOT_PLACEHOLDER_ISO)}</span>
+                        <AnimatedClockLabel snapshotTime={data?.snapshotTime ?? null} />
                       </PageRefreshButton>
                     </>
                   )}

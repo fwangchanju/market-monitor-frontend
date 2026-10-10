@@ -157,8 +157,10 @@ const SESSION_DOT_COLOR: Record<TradingSession, string> = {
 }
 
 // 지도·그룹 페이지가 같은 시간대 문구와 강조 색상을 사용한다.
-export function TradingSessionIndicator() {
-  const session = useTradingSession()
+// session을 주면 지금 시간대 대신 그 시간대를 보여준다(종가 지도를 보는 동안은 "마켓 종료").
+export function TradingSessionIndicator({ session: sessionOverride }: { session?: TradingSession }) {
+  const currentSession = useTradingSession()
+  const session = sessionOverride ?? currentSession
   return (
     <span className={`${FONT_BAR_TIME} flex items-center text-gray-400`}>
       <span aria-hidden="true" className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: SESSION_DOT_COLOR[session] }} />
@@ -285,7 +287,8 @@ export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
 
   return (
     <div className="-mr-[5px] flex shrink-0 items-center gap-2 whitespace-nowrap" data-basis-toggle>
-      <TradingSessionIndicator />
+      {/* 종가 지도는 정규장이 끝난 시점의 지도라서, 지금이 애프터 마켓이어도 시간대 글자는 "마켓 종료"로 둔다. 시각으로 계산하지 않아 개장·마감이 달라지는 날에도 맞다. */}
+      <TradingSessionIndicator session={basis === 'close' ? '마켓 종료' : undefined} />
       {visible && <div
         role="radiogroup"
         aria-label="등락률 기준"
@@ -294,7 +297,7 @@ export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
         {highlight && (
           <span
             aria-hidden="true"
-            className="absolute bottom-0.5 top-0.5 transition-[left,width] duration-[400ms] ease-out"
+            className="absolute bottom-0.5 top-0.5 transition-[left,width] duration-[500ms] ease-out"
             style={{
               left: highlight.left,
               width: highlight.width,
@@ -329,7 +332,7 @@ export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
               if (!option.locked && basis !== option.value) onChange(option.value)
               setPopup({ text: option.help, anchor: event.currentTarget.getBoundingClientRect() })
             }}
-            className={`h-5 min-w-0 flex-1 relative z-10 rounded-none border-0 px-0 text-sm font-bold leading-none transition-colors duration-[400ms] ${
+            className={`h-5 min-w-0 flex-1 relative z-10 rounded-none border-0 px-0 text-sm font-bold leading-none transition-colors duration-[500ms] ${
               basis !== option.value && option.locked ? 'cursor-not-allowed' : ''
             }`}
           >

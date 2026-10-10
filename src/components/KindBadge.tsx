@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTaxonomySelection } from '@/hooks/useTaxonomySelection'
+import { FLASH_HOLD_MS } from '@/components/numberEffectTiming'
 
 // 종목/업종 구분 배지 — 지도에서 업종 헤더·종목 박스를 우클릭했을 때 뜨는 팝업의 제목 앞 배지와 같은 모양이다.
 // 설정창 위쪽의 "nn/nn종목" 개수 표시도 글자 대신 이 배지를 쓴다.
@@ -18,10 +19,9 @@ export default function KindBadge({ kind, onDark = false, className = '' }: { ki
 // "12/30종목" 같은 개수 글자를 "12/30 [종목]"(숫자가 앞, 배지가 바로 뒤)으로 그린다. 숫자의 천 단위 쉼표는 뺀다. 끝이 종목/업종이 아니면 글자 그대로 둔다.
 // 분자가 바뀔 때 청록색으로 잠깐 보이게 하고, 숫자도 이전 값에서 새 값까지 올라가거나 내려가며 보여주는 훅 — 설정(제외 업종·구간 등)을 바꿔 숫자가 변했다는 신호다.
 // 번쩍이지도 움직이지도 않는 경우: 처음 그릴 때, 분모가 같이 바뀔 때(시장 변경·데이터 로딩), 분류 기준을 바꾼 직후 1.5초(새 데이터가 도착하며 분자가 달라지는 때).
-// 슬라이더처럼 연속으로 바뀌는 동안은 청록색을 유지하고(숫자는 지금 보이는 값에서 새 목표로 이어서 움직인다), 멈춘 뒤 0.6초 지나면 원래 색으로 돌아온다.
-const FLASH_HOLD_MS = 600
+// 슬라이더처럼 연속으로 바뀌는 동안은 청록색을 유지하고(숫자는 지금 보이는 값에서 새 목표로 이어서 움직인다), 멈춘 뒤 1.5초 지나면 원래 색으로 돌아온다.
 const FLASH_SUPPRESS_AFTER_TAXONOMY_MS = 1500
-const COUNT_TWEEN_MS = 600
+const COUNT_TWEEN_MS = 1000
 
 function useCountChange(numerator: string, denominator: string) {
   const [taxonomy] = useTaxonomySelection()
@@ -104,7 +104,7 @@ export function CountLabelWithBadge({ label, alignEnd = false }: { label: string
   return (
     <span className={`items-center gap-1.5 ${alignEnd ? 'flex w-full justify-end' : 'inline-flex'}`}>
       <span>
-        <span className={`tabular-nums transition-colors duration-300 ${isFlashing ? 'text-[var(--brand)]' : ''}`}>{shownNumerator}</span>
+        <span className={`tabular-nums transition-colors duration-500 ${isFlashing ? 'text-[var(--brand)]' : ''}`}>{shownNumerator}</span>
         {denominator && `/${denominator}`}
       </span>
       <KindBadge kind={match[2] as Kind} onDark />
