@@ -131,7 +131,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   const isCustom = source === 'MINE'
   const isMarketry = source === 'MARKETRY'
   const usesCustomTree = isCustom || isMarketry
-  // NXT 종목만 보기 — 어느 분류(거래소/MARKETRY)이든 시간대가 정한다. NXT 단독 시간대(08:00~08:50, 15:40~16:00)에만
+  // NXT 종목만 보기 — 어느 분류(거래소/MARKETRY)이든 오늘의 시간표가 정한 필터 구간에만
   // 분류는 그대로 두고 NXT 거래 종목만 남기고, 그 밖의 시간에는 전체 종목을 보여준다. 사용자가 직접 켜고 끄지 않는다.
   const nxtOnlyWindow = useNxtOnlyWindow()
   const nxtOnly = nxtOnlyWindow !== null

@@ -3,6 +3,7 @@ import {
   ExcludedStockItemSchema,
   MarketMapResponseSchema,
   MarketMapScaleResponseSchema,
+  MarketTradingScheduleSchema,
   MarketValueTierListResponseSchema,
   StockCatalogItemSchema,
   type MarketQuery,
@@ -11,6 +12,10 @@ import { z } from 'zod'
 import type { TaxonomySource } from '@/utils/taxonomyNames'
 
 const excludedStockListResponseSchema = z.array(ExcludedStockItemSchema)
+
+export const getMarketTradingSchedule = (date: string) =>
+  client.get('/map/trading-schedule', { params: { date } })
+    .then(r => MarketTradingScheduleSchema.parse(r.data))
 
 // 등락률 기준 — daily는 전일 종가 대비 누적(기본), afterHours는 그날 정규장 종가 대비(15:40 이후 오늘 스냅샷에서만 적용된다).
 export type ChangeRateMode = 'daily' | 'afterHours'

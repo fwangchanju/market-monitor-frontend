@@ -1,5 +1,16 @@
 import { z } from 'zod'
 
+const TradingTimeWindowSchema = z.object({ startTime: z.string(), endTime: z.string() })
+export const MarketTradingScheduleSchema = z.object({
+  date: z.string(),
+  status: z.enum(['TRADING_DAY', 'HOLIDAY', 'FAILED']),
+  preMarket: TradingTimeWindowSchema.nullable(),
+  regularMarket: TradingTimeWindowSchema.nullable(),
+  afterMarket: TradingTimeWindowSchema.nullable(),
+  nxtOnlyWindows: z.array(TradingTimeWindowSchema),
+})
+export type MarketTradingSchedule = z.infer<typeof MarketTradingScheduleSchema>
+
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 타입 추출 전용, 실제 파싱엔 안 씀

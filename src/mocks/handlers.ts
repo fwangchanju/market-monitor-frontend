@@ -35,6 +35,14 @@ const profileResponse = () =>
   })
 
 export const handlers = [
+  http.get('/api/map/trading-schedule', ({ request }) => HttpResponse.json({
+    date: new URL(request.url).searchParams.get('date'),
+    status: 'FAILED',
+    preMarket: null,
+    regularMarket: null,
+    afterMarket: null,
+    nxtOnlyWindows: [],
+  })),
   // ── 프로필(닉네임·사진) ───────────────────────────────────────────────
   http.get('/api/profile', () => profileResponse()),
   http.put('/api/profile/nickname', async ({ request }) => {
