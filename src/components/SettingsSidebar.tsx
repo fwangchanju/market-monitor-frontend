@@ -37,8 +37,9 @@ export function SettingsSidebarGroup({ children }: SettingsSidebarGroupProps) {
 
 // 제목 바로 아래에 항상 보이는 한 줄 설명 — 제목만으로 뜻이 안 와닿는 항목을 물음표 없이 이해하게 한다.
 // 한 줄(16px) + 위 간격(4px)이라 높이를 20px로 계산해서 index.css의 탭 정렬 값을 맞춘다.
-function SettingDescription({ children }: { children: ReactNode }) {
-  return <p className="settings-description mt-1 max-w-[16rem] text-xs text-gray-400">{children}</p>
+// dimmed: 그 항목의 토글이 꺼져 있을 때 제목 줄만 밝게 두고 설명과 조작부를 함께 옅게 한다(조작부는 호출부가 옅게 한다).
+function SettingDescription({ children, dimmed = false }: { children: ReactNode; dimmed?: boolean }) {
+  return <p className={`settings-description mt-1 max-w-[16rem] text-xs text-gray-400 ${dimmed ? 'opacity-40' : ''}`}>{children}</p>
 }
 
 // 설정창 맨 위 아이콘 버튼(초기화·저장)에 마우스를 올리거나 키보드로 오면 아래에 뜨는 설명. 오른쪽 끝에 맞춰 설정창 밖으로 나가지 않게 한다.
@@ -1054,7 +1055,7 @@ function SettingsTaxonomySelector({
             업데이트
             <SettingHelpBubble
               label="업데이트"
-              // 말풍선마다 주어를 빨간 굵은 글씨로 강조한다(누적/따로 말풍선의 전일·당일과 같은 모양). 조사(가)는 강조하지 않는다.
+              // 말풍선마다 주어를 빨간 굵은 글씨로 강조한다(누적/별도 말풍선의 전일·당일과 같은 모양). 조사(가)는 강조하지 않는다.
               description={
                 isExchange ? (
                   <>
@@ -1300,7 +1301,7 @@ export function SettingsSectorLevelSection({
                 compact
               />
             </div>
-            <SettingDescription>지도에 표시할 업종 분류의 깊이</SettingDescription>
+            <SettingDescription dimmed={!sectorLevelEnabled}>지도에 표시할 업종 분류의 깊이</SettingDescription>
             <div className={`settings-slider-control mt-[18px] ${sectorLevelEnabled ? '' : 'opacity-40'}`}>
               <SingleValueSlider
                 index={depthValue - 1}
@@ -1328,7 +1329,7 @@ export function SettingsSectorLevelSection({
                   disabled={isDepthMetricDisabled}
                 />
               </div>
-              <SettingDescription>업종 항목에 표시할 지표</SettingDescription>
+              <SettingDescription dimmed={!depthMetricEnabled}>업종 항목에 표시할 지표</SettingDescription>
               <div role="radiogroup" aria-label="표시 지표" className={`relative mt-4 grid max-w-[16rem] settings-control-inset grid-cols-4 rounded-md border border-gray-600 bg-zinc-700 p-0.5 ${depthMetricEnabled ? '' : 'opacity-40'}`}>
                 <SlidingHighlight count={GROUP_TAB_METRIC_OPTIONS.length} index={GROUP_TAB_METRIC_OPTIONS.findIndex(option => option.key === activeDepthMetric)} className="rounded bg-[var(--accent)]" />
                 {GROUP_TAB_METRIC_OPTIONS.map(option => {
@@ -1414,7 +1415,7 @@ export function SettingsSectorLevelSection({
                     disabled={isTopPickDisabled}
                   />
                 </div>
-                <SettingDescription>등락률이 높은 업종을 강조</SettingDescription>
+                <SettingDescription dimmed={!topPickEnabled}>등락률이 높은 업종을 강조</SettingDescription>
                 <DepthTextSelect
                   depth={topPickDepth}
                   onChange={onChangeTopPickDepth}
@@ -1462,7 +1463,7 @@ export function SettingsSectorLevelSection({
         <div>
           <div className={`settings-second-stock-label text-sm ${inBookmarkTab ? '' : 'mt-2'} ${itemClass('boxLabel')}`}>
             <div className="flex max-w-[16rem] items-center justify-between">
-              <span className={`flex items-center text-left text-white ${stockLabelEnabled ? '' : 'opacity-40'}`}>
+              <span className="flex items-center text-left text-white">
                 <SettingTitle bookmarkId="boxLabel" className="text-[15px]">박스 내 표기</SettingTitle>
               </span>
               <ToggleSwitch
@@ -1803,12 +1804,16 @@ export function SettingsExcludeSection({
           checked={sectorFilterEnabled}
           onChange={onToggleSectorFilter}
           label="제외 업종"
+          forceLabelWhite
           labelClassName={`text-[15px] settings-section-num ${number ? 'settings-bookmark-num' : ''}`}
           labelDataNum={number}
           labelSuffix={<BookmarkButton id="excludeSector" label="제외 업종" />}
         />
-        <SettingDescription>업종을 우클릭하면 제외 가능</SettingDescription>
-        <div className={`settings-control-inset settings-exclude-list mt-2 flex flex-col gap-1 overflow-y-auto ${bookmark.mode === 'bookmark' ? 'max-h-14' : 'max-h-40'}`}>
+        <SettingDescription dimmed={!sectorFilterEnabled}>업종을 우클릭하면 제외 가능</SettingDescription>
+        <div
+          inert={!sectorFilterEnabled}
+          className={`settings-control-inset settings-exclude-list mt-2 flex flex-col gap-1 overflow-y-auto ${sectorFilterEnabled ? '' : 'opacity-40'} ${bookmark.mode === 'bookmark' ? 'max-h-14' : 'max-h-40'}`}
+        >
             {excludedSectors.map(sector => (
               // 지도 위쪽 이동 경로의 되돌아가기 버튼과 같은 모양 — 이름 앞에 되돌아가기 표시가 붙은 한 버튼이다.
               <button
@@ -1892,7 +1897,7 @@ export function SettingsColorSection({
           />
         </div>
       </div>
-      <SettingDescription>등락률 구간별 지도 색상</SettingDescription>
+      <SettingDescription dimmed={!colorCustomOn}>등락률 구간별 지도 색상</SettingDescription>
       <div className={`mt-[18px] flex flex-col gap-1 text-sm ${colorCustomOn ? '' : 'pointer-events-none opacity-40'}`}>
         {/* 저장된 색상은 바로 편집하고, 기본 색상은 같은 위치에 새 설정을 만들어 편집한다. */}
         <div className="grid w-full grid-cols-7 gap-0.5">

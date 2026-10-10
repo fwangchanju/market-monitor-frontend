@@ -171,9 +171,9 @@ export function TradingSessionIndicator() {
   )
 }
 
-// 등락률 기준 토글 — 종가(그날 정규장 종가 지도) / 누적(전일 종가 대비) / 따로(당일 종가 대비). 애프터 마켓 시작부터 다음 프리 마켓 개장 전까지만 보인다.
-// 시간외 스냅샷이 아직 없으면 따로는 잠긴다. 시장 시간대 말머리는 버튼의 표시 여부와 무관하게 유지한다.
-// 버튼을 누르면 그 버튼 아래에 설명 팝업이 뜬다(새로고침 버튼의 설명창과 같은 모양). 잠긴 따로도 눌러서 설명을 볼 수 있다.
+// 등락률 기준 토글 — 종가(그날 정규장 종가 지도) / 누적(전일 종가 대비) / 별도(당일 종가 대비). 애프터 마켓 시작부터 다음 프리 마켓 개장 전까지만 보인다.
+// 시간외 스냅샷이 아직 없으면 별도는 잠긴다. 시장 시간대 말머리는 버튼의 표시 여부와 무관하게 유지한다.
+// 버튼을 누르면 그 버튼 아래에 설명 팝업이 뜬다(새로고침 버튼의 설명창과 같은 모양). 잠긴 별도도 눌러서 설명을 볼 수 있다.
 export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
   basis: ChangeRateChoice
   visible: boolean
@@ -215,10 +215,10 @@ export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
     },
     {
       value: 'afterHours' as const,
-      label: '따로',
+      label: '별도',
       help: (
         <>
-          <b>애프터 마켓 따로</b>
+          <b>애프터 마켓 별도</b>
           <br />
           ({red('당일 종가')} 대비 {red('현재가')})
           <br />
@@ -304,7 +304,7 @@ export function ChangeRateModeToggle({ basis, visible, selectable, onChange }: {
           />
         )}
         {options.map((option, index) => (
-          // disabled를 쓰지 않는다 — 비활성 버튼은 클릭 이벤트가 없어서 잠긴 따로의 설명을 볼 수 없다. 잠긴 동안은 값만 안 바꾼다.
+          // disabled를 쓰지 않는다 — 비활성 버튼은 클릭 이벤트가 없어서 잠긴 별도의 설명을 볼 수 없다. 잠긴 동안은 값만 안 바꾼다.
           <button
             key={option.value}
             type="button"

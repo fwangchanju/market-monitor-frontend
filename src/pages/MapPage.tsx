@@ -202,7 +202,7 @@ export default function MapPage() {
     colorScale,
     handleExcludeSector,
   } = useGlobalSettings({ allowChangeRateMode: true })
-  // 달력에서 지난 날짜를 골라 보는 중이면 시각·시간대·누적/따로 표시는 숨긴다(실시간 정보라서).
+  // 달력에서 지난 날짜를 골라 보는 중이면 시각·시간대·누적/별도 표시는 숨긴다(실시간 정보라서).
   const isPastSnapshot = pinnedSnapshotTime !== undefined
 
   const [searchParams, setSearchParams] = useSearchParams()
@@ -474,7 +474,7 @@ export default function MapPage() {
                   }}
                 />
                 <PeriodDropdown />
-                {/* 로딩·오류·빈 화면에서도 시계·시간대·누적/따로를 제자리에 둔다. 데이터가 없으면 시각 글자만 비어 있다. */}
+                {/* 로딩·오류·빈 화면에서도 시계·시간대·누적/별도를 제자리에 둔다. 데이터가 없으면 시각 글자만 비어 있다. */}
                 <>
                     <span className={`${FONT_BAR_TIME} flex items-center gap-1.5 whitespace-nowrap ${isPastSnapshot ? 'text-[var(--brand)]' : 'text-gray-400'}`}>
                   {/* 데이터가 없어도 날짜·시각 자리는 같은 폭으로 잡아 둬서 뒤의 시장 시간대 표시가 당겨지지 않게 한다. */}
@@ -503,7 +503,7 @@ export default function MapPage() {
                     </>
                   )}
                 </span>
-                {/* 시장 시간대 말머리와 누적/따로 — 시간과 관련된 표시라 시계 옆에 붙인다. */}
+                {/* 시장 시간대 말머리와 누적/별도 — 시간과 관련된 표시라 시계 옆에 붙인다. */}
                 {isPastSnapshot === false && (
                   <span className="flex shrink-0">
                     <ChangeRateModeToggle basis={changeRateChoice} visible={isAfterHoursControlsVisible} selectable={isAfterHoursSelectable} onChange={onChangeChangeRateMode} />
@@ -632,7 +632,7 @@ export default function MapPage() {
               </div>
             </div>
           </div>
-          {/* 설정창 위쪽 여백 7px — 위쪽 바의 누적·따로 토글 윗선과 맞춘 값이다. 아래는 붙인다. */}
+          {/* 설정창 위쪽 여백 7px — 위쪽 바의 누적·별도 토글 윗선과 맞춘 값이다. 아래는 붙인다. */}
           <div className={`flex shrink-0 pt-[7px] ${isSettingsOnLeft ? 'order-first' : ''}`}>
             <SettingsSidebar
               {...settingsModalProps}

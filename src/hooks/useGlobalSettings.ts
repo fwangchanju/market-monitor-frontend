@@ -277,7 +277,7 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   useEffect(() => {
     if (pinnedSnapshotTime === undefined && !isCloseActive && dataSnapshotTime) setLiveSnapshotTime(dataSnapshotTime)
   }, [pinnedSnapshotTime, isCloseActive, dataSnapshotTime])
-  // 종가를 보는 동안에는 받은 지도가 정규장 종가라서, 따로가 열렸는지는 실시간 스냅샷으로 따진다.
+  // 종가를 보는 동안에는 받은 지도가 정규장 종가라서, 별도가 열렸는지는 실시간 스냅샷으로 따진다.
   const isAfterHoursSelectable = isAfterHoursControlsVisible && isAfterHoursSelectableAt(isCloseActive ? liveSnapshotTime : data?.snapshotTime)
   const changeRateMode: ChangeRateMode = isAfterHoursSelectable ? requestedBasis : 'daily'
   const changeRateChoice: ChangeRateChoice = requestedChoice === 'close' && !isCloseUnavailable ? 'close' : changeRateMode

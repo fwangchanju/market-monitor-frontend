@@ -37,7 +37,7 @@ export function currentNxtOnlyWindow(now: Date): NxtOnlyWindow | null {
 // 그동안 주말·휴장일에도 그 날짜의 종가로 계산한다. 서버도 같은 조건으로 판단해서 아니면 누적 값을 준다.
 const AFTER_HOURS_START = '15:40'
 
-// 애프터 마켓 시작부터 다음 프리 마켓 개장 직전까지 누적/따로 버튼을 표시한다.
+// 애프터 마켓 시작부터 다음 프리 마켓 개장 직전까지 누적/별도 버튼을 표시한다.
 // 주말에는 다음 평일 08:00 개장까지 유지한다. 다른 시간대 판단과 같이 공휴일은 별도로 구분하지 않는다.
 export function shouldShowAfterHoursControls(now: Date): boolean {
   const parts = KST_PARTS.formatToParts(now)
