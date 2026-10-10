@@ -42,6 +42,7 @@ export const watchStockKeys = {
 
 export const marketMapKeys = {
   all: ['map'] as const,
+  tradingSchedule: (date: string) => [...marketMapKeys.all, 'trading-schedule', date] as const,
   // exclude 필터링이 프론트로 옮겨오면서 백엔드는 항상 전체 트리를 내려주므로, isExclude는 쿼리에서 뺐다.
   // snapshotTime은 달력에서 지난 날짜를 골랐을 때만 있다(없으면 최신).
   map: (

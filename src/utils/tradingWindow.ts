@@ -1,7 +1,5 @@
-// KRX와 NXT의 거래 시간대(한국 시간, 평일).
-// - NXT 단독: 08:00~08:50, 15:40~16:00 — KRX는 열리지 않아서 NXT 거래 종목만 거래된다.
-// - 공통: 09:00~15:30, 16:00~20:00 — 두 거래소가 같이 연다. 전체 종목을 보여준다.
-// 그 밖의 시간(단일가 구간·장 마감 후·주말)은 NXT 단독이 아니므로 전체 종목을 보여준다. 공휴일은 따로 구분하지 않는다.
+import type { MarketTradingSchedule } from '../types/api'
+
 export interface NxtOnlyWindow {
   // 화면에 그대로 보여주는 시간 범위.
   label: string
@@ -9,6 +7,7 @@ export interface NxtOnlyWindow {
   toMinutes: number
 }
 
+// 시간표 조회 실패·누락 시 사용하는 기존 한국 시간 기준.
 const NXT_ONLY_WINDOWS: readonly NxtOnlyWindow[] = [
   { label: '08:00 ~ 08:50', fromMinutes: 8 * 60, toMinutes: 8 * 60 + 50 },
   { label: '15:40 ~ 16:00', fromMinutes: 15 * 60 + 40, toMinutes: 16 * 60 },
@@ -26,7 +25,17 @@ const KST_PARTS = new Intl.DateTimeFormat('en-US', {
 })
 
 // 지금이 NXT 단독 시간대면 그 시간대를, 아니면 null을 돌려준다.
-export function currentNxtOnlyWindow(now: Date): NxtOnlyWindow | null {
+export function currentNxtOnlyWindow(now: Date, schedule?: MarketTradingSchedule): NxtOnlyWindow | null {
+  if (schedule?.date === getKstDate(now)) {
+    if (schedule.status === 'HOLIDAY') return null
+    if (schedule.status === 'TRADING_DAY') {
+      const window = schedule.nxtOnlyWindows.find(window => containsTime(now, window))
+      if (!window) return null
+      const start = window.startTime.slice(11, 16)
+      const end = window.endTime.slice(11, 16)
+      return { label: `${start} ~ ${end}`, fromMinutes: toMinutes(start), toMinutes: toMinutes(end) }
+    }
+  }
   const parts = KST_PARTS.formatToParts(now)
   const value = (type: string) => parts.find(part => part.type === type)?.value ?? ''
   const weekday = value('weekday')
@@ -60,16 +69,23 @@ export function isAfterHoursSelectable(snapshotTime: string | null | undefined, 
   return snapshotTime.slice(11, 16) >= AFTER_HOURS_START
 }
 
-export function isNxtOnlyTime(now: Date): boolean {
-  return currentNxtOnlyWindow(now) !== null
+export function isNxtOnlyTime(now: Date, schedule?: MarketTradingSchedule): boolean {
+  return currentNxtOnlyWindow(now, schedule) !== null
 }
 
-// 지금 시장이 어느 시간대인지(한국 시간, 평일) — 상단바 After-Market 묶음의 말머리로 쓴다.
-// 08:00~09:00 프리 마켓(08:50~09:00 동시 호가 구간에도 지도에는 프리 마켓 데이터가 나온다), 09:00~15:30 메인 마켓, 15:40~20:00 애프터 마켓.
-// 15:30~15:40은 KRX·NXT가 둘 다 닫혀 있고, 20:00 이후·08:00 이전·주말과 함께 "마켓 종료"이다. 공휴일은 구분하지 않는다.
+// 화면 문구는 유지하고, 확인된 시간표가 있을 때만 고정 시간을 대체한다.
 export type TradingSession = '프리 마켓' | '메인 마켓' | '애프터 마켓' | '마켓 종료'
 
-export function currentTradingSession(now: Date): TradingSession {
+export function currentTradingSession(now: Date, schedule?: MarketTradingSchedule): TradingSession {
+  if (schedule?.date === getKstDate(now)) {
+    if (schedule.status === 'HOLIDAY') return '마켓 종료'
+    if (schedule.status === 'TRADING_DAY') {
+      if (containsTime(now, schedule.preMarket)) return '프리 마켓'
+      if (containsTime(now, schedule.regularMarket)) return '메인 마켓'
+      if (containsTime(now, schedule.afterMarket)) return '애프터 마켓'
+      return '마켓 종료'
+    }
+  }
   const parts = KST_PARTS.formatToParts(now)
   const value = (type: string) => parts.find(part => part.type === type)?.value ?? ''
   const weekday = value('weekday')
@@ -83,3 +99,21 @@ export function currentTradingSession(now: Date): TradingSession {
 
 // 이름 중 가장 긴 것 — 상단바 말머리는 이 이름의 너비를 기준으로 자리를 잡아서 시간대가 바뀌어도 시작 위치가 같다.
 export const LONGEST_TRADING_SESSION: TradingSession = '애프터 마켓'
+
+export function getKstDate(now: Date): string {
+  const parts = KST_PARTS.formatToParts(now)
+  const value = (type: string) => parts.find(part => part.type === type)?.value ?? ''
+  return `${value('year')}-${value('month')}-${value('day')}`
+}
+
+function containsTime(now: Date, window: MarketTradingSchedule['preMarket']): boolean {
+  if (!window) return false
+  // 서버의 LocalDateTime은 한국 시각이므로 브라우저의 시간대에 영향받지 않도록 오프셋을 명시한다.
+  return now.getTime() >= new Date(`${window.startTime}+09:00`).getTime()
+    && now.getTime() < new Date(`${window.endTime}+09:00`).getTime()
+}
+
+function toMinutes(time: string): number {
+  const [hour, minute] = time.split(':').map(Number)
+  return hour * 60 + minute
+}
