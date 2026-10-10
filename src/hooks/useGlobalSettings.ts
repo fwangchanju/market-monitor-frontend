@@ -251,15 +251,15 @@ export function useGlobalSettings(options?: { needsTree?: boolean; allowChangeRa
   // 실시간 날짜는 한 번이라도 실시간 지도를 받아야 알 수 있어서, 처음 한 번은 실시간 지도를 받고 그 뒤에 종가로 옮겨 간다.
   const wantsClose = requestedChoice === 'close' && pinnedSnapshotTime === undefined
   const liveDate = liveSnapshotTime?.slice(0, 10)
-  const { data: closeDays, isSuccess: isCloseDaysSuccess } = useMarketMapSnapshotDays(
+  const { data: closeDays, isSuccess: isCloseDaysSuccess, isError: isCloseDaysError } = useMarketMapSnapshotDays(
     market,
     liveDate?.slice(0, 7) ?? '',
     { enabled: wantsClose && liveDate !== undefined },
   )
   const closeSnapshotTime = wantsClose ? closeDays?.find(day => day.date === liveDate)?.snapshotTime : undefined
   const isCloseActive = closeSnapshotTime !== undefined
-  // 종가 지도가 없는 날(휴장 등)이면 종가 선택을 누적으로 보여 준다.
-  const isCloseUnavailable = wantsClose && isCloseDaysSuccess && !isCloseActive
+  // 종가 지도가 없는 날(휴장 등)이거나 종가 시각 목록을 받지 못했으면(오류) 종가 선택을 누적으로 보여 준다. 실시간 지도를 보면서 종가라고 표시하지 않는다.
+  const isCloseUnavailable = wantsClose && (isCloseDaysSuccess || isCloseDaysError) && !isCloseActive
 
   const {
     data,
