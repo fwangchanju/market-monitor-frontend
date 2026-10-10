@@ -517,7 +517,7 @@ export default function AdminSectorTable({ sectors, settingsActionsTarget, onCou
     </DndContext>
     {settingsActionsTarget && createPortal(
       <section aria-label="업종 관리" className="mb-6">
-        <h2 className="mb-3 text-[15px] font-medium leading-[22px] text-white">업종 관리</h2>
+        <h2 className="settings-plain-title mb-3 text-[15px] font-medium leading-[22px] text-white">업종 관리</h2>
         {selectedSector && <div className="mb-3 rounded-md border border-white/15 bg-black/20 p-2 text-sm text-white">
           <div className="mb-2 text-base font-medium">
             {/* 대분류 › 중분류 › 소분류를 한 줄에 잇지 않고 단계마다 줄을 바꿔 보여 준다 — 깊은 단계일수록 안쪽으로 들여쓰고 앞에 꺽쇠를 둔다. */}

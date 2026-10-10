@@ -1,6 +1,6 @@
 import { HINT_BUBBLE_CLASS } from '@/components/hintBubbleStyle'
 import { compareKoreanText } from '@/utils/koreanSort'
-import { loadSectorOrder, sectorNamesByDepth } from '@/utils/sectorOrder'
+import { loadSectorOrder, sectorNamesByDepth, type SectorOrder } from '@/utils/sectorOrder'
 import { useReportCountLabel } from '@/hooks/useReportCountLabel'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
@@ -20,7 +20,6 @@ import StockTableColGroup from '@/components/StockTableColGroup'
 import StockSortHeader from '@/components/StockSortHeader'
 import SelectionHintBubble from '@/components/SelectionHintBubble'
 import { useStockNameRightEdge } from '@/hooks/useStockNameRightEdge'
-import MarketryPublishControls from '@/components/MarketryPublishControls'
 import ColumnFilterButton, { SectorOrderToggle } from '@/components/ColumnFilterButton'
 import { useStockColumnFilters, type StockFilterKey } from '@/hooks/useStockColumnFilters'
 import { useMarketValueTiers } from '@/hooks/useMarketValueTiers'
@@ -278,7 +277,7 @@ function usePopupPosition(
   // 팝업이 아래로 열렸을 때 화면 밖으로 잘리지 않게, 트리거가 화면 세로 기준 몇 % 아래부터 위로 뒤집을지.
   // 팝업이 클수록(예: 섹터 검색 목록) 더 일찍(작은 값) 뒤집어야 한다.
   flipThreshold = 0.8,
-  // 트리거가 화면 우측 끝에 붙어있으면(예: 일괄변경 버튼) 왼쪽으로 열어야 화면 밖으로 안 잘린다.
+  // 트리거가 화면 우측 끝에 붙어있으면(예: 일괄 변경 버튼) 왼쪽으로 열어야 화면 밖으로 안 잘린다.
   alignRight = false,
 ) {
   const [position, setPosition] = useState<PopupPosition | null>(null)
@@ -449,7 +448,7 @@ function useSectorSearchState(options: SectorOption[], isOpen: boolean) {
   return { query, handleQueryChange, matches, highlightedIndex, setHighlightedIndex, handleArrowsAndEnter, reset }
 }
 
-// 섹터 검색 팝업(검색창 + 전체/필터링된 목록). 대분류·소분류 셀과 일괄변경 버튼이 트리거만 다르게 해서 같이 쓴다.
+// 섹터 검색 팝업(검색창 + 전체/필터링된 목록). 대분류·소분류 셀과 일괄 변경 버튼이 트리거만 다르게 해서 같이 쓴다.
 function SectorSearchPopup({
   popupRef,
   inputRef,
@@ -469,7 +468,7 @@ function SectorSearchPopup({
   onEscape: () => void
   // 소분류 팝업처럼 목록이 특정 대분류로 좁혀져 있을 때, 지금 어느 대분류 밑을 보고 있는지 알려주는 칩.
   contextLabel?: string
-  // 일괄변경 팝업 — 제목과 "가나다 순 / 사용자 지정" 선택(고른 순서는 호출한 쪽이 options 순서로 반영한다).
+  // 일괄 변경 팝업 — 제목과 "가나다 순 / 사용자 지정 순" 선택(고른 순서는 호출한 쪽이 options 순서로 반영한다).
   title?: string
   orderMode?: { value: 'alpha' | 'custom'; onChange: (value: 'alpha' | 'custom') => void }
 }) {
@@ -552,6 +551,8 @@ function AdminStockSectorCell({
   contextLabel,
   disabled,
   disabledHint,
+  title,
+  orderMode,
 }: {
   value: string
   options: SectorOption[]
@@ -566,6 +567,9 @@ function AdminStockSectorCell({
   disabled?: boolean
   // disabled일 때 클릭하면 1.5초간 떴다가 자동으로 사라지는 안내 문구.
   disabledHint?: string
+  // 팝업 제목과 "가나다 순 / 사용자 지정 순" 선택(일괄 변경 팝업과 같은 모양).
+  title?: string
+  orderMode?: { value: 'alpha' | 'custom'; onChange: (value: 'alpha' | 'custom') => void }
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [showHint, setShowHint] = useState(false)
@@ -639,6 +643,8 @@ function AdminStockSectorCell({
           onSelect={handleSelect}
           onEscape={() => updateOpen(false)}
           contextLabel={contextLabel}
+          title={title}
+          orderMode={orderMode}
         />
       )}
       {disabled && showHint && (
@@ -730,7 +736,7 @@ function BulkAssignButton({
           isIdle ? 'cursor-not-allowed border-gray-700 text-gray-600' : 'border-[var(--brand)]/60 text-[var(--brand)] hover:bg-white/10'
         }`}
       >
-        {isIdle ? '일괄변경' : `일괄변경 (${count})`}
+        {isIdle ? '일괄 변경' : `일괄 변경 (${count})`}
       </button>
       {isOpen && position && !disabled && (
         <SectorSearchPopup
@@ -856,6 +862,9 @@ const AdminStockRow = memo(function AdminStockRow({
   onUpdateAlias,
   showAlias,
   isNxt,
+  sectorOrderMode,
+  onSectorOrderModeChange,
+  savedSectorOrder,
 }: {
   item: StockSectorListItem
   index: number
@@ -874,6 +883,10 @@ const AdminStockRow = memo(function AdminStockRow({
   onUpdateAlias: (stockCode: string, alias: string | null) => void
   showAlias: boolean
   isNxt: boolean
+  // 섹터 선택 팝업의 보기 순서 — 가나다 순이거나 업종 화면에서 정한 사용자 지정 순서(savedSectorOrder).
+  sectorOrderMode: 'alpha' | 'custom'
+  onSectorOrderModeChange: (value: 'alpha' | 'custom') => void
+  savedSectorOrder: SectorOrder
 }) {
   // 행 어디에 마우스를 올려도(체크박스/#/시가총액 등 포함) 줄 전체가 옅게 강조되고, 대분류/소분류/약칭
   // 중 하나를 hover 중일 때는 그 열만 추가로 진하게 표시해서 어떤 걸 hover 중인지 구분되게 한다.
@@ -903,15 +916,20 @@ const AdminStockRow = memo(function AdminStockRow({
   // "지금 이 종목의 중분류"의 자식만 보여준다. sectorId(실제 배정된 섹터)를 parentId로 거슬러
   // 올라가서 전체 조상 체인을 구한 뒤, 뎁스별로 슬롯에 나눠 담는다.
   const chain = resolveSectorChain(sectorOptionsById, item.sectorId)
-  const parentSectorOptions = sectorOptions.filter(opt => opt.parentId === null)
+  const arrange = (options: SectorOption[], parentId: number | null) => {
+    if (sectorOrderMode === 'alpha') return options
+    const rank = new Map((savedSectorOrder[String(parentId)] ?? []).map((id, position) => [id, position]))
+    return [...options].sort((a, b) => (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER) || a.id - b.id)
+  }
+  const parentSectorOptions = arrange(sectorOptions.filter(opt => opt.parentId === null), null)
   // 이미 한 단계 위로 좁혀진 목록이라 "- " 들여쓰기 접두어가 필요 없다 — 그냥 이름 그대로 보여준다.
-  const midSectorOptions = sectorOptions
-    .filter(opt => opt.parentId === chain.rootId)
+  const midSectorOptions = arrange(sectorOptions.filter(opt => opt.parentId === chain.rootId), chain.rootId)
     .map(opt => ({ ...opt, label: opt.name }))
   const subSectorOptions =
     chain.midId != null
-      ? sectorOptions.filter(opt => opt.parentId === chain.midId).map(opt => ({ ...opt, label: opt.name }))
+      ? arrange(sectorOptions.filter(opt => opt.parentId === chain.midId), chain.midId).map(opt => ({ ...opt, label: opt.name }))
       : []
+  const cellOrderMode = { value: sectorOrderMode, onChange: onSectorOrderModeChange }
 
   // 체크박스를 정확히 조준하지 않아도, hover 강조가 뜨는 영역(약칭/대분류/소분류 제외 전체) 아무 곳이나
   // 클릭하면 체크가 토글되게 한다. 약칭/대분류/소분류 셀은 자기 클릭(stopPropagation)으로 배제된다.
@@ -973,6 +991,8 @@ const AdminStockRow = memo(function AdminStockRow({
         onHoverStart={() => onParentSectorHoverStart(item.stockCode)}
         onHoverEnd={onHoverEnd}
         onEditingChange={editing => setCellEditing('sector1', editing)}
+        title="대분류 개별 변경"
+        orderMode={cellOrderMode}
       />
       <AdminStockSectorCell
         value={chain.midName ?? '-'}
@@ -984,6 +1004,8 @@ const AdminStockRow = memo(function AdminStockRow({
         onHoverEnd={onHoverEnd}
         onEditingChange={editing => setCellEditing('sector2', editing)}
         contextLabel={chain.rootName}
+        title="중분류 개별 변경"
+        orderMode={cellOrderMode}
       />
       <AdminStockSectorCell
         value={chain.leafName ?? '-'}
@@ -997,6 +1019,8 @@ const AdminStockRow = memo(function AdminStockRow({
         contextLabel={chain.midName ?? undefined}
         disabled={chain.midId == null}
         disabledHint="중분류를 먼저 지정하세요"
+        title="소분류 개별 변경"
+        orderMode={cellOrderMode}
       />
     </tr>
   )
@@ -1114,13 +1138,14 @@ export default function AdminStockTable({
   // sectors가 안 바뀌면 참조를 유지해야 AdminStockRow의 React.memo가 제대로 스킵된다.
   const sectorOptions = useMemo(() => buildSectorOptions(sectors), [sectors])
   const sectorOptionsById = useMemo(() => new Map(sectorOptions.map(opt => [opt.id, opt])), [sectorOptions])
-  // 대·중·소분류 필터는 "가나다 순"과 업종 화면에서 정한 "사용자 지정" 순서 중 고른 대로 보여준다(기본 사용자 지정, 브라우저에 저장).
+  // 대·중·소분류 필터는 "가나다 순"과 업종 화면에서 정한 "사용자 지정 순" 순서 중 고른 대로 보여준다(기본 사용자 지정 순, 브라우저에 저장).
   const [sectorFilterMode, setSectorFilterMode] = useState<'alpha' | 'custom'>(() => (localStorage.getItem('marketry:sector-filter-order') === 'alpha' ? 'alpha' : 'custom'))
   const changeSectorFilterMode = useCallback((value: 'alpha' | 'custom') => {
     localStorage.setItem('marketry:sector-filter-order', value)
     setSectorFilterMode(value)
   }, [])
-  const sectorFilterOrder = useMemo(() => sectorNamesByDepth(sectors, loadSectorOrder()), [sectors])
+  const [savedSectorOrder] = useState(loadSectorOrder)
+  const sectorFilterOrder = useMemo(() => sectorNamesByDepth(sectors, savedSectorOrder), [sectors, savedSectorOrder])
   // 필터/정렬/컬럼 표시에 쓰는 대분류·중분류·소분류 문자열을 종목마다 한 번씩만 미리 계산해둔다.
   const displayByStockCode = useMemo(
     () => new Map(items.map(item => [item.stockCode, computeDisplayValues(item, sectorOptionsById, nxtStockCodes)])),
@@ -1420,7 +1445,7 @@ export default function AdminStockTable({
     runBulkAssign(sectorId)
   }
 
-  // 선택한 종목들의 대분류(중분류)가 모두 같으면 그 아래 중분류(소분류)를 바로 일괄변경할 수 있다. 서로 다르면 위 단계를 먼저 일괄적용한 값을 쓴다.
+  // 선택한 종목들의 대분류(중분류)가 모두 같으면 그 아래 중분류(소분류)를 바로 일괄 변경할 수 있다. 서로 다르면 위 단계를 먼저 일괄적용한 값을 쓴다.
   const selectedCommonChain = useMemo(() => {
     let rootId: number | null | undefined
     let midId: number | null | undefined
@@ -1434,12 +1459,12 @@ export default function AdminStockTable({
   }, [items, selectedStockCodes, sectorOptionsById])
   const effectiveParentId = selectedCommonChain.rootId ?? bulkParentId
   const effectiveMidId = selectedCommonChain.midId ?? bulkMidId
-  // 일괄변경 목록은 필터와 같은 "가나다 순 / 사용자 지정" 선택을 따른다.
+  // 일괄 변경 목록은 필터와 같은 "가나다 순 / 사용자 지정 순" 선택을 따른다.
   const bulkOrderMode = { value: sectorFilterMode, onChange: changeSectorFilterMode }
   const orderedChildren = (parentId: number | null) => {
     const children = sectorOptions.filter(opt => opt.parentId === parentId)
     if (sectorFilterMode === 'alpha') return children
-    const rank = new Map((loadSectorOrder()[String(parentId)] ?? []).map((id, index) => [id, index]))
+    const rank = new Map((savedSectorOrder[String(parentId)] ?? []).map((id, index) => [id, index]))
     return [...children].sort((a, b) => (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER) || a.id - b.id)
   }
   const bulkParentOptions = orderedChildren(null)
@@ -1476,7 +1501,7 @@ export default function AdminStockTable({
   const { data: valueTiers } = useMarketValueTiers()
   const tierOrder = useMemo(() => [...(valueTiers ?? [])].sort((a, b) => b.thresholdValue - a.thresholdValue).map(tier => tier.label), [valueTiers])
 
-  // 필터에 걸려서 화면에서 사라진 종목은 선택도 같이 해제한다 — 안 보이는 종목이 일괄변경에
+  // 필터에 걸려서 화면에서 사라진 종목은 선택도 같이 해제한다 — 안 보이는 종목이 일괄 변경에
   // 딸려 들어가는 걸 막기 위함. filtered가 실제로 바뀔 때(=필터 조작 시)만 실행되므로 체크박스/hover
   // 같은 잦은 조작과는 무관하다.
   useEffect(() => {
@@ -1651,13 +1676,12 @@ export default function AdminStockTable({
     </div>
   )
 
-  // 일괄변경 버튼 — 검색창이 있는 줄 안에, 대·중·소분류 열 바로 위에 각 열과 같은 폭으로 얹는다(새 줄을 만들지 않아 표가 밀리지 않는다).
+  // 일괄 변경 버튼 — 검색창이 있는 줄 안에, 대·중·소분류 열 바로 위에 각 열과 같은 폭으로 얹는다(새 줄을 만들지 않아 표가 밀리지 않는다).
   // 열 위치는 머리글 칸(th)에서 직접 재서 따라가므로 열 폭이 바뀌거나 표가 옆으로 스크롤돼도 어긋나지 않는다.
   const rootRef = useRef<HTMLDivElement>(null)
   // 검색창 오른쪽 끝을 아래 종목명 열의 오른쪽 줄에 맞춘다.
   const nameRightEdge = useStockNameRightEdge(rootRef, scrollContainerRef)
   const [bulkColumns, setBulkColumns] = useState<Partial<Record<'parentSectorName' | 'midSectorName' | 'subSectorName', { left: number; width: number }>>>({})
-  const [publishCenterPx, setPublishCenterPx] = useState<number | null>(null)
   useLayoutEffect(() => {
     const root = rootRef.current
     const scroller = scrollContainerRef.current
@@ -1672,9 +1696,6 @@ export default function AdminStockTable({
         next[key] = { left: Math.round(rect.left - rootLeft), width: Math.round(rect.width) }
       }
       setBulkColumns(prev => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
-      // 관리자 버튼은 맨 윗줄(toolbarContainer의 부모 바) 가로 가운데 — 화면 왼쪽 끝에서 설정창 시작점까지의 가운데 — 에 둔다.
-      const bar = toolbarContainer?.parentElement
-      setPublishCenterPx(bar && toolbarContainer ? Math.round(bar.getBoundingClientRect().left + bar.getBoundingClientRect().width / 2 - toolbarContainer.getBoundingClientRect().left) : null)
     }
     measure()
     scroller.addEventListener('scroll', measure, { passive: true })
@@ -1687,22 +1708,15 @@ export default function AdminStockTable({
       observer.disconnect()
       window.removeEventListener('resize', measure)
     }
-  }, [columns, toolbarContainer])
+  }, [columns])
 
   useReportCountLabel(`${toCount(sorted.length)}/${toCount(items.length)}종목`, onCountLabelChange)
   return (
     <div ref={rootRef} className="relative flex h-full min-h-0 flex-col">
       {toolbarContainer && createPortal(toolbar, toolbarContainer)}
-      {/* 관리자 버튼 — 맨 윗줄에서 대분류 열의 가로 가운데에 둔다. */}
-      {isAdmin && toolbarContainer && publishCenterPx != null && createPortal(
-        <div className="absolute top-0 flex h-full items-center" style={{ left: publishCenterPx, transform: 'translateX(-50%)' }}>
-          <MarketryPublishControls />
-        </div>,
-        toolbarContainer,
-      )}
       {historyContainer && createPortal(
         <div>
-          <h2 className="mb-3 text-[15px] font-medium leading-[22px] text-white">실행 취소</h2>
+          <h2 className="settings-plain-title mb-3 text-[15px] font-medium leading-[22px] text-white">실행 취소</h2>
           {historyControls}
         </div>,
         historyContainer,
@@ -1736,7 +1750,7 @@ export default function AdminStockTable({
           </>
         }
       />
-      {/* 검색창 줄 위에 얹는 층 — 일괄변경 버튼은 대·중·소분류 열 위에 둔다. 층 자체는 클릭을 막지 않는다. */}
+      {/* 검색창 줄 위에 얹는 층 — 일괄 변경 버튼은 대·중·소분류 열 위에 둔다. 층 자체는 클릭을 막지 않는다. */}
       <div className="pointer-events-none absolute left-0 top-0 h-7 w-full overflow-hidden">
         {(['parentSectorName', 'midSectorName', 'subSectorName'] as const).map(key => {
           const layout = bulkColumns[key]
@@ -1744,7 +1758,7 @@ export default function AdminStockTable({
           return (
             <div key={key} className="pointer-events-auto absolute top-0.5 px-1" style={{ left: layout.left, width: layout.width }}>
               {key === 'parentSectorName' && (
-                <BulkAssignButton count={selectedStockCodes.size} options={bulkParentOptions} onAssign={handleBulkAssignParent} alignRight title="대분류 일괄변경" orderMode={bulkOrderMode} />
+                <BulkAssignButton count={selectedStockCodes.size} options={bulkParentOptions} onAssign={handleBulkAssignParent} alignRight title="대분류 일괄 변경" orderMode={bulkOrderMode} />
               )}
               {key === 'midSectorName' && (
                 <BulkAssignButton
@@ -1752,7 +1766,7 @@ export default function AdminStockTable({
                   options={bulkMidOptions}
                   onAssign={handleBulkAssignMid}
                   alignRight
-                  title="중분류 일괄변경"
+                  title="중분류 일괄 변경"
                   orderMode={bulkOrderMode}
                   disabled={effectiveParentId == null}
                   disabledHint="선택한 종목의 대분류가 같아야 합니다. 다르면 대분류를 먼저 일괄적용하세요"
@@ -1764,7 +1778,7 @@ export default function AdminStockTable({
                   options={bulkSubOptions}
                   onAssign={handleBulkAssignSub}
                   alignRight
-                  title="소분류 일괄변경"
+                  title="소분류 일괄 변경"
                   orderMode={bulkOrderMode}
                   disabled={effectiveMidId == null}
                   disabledHint="선택한 종목의 중분류가 같아야 합니다. 다르면 중분류를 먼저 일괄적용하세요"
@@ -1896,6 +1910,9 @@ export default function AdminStockTable({
                       sectorOptionsById={sectorOptionsById}
                       onAssign={handleAssign}
                       onUpdateAlias={handleUpdateAlias}
+                      sectorOrderMode={sectorFilterMode}
+                      onSectorOrderModeChange={changeSectorFilterMode}
+                      savedSectorOrder={savedSectorOrder}
                     />
                   )
                 })}

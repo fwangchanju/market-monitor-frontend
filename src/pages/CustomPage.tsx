@@ -9,6 +9,7 @@ import AdminStockTable from '@/components/AdminStockTable'
 import Spinner from '@/components/Spinner'
 import NavBarPageActions from '@/components/NavBarPageActions'
 import SettingsSidebar from '@/components/SettingsSidebar'
+import MarketryPublishControls from '@/components/MarketryPublishControls'
 import { FONT_BAR_MODE_STATUS } from '@/components/FontStyle'
 import ModeDropdown from '@/components/ModeDropdown'
 import ReadOnlyTaxonomySheet from '@/components/ReadOnlyTaxonomySheet'
@@ -40,7 +41,7 @@ export default function CustomPage() {
   // 분류 시트 — 내 분류(mine)만 편집할 수 있다. ?sheet=krx는 읽기 전용 KRX 시트, ?sheet=marketry는 올린
   // MARKETRY를 읽기 전용으로 보여준다(MARKETRY는 내 분류에서 올려서 바꾼다).
   // 예전 주소(?sheet=nxt)는 KRX 시트에서 "NXT 종목만 보기"를 켠 상태로 연다.
-  const { isLoading: isSessionLoading } = useSession()
+  const { data: session, isLoading: isSessionLoading } = useSession()
   const isLoggedIn = useIsLoggedIn()
   const { requireLogin } = useLoginGate()
   // 로그인 여부가 확정된 비로그인 — 세션을 확인하는 동안은 아직 모르므로 내 분류 선택을 그대로 둔다.
@@ -244,7 +245,7 @@ export default function CustomPage() {
                 />
               </div>
               {/* 종목수/실행취소·다시실행/필터/엑셀 등 — AdminStockTable이 이 노드로 포털링해서 그린다. */}
-              {!isReadOnlySheet && mode === 'stock' && <div ref={setToolbarContainer} className="relative flex h-full min-h-0 min-w-0 flex-1 items-center" />}
+              {!isReadOnlySheet && mode === 'stock' && <div ref={setToolbarContainer} className="flex h-full min-h-0 min-w-0 flex-1 items-center" />}
               <div className={`${FONT_BAR_MODE_STATUS} ml-2 flex min-w-0 items-center justify-end text-gray-400`}>
                 <TaxonomyBadge taxonomy={sheet} />
               </div>
@@ -302,14 +303,19 @@ export default function CustomPage() {
               isOnLeft={isSettingsOnLeft}
               onToggleSide={toggleSettingsSide}
               onRequestLogin={() => requireLogin(pathname)}
-              plainContent={mode === 'sector' && !isReadOnlySheet ? (
-                <div>
-                  <div ref={setSectorSettingsActionsTarget} />
-                </div>
-              ) : mode === 'stock' && !isReadOnlySheet ? (
-                <div>
-                  <div ref={setStockHistoryTarget} />
-                </div>
+              plainContent={!isReadOnlySheet ? (
+                <>
+                  {/* 관리자만 — 내 분류를 MARKETRY로 올리고 이전 버전으로 되돌린다. 그룹 페이지처럼 항목 높이는 127px로 고정하고(제목 간격 127px) 사이에 구분선이 그어진다. */}
+                  {session?.role === 'ADMIN' && (
+                    <div className="h-[127px] text-sm">
+                      <h2 className="settings-plain-title mb-3 text-[15px] font-medium leading-[22px] text-white">관리자</h2>
+                      <div className="max-w-[16rem]">
+                        <MarketryPublishControls />
+                      </div>
+                    </div>
+                  )}
+                  <div ref={mode === 'sector' ? setSectorSettingsActionsTarget : setStockHistoryTarget} />
+                </>
               ) : null}
               taxonomyAtBottom
               snapshotTime={taxonomyMap?.taxonomyUpdatedAt}

@@ -13,11 +13,11 @@ function FunnelIcon({ className }: { className?: string }) {
   )
 }
 
-// "가나다 순 / 사용자 지정" 두 칸 — 대·중·소분류 필터와 일괄변경 팝업이 같이 쓴다.
+// "가나다 순 / 사용자 지정 순" 두 칸 — 대·중·소분류 필터와 일괄 변경 팝업이 같이 쓴다.
 export function SectorOrderToggle({ label, value, onChange }: { label: string; value: 'alpha' | 'custom'; onChange: (value: 'alpha' | 'custom') => void }) {
   return (
     <div className="flex gap-1 px-3 pb-2" role="radiogroup" aria-label={`${label} 보기 순서`}>
-      {([['alpha', '가나다 순'], ['custom', '사용자 지정']] as const).map(([option, text]) => (
+      {([['alpha', '가나다 순'], ['custom', '사용자 지정 순']] as const).map(([option, text]) => (
         <button
           key={option}
           type="button"
@@ -45,7 +45,7 @@ interface Props {
   onToggle: (value: string) => void
   onSelectAll: () => void
   onSelectNone: (values: readonly string[]) => void
-  // 보기 순서 선택 — 있으면 목록 위에 "가나다 순 / 사용자 지정" 두 칸이 생긴다. 'custom'이면 optionOrder, 'alpha'면 가나다 순으로 보인다.
+  // 보기 순서 선택 — 있으면 목록 위에 "가나다 순 / 사용자 지정 순" 두 칸이 생긴다. 'custom'이면 optionOrder, 'alpha'면 가나다 순으로 보인다.
   orderMode?: { value: 'alpha' | 'custom'; onChange: (value: 'alpha' | 'custom') => void }
 }
 
