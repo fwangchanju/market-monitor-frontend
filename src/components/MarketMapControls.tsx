@@ -148,11 +148,11 @@ export function PeriodDropdown() {
 }
 
 // 시간대 말머리 앞 점의 색 — 설정창 4-1) 강조 색상 기준으로 프리 마켓은 연노랑,
-// 메인 마켓은 형광, 애프터 마켓은 주황, 마켓 종료은 연회색이다.
+// 메인 마켓은 형광, 애프터 마켓은 연보라, 마켓 종료은 연회색이다.
 const SESSION_DOT_COLOR: Record<TradingSession, string> = {
   '프리 마켓': accentColor('연노랑'),
   '메인 마켓': accentColor('형광'),
-  '애프터 마켓': accentColor('주황'),
+  '애프터 마켓': accentColor('연보라'),
   '마켓 종료': accentColor('연회색'),
 }
 
@@ -273,7 +273,7 @@ export function ChangeRateModeToggle({ basis, visible, selectable, afterHoursSta
     }
   }, [popup])
 
-  // 선택 칸의 주황 채움은 버튼 뒤의 막대 하나가 옆으로 미끄러져 옮긴다. 버튼은 외곽선(border)만 갖고 있어서 선은 그대로다.
+  // 선택 칸의 색 채움은 버튼 뒤의 막대 하나가 옆으로 미끄러져 옮긴다. 버튼은 외곽선(border)만 갖고 있어서 선은 그대로다.
   const buttonRefs = useRef<(HTMLButtonElement | null)[]>([])
   const [highlight, setHighlight] = useState<{ left: number; width: number } | null>(null)
   const selectedIndex = options.findIndex(option => option.value === basis)
@@ -322,7 +322,10 @@ export function ChangeRateModeToggle({ basis, visible, selectable, afterHoursSta
               // 이웃한 버튼끼리 테두리가 겹치도록 1px 당겨서 사이 선이 한 줄만 보이게 한다.
               marginLeft: index > 0 ? -1 : 0,
               // 외곽선은 outline·box-shadow가 아니라 border로 그린다 — 눌러서 포커스가 가면 전역 규칙이 outline과 box-shadow를 지운다.
-              border: `1px solid ${SESSION_DOT_COLOR['애프터 마켓']}`,
+              // 바깥 외곽선은 위·아래와 양 끝이 2px, 버튼 사이 선은 1px이다(위 마진으로 겹쳐서 한 줄).
+              borderStyle: 'solid',
+              borderColor: SESSION_DOT_COLOR['애프터 마켓'],
+              borderWidth: `2px ${index === options.length - 1 ? 2 : 1}px 2px ${index === 0 ? 2 : 1}px`,
               // 안 선택 글자는 옆 거래 세션 글자(text-gray-400)와 같은 회색이다.
               color: basis === option.value ? '#111827' : '#9ca3af',
               backgroundColor: 'transparent',

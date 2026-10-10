@@ -83,7 +83,7 @@ export default function MarketMapShareModal({
           않는다. 이미지는 화면(폭 95vw, 높이 85dvh에서 버튼 줄을 뺀 만큼) 안에서 비율을 유지한 채 최대한
           크게 그린다. 캡처 전(스피너)에는 임시 크기 칸으로 자리를 잡는다. */}
       <div
-        className="flex max-w-[calc(100vw-2rem)] flex-col border border-gray-500 bg-[#363639]"
+        className="flex max-w-[calc(100vw-2rem)] flex-col rounded-md border border-gray-500 bg-[#363639]"
         onClick={e => e.stopPropagation()}
       >
         {/* 설정창 헤더와 같은 모양 — 왼쪽 제목, 오른쪽 ✕, 아래 구분선. */}

@@ -69,8 +69,9 @@ export default function NavBar({ hideAccount = false }: { hideAccount?: boolean 
     }
   }, [isProfileMenuOpen])
 
+  // 계정 메뉴가 열려 있는 동안만 헤더를 아래 줄(아이콘 줄, z-30)보다 위에 둔다 — 안 그러면 메뉴 위쪽이 그 줄에 가려진다.
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center justify-between bg-zinc-900 px-4">
+    <header className={`sticky top-0 ${isProfileMenuOpen ? 'z-40' : 'z-20'} flex h-16 items-center justify-between bg-zinc-900 px-4`}>
       <Link
         to="/"
         aria-label="홈으로 이동: 지도 전체 종목"
@@ -115,22 +116,22 @@ export default function NavBar({ hideAccount = false }: { hideAccount?: boolean 
           <ProfileAvatar className="size-full object-cover" />
         </button>
         {isProfileMenuOpen && (
-          <div className="absolute right-0 top-full z-30 w-64 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-800 py-2 text-white shadow-xl">
+          <div className="absolute right-0 top-full z-30 -mt-2 w-64 overflow-hidden rounded-md border border-gray-500 bg-[#363639] py-2 text-white shadow-xl">
             {isLoading ? (
               <p className="px-4 py-3 text-sm text-zinc-400">계정 확인 중...</p>
             ) : session?.authenticated ? (
               <>
-                <div className="flex items-center gap-3 border-b border-zinc-700 px-4 py-3 text-sm">
+                <div className="flex items-center gap-3 border-b border-gray-500 px-4 py-3 text-sm">
                   <ProfileAvatar className="size-10 shrink-0 object-cover" />
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{session.nickname || '내 계정'}</p>
                     <p className="mt-1 truncate text-zinc-400">{session.email || `사용자 ${session.userId}`}</p>
                   </div>
                 </div>
-                <Link to="/profile" onClick={() => setIsProfileMenuOpen(false)} className="block px-4 py-3 text-sm hover:bg-zinc-700 focus:bg-zinc-700">
+                <Link to="/profile" onClick={() => setIsProfileMenuOpen(false)} className="block px-4 py-3 text-sm font-semibold hover:bg-white/10 focus:bg-white/10">
                   프로필
                 </Link>
-                <div className="mt-1 border-t border-zinc-700 pt-1">
+                <div className="mt-1 border-t border-gray-500 pt-1">
                   <button
                     type="button"
                     onClick={() => {
@@ -138,7 +139,7 @@ export default function NavBar({ hideAccount = false }: { hideAccount?: boolean 
                       logout.mutate()
                     }}
                     disabled={logout.isPending}
-                    className="block w-full px-4 py-3 text-left text-sm hover:bg-zinc-700 focus:bg-zinc-700 disabled:opacity-50"
+                    className="block w-full border-0 bg-transparent px-4 py-3 text-left text-sm font-semibold text-white hover:bg-white/10 focus:bg-white/10 disabled:opacity-50"
                   >
                     로그아웃
                   </button>

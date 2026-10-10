@@ -282,7 +282,7 @@ export default function GroupPage() {
   // 맵·커스텀 페이지와 같은 청록색 분류자명 버튼을 표시한다.
   const modeStatusText = <TaxonomyBadge taxonomy={settingsModalProps.taxonomy} />
 
-  const { isOnLeft: isSettingsOnLeft, toggleSide: toggleSettingsSide } = useSettingsSidebarSide()
+  const { isOnLeft: isSettingsOnLeft, toggleSide: toggleSettingsSide, rowRef: settingsRowRef } = useSettingsSidebarSide()
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const [downloadStatus, setDownloadStatus] = useState<DownloadStatus>('idle')
@@ -409,6 +409,7 @@ export default function GroupPage() {
       <div className="flex min-h-0 flex-1">
         {/* 공유·텔레그램 모두 [세 번째 바+본문] 열만 캡처해 설정창을 제외한다. */}
         <div
+          ref={settingsRowRef}
           className="relative z-10 -mt-[10.5px] flex min-h-0 flex-1 overflow-hidden bg-black text-white"
         >
           {/* min-w-0: 이 컬럼의 자동 최소 폭을 0으로 눌러서(overflow: visible이면 내부 콘텐츠의

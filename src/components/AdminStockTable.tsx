@@ -888,7 +888,7 @@ const AdminStockRow = memo(function AdminStockRow({
     >
       <td className={`text-center ${rowHoverClass}`} style={CHECKBOX_CELL_STYLE}>
         {/* 상태 변경은 줄 클릭(handleRowClick)에서 하므로 onChange는 비워 둔다 — 제어되는 체크박스에 필요한 자리표시다. */}
-        <input type="checkbox" className="mx-auto my-0 block h-5 w-5 cursor-pointer accent-[var(--brand)]" checked={isSelected} onChange={() => {}} />
+        <input type="checkbox" className="mx-auto my-0 block thin-check" checked={isSelected} onChange={() => {}} />
       </td>
       <td className={`${alignClass('center')} text-gray-400 ${rowHoverClass}`}>{item.stockCode}</td>
       <td className={`${alignClass('left')} ${marketColorClass(item.market)} ${rowHoverClass}`}>{item.stockName}</td>
@@ -1666,7 +1666,7 @@ export default function AdminStockTable({
                   toggleSelectAllVisible()
                 }}
               >
-                <input type="checkbox" className="mx-auto my-0 block h-5 w-5 cursor-pointer accent-[var(--brand)]" checked={isAllVisibleSelected} onChange={toggleSelectAllVisible} />
+                <input type="checkbox" className="mx-auto my-0 block thin-check" checked={isAllVisibleSelected} onChange={toggleSelectAllVisible} />
               </th>
               {columns.map(col => {
                 const label = (
